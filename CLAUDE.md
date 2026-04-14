@@ -94,6 +94,27 @@ I'll make decisions and move forward. I will **stop and ask** for:
 
 Everything else — implementation, testing, refactoring, local infra, specs — I proceed and report.
 
+## Inter-agent communication
+
+Agent teams are enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`). Teammates share a task list and mailboxes. Use them as follows:
+
+- **Real-time mailbox (`SendMessage`)**: only for blockers that would stall the sender. Example: frontend-engineer needs an IDL field name the anchor-engineer hasn't committed yet — ask, don't guess.
+- **Durable handoffs**: prefer files over messages. IDLs land at `target/idl/<program>.json`, specs at `specs/`, reports at `reports/`. If it will still matter tomorrow, write it down.
+- **Natural cross-talk pairs** (expect messaging):
+  - `anchor-engineer` ↔ `zk-circuit-engineer` (proof_verifier glue ↔ circuit public inputs)
+  - `anchor-engineer` ↔ `solana-indexer-engineer` (IDL for decoding)
+  - `anchor-engineer` ↔ `frontend-engineer` (SDK / hook semantics)
+  - `solana-security-auditor` ↔ `anchor-engineer` (findings → fixes loop)
+- **Broadcast is reserved for the orchestrator (me).** Teammates do not broadcast.
+- Every cross-talk decision is logged back to `reports/` so future sessions inherit the context.
+
+## Hosting
+
+- Frontend → **Vercel** (preferred for Next.js Edge; the frontend PDF specifies it). Domain: `buildonsaep.com`.
+- Off-chain services (indexer, proof-gen, IACP bus, Postgres) → **Render** (replacing the AWS EC2/ECS targets in the backend PDF). Update deploy docs and specs to reflect this when written.
+- RPC → **Helius** (dedicated node for Yellowstone gRPC).
+- Source → **GitHub SAEP org** (repo exists; push once bootstrap lands).
+
 ## File conventions
 
 - `specs/<feature>.md` — feature source of truth, links to PDF sections
