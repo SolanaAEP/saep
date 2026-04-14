@@ -1,15 +1,141 @@
 use anchor_lang::prelude::*;
 
+pub mod cpi_stubs;
+pub mod errors;
+pub mod events;
+pub mod instructions;
+pub mod state;
+
+use instructions::*;
+use state::ALLOWED_MINTS_LEN;
+
 declare_id!("HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w");
 
 #[program]
 pub mod task_market {
     use super::*;
 
-    pub fn initialize(_ctx: Context<Initialize>) -> Result<()> {
-        Ok(())
+    #[allow(clippy::too_many_arguments)]
+    pub fn init_global(
+        ctx: Context<InitGlobal>,
+        authority: Pubkey,
+        agent_registry: Pubkey,
+        treasury_standard: Pubkey,
+        proof_verifier: Pubkey,
+        fee_collector: Pubkey,
+        solrep_pool: Pubkey,
+        protocol_fee_bps: u16,
+        solrep_fee_bps: u16,
+        dispute_window_secs: i64,
+        max_deadline_secs: i64,
+        allowed_payment_mints: [Pubkey; ALLOWED_MINTS_LEN],
+    ) -> Result<()> {
+        instructions::init_global::handler(
+            ctx,
+            authority,
+            agent_registry,
+            treasury_standard,
+            proof_verifier,
+            fee_collector,
+            solrep_pool,
+            protocol_fee_bps,
+            solrep_fee_bps,
+            dispute_window_secs,
+            max_deadline_secs,
+            allowed_payment_mints,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_task(
+        ctx: Context<CreateTask>,
+        task_nonce: [u8; 8],
+        agent_did: [u8; 32],
+        payment_mint: Pubkey,
+        payment_amount: u64,
+        task_hash: [u8; 32],
+        criteria_root: [u8; 32],
+        deadline: i64,
+        milestone_count: u8,
+    ) -> Result<()> {
+        instructions::create_task::handler(
+            ctx,
+            task_nonce,
+            agent_did,
+            payment_mint,
+            payment_amount,
+            task_hash,
+            criteria_root,
+            deadline,
+            milestone_count,
+        )
+    }
+
+    pub fn fund_task(ctx: Context<FundTask>) -> Result<()> {
+        instructions::fund_task::handler(ctx)
+    }
+
+    pub fn cancel_unfunded_task(ctx: Context<CancelUnfundedTask>) -> Result<()> {
+        instructions::cancel_unfunded_task::handler(ctx)
+    }
+
+    pub fn submit_result(
+        ctx: Context<SubmitResult>,
+        result_hash: [u8; 32],
+        proof_key: [u8; 32],
+    ) -> Result<()> {
+        instructions::submit_result::handler(ctx, result_hash, proof_key)
+    }
+
+    pub fn verify_task(
+        ctx: Context<VerifyTask>,
+        proof_a: [u8; 64],
+        proof_b: [u8; 128],
+        proof_c: [u8; 64],
+    ) -> Result<()> {
+        instructions::verify_task::handler(ctx, proof_a, proof_b, proof_c)
+    }
+
+    pub fn release(ctx: Context<Release>) -> Result<()> {
+        instructions::release::handler(ctx)
+    }
+
+    pub fn expire(ctx: Context<Expire>) -> Result<()> {
+        instructions::expire::handler(ctx)
+    }
+
+    pub fn raise_dispute(ctx: Context<RaiseDispute>) -> Result<()> {
+        instructions::raise_dispute::handler(ctx)
+    }
+
+    pub fn set_allowed_mint(
+        ctx: Context<GovernanceUpdate>,
+        slot: u8,
+        mint: Pubkey,
+    ) -> Result<()> {
+        instructions::governance::set_allowed_mint_handler(ctx, slot, mint)
+    }
+
+    pub fn set_fees(
+        ctx: Context<GovernanceUpdate>,
+        protocol_fee_bps: u16,
+        solrep_fee_bps: u16,
+    ) -> Result<()> {
+        instructions::governance::set_fees_handler(ctx, protocol_fee_bps, solrep_fee_bps)
+    }
+
+    pub fn set_paused(ctx: Context<GovernanceUpdate>, paused: bool) -> Result<()> {
+        instructions::governance::set_paused_handler(ctx, paused)
+    }
+
+    pub fn transfer_authority(
+        ctx: Context<TransferAuthority>,
+        new_authority: Pubkey,
+    ) -> Result<()> {
+        instructions::authority::transfer_authority_handler(ctx, new_authority)
+    }
+
+    pub fn accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
+        instructions::authority::accept_authority_handler(ctx)
     }
 }
-
-#[derive(Accounts)]
-pub struct Initialize {}
