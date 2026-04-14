@@ -1,0 +1,39 @@
+use anchor_lang::prelude::*;
+
+#[error_code]
+pub enum ProofVerifierError {
+    #[msg("signer is not the verifier authority")]
+    Unauthorized,
+    #[msg("verifier is paused")]
+    Paused,
+    #[msg("verifying key already exists")]
+    VkAlreadyExists,
+    #[msg("verifying key not found")]
+    VkNotFound,
+    #[msg("provided verifying key does not match active vk")]
+    VkMismatch,
+    #[msg("public input count does not match verifying key")]
+    PublicInputCountMismatch,
+    #[msg("public input exceeds bn254 scalar field modulus")]
+    PublicInputOutOfField,
+    #[msg("proof bytes failed curve deserialization")]
+    ProofMalformed,
+    #[msg("pairing check failed")]
+    ProofInvalid,
+    #[msg("timelock has not elapsed")]
+    TimelockNotElapsed,
+    #[msg("no pending vk activation")]
+    NoPendingActivation,
+    #[msg("a vk activation is already pending")]
+    ActivationPending,
+    #[msg("non-production vk cannot be activated in mainnet mode")]
+    NotProductionVk,
+    #[msg("ic length must equal num_public_inputs + 1")]
+    IcLengthMismatch,
+    #[msg("num_public_inputs exceeds m1 cap of 16")]
+    TooManyPublicInputs,
+    #[msg("no pending authority to accept")]
+    NoPendingAuthority,
+    #[msg("not implemented in m1")]
+    NotImplemented,
+}
