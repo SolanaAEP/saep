@@ -7,6 +7,7 @@ skip-lint = false
 
 [programs.localnet]
 agent_registry = "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
+capability_registry = "GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F"
 treasury_standard = "6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ"
 task_market = "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w"
 dispute_arbitration = "GM8xiT17USBpCW24XXBmUR8YVCxxrJPMEcsddwfUokMa"
@@ -34,6 +35,7 @@ url = "https://api.mainnet-beta.solana.com"
 [workspace]
 members = [
     "programs/agent_registry",
+    "programs/capability_registry",
     "programs/treasury_standard",
     "programs/task_market",
     "programs/dispute_arbitration",

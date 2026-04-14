@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "programs/agent_registry",
+    "programs/capability_registry",
     "programs/treasury_standard",
     "programs/task_market",
     "programs/dispute_arbitration",
