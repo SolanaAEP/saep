@@ -8,6 +8,6 @@ pub struct ValidateMask<'info> {
     pub config: Account<'info, RegistryConfig>,
 }
 
-pub fn handler(ctx: Context<ValidateMask>, mask: u128) -> Result<()> {
+pub fn validate_mask_handler(ctx: Context<ValidateMask>, mask: u128) -> Result<()> {
     ctx.accounts.config.assert_mask_approved(mask)
 }

@@ -25,7 +25,7 @@ pub struct RetireTag<'info> {
     pub authority: Signer<'info>,
 }
 
-pub fn handler(ctx: Context<RetireTag>, bit_index: u8) -> Result<()> {
+pub fn retire_tag_handler(ctx: Context<RetireTag>, bit_index: u8) -> Result<()> {
     let config = &mut ctx.accounts.config;
     require!(!config.paused, CapabilityRegistryError::Paused);
 

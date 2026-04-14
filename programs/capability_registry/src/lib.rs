@@ -15,7 +15,7 @@ pub mod capability_registry {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>, authority: Pubkey) -> Result<()> {
-        instructions::initialize::handler(ctx, authority)
+        instructions::initialize::initialize_handler(ctx, authority)
     }
 
     pub fn propose_tag(
@@ -24,11 +24,11 @@ pub mod capability_registry {
         slug: [u8; SLUG_LEN],
         manifest_uri: [u8; MANIFEST_URI_LEN],
     ) -> Result<()> {
-        instructions::propose_tag::handler(ctx, bit_index, slug, manifest_uri)
+        instructions::propose_tag::propose_tag_handler(ctx, bit_index, slug, manifest_uri)
     }
 
     pub fn retire_tag(ctx: Context<RetireTag>, bit_index: u8) -> Result<()> {
-        instructions::retire_tag::handler(ctx, bit_index)
+        instructions::retire_tag::retire_tag_handler(ctx, bit_index)
     }
 
     pub fn update_manifest_uri(
@@ -36,7 +36,7 @@ pub mod capability_registry {
         bit_index: u8,
         manifest_uri: [u8; MANIFEST_URI_LEN],
     ) -> Result<()> {
-        instructions::update_manifest_uri::handler(ctx, bit_index, manifest_uri)
+        instructions::update_manifest_uri::update_manifest_uri_handler(ctx, bit_index, manifest_uri)
     }
 
     pub fn transfer_authority(
@@ -51,10 +51,10 @@ pub mod capability_registry {
     }
 
     pub fn set_paused(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
-        instructions::set_paused::handler(ctx, paused)
+        instructions::set_paused::set_paused_handler(ctx, paused)
     }
 
     pub fn validate_mask(ctx: Context<ValidateMask>, mask: u128) -> Result<()> {
-        instructions::validate_mask::handler(ctx, mask)
+        instructions::validate_mask::validate_mask_handler(ctx, mask)
     }
 }
