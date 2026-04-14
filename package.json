@@ -30,7 +30,7 @@
     "chai": "4.5.0",
     "mocha": "11.0.1",
     "prettier": "3.4.2",
-    "ts-mocha": "10.0.0",
+    "ts-mocha": "11.1.0",
     "turbo": "2.3.3",
     "typescript": "5.7.3"
   }
