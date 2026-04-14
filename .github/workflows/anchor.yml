@@ -1,0 +1,74 @@
+name: anchor
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  SOLANA_VERSION: v3.0.13
+  ANCHOR_VERSION: v1.0.0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-registry-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-${{ runner.os }}-
+
+      - name: cache solana + anchor toolchains
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/solana
+            ~/.local/share/solana
+            ~/.avm
+            ~/.cargo/bin/anchor
+            ~/.cargo/bin/avm
+          key: solana-${{ env.SOLANA_VERSION }}-anchor-${{ env.ANCHOR_VERSION }}-${{ runner.os }}
+
+      - name: install solana
+        run: |
+          if [ ! -x "$HOME/.local/share/solana/install/active_release/bin/solana" ]; then
+            sh -c "$(curl -sSfL https://release.anza.xyz/${SOLANA_VERSION}/install)"
+          fi
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: install anchor
+        run: |
+          if ! command -v anchor >/dev/null 2>&1; then
+            cargo install --git https://github.com/coral-xyz/anchor --tag ${ANCHOR_VERSION} anchor-cli --locked
+          fi
+
+      - name: cache anchor build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            target/deploy
+            target/idl
+            target/types
+          key: anchor-build-${{ runner.os }}-${{ hashFiles('Anchor.toml', 'programs/**/Cargo.toml', 'programs/**/src/**/*.rs') }}
+
+      - name: cache programs target
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: cargo-target-anchor-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml') }}
+          restore-keys: |
+            cargo-target-anchor-${{ runner.os }}-
+
+      - run: anchor build
