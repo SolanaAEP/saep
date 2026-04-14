@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: saep-iacp
+    env: node
+    plan: starter
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/iacp build
+    startCommand: pnpm --filter @saep/iacp start
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+
+  - type: worker
+    name: saep-proof-gen
+    env: node
+    plan: starter
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/proof-gen build
+    startCommand: pnpm --filter @saep/proof-gen start
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+
+  - type: worker
+    name: saep-indexer
+    env: docker
+    plan: starter
+    dockerfilePath: services/indexer/Dockerfile
