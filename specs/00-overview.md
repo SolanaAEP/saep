@@ -1,6 +1,6 @@
 # SAEP — Overview Spec
 
-Source of truth: `docs/backend-build.pdf` + `docs/frontend-build.pdf`. This file sequences the work into shippable specs, each of which will have its own file in `specs/`.
+This file sequences the work into shippable specs, each of which has its own file in `specs/`.
 
 ## M1 — Alpha Devnet (target: OtterSec audit-ready)
 

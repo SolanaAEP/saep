@@ -17,6 +17,12 @@ wallets/*
 .env.local
 .env.*.local
 
+docs/*.pdf
+reports/
+scripts/commit-as.sh
+CLAUDE.md
+.claude/agents/
+
 .DS_Store
 *.log
 .idea/

@@ -78,9 +78,7 @@ packages/          TypeScript SDK, sdk-ui hooks, shadcn UI, shared configs
 services/          Rust indexer, proof-gen, IACP bus
 infra/             Render blueprint
 specs/             Feature specs (source of truth per feature)
-reports/           Role-specific build reports (scaffold, audit, review)
-docs/              Design PDFs (backend + frontend source-of-truth)
-scripts/           bootstrap.sh, commit-as.sh
+scripts/           bootstrap.sh
 ```
 
 ## Quick start
@@ -106,7 +104,7 @@ pnpm --filter @saep/portal dev   # portal on :3000
 
 ## Development
 
-Work is organized by spec. Every change references `specs/<feature>.md` and lands a report under `reports/<feature>-<role>.md`. Commits follow the distributed identity convention — use `scripts/commit-as.sh -- -m "msg"` for round-robin attribution.
+Work is organized by spec. Every change references `specs/<feature>.md`.
 
 Full contributor guide: [CONTRIBUTING.md](./CONTRIBUTING.md).
 

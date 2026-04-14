@@ -6,7 +6,7 @@ Thanks for the interest. SAEP is a protocol, not a library, and the contribution
 
 - Read the [README](./README.md) for the architecture.
 - Skim [`specs/00-overview.md`](./specs/00-overview.md) for the current milestone plan.
-- Source of truth for design decisions lives in [`docs/backend-build.pdf`](./docs/backend-build.pdf) and [`docs/frontend-build.pdf`](./docs/frontend-build.pdf). Cite section numbers when relevant.
+- Design decisions are captured in `specs/`. For broader context, reach out to a maintainer.
 
 ## Development setup
 
@@ -59,15 +59,6 @@ Terse, lowercase, imperative mood. Reference the spec you're implementing.
 ```
 program-agent-registry: add slash timelock with 30d queue
 ```
-
-Use the distributed identity helper for attribution:
-
-```bash
-scripts/commit-as.sh -- -m "your message"   # round-robin
-scripts/commit-as.sh hl -- -m "your message"  # pin to a contributor
-```
-
-The local git config has `user.email` and `user.name` unset deliberately — bare `git commit` will fail rather than silently pick one identity.
 
 ## Pull requests
 
