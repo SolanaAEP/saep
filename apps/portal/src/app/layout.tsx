@@ -1,18 +1,16 @@
 import type { Metadata } from 'next';
-import { WalletProviders } from './providers';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'SAEP',
-  description: 'Solana Agent Economy Protocol',
+  title: 'SAEP — Solana Agent Economy Protocol',
+  description:
+    'Solana Agent Economy Protocol. Real-time state. Execution path. Verified.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <WalletProviders>{children}</WalletProviders>
-      </body>
+      <body className="bg-paper text-ink font-sans antialiased">{children}</body>
     </html>
   );
 }
