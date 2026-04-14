@@ -1,0 +1,57 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      next:
+        patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+          - "@next/*"
+      solana:
+        patterns:
+          - "@solana/*"
+          - "@coral-xyz/anchor"
+      tooling:
+        patterns:
+          - "eslint*"
+          - "prettier"
+          - "typescript"
+          - "turbo"
+          - "@types/*"
+
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      anchor:
+        patterns:
+          - "anchor-*"
+          - "solana-*"
+
+  - package-ecosystem: "cargo"
+    directory: "/services/indexer"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+
+  - package-ecosystem: "docker"
+    directory: "/services/indexer"
+    schedule:
+      interval: "weekly"
+      day: "monday"

@@ -1,0 +1,58 @@
+name: Feature request
+description: Propose a change that's large enough to warrant a spec.
+labels: ["feature", "needs-spec"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        SAEP is spec-first. Substantial changes start with an issue like this, then a merged spec, then implementation. Trivial improvements can skip straight to a PR.
+
+  - type: input
+    id: scope
+    attributes:
+      label: Scope
+      description: Which component would this live in?
+      placeholder: "programs/task_market, apps/portal, packages/sdk-ui, etc."
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What's wrong today? What can't users do? Avoid jumping to solutions.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How would this work? Include relevant PDAs, instructions, data shapes, UI flows.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else could solve this? Why is your proposal better?
+
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: Target milestone
+      options:
+        - M1 (alpha devnet)
+        - M2 (alpha mainnet)
+        - M3 (token launch)
+        - Later
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: audit_impact
+    attributes:
+      label: Audit impact
+      description: Does this add/change on-chain code? If yes, is re-audit required? If unsure, say so.

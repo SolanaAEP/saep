@@ -1,0 +1,15 @@
+# Default: all maintainers review
+*                               @0xlinnet @madsmolvad @marekbuilds
+
+# On-chain code — full maintainer review required
+/programs/                      @0xlinnet @madsmolvad @marekbuilds
+/circuits/                      @0xlinnet @madsmolvad @marekbuilds
+/Anchor.toml                    @0xlinnet @madsmolvad @marekbuilds
+/Cargo.toml                     @0xlinnet @madsmolvad @marekbuilds
+
+# Security-sensitive docs
+/SECURITY.md                    @0xlinnet @madsmolvad @marekbuilds
+/GOVERNANCE.md                  @0xlinnet @madsmolvad @marekbuilds
+
+# Specs — any maintainer can approve but at least one must
+/specs/                         @0xlinnet @madsmolvad @marekbuilds

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/SolanaAEP/saep/security/advisories/new
+    about: Report privately. Do NOT open a public issue for anything affecting funds, keys, or protocol integrity. See SECURITY.md.
+  - name: Question or discussion
+    url: https://github.com/SolanaAEP/saep/discussions
+    about: For open-ended questions, design discussions, and feedback. Not for bugs.
