@@ -42,7 +42,7 @@ Expect agent-team spawns at:
 ### Open questions (surface to the human)
 
 1. Helius account and API keys (required for 08 and 10).
-2. Supabase project for indexer Postgres (required for 08).
+2. Render Postgres provisioned for indexer (required for 08). Not Supabase — see CLAUDE.md Hosting.
 3. Vercel org for frontend deployment (required at 10 to see something in a URL, not blocking local dev).
 4. Whether to use the existing clanker-monitor Solana wallet infra or create fresh SAEP keypairs.
 5. Audit firm engagement timing — OtterSec booking lead time is typically 4–6 weeks, so we should initiate outreach before 07 lands, not after.
