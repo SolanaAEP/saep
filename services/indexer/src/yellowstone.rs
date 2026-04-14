@@ -10,9 +10,21 @@ use yellowstone_grpc_proto::geyser::{
 
 use crate::config::Config;
 use crate::db::PgPool;
+use crate::idl::{self, Registry};
 use crate::programs;
 
 pub async fn run(cfg: Config, _pool: PgPool) -> Result<()> {
+    let idl_dir = idl::default_idl_path();
+    let registry = Registry::load_from_dir(&idl_dir)
+        .with_context(|| format!("loading anchor IDLs from {}", idl_dir.display()))?;
+    tracing::info!(
+        idl_dir = %idl_dir.display(),
+        programs = registry.programs_loaded().len(),
+        events = registry.event_count(),
+        "idl event registry loaded"
+    );
+
+
     let mut client = GeyserGrpcClient::build_from_shared(cfg.yellowstone_endpoint.clone())?
         .x_token(cfg.yellowstone_x_token.clone())?
         .tls_config(ClientTlsConfig::new().with_native_roots())?
@@ -35,8 +47,15 @@ pub async fn run(cfg: Config, _pool: PgPool) -> Result<()> {
                     // REORG-LOGIC-STUB: feed meta.slot + meta.blockhash into reorg::detect_reorg
                 }
                 Some(UpdateOneof::Transaction(_tx)) => {
-                    // EVENT-DECODE-STUB: parse tx.meta.log_messages / inner_instructions
-                    // for the 8-byte Anchor event discriminator, route through ingest::decode_event
+                    // Iteration over tx.transaction.meta.inner_instructions to pull out
+                    // CPI payloads targeting __event_authority lives here. For every such
+                    // inner instruction we call `ingest::decode_event(&registry, program_id, data)`
+                    // and, on Some, insert via `ingest::record_event`.
+                    //
+                    // The proto plumbing (mapping account indices → program ids, base58
+                    // encoding signatures, deriving slot) is mechanical and gated by
+                    // Helius access for a smoke run — not wired in this cycle.
+                    let _ = &registry;
                 }
                 Some(UpdateOneof::Ping(_)) => {}
                 _ => {}

@@ -2,14 +2,7 @@ use anyhow::Result;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 
-mod config;
-mod db;
-mod health;
-mod ingest;
-mod programs;
-mod reorg;
-mod schema;
-mod yellowstone;
+use saep_indexer::{config, db, health, yellowstone};
 
 #[tokio::main]
 async fn main() -> Result<()> {
