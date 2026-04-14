@@ -141,8 +141,8 @@ importers:
         specifier: 8.5.1
         version: 8.5.1
       tailwindcss:
-        specifier: 4.1.14
-        version: 4.1.14
+        specifier: 4.2.2
+        version: 4.2.2
       typescript:
         specifier: 5.7.3
         version: 5.7.3
@@ -3980,6 +3980,9 @@ packages:
 
   tailwindcss@4.1.14:
     resolution: {integrity: sha512-b7pCxjGO98LnxVkKjaZSDeNuljC4ueKUddjENJOADtubtdo8llTaJy7HwBMeLNSSo2N5QIAgklslK1+Ir8r6CA==}
+
+  tailwindcss@4.2.2:
+    resolution: {integrity: sha512-KWBIxs1Xb6NoLdMVqhbhgwZf2PGBpPEiwOqgI4pFIYbNTfBXiKYyWoTsXgBQ9WFg/OlhnvHaY+AEpW7wSmFo2Q==}
 
   tapable@2.3.2:
     resolution: {integrity: sha512-1MOpMXuhGzGL5TTCZFItxCc0AARf1EZFQkGqMm7ERKj8+Hgr5oLvJOVFcC+lRmR8hCe2S3jC4T5D7Vg/d7/fhA==}
@@ -8419,7 +8422,7 @@ snapshots:
 
   isexe@2.0.0: {}
 
-  isomorphic-ws@4.0.1(ws@7.5.10(bufferutil@4.1.0)):
+  isomorphic-ws@4.0.1(ws@7.5.10):
     dependencies:
       ws: 7.5.10(bufferutil@4.1.0)(utf-8-validate@6.0.6)
 
@@ -8446,7 +8449,7 @@ snapshots:
       delay: 5.0.0
       es6-promisify: 5.0.0
       eyes: 0.1.8
-      isomorphic-ws: 4.0.1(ws@7.5.10(bufferutil@4.1.0))
+      isomorphic-ws: 4.0.1(ws@7.5.10)
       json-stringify-safe: 5.0.1
       stream-json: 1.9.1
       uuid: 8.3.2
@@ -9701,6 +9704,8 @@ snapshots:
       has-flag: 4.0.0
 
   tailwindcss@4.1.14: {}
+
+  tailwindcss@4.2.2: {}
 
   tapable@2.3.2: {}
 
