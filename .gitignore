@@ -8,6 +8,7 @@ coverage/
 
 target/
 .anchor/
+.anchor-cache/
 
 wallets/*
 !wallets/README.md
