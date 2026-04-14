@@ -30,11 +30,22 @@ Helius exposes Yellowstone at `https://<region>.helius-rpc.com` with the API key
 - r2d2 connection pool.
 - Axum health endpoint on `HEALTHCHECK_PORT`.
 - Config loader from `.env` via `dotenvy`.
+- IDL event-discriminator registry (`src/idl.rs`) — loaded at startup from `target/idl/*.json`; maps `(program_id, 8-byte discriminator)` → event name + field schema.
+
+## IDL regeneration
+
+The registry reads committed IDLs at startup. Before the indexer runs (locally or in CI) regenerate them from the Anchor workspace at repo root:
+
+```sh
+anchor build
+```
+
+This writes `target/idl/<program>.json` for every M1 program. The default lookup path is `../../target/idl` relative to the crate. Override with `SAEP_IDL_DIR=/absolute/path` for non-standard layouts (Render workers that unpack the repo to a fixed path).
 
 ## What's stubbed
 
 - `// REORG-LOGIC-STUB` — `src/reorg.rs` has the function signatures and SQL intent, no implementation yet.
-- `// EVENT-DECODE-STUB` — no Anchor IDL decoding; once `target/idl/*.json` is emitted by `anchor build`, `ingest::decode_event` will load them and dispatch on the 8-byte event discriminator.
+- `// BORSH-FULL-DECODE-STUB` — `ingest::decode_event` identifies the event via discriminator lookup but currently emits `{ raw_hex, len }` in the `data` JSONB. Walking the IDL field schema to produce typed JSON is the next step; the schema is already carried on `EventDef`.
 - `// METRICS-STUB` — no Prometheus exporter; lag / ingest rate / reorg counters need wiring.
 - No backfill / catch-up from historical slots (M2 concern).
 - No Redis pubsub fan-out (IACP bus consumer — M2).

@@ -1,9 +1,10 @@
 use anyhow::Result;
 use chrono::Utc;
 use diesel::prelude::*;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use crate::db::PgPool;
+use crate::idl::Registry;
 use crate::schema::{blocks, program_events};
 
 #[derive(Insertable)]
@@ -50,12 +51,23 @@ pub fn record_event(pool: &PgPool, e: NewEvent) -> Result<()> {
     Ok(())
 }
 
-/// Turn a raw program transaction into a structured event row.
-/// EVENT-DECODE-STUB: once Anchor IDLs are emitted to `target/idl/*.json`, load
-/// them at startup and dispatch on the 8-byte event discriminator to decode
-/// `data` into a strongly-typed JSON payload. Until then we persist the raw
-/// base58 tx signature with an empty event body so reorg handling can still
-/// prune these rows by slot.
-pub fn decode_event(_program_id: &str, _log_data: &[u8]) -> Option<(String, Value)> {
-    None
+/// Decode a single inner-instruction payload.
+///
+/// Anchor emits events via `emit_cpi!` — the instruction data is
+/// `[8-byte event discriminator][borsh payload]`, invoked against the
+/// `__event_authority` PDA on the owning program. We match the first 8 bytes
+/// against the IDL-derived discriminator registry.
+///
+/// BORSH-FULL-DECODE-STUB: we currently return the remaining payload as a
+/// hex-encoded string inside the data JSONB. Walking the IDL field schema to
+/// produce a structured JSON object is the follow-up — the registry already
+/// carries the schema per event.
+pub fn decode_event(registry: &Registry, program_id: &str, data: &[u8]) -> Option<(String, Value)> {
+    let def = registry.lookup(program_id, data)?;
+    let payload = &data[8..];
+    let body = json!({
+        "raw_hex": hex::encode(payload),
+        "len": payload.len(),
+    });
+    Some((def.event_name.clone(), body))
 }
