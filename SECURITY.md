@@ -15,7 +15,21 @@ Post-launch (M3+): the latest deployed program version per milestone, plus the p
 Two channels:
 
 1. **GitHub private advisory** (preferred): [github.com/SolanaAEP/saep/security/advisories/new](https://github.com/SolanaAEP/saep/security/advisories/new)
-2. **Email:** security@buildonsaep.com (PGP key TBD; request in first email if needed)
+2. **Email:** security@buildonsaep.com — PGP encouraged for anything sensitive
+
+### PGP
+
+- **Fingerprint:** `0FE8 E47B C44A 599C 84ED  BD37 3362 32E2 26C8 25A7`
+- **Key ID:** `0x336232E226C825A7`
+- **Expires:** 2028-04-13
+- **Public key:** [`SECURITY-PGP-PUBLIC.asc`](./SECURITY-PGP-PUBLIC.asc) · also on [keys.openpgp.org](https://keys.openpgp.org/search?q=0FE8E47BC44A599C84EDBD37336232E226C825A7)
+
+Fetch + verify:
+
+```bash
+gpg --keyserver hkps://keys.openpgp.org --recv-keys 0FE8E47BC44A599C84EDBD37336232E226C825A7
+gpg --fingerprint security@buildonsaep.com
+```
 
 Include:
 

@@ -1,0 +1,9 @@
+Contact: mailto:security@buildonsaep.com
+Contact: https://github.com/SolanaAEP/saep/security/advisories/new
+Expires: 2027-04-14T00:00:00.000Z
+Encryption: https://buildonsaep.com/SECURITY-PGP-PUBLIC.asc
+Encryption: https://keys.openpgp.org/vks/v1/by-fingerprint/0FE8E47BC44A599C84EDBD37336232E226C825A7
+Preferred-Languages: en
+Canonical: https://buildonsaep.com/.well-known/security.txt
+Policy: https://github.com/SolanaAEP/saep/blob/main/SECURITY.md
+Acknowledgments: https://github.com/SolanaAEP/saep/blob/main/SECURITY.md#hall-of-fame
