@@ -1,0 +1,77 @@
+@import 'tailwindcss';
+
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+@import '@fontsource/archivo-black/400.css';
+
+/* TODO: extract to shared preset in packages/config once portal + analytics + docs converge */
+:root {
+  --paper: #f2f0e8;
+  --paper-2: #edebe3;
+  --ink: #0a0a0a;
+  --ink-2: #1a1a1a;
+  --mute: #7a7772;
+  --mute-2: #a8a49c;
+  --lime: #cbff3a;
+  --lime-2: #b8e632;
+  --danger: #e8341c;
+
+  --font-display: 'Archivo Black', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-body: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-mute: var(--mute);
+  --color-mute-2: var(--mute-2);
+  --color-lime: var(--lime);
+  --color-lime-2: var(--lime-2);
+  --color-danger: var(--danger);
+
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+  --font-sans: var(--font-body);
+}
+
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}
+
+.prose h1 { font-family: var(--font-display); font-size: 2.25rem; line-height: 1.05; margin: 1.5rem 0 1rem; letter-spacing: -0.01em; }
+.prose h2 { font-family: var(--font-display); font-size: 1.5rem; margin: 2rem 0 0.75rem; letter-spacing: -0.01em; }
+.prose h3 { font-weight: 600; font-size: 1.125rem; margin: 1.5rem 0 0.5rem; }
+.prose p  { margin: 0.75rem 0; }
+.prose ul, .prose ol { padding-left: 1.25rem; margin: 0.75rem 0; }
+.prose ul { list-style: disc; }
+.prose ol { list-style: decimal; }
+.prose li { margin: 0.25rem 0; }
+.prose a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.prose a:hover { color: var(--mute); }
+.prose code { font-family: var(--font-mono); font-size: 0.875em; background: var(--paper-2); padding: 0 0.25rem; border: 1px solid var(--ink); }
+.prose pre { font-family: var(--font-mono); font-size: 0.8125rem; background: var(--paper-2); border: 1px solid var(--ink); padding: 1rem; overflow-x: auto; margin: 1rem 0; }
+.prose pre code { background: transparent; border: 0; padding: 0; }
+.prose table { border-collapse: collapse; margin: 1rem 0; font-size: 0.9375rem; width: 100%; }
+.prose th, .prose td { border: 1px solid var(--ink); padding: 0.5rem 0.75rem; text-align: left; }
+.prose th { background: var(--paper-2); font-weight: 600; }
+.prose blockquote { border-left: 3px solid var(--ink); padding-left: 1rem; margin: 1rem 0; color: var(--mute); }
+.prose hr { border: 0; border-top: 1px solid var(--ink); margin: 2rem 0; }
