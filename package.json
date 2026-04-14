@@ -14,10 +14,24 @@
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean && rm -rf node_modules"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@tailwindcss/oxide",
+      "sharp",
+      "bufferutil",
+      "utf-8-validate"
+    ]
+  },
   "devDependencies": {
-    "turbo": "2.3.3",
-    "typescript": "5.7.3",
+    "@coral-xyz/anchor": "0.31.1",
+    "@types/chai": "4.3.20",
+    "@types/mocha": "10.0.10",
+    "@types/node": "24.0.0",
+    "chai": "4.5.0",
+    "mocha": "11.0.1",
     "prettier": "3.4.2",
-    "@types/node": "24.0.0"
+    "ts-mocha": "10.0.0",
+    "turbo": "2.3.3",
+    "typescript": "5.7.3"
   }
 }

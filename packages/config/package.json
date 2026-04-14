@@ -1,0 +1,12 @@
+{
+  "name": "@saep/config",
+  "version": "0.0.0",
+  "private": true,
+  "main": "index.js",
+  "files": ["tsconfig.base.json", "eslint.js", "tailwind.js"],
+  "scripts": {
+    "lint": "echo skip",
+    "typecheck": "echo skip",
+    "build": "echo skip"
+  }
+}
