@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS reorg_log;
+DROP TABLE IF EXISTS program_events;
+DROP TABLE IF EXISTS blocks;
