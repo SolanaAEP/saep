@@ -1,0 +1,5 @@
+packages:
+  - apps/*
+  - packages/*
+  - services/proof-gen
+  - services/iacp
