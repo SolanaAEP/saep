@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = [
+    "programs/agent_registry",
+    "programs/treasury_standard",
+    "programs/task_market",
+    "programs/dispute_arbitration",
+    "programs/governance_program",
+    "programs/fee_collector",
+    "programs/proof_verifier",
+]
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1

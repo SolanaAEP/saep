@@ -1,0 +1,39 @@
+[toolchain]
+anchor_version = "1.0.0"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+agent_registry = "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
+treasury_standard = "6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ"
+task_market = "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w"
+dispute_arbitration = "GM8xiT17USBpCW24XXBmUR8YVCxxrJPMEcsddwfUokMa"
+governance_program = "9uczLDZaN9EWqW76be75ji4vCsz3cydefbChqvBS6qw1"
+fee_collector = "4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu"
+proof_verifier = "DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "pnpm exec ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"
+
+[workspace]
+members = [
+    "programs/agent_registry",
+    "programs/treasury_standard",
+    "programs/task_market",
+    "programs/dispute_arbitration",
+    "programs/governance_program",
+    "programs/fee_collector",
+    "programs/proof_verifier",
+]
