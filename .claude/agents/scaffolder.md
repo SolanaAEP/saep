@@ -1,6 +1,6 @@
 ---
 name: scaffolder
-description: Builds the first working version of a feature or product — golden path only, no polish. Use right after a spec is written and any research is done.
+description: Builds the first working version of off-chain glue code — tooling, dev scripts, small services, docs-site content. Do NOT use for Anchor programs (→ anchor-engineer), ZK circuits (→ zk-circuit-engineer), the indexer (→ solana-indexer-engineer), or frontend apps (→ frontend-engineer). Those specialists exist because SAEP is a protocol build, not a generic MVP.
 model: sonnet
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
