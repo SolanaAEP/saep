@@ -1,0 +1,16 @@
+[workspace]
+
+[package]
+name = "saep-indexer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "saep-indexer"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1.43.0", features = ["full"] }
+anyhow = "1.0.95"
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
