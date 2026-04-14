@@ -1,0 +1,12 @@
+node_modules/
+
+# Root .gitignore drops build/ entirely; we override for the small VK + meta below.
+task_completion/build/*.r1cs
+task_completion/build/*.wasm
+task_completion/build/*.sym
+task_completion/build/*.zkey
+task_completion/build/*.ptau
+task_completion/build/task_completion_js/
+task_completion/build/proof.json
+task_completion/build/public.json
+task_completion/build/constraints.txt

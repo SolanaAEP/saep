@@ -1,0 +1,6 @@
+{
+  "status": "dev-only-placeholder",
+  "warning": "This VK is a schema placeholder. Real dev VK is produced by scripts/setup.sh (single-contributor ceremony). Mainnet VK comes from the MPC ceremony per spec 05 §trusted-setup-plan.",
+  "ceremony": "TRUSTED-SETUP-DEV-ONLY",
+  "is_production": false
+}

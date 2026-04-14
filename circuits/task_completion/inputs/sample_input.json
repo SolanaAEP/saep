@@ -1,0 +1,14 @@
+{
+  "__comment": "Placeholder — populate task_hash/result_hash with real Poseidon outputs after compile. The zeroed witness will fail constraint checks; regenerate via scripts/gen_sample.mjs (TODO).",
+  "task_hash": "0",
+  "result_hash": "0",
+  "deadline": "1800000000",
+  "submitted_at": "1799000000",
+  "criteria_root": "0",
+  "task_preimage": ["0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],
+  "result_preimage": ["0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],
+  "salt": "0",
+  "criteria_satisfied": ["1","1","1","1","1","1","1","1"],
+  "criteria_path": ["0","0","0"],
+  "criteria_index": ["0","0","0"]
+}

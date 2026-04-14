@@ -1,0 +1,13 @@
+{
+  "_placeholder": true,
+  "_note": "Real VK is emitted by scripts/setup.sh after circom compilation. This file exists so spec-06 fixtures and CI can reference a path; replace on first successful compile + dev-only trusted-setup run.",
+  "protocol": "groth16",
+  "curve": "bn128",
+  "nPublic": 5,
+  "vk_alpha_1": [],
+  "vk_beta_2": [],
+  "vk_gamma_2": [],
+  "vk_delta_2": [],
+  "vk_alphabeta_12": [],
+  "IC": []
+}
