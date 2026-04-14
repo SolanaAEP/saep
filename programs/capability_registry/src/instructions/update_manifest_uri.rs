@@ -24,7 +24,7 @@ pub struct UpdateManifestUri<'info> {
     pub authority: Signer<'info>,
 }
 
-pub fn handler(
+pub fn update_manifest_uri_handler(
     ctx: Context<UpdateManifestUri>,
     bit_index: u8,
     manifest_uri: [u8; MANIFEST_URI_LEN],

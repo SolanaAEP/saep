@@ -17,7 +17,7 @@ pub struct SetPaused<'info> {
     pub authority: Signer<'info>,
 }
 
-pub fn handler(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
+pub fn set_paused_handler(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
     let config = &mut ctx.accounts.config;
     config.paused = paused;
     emit!(PausedSet { paused });

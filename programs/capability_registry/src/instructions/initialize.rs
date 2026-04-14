@@ -20,7 +20,7 @@ pub struct Initialize<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<Initialize>, authority: Pubkey) -> Result<()> {
+pub fn initialize_handler(ctx: Context<Initialize>, authority: Pubkey) -> Result<()> {
     let config = &mut ctx.accounts.config;
     config.authority = authority;
     config.approved_mask = 0;

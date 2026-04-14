@@ -35,7 +35,7 @@ pub struct ProposeTag<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(
+pub fn propose_tag_handler(
     ctx: Context<ProposeTag>,
     bit_index: u8,
     slug: [u8; SLUG_LEN],
