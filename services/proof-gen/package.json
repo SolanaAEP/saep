@@ -3,13 +3,22 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "main": "dist/main.js",
+  "main": "dist/server.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/main.js",
+    "start": "node dist/server.js",
+    "start:worker": "node dist/worker.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "echo skip",
     "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "bullmq": "5.34.3",
+    "fastify": "5.1.0",
+    "ioredis": "5.4.2",
+    "pino": "9.5.0",
+    "snarkjs": "0.7.5",
+    "zod": "3.23.8"
   },
   "devDependencies": {
     "@types/node": "24.0.0",
