@@ -1,7 +1,7 @@
 [package]
 name = "treasury_standard"
 version = "0.1.0"
-description = "SAEP treasury_standard program (stub)"
+description = "SAEP treasury_standard program"
 edition = "2021"
 
 [lib]
@@ -14,7 +14,8 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
-idl-build = ["anchor-lang/idl-build"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
-anchor-lang = "1.0.0"
+anchor-lang = { version = "1.0.0", features = ["init-if-needed"] }
+anchor-spl = { version = "1.0.0", features = ["token_2022"] }
