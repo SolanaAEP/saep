@@ -1,4 +1,14 @@
+databases:
+  - name: saep-postgres
+    plan: starter
+    postgresMajorVersion: "16"
+
 services:
+  - type: keyvalue
+    name: saep-redis
+    plan: starter
+    ipAllowList: []
+
   - type: web
     name: saep-iacp
     env: node
@@ -8,6 +18,11 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 24
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: saep-redis
+          property: connectionString
 
   - type: worker
     name: saep-proof-gen
@@ -18,9 +33,23 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 24
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: saep-redis
+          property: connectionString
 
   - type: worker
     name: saep-indexer
     env: docker
     plan: starter
     dockerfilePath: services/indexer/Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: saep-postgres
+          property: connectionString
+      - key: HELIUS_API_KEY
+        sync: false
+      - key: HELIUS_YELLOWSTONE_ENDPOINT
+        sync: false

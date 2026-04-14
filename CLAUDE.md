@@ -111,7 +111,8 @@ Agent teams are enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`). Teammates sh
 ## Hosting
 
 - Frontend → **Vercel** (preferred for Next.js Edge; the frontend PDF specifies it). Domain: `buildonsaep.com`.
-- Off-chain services (indexer, proof-gen, IACP bus, Postgres) → **Render** (replacing the AWS EC2/ECS targets in the backend PDF). Update deploy docs and specs to reflect this when written.
+- Off-chain services (indexer, proof-gen, IACP bus) → **Render** (replacing the AWS EC2/ECS targets in the backend PDF).
+- Postgres → **Render managed Postgres** (not Supabase — SAEP uses SIWS for auth, Redis Streams for realtime, Arweave/Pinata for storage, so Supabase's value-adds are unused; single-vendor colo with the services is simpler).
 - RPC → **Helius** (dedicated node for Yellowstone gRPC).
 - Source → **GitHub SAEP org** (repo exists; push once bootstrap lands).
 
