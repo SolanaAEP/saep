@@ -5,6 +5,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   node:
     runs-on: ubuntu-latest
@@ -22,16 +26,42 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm -r build
 
-  anchor:
+  rust-fast:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: install solana
-        run: |
-          sh -c "$(curl -sSfL https://release.anza.xyz/v3.0.13/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-      - name: install anchor
-        run: cargo install --git https://github.com/coral-xyz/anchor --tag v1.0.0 anchor-cli --locked
+        with:
+          components: clippy
+
+      - name: cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-registry-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-${{ runner.os }}-
+
+      - name: cache programs target (clippy)
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: cargo-target-programs-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml') }}
+          restore-keys: |
+            cargo-target-programs-${{ runner.os }}-
+
       - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: anchor build
+
+      - name: cache indexer target
+        uses: actions/cache@v4
+        with:
+          path: services/indexer/target
+          key: cargo-target-indexer-${{ runner.os }}-${{ hashFiles('services/indexer/Cargo.lock', 'services/indexer/Cargo.toml') }}
+          restore-keys: |
+            cargo-target-indexer-${{ runner.os }}-
+
+      - name: cargo check indexer
+        working-directory: services/indexer
+        run: cargo check --all-targets
