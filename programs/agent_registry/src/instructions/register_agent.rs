@@ -17,14 +17,14 @@ pub struct RegisterAgent<'info> {
         seeds = [b"global"],
         bump = global.bump,
     )]
-    pub global: Account<'info, RegistryGlobal>,
+    pub global: Box<Account<'info, RegistryGlobal>>,
 
     #[account(
         seeds = [b"config"],
         seeds::program = global.capability_registry,
         bump = capability_config.bump,
     )]
-    pub capability_config: Account<'info, CapabilityConfig>,
+    pub capability_config: Box<Account<'info, CapabilityConfig>>,
 
     #[account(
         init,
@@ -33,7 +33,7 @@ pub struct RegisterAgent<'info> {
         seeds = [b"agent", operator.key().as_ref(), agent_id.as_ref()],
         bump,
     )]
-    pub agent: Account<'info, AgentAccount>,
+    pub agent: Box<Account<'info, AgentAccount>>,
 
     #[account(address = global.stake_mint)]
     pub stake_mint: InterfaceAccount<'info, Mint>,

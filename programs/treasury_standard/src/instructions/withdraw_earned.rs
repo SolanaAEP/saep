@@ -13,21 +13,21 @@ use crate::state::{
 #[derive(Accounts)]
 pub struct WithdrawEarned<'info> {
     #[account(seeds = [b"treasury_global"], bump = global.bump)]
-    pub global: Account<'info, TreasuryGlobal>,
+    pub global: Box<Account<'info, TreasuryGlobal>>,
 
     #[account(
         seeds = [b"treasury", treasury.agent_did.as_ref()],
         bump = treasury.bump,
         has_one = operator @ TreasuryError::Unauthorized,
     )]
-    pub treasury: Account<'info, AgentTreasury>,
+    pub treasury: Box<Account<'info, AgentTreasury>>,
 
     #[account(
         mut,
         seeds = [b"stream", stream.agent_did.as_ref(), stream.client.as_ref(), stream.stream_nonce.as_ref()],
         bump = stream.bump,
     )]
-    pub stream: Account<'info, PaymentStream>,
+    pub stream: Box<Account<'info, PaymentStream>>,
 
     pub payer_mint: InterfaceAccount<'info, Mint>,
     pub payout_mint: InterfaceAccount<'info, Mint>,

@@ -13,17 +13,17 @@ use crate::state::{MarketGlobal, TaskContract, TaskStatus};
 #[derive(Accounts)]
 pub struct Release<'info> {
     #[account(seeds = [b"market_global"], bump = global.bump)]
-    pub global: Account<'info, MarketGlobal>,
+    pub global: Box<Account<'info, MarketGlobal>>,
 
     #[account(
         mut,
         seeds = [b"task", task.client.as_ref(), task.task_nonce.as_ref()],
         bump = task.bump,
     )]
-    pub task: Account<'info, TaskContract>,
+    pub task: Box<Account<'info, TaskContract>>,
 
     #[account(address = task.payment_mint)]
-    pub payment_mint: InterfaceAccount<'info, Mint>,
+    pub payment_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,
@@ -31,16 +31,16 @@ pub struct Release<'info> {
         bump = task.escrow_bump,
         token::mint = payment_mint,
     )]
-    pub escrow: InterfaceAccount<'info, TokenAccount>,
+    pub escrow: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut, token::mint = payment_mint)]
-    pub agent_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub agent_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut, token::mint = payment_mint)]
-    pub fee_collector_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub fee_collector_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut, token::mint = payment_mint)]
-    pub solrep_pool_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub solrep_pool_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         constraint = agent_registry_program.key() == global.agent_registry @ TaskMarketError::Unauthorized,
@@ -52,7 +52,7 @@ pub struct Release<'info> {
         bump = registry_global.bump,
         seeds::program = agent_registry_program.key(),
     )]
-    pub registry_global: Account<'info, RegistryGlobal>,
+    pub registry_global: Box<Account<'info, RegistryGlobal>>,
 
     #[account(
         mut,
@@ -61,7 +61,7 @@ pub struct Release<'info> {
         seeds::program = agent_registry_program.key(),
         constraint = agent_account.did == task.agent_did @ TaskMarketError::AgentMismatch,
     )]
-    pub agent_account: Account<'info, AgentAccount>,
+    pub agent_account: Box<Account<'info, AgentAccount>>,
 
     /// CHECK: must be this program's own executable for CPI identity proof
     #[account(address = crate::ID)]

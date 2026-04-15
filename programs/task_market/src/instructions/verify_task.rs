@@ -12,14 +12,14 @@ use crate::state::{MarketGlobal, TaskContract, TaskStatus};
 #[derive(Accounts)]
 pub struct VerifyTask<'info> {
     #[account(seeds = [b"market_global"], bump = global.bump)]
-    pub global: Account<'info, MarketGlobal>,
+    pub global: Box<Account<'info, MarketGlobal>>,
 
     #[account(
         mut,
         seeds = [b"task", task.client.as_ref(), task.task_nonce.as_ref()],
         bump = task.bump,
     )]
-    pub task: Account<'info, TaskContract>,
+    pub task: Box<Account<'info, TaskContract>>,
 
     #[account(
         constraint = proof_verifier_program.key() == global.proof_verifier @ TaskMarketError::Unauthorized,
@@ -31,21 +31,21 @@ pub struct VerifyTask<'info> {
         bump = verifier_config.bump,
         seeds::program = proof_verifier_program.key(),
     )]
-    pub verifier_config: Account<'info, VerifierConfig>,
+    pub verifier_config: Box<Account<'info, VerifierConfig>>,
 
     #[account(
         seeds = [b"vk", verifier_key.vk_id.as_ref()],
         bump = verifier_key.bump,
         seeds::program = proof_verifier_program.key(),
     )]
-    pub verifier_key: Account<'info, VerifierKey>,
+    pub verifier_key: Box<Account<'info, VerifierKey>>,
 
     #[account(
         seeds = [b"mode"],
         bump = verifier_mode.bump,
         seeds::program = proof_verifier_program.key(),
     )]
-    pub verifier_mode: Account<'info, GlobalMode>,
+    pub verifier_mode: Box<Account<'info, GlobalMode>>,
 
     pub cranker: Signer<'info>,
 }

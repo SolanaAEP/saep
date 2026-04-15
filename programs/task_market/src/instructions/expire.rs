@@ -13,17 +13,17 @@ use crate::state::{MarketGlobal, TaskContract, TaskStatus, EXPIRE_GRACE_SECS};
 #[derive(Accounts)]
 pub struct Expire<'info> {
     #[account(seeds = [b"market_global"], bump = global.bump)]
-    pub global: Account<'info, MarketGlobal>,
+    pub global: Box<Account<'info, MarketGlobal>>,
 
     #[account(
         mut,
         seeds = [b"task", task.client.as_ref(), task.task_nonce.as_ref()],
         bump = task.bump,
     )]
-    pub task: Account<'info, TaskContract>,
+    pub task: Box<Account<'info, TaskContract>>,
 
     #[account(address = task.payment_mint)]
-    pub payment_mint: InterfaceAccount<'info, Mint>,
+    pub payment_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,
@@ -31,10 +31,10 @@ pub struct Expire<'info> {
         bump = task.escrow_bump,
         token::mint = payment_mint,
     )]
-    pub escrow: InterfaceAccount<'info, TokenAccount>,
+    pub escrow: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut, token::mint = payment_mint, token::authority = client)]
-    pub client_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub client_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// CHECK: matched against task.client via has_one-style constraint on task.
     #[account(address = task.client)]
@@ -50,7 +50,7 @@ pub struct Expire<'info> {
         bump = registry_global.bump,
         seeds::program = agent_registry_program.key(),
     )]
-    pub registry_global: Account<'info, RegistryGlobal>,
+    pub registry_global: Box<Account<'info, RegistryGlobal>>,
 
     #[account(
         mut,
@@ -59,7 +59,7 @@ pub struct Expire<'info> {
         seeds::program = agent_registry_program.key(),
         constraint = agent_account.did == task.agent_did @ TaskMarketError::AgentMismatch,
     )]
-    pub agent_account: Account<'info, AgentAccount>,
+    pub agent_account: Box<Account<'info, AgentAccount>>,
 
     /// CHECK: must be this program's own executable for CPI identity proof
     #[account(address = crate::ID)]
