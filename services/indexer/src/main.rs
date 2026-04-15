@@ -15,6 +15,8 @@ async fn main() -> Result<()> {
     tracing::info!(?cfg, "starting saep-indexer");
 
     let pool = db::pool(&cfg.database_url)?;
+    db::run_migrations(&pool)?;
+    tracing::info!("migrations applied");
 
     let health_addr: SocketAddr = format!("0.0.0.0:{}", cfg.healthcheck_port).parse()?;
     let listener = TcpListener::bind(health_addr).await?;
