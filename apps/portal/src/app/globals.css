@@ -5,8 +5,8 @@
 @import '@fontsource/archivo-black/400.css';
 
 :root {
-  --paper: #f2f0e8;
-  --paper-2: #edebe3;
+  --paper: #f3f4ed;
+  --paper-2: #ecede5;
   --ink: #0a0a0a;
   --ink-2: #1a1a1a;
   --mute: #7a7772;
@@ -44,6 +44,7 @@
   --color-mute-2: var(--mute-2);
   --color-lime: var(--lime);
   --color-lime-2: var(--lime-2);
+  --color-accent-hover: var(--accent-hover);
   --color-danger: var(--danger);
 
   --font-display: var(--font-display);
@@ -57,10 +58,18 @@
 
 html,
 body {
-  background: var(--paper);
+  background-color: var(--paper);
+  background-image: url('/paper-texture.png');
+  background-repeat: repeat;
   color: var(--ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+}
+
+.bg-paper,
+.bg-paper-2 {
+  background-image: url('/paper-texture.png');
+  background-repeat: repeat;
 }
 
 body {

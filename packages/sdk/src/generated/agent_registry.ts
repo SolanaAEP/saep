@@ -1,0 +1,2327 @@
+/**
+ * Program IDL in camelCase format in order to be used in JS/TS.
+ *
+ * Note that this is only a type helper and is not the actual IDL. The original
+ * IDL can be found at `target/idl/agent_registry.json`.
+ */
+export type AgentRegistry = {
+  "address": "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu",
+  "metadata": {
+    "name": "agentRegistry",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "SAEP agent_registry program"
+  },
+  "instructions": [
+    {
+      "name": "acceptAuthority",
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pendingAuthority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancelSlash",
+      "discriminator": [
+        222,
+        163,
+        161,
+        54,
+        103,
+        113,
+        42,
+        67
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent.operator",
+                "account": "agentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "agentAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "delegateControl",
+      "discriminator": [
+        229,
+        33,
+        220,
+        233,
+        130,
+        77,
+        101,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent.operator",
+                "account": "agentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "agentAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "agent"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "delegate",
+          "type": {
+            "option": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "executeSlash",
+      "discriminator": [
+        15,
+        240,
+        38,
+        73,
+        175,
+        55,
+        88,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent.operator",
+                "account": "agentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "agentAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stakeMint"
+        },
+        {
+          "name": "stakeVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "slashingTreasury",
+          "writable": true
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initGlobal",
+      "discriminator": [
+        44,
+        238,
+        77,
+        253,
+        76,
+        182,
+        192,
+        162
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "authority",
+          "type": "pubkey"
+        },
+        {
+          "name": "capabilityRegistry",
+          "type": "pubkey"
+        },
+        {
+          "name": "taskMarket",
+          "type": "pubkey"
+        },
+        {
+          "name": "disputeArbitration",
+          "type": "pubkey"
+        },
+        {
+          "name": "slashingTreasury",
+          "type": "pubkey"
+        },
+        {
+          "name": "stakeMint",
+          "type": "pubkey"
+        },
+        {
+          "name": "minStake",
+          "type": "u64"
+        },
+        {
+          "name": "maxSlashBps",
+          "type": "u16"
+        },
+        {
+          "name": "slashTimelockSecs",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "proposeSlash",
+      "discriminator": [
+        198,
+        144,
+        128,
+        49,
+        72,
+        78,
+        74,
+        118
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent.operator",
+                "account": "agentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "agentAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "reasonCode",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "recordJobOutcome",
+      "discriminator": [
+        110,
+        63,
+        150,
+        59,
+        135,
+        75,
+        121,
+        49
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent.operator",
+                "account": "agentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "agentAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "taskMarketProgram"
+        },
+        {
+          "name": "taskMarketAuthority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "outcome",
+          "type": {
+            "defined": {
+              "name": "jobOutcome"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "registerAgent",
+      "discriminator": [
+        135,
+        157,
+        66,
+        195,
+        2,
+        113,
+        175,
+        30
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "operator"
+              },
+              {
+                "kind": "arg",
+                "path": "agentId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stakeMint"
+        },
+        {
+          "name": "stakeVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operatorTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "operator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "agentId",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "manifestUri",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "capabilityMask",
+          "type": "u128"
+        },
+        {
+          "name": "priceLamports",
+          "type": "u64"
+        },
+        {
+          "name": "streamRate",
+          "type": "u64"
+        },
+        {
+          "name": "stakeAmount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setMaxSlashBps",
+      "discriminator": [
+        98,
+        130,
+        145,
+        120,
+        194,
+        117,
+        96,
+        202
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newMaxSlashBps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "setMinStake",
+      "discriminator": [
+        11,
+        62,
+        97,
+        159,
+        11,
+        240,
+        52,
+        20
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newMinStake",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setPaused",
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setSlashTimelock",
+      "discriminator": [
+        29,
+        112,
+        48,
+        53,
+        102,
+        82,
+        90,
+        57
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newTimelockSecs",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "setStatus",
+      "discriminator": [
+        181,
+        184,
+        224,
+        203,
+        193,
+        29,
+        177,
+        224
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent.operator",
+                "account": "agentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "agentAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "newStatus",
+          "type": {
+            "defined": {
+              "name": "agentStatus"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "stakeIncrease",
+      "discriminator": [
+        239,
+        163,
+        255,
+        22,
+        206,
+        116,
+        44,
+        130
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent.operator",
+                "account": "agentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "agentAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stakeMint"
+        },
+        {
+          "name": "stakeVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operatorTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "agent"
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "stakeWithdrawExecute",
+      "discriminator": [
+        3,
+        191,
+        125,
+        25,
+        239,
+        169,
+        129,
+        161
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent.operator",
+                "account": "agentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "agentAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stakeMint"
+        },
+        {
+          "name": "stakeVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operatorTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "agent"
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "stakeWithdrawRequest",
+      "discriminator": [
+        20,
+        22,
+        8,
+        195,
+        35,
+        24,
+        57,
+        20
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent.operator",
+                "account": "agentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "agentAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "agent"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "transferAuthority",
+      "discriminator": [
+        48,
+        169,
+        76,
+        72,
+        229,
+        180,
+        55,
+        161
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newAuthority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "updateManifest",
+      "discriminator": [
+        232,
+        75,
+        222,
+        229,
+        60,
+        55,
+        168,
+        49
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent.operator",
+                "account": "agentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "agentAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "agent"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "manifestUri",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "capabilityMask",
+          "type": "u128"
+        },
+        {
+          "name": "priceLamports",
+          "type": "u64"
+        },
+        {
+          "name": "streamRate",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "agentAccount",
+      "discriminator": [
+        241,
+        119,
+        69,
+        140,
+        233,
+        9,
+        112,
+        50
+      ]
+    },
+    {
+      "name": "registryGlobal",
+      "discriminator": [
+        78,
+        84,
+        69,
+        29,
+        120,
+        227,
+        67,
+        4
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "agentRegistered",
+      "discriminator": [
+        191,
+        78,
+        217,
+        54,
+        232,
+        100,
+        189,
+        85
+      ]
+    },
+    {
+      "name": "delegateSet",
+      "discriminator": [
+        103,
+        126,
+        239,
+        131,
+        201,
+        31,
+        212,
+        253
+      ]
+    },
+    {
+      "name": "globalInitialized",
+      "discriminator": [
+        142,
+        186,
+        188,
+        168,
+        64,
+        228,
+        8,
+        20
+      ]
+    },
+    {
+      "name": "globalParamsUpdated",
+      "discriminator": [
+        212,
+        96,
+        46,
+        152,
+        150,
+        242,
+        177,
+        48
+      ]
+    },
+    {
+      "name": "jobOutcomeRecorded",
+      "discriminator": [
+        69,
+        149,
+        146,
+        2,
+        12,
+        151,
+        230,
+        42
+      ]
+    },
+    {
+      "name": "manifestUpdated",
+      "discriminator": [
+        105,
+        65,
+        152,
+        106,
+        54,
+        175,
+        253,
+        179
+      ]
+    },
+    {
+      "name": "slashCancelled",
+      "discriminator": [
+        30,
+        217,
+        21,
+        135,
+        62,
+        236,
+        194,
+        221
+      ]
+    },
+    {
+      "name": "slashExecuted",
+      "discriminator": [
+        170,
+        48,
+        78,
+        119,
+        242,
+        155,
+        108,
+        61
+      ]
+    },
+    {
+      "name": "slashProposed",
+      "discriminator": [
+        158,
+        90,
+        179,
+        8,
+        227,
+        190,
+        15,
+        231
+      ]
+    },
+    {
+      "name": "stakeIncreased",
+      "discriminator": [
+        14,
+        167,
+        27,
+        172,
+        201,
+        127,
+        181,
+        214
+      ]
+    },
+    {
+      "name": "statusChanged",
+      "discriminator": [
+        146,
+        235,
+        222,
+        125,
+        145,
+        246,
+        34,
+        240
+      ]
+    },
+    {
+      "name": "withdrawalExecuted",
+      "discriminator": [
+        37,
+        78,
+        199,
+        192,
+        51,
+        68,
+        173,
+        162
+      ]
+    },
+    {
+      "name": "withdrawalRequested",
+      "discriminator": [
+        75,
+        207,
+        21,
+        12,
+        160,
+        102,
+        150,
+        55
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "unauthorized",
+      "msg": "signer is not authorized for this instruction"
+    },
+    {
+      "code": 6001,
+      "name": "paused",
+      "msg": "registry is paused"
+    },
+    {
+      "code": 6002,
+      "name": "invalidCapability",
+      "msg": "capability mask contains unapproved bits"
+    },
+    {
+      "code": 6003,
+      "name": "stakeBelowMinimum",
+      "msg": "stake is below configured minimum"
+    },
+    {
+      "code": 6004,
+      "name": "agentExists",
+      "msg": "agent already exists for these seeds"
+    },
+    {
+      "code": 6005,
+      "name": "agentNotFound",
+      "msg": "agent not found"
+    },
+    {
+      "code": 6006,
+      "name": "invalidStatusTransition",
+      "msg": "illegal status transition"
+    },
+    {
+      "code": 6007,
+      "name": "slashPending",
+      "msg": "a slash is already pending"
+    },
+    {
+      "code": 6008,
+      "name": "slashBoundExceeded",
+      "msg": "slash amount exceeds per-incident bound"
+    },
+    {
+      "code": 6009,
+      "name": "timelockNotElapsed",
+      "msg": "slash timelock has not elapsed"
+    },
+    {
+      "code": 6010,
+      "name": "withdrawalPending",
+      "msg": "a withdrawal is already pending"
+    },
+    {
+      "code": 6011,
+      "name": "noPendingSlash",
+      "msg": "no pending slash"
+    },
+    {
+      "code": 6012,
+      "name": "noPendingWithdrawal",
+      "msg": "no pending withdrawal"
+    },
+    {
+      "code": 6013,
+      "name": "arithmeticOverflow",
+      "msg": "arithmetic overflow"
+    },
+    {
+      "code": 6014,
+      "name": "invalidManifest",
+      "msg": "manifest uri invalid"
+    },
+    {
+      "code": 6015,
+      "name": "callerNotTaskMarket",
+      "msg": "caller is not the TaskMarket program"
+    },
+    {
+      "code": 6016,
+      "name": "noPendingAuthority",
+      "msg": "no pending authority to accept"
+    },
+    {
+      "code": 6017,
+      "name": "slashCapTooHigh",
+      "msg": "max_slash_bps above 10% cap"
+    },
+    {
+      "code": 6018,
+      "name": "reputationOutOfRange",
+      "msg": "reputation value out of range"
+    }
+  ],
+  "types": [
+    {
+      "name": "agentAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "agentId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "did",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "manifestUri",
+            "type": {
+              "array": [
+                "u8",
+                128
+              ]
+            }
+          },
+          {
+            "name": "capabilityMask",
+            "type": "u128"
+          },
+          {
+            "name": "priceLamports",
+            "type": "u64"
+          },
+          {
+            "name": "streamRate",
+            "type": "u64"
+          },
+          {
+            "name": "reputation",
+            "type": {
+              "defined": {
+                "name": "reputationScore"
+              }
+            }
+          },
+          {
+            "name": "jobsCompleted",
+            "type": "u64"
+          },
+          {
+            "name": "jobsDisputed",
+            "type": "u32"
+          },
+          {
+            "name": "stakeAmount",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "agentStatus"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "type": "u32"
+          },
+          {
+            "name": "registeredAt",
+            "type": "i64"
+          },
+          {
+            "name": "lastActive",
+            "type": "i64"
+          },
+          {
+            "name": "delegate",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "pendingSlash",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "pendingSlash"
+                }
+              }
+            }
+          },
+          {
+            "name": "pendingWithdrawal",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "pendingWithdrawal"
+                }
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vaultBump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "agentRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "capabilityMask",
+            "type": "u128"
+          },
+          {
+            "name": "stakeAmount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "agentStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "active"
+          },
+          {
+            "name": "paused"
+          },
+          {
+            "name": "suspended"
+          },
+          {
+            "name": "deregistered"
+          }
+        ]
+      }
+    },
+    {
+      "name": "delegateSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "delegate",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "globalInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "stakeMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "capabilityRegistry",
+            "type": "pubkey"
+          },
+          {
+            "name": "taskMarket",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "globalParamsUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "jobOutcome",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "success",
+            "type": "bool"
+          },
+          {
+            "name": "qualityBps",
+            "type": "u16"
+          },
+          {
+            "name": "timelinessBps",
+            "type": "u16"
+          },
+          {
+            "name": "costEfficiencyBps",
+            "type": "u16"
+          },
+          {
+            "name": "disputed",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "jobOutcomeRecorded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "success",
+            "type": "bool"
+          },
+          {
+            "name": "disputed",
+            "type": "bool"
+          },
+          {
+            "name": "jobsCompleted",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "manifestUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "version",
+            "type": "u32"
+          },
+          {
+            "name": "capabilityMask",
+            "type": "u128"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pendingSlash",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "reasonCode",
+            "type": "u16"
+          },
+          {
+            "name": "proposedAt",
+            "type": "i64"
+          },
+          {
+            "name": "executableAt",
+            "type": "i64"
+          },
+          {
+            "name": "proposer",
+            "type": "pubkey"
+          },
+          {
+            "name": "appealPending",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pendingWithdrawal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "requestedAt",
+            "type": "i64"
+          },
+          {
+            "name": "executableAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "registryGlobal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pendingAuthority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "capabilityRegistry",
+            "type": "pubkey"
+          },
+          {
+            "name": "taskMarket",
+            "type": "pubkey"
+          },
+          {
+            "name": "disputeArbitration",
+            "type": "pubkey"
+          },
+          {
+            "name": "slashingTreasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "stakeMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "minStake",
+            "type": "u64"
+          },
+          {
+            "name": "maxSlashBps",
+            "type": "u16"
+          },
+          {
+            "name": "slashTimelockSecs",
+            "type": "i64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "reputationScore",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quality",
+            "type": "u16"
+          },
+          {
+            "name": "timeliness",
+            "type": "u16"
+          },
+          {
+            "name": "availability",
+            "type": "u16"
+          },
+          {
+            "name": "costEfficiency",
+            "type": "u16"
+          },
+          {
+            "name": "honesty",
+            "type": "u16"
+          },
+          {
+            "name": "volume",
+            "type": "u16"
+          },
+          {
+            "name": "ewmaAlphaBps",
+            "type": "u16"
+          },
+          {
+            "name": "sampleCount",
+            "type": "u32"
+          },
+          {
+            "name": "lastUpdate",
+            "type": "i64"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                24
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "slashCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "slashExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "slashProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "reasonCode",
+            "type": "u16"
+          },
+          {
+            "name": "executableAt",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stakeIncreased",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "newTotal",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "statusChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "newStatus",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "withdrawalExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "withdrawalRequested",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "executableAt",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+};

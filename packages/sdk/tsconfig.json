@@ -8,5 +8,5 @@
     "moduleResolution": "Bundler",
     "noEmit": false
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "src/**/*.json"]
 }

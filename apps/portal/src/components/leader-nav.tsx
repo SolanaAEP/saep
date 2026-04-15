@@ -10,7 +10,7 @@ export function LeaderNav() {
           <li key={item.slug} className="group relative">
             <a
               href={`#${item.slug}`}
-              className="flex items-center justify-end gap-3 font-mono uppercase text-[11px] tracking-[0.08em] text-ink hover:text-lime transition-colors"
+              className="flex items-center justify-end gap-3 font-mono uppercase text-[11px] tracking-[0.08em] text-ink hover:text-[#a8db1a] transition-colors"
             >
               <svg
                 aria-hidden="true"
@@ -20,7 +20,7 @@ export function LeaderNav() {
                 className="opacity-60 group-hover:opacity-100"
               >
                 <path
-                  d={i % 2 === 0 ? 'M 0 6 H 40 L 50 1 H 60' : 'M 0 6 H 40 L 50 11 H 60'}
+                  d="M 0 6 H 60"
                   stroke="currentColor"
                   strokeWidth="1"
                   fill="none"
