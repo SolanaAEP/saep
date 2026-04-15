@@ -101,9 +101,10 @@ pub fn compute_did(operator: &Pubkey, agent_id: &[u8; 32], manifest_uri: &[u8; M
     solana_keccak_hasher::hashv(&[&preimage]).to_bytes()
 }
 
-// CAPABILITY-CHECK-STUB — M2 wires a proper CPI or direct deserialize of
-// CapabilityRegistry::RegistryConfig to enforce `mask & !approved_mask == 0`.
-pub fn capability_check(_capability_registry: &Pubkey, _mask: u128) -> Result<()> {
+pub fn capability_check(approved_mask: u128, mask: u128) -> Result<()> {
+    if (mask & !approved_mask) != 0 {
+        return err!(AgentRegistryError::InvalidCapability);
+    }
     Ok(())
 }
 

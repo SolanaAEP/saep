@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use capability_registry::state::RegistryConfig as CapabilityConfig;
 
 use crate::errors::AgentRegistryError;
 use crate::events::ManifestUpdated;
@@ -11,6 +12,13 @@ use crate::state::{
 pub struct UpdateManifest<'info> {
     #[account(seeds = [b"global"], bump = global.bump)]
     pub global: Account<'info, RegistryGlobal>,
+
+    #[account(
+        seeds = [b"config"],
+        seeds::program = global.capability_registry,
+        bump = capability_config.bump,
+    )]
+    pub capability_config: Account<'info, CapabilityConfig>,
 
     #[account(
         mut,
@@ -39,7 +47,7 @@ pub fn handler(
         AgentRegistryError::InvalidStatusTransition
     );
     validate_manifest_uri(&manifest_uri)?;
-    capability_check(&g.capability_registry, capability_mask)?;
+    capability_check(ctx.accounts.capability_config.approved_mask, capability_mask)?;
 
     agent.manifest_uri = manifest_uri;
     agent.capability_mask = capability_mask;
