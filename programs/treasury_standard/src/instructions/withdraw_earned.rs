@@ -3,9 +3,10 @@ use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use crate::errors::TreasuryError;
-use crate::events::StreamWithdrawn;
+use crate::events::{StreamWithdrawn, SwapExecuted};
+use crate::jupiter;
 use crate::state::{
-    guard_oracle, read_price, swap_via_jupiter, AgentTreasury, PaymentStream, StreamStatus,
+    guard_oracle, read_price, AgentTreasury, PaymentStream, StreamStatus,
     TreasuryGlobal, BPS_DENOM, DEFAULT_SLIPPAGE_BPS,
 };
 
@@ -47,11 +48,14 @@ pub struct WithdrawEarned<'info> {
     )]
     pub agent_vault: InterfaceAccount<'info, TokenAccount>,
 
+    /// CHECK: validated at runtime when swap path is taken
+    pub jupiter_program: UncheckedAccount<'info>,
+
     pub operator: Signer<'info>,
     pub token_program: Program<'info, Token2022>,
 }
 
-pub fn handler(ctx: Context<WithdrawEarned>) -> Result<()> {
+pub fn handler<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) -> Result<()> {
     require!(!ctx.accounts.global.paused, TreasuryError::Paused);
 
     let now = Clock::get()?.unix_timestamp;
@@ -79,32 +83,31 @@ pub fn handler(ctx: Context<WithdrawEarned>) -> Result<()> {
     s.withdrawn = earned;
 
     let agent_did = s.agent_did;
-    let client = s.client;
-    let nonce = s.stream_nonce;
-    let stream_bump = s.bump;
     let swapped = s.payer_mint != s.payout_mint;
 
     let stream_key = s.key();
+    let escrow_bump = s.escrow_bump;
 
     let escrow_seeds: &[&[u8]] = &[
         b"stream_escrow",
         stream_key.as_ref(),
-        core::slice::from_ref(&s.escrow_bump),
+        core::slice::from_ref(&escrow_bump),
     ];
     let escrow_signer = &[escrow_seeds];
 
-    let stream_seeds: &[&[u8]] = &[
-        b"stream",
-        agent_did.as_ref(),
-        client.as_ref(),
-        nonce.as_ref(),
-        core::slice::from_ref(&stream_bump),
-    ];
-    let _ = stream_seeds;
-
     let payout_amount = if swapped {
+        require!(!route_data.is_empty(), TreasuryError::SwapRouteRequired);
+
+        let jup = &ctx.accounts.jupiter_program;
+        require!(
+            jup.key() == ctx.accounts.global.jupiter_program,
+            TreasuryError::InvalidJupiterProgram
+        );
+        require!(jup.executable, TreasuryError::InvalidJupiterProgram);
+
         let price = read_price(&ctx.accounts.payer_mint.key(), &ctx.accounts.payout_mint.key())?;
         guard_oracle(&price)?;
+
         let ideal = claimable
             .checked_mul(price.price)
             .ok_or(TreasuryError::ArithmeticOverflow)?;
@@ -112,14 +115,45 @@ pub fn handler(ctx: Context<WithdrawEarned>) -> Result<()> {
             .checked_mul(BPS_DENOM - DEFAULT_SLIPPAGE_BPS)
             .ok_or(TreasuryError::ArithmeticOverflow)?
             / BPS_DENOM;
-        let out = swap_via_jupiter(
-            &ctx.accounts.payer_mint.key(),
-            &ctx.accounts.payout_mint.key(),
-            claimable,
-            min_out,
+
+        let escrow_before = ctx.accounts.escrow.amount;
+        let vault_before = ctx.accounts.agent_vault.amount;
+
+        let escrow_key = ctx.accounts.escrow.key();
+        jupiter::execute_swap(
+            &ctx.accounts.jupiter_program.to_account_info(),
+            ctx.remaining_accounts,
+            route_data,
+            escrow_signer,
+            &escrow_key,
         )?;
-        require!(out >= min_out, TreasuryError::SwapSlippage);
-        out
+
+        ctx.accounts.escrow.reload()?;
+        ctx.accounts.agent_vault.reload()?;
+
+        let escrow_spent = escrow_before
+            .checked_sub(ctx.accounts.escrow.amount)
+            .ok_or(TreasuryError::ArithmeticOverflow)?;
+        require!(escrow_spent <= claimable, TreasuryError::SwapAmountExceeded);
+
+        let vault_received = ctx
+            .accounts
+            .agent_vault
+            .amount
+            .checked_sub(vault_before)
+            .ok_or(TreasuryError::ArithmeticOverflow)?;
+        require!(vault_received >= min_out, TreasuryError::SwapSlippage);
+
+        emit!(SwapExecuted {
+            agent_did,
+            amount_in: escrow_spent,
+            amount_out: vault_received,
+            payer_mint: ctx.accounts.payer_mint.key(),
+            payout_mint: ctx.accounts.payout_mint.key(),
+            timestamp: now,
+        });
+
+        vault_received
     } else {
         let decimals = ctx.accounts.payer_mint.decimals;
         let cpi_accounts = TransferChecked {
