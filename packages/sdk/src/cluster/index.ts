@@ -10,7 +10,7 @@ export const DEVNET_PROGRAM_IDS = {
   governanceProgram: '9uczLDZaN9EWqW76be75ji4vCsz3cydefbChqvBS6qw1',
   feeCollector: '4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu',
   proofVerifier: 'DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe',
-  capabilityRegistry: '11111111111111111111111111111111',
+  capabilityRegistry: 'GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F',
 } as const;
 
 export type SaepProgramName = keyof typeof DEVNET_PROGRAM_IDS;

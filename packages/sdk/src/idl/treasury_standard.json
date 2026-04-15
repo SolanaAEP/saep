@@ -805,6 +805,63 @@
           "signer": true
         },
         {
+          "name": "agent_registry_program",
+          "address": "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
+        },
+        {
+          "name": "registry_global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "agent_registry_program"
+            }
+          }
+        },
+        {
+          "name": "agent_account",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent_account.operator",
+                "account": "AgentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent_account.agent_id",
+                "account": "AgentAccount"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "agent_registry_program"
+            }
+          }
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -1409,6 +1466,13 @@
           "writable": true
         },
         {
+          "name": "price_feed",
+          "docs": [
+            "Required for non-USDC mints to normalize spend against 6-decimal limits."
+          ],
+          "optional": true
+        },
+        {
           "name": "operator",
           "signer": true,
           "relations": [
@@ -1590,6 +1654,17 @@
           }
         },
         {
+          "name": "jupiter_program"
+        },
+        {
+          "name": "payer_price_feed",
+          "optional": true
+        },
+        {
+          "name": "payout_price_feed",
+          "optional": true
+        },
+        {
           "name": "operator",
           "signer": true,
           "relations": [
@@ -1601,7 +1676,12 @@
           "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "route_data",
+          "type": "bytes"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1748,6 +1828,19 @@
         225,
         122,
         75
+      ]
+    },
+    {
+      "name": "SwapExecuted",
+      "discriminator": [
+        150,
+        166,
+        26,
+        225,
+        28,
+        89,
+        38,
+        79
       ]
     },
     {
@@ -1913,9 +2006,189 @@
       "code": 6021,
       "name": "PayTaskDisabled",
       "msg": "pay_task is reserved for M2 and is inert in M1"
+    },
+    {
+      "code": 6022,
+      "name": "InvalidJupiterProgram",
+      "msg": "jupiter program does not match configured address"
+    },
+    {
+      "code": 6023,
+      "name": "SwapRouteRequired",
+      "msg": "swap route data required for cross-mint withdrawal"
+    },
+    {
+      "code": 6024,
+      "name": "SwapAmountExceeded",
+      "msg": "swap consumed more tokens than earned"
+    },
+    {
+      "code": 6025,
+      "name": "OracleRequired",
+      "msg": "oracle price feed required for cross-mint withdrawal"
+    },
+    {
+      "code": 6026,
+      "name": "OracleNonPositivePrice",
+      "msg": "oracle price is non-positive"
+    },
+    {
+      "code": 6027,
+      "name": "AgentMismatch",
+      "msg": "agent DID does not match AgentAccount"
+    },
+    {
+      "code": 6028,
+      "name": "OperatorMismatch",
+      "msg": "operator does not match AgentAccount operator"
     }
   ],
   "types": [
+    {
+      "name": "AgentAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "did",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "manifest_uri",
+            "type": {
+              "array": [
+                "u8",
+                128
+              ]
+            }
+          },
+          {
+            "name": "capability_mask",
+            "type": "u128"
+          },
+          {
+            "name": "price_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "stream_rate",
+            "type": "u64"
+          },
+          {
+            "name": "reputation",
+            "type": {
+              "defined": {
+                "name": "ReputationScore"
+              }
+            }
+          },
+          {
+            "name": "jobs_completed",
+            "type": "u64"
+          },
+          {
+            "name": "jobs_disputed",
+            "type": "u32"
+          },
+          {
+            "name": "stake_amount",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "AgentStatus"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "type": "u32"
+          },
+          {
+            "name": "registered_at",
+            "type": "i64"
+          },
+          {
+            "name": "last_active",
+            "type": "i64"
+          },
+          {
+            "name": "delegate",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "pending_slash",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "PendingSlash"
+                }
+              }
+            }
+          },
+          {
+            "name": "pending_withdrawal",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "PendingWithdrawal"
+                }
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vault_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AgentStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Paused"
+          },
+          {
+            "name": "Suspended"
+          },
+          {
+            "name": "Deregistered"
+          }
+        ]
+      }
+    },
     {
       "name": "AgentTreasury",
       "type": {
@@ -2161,6 +2434,169 @@
       }
     },
     {
+      "name": "PendingSlash",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "reason_code",
+            "type": "u16"
+          },
+          {
+            "name": "proposed_at",
+            "type": "i64"
+          },
+          {
+            "name": "executable_at",
+            "type": "i64"
+          },
+          {
+            "name": "proposer",
+            "type": "pubkey"
+          },
+          {
+            "name": "appeal_pending",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PendingWithdrawal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "requested_at",
+            "type": "i64"
+          },
+          {
+            "name": "executable_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RegistryGlobal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "capability_registry",
+            "type": "pubkey"
+          },
+          {
+            "name": "task_market",
+            "type": "pubkey"
+          },
+          {
+            "name": "dispute_arbitration",
+            "type": "pubkey"
+          },
+          {
+            "name": "slashing_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "stake_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_stake",
+            "type": "u64"
+          },
+          {
+            "name": "max_slash_bps",
+            "type": "u16"
+          },
+          {
+            "name": "slash_timelock_secs",
+            "type": "i64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReputationScore",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quality",
+            "type": "u16"
+          },
+          {
+            "name": "timeliness",
+            "type": "u16"
+          },
+          {
+            "name": "availability",
+            "type": "u16"
+          },
+          {
+            "name": "cost_efficiency",
+            "type": "u16"
+          },
+          {
+            "name": "honesty",
+            "type": "u16"
+          },
+          {
+            "name": "volume",
+            "type": "u16"
+          },
+          {
+            "name": "ewma_alpha_bps",
+            "type": "u16"
+          },
+          {
+            "name": "sample_count",
+            "type": "u32"
+          },
+          {
+            "name": "last_update",
+            "type": "i64"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                24
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "StreamClosed",
       "type": {
         "kind": "struct",
@@ -2269,6 +2705,43 @@
           {
             "name": "swapped",
             "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SwapExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agent_did",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount_in",
+            "type": "u64"
+          },
+          {
+            "name": "amount_out",
+            "type": "u64"
+          },
+          {
+            "name": "payer_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "payout_mint",
+            "type": "pubkey"
           },
           {
             "name": "timestamp",
@@ -2441,6 +2914,10 @@
           },
           {
             "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "normalized_amount",
             "type": "u64"
           },
           {

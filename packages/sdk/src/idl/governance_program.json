@@ -1,0 +1,26 @@
+{
+  "address": "9uczLDZaN9EWqW76be75ji4vCsz3cydefbChqvBS6qw1",
+  "metadata": {
+    "name": "governance_program",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "SAEP governance_program program (stub)"
+  },
+  "instructions": [
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [],
+      "args": []
+    }
+  ]
+}

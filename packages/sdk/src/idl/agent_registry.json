@@ -541,6 +541,9 @@
           }
         },
         {
+          "name": "capability_config"
+        },
+        {
           "name": "agent",
           "writable": true,
           "pda": {
@@ -1273,6 +1276,9 @@
               }
             ]
           }
+        },
+        {
+          "name": "capability_config"
         },
         {
           "name": "agent",
@@ -2015,6 +2021,40 @@
           {
             "name": "executable_at",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RegistryConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "approved_mask",
+            "type": "u128"
+          },
+          {
+            "name": "tag_count",
+            "type": "u8"
+          },
+          {
+            "name": "pending_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
