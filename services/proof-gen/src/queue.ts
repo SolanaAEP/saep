@@ -2,6 +2,18 @@ import { Queue, QueueEvents, type ConnectionOptions } from 'bullmq';
 import IORedis from 'ioredis';
 
 export const QUEUE_NAME = 'proof-gen';
+export const DLQ_NAME = 'proof-gen-dlq';
+
+export function buildDlq(connection: ConnectionOptions): Queue<ProveJobData & { error: string }> {
+  return new Queue<ProveJobData & { error: string }>(DLQ_NAME, {
+    connection,
+    defaultJobOptions: {
+      attempts: 1,
+      removeOnComplete: false,
+      removeOnFail: false,
+    },
+  });
+}
 
 export type ProveJobData = {
   circuit_id: string;

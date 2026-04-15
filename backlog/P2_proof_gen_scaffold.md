@@ -1,6 +1,6 @@
 ---
 id: P2_proof_gen_scaffold
-status: open
+status: done
 blockers: []
 priority: P2
 ---
@@ -33,3 +33,5 @@ pnpm test
 ```
 
 ## Log
+
+- 2026-04-15: Idempotency wired — `/prove` checks `cacheKey(pubHash)` before queuing; worker writes both `resultKey(jobId)` and `cacheKey(pubHash)` on success. prom-client metrics (`proofgen_jobs_total{circuit,status}`, `proofgen_duration_seconds`, `proofgen_cache_hits_total`) exposed at `/metrics`. `/healthz` now returns `circuits_loaded` count + `queue: {waiting, active, failed}`. Dead-letter queue `proof-gen-dlq` enqueued on terminal failure (after bullmq exhausts `attempts`). In-memory artifact cache keyed by `circuit_id`. Vitest (ioredis-mock + registry introspection) — 5 tests passing. Workspace typecheck 12/12.
