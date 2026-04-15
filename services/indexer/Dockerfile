@@ -1,0 +1,27 @@
+FROM rust:1.83-bookworm AS build
+WORKDIR /src
+RUN apt-get update && apt-get install -y --no-install-recommends libpq-dev pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Prebuild deps for cache.
+COPY services/indexer/Cargo.toml services/indexer/Cargo.lock ./services/indexer/
+RUN mkdir -p services/indexer/src && echo "fn main() {}" > services/indexer/src/main.rs \
+    && echo "" > services/indexer/src/lib.rs
+WORKDIR /src/services/indexer
+RUN cargo build --release || true
+WORKDIR /src
+
+COPY services/indexer ./services/indexer
+COPY target/idl ./target/idl
+WORKDIR /src/services/indexer
+RUN touch src/main.rs src/lib.rs && cargo build --release
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends libpq5 ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=build /src/services/indexer/target/release/saep-indexer /app/saep-indexer
+COPY --from=build /src/target/idl /app/target/idl
+ENV SAEP_IDL_DIR=/app/target/idl
+EXPOSE 8080
+CMD ["/app/saep-indexer"]

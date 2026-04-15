@@ -27,7 +27,7 @@ struct IdlEvent {
     discriminator: Option<[u8; 8]>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 struct IdlType {
     name: String,
     #[serde(rename = "type")]
@@ -40,6 +40,7 @@ pub struct EventDef {
     pub program_id: String,
     pub event_name: String,
     pub schema: serde_json::Value,
+    pub type_registry: std::sync::Arc<HashMap<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Default)]
@@ -67,11 +68,12 @@ impl Registry {
             let idl: IdlRoot = serde_json::from_str(&raw)
                 .with_context(|| format!("parse {}", path.display()))?;
 
-            let types: HashMap<&str, &serde_json::Value> = idl
+            let type_registry: HashMap<String, serde_json::Value> = idl
                 .types
                 .iter()
-                .map(|t| (t.name.as_str(), &t.ty))
+                .map(|t| (t.name.clone(), t.ty.clone()))
                 .collect();
+            let type_registry = std::sync::Arc::new(type_registry);
 
             reg.programs_loaded.push(idl.metadata.name.clone());
 
@@ -79,9 +81,8 @@ impl Registry {
                 let disc = ev
                     .discriminator
                     .unwrap_or_else(|| event_discriminator(&ev.name));
-                let schema = types
-                    .get(ev.name.as_str())
-                    .cloned()
+                let schema = type_registry
+                    .get(&ev.name)
                     .cloned()
                     .unwrap_or(serde_json::Value::Null);
                 reg.by_discriminator.insert(
@@ -91,6 +92,7 @@ impl Registry {
                         program_id: idl.address.clone(),
                         event_name: ev.name.clone(),
                         schema,
+                        type_registry: type_registry.clone(),
                     },
                 );
             }
@@ -117,7 +119,6 @@ impl Registry {
     }
 }
 
-/// Anchor event discriminator = first 8 bytes of sha256("event:<EventName>").
 pub fn event_discriminator(name: &str) -> [u8; 8] {
     let mut hasher = Sha256::new();
     hasher.update(format!("event:{name}").as_bytes());
@@ -143,7 +144,6 @@ mod tests {
 
     #[test]
     fn discriminator_matches_anchor_convention() {
-        // sha256("event:GlobalInitialized")[..8] is stable across runs.
         let a = event_discriminator("GlobalInitialized");
         let b = event_discriminator("GlobalInitialized");
         assert_eq!(a, b);
@@ -154,27 +154,9 @@ mod tests {
     fn loads_committed_idls() {
         let dir = crate_idl_dir();
         if !dir.exists() {
-            eprintln!("skipping: {} not present", dir.display());
             return;
         }
         let reg = Registry::load_from_dir(&dir).expect("load registry");
-        assert!(
-            !reg.programs_loaded().is_empty(),
-            "registry should discover at least one program IDL"
-        );
-    }
-
-    #[test]
-    fn at_least_one_event_discovered_in_m1_set() {
-        let dir = crate_idl_dir();
-        if !dir.exists() {
-            return;
-        }
-        let reg = Registry::load_from_dir(&dir).expect("load registry");
-        // M1 scaffolds emit events in agent_registry / task_market / treasury_standard.
-        // Relaxed assertion per spec: OK if registry just loaded known programs.
-        if reg.event_count() == 0 {
-            assert!(!reg.programs_loaded().is_empty());
-        }
+        assert!(!reg.programs_loaded().is_empty());
     }
 }

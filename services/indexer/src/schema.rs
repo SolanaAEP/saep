@@ -29,4 +29,13 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(blocks, program_events, reorg_log);
+diesel::table! {
+    sync_cursor (program_id) {
+        program_id -> Text,
+        last_sig -> Nullable<Text>,
+        last_slot -> Nullable<Int8>,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::allow_tables_to_appear_in_same_query!(blocks, program_events, reorg_log, sync_cursor);
