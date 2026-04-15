@@ -29,3 +29,5 @@ pnpm --filter @saep/compute-broker test
 ```
 
 ## Log
+
+- 2026-04-15: Spec landed at `specs/compute-bond.md`. ComputeBond PDA + broker attestation (ed25519 over lease_id/gpu_hours/expiry), slash paths via task_market + dispute_arbitration CPI. services/compute-broker off-chain glue with io.net primary + Akash fallback. Broker key weekly rotation via governance, 48h grace. Phased rollout M2→M4. Implementation gated on io.net partnerships conversation (human step).
