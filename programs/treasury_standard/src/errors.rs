@@ -56,4 +56,8 @@ pub enum TreasuryError {
     OracleRequired,
     #[msg("oracle price is non-positive")]
     OracleNonPositivePrice,
+    #[msg("agent DID does not match AgentAccount")]
+    AgentMismatch,
+    #[msg("operator does not match AgentAccount operator")]
+    OperatorMismatch,
 }

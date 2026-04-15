@@ -249,12 +249,3 @@ pub fn normalize_to_base_units(
     u64::try_from(result).map_err(|_| error!(TreasuryError::ArithmeticOverflow))
 }
 
-// AGENT-CPI-STUB — real implementation reads AgentRegistry::AgentAccount
-// for (operator, agent_id) and asserts did match + status == Active.
-pub fn check_agent_operator(
-    _agent_registry: &Pubkey,
-    _operator: &Pubkey,
-    _agent_did: &[u8; 32],
-) -> Result<()> {
-    Ok(())
-}

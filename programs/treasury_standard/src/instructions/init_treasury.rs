@@ -1,10 +1,11 @@
 use anchor_lang::prelude::*;
 
+use agent_registry::program::AgentRegistry;
+use agent_registry::state::{AgentAccount, AgentStatus, RegistryGlobal};
+
 use crate::errors::TreasuryError;
 use crate::events::TreasuryCreated;
-use crate::state::{
-    check_agent_operator, iso_week, unix_day, validate_limits, AgentTreasury, TreasuryGlobal,
-};
+use crate::state::{iso_week, unix_day, validate_limits, AgentTreasury, TreasuryGlobal};
 
 #[derive(Accounts)]
 #[instruction(agent_did: [u8; 32])]
@@ -24,6 +25,25 @@ pub struct InitTreasury<'info> {
     #[account(mut)]
     pub operator: Signer<'info>,
 
+    #[account(
+        constraint = agent_registry_program.key() == global.agent_registry @ TreasuryError::Unauthorized,
+    )]
+    pub agent_registry_program: Program<'info, AgentRegistry>,
+
+    #[account(
+        seeds = [b"global"],
+        bump = registry_global.bump,
+        seeds::program = agent_registry_program.key(),
+    )]
+    pub registry_global: Account<'info, RegistryGlobal>,
+
+    #[account(
+        seeds = [b"agent", agent_account.operator.as_ref(), agent_account.agent_id.as_ref()],
+        bump = agent_account.bump,
+        seeds::program = agent_registry_program.key(),
+    )]
+    pub agent_account: Account<'info, AgentAccount>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -42,7 +62,10 @@ pub fn handler(
     );
     validate_limits(per_tx_limit, daily_spend_limit, weekly_limit)?;
 
-    check_agent_operator(&g.agent_registry, &ctx.accounts.operator.key(), &agent_did)?;
+    let agent = &ctx.accounts.agent_account;
+    require!(agent.did == agent_did, TreasuryError::AgentMismatch);
+    require!(agent.operator == ctx.accounts.operator.key(), TreasuryError::OperatorMismatch);
+    require!(agent.status == AgentStatus::Active, TreasuryError::AgentNotActive);
 
     let now = Clock::get()?.unix_timestamp;
     let t = &mut ctx.accounts.treasury;
