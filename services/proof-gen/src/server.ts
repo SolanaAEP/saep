@@ -18,6 +18,7 @@ import {
   cacheKey,
   type ProveJobData,
 } from './queue.js';
+import { registry, cacheHits } from './metrics.js';
 
 const logger = pino({
   level: process.env.LOG_LEVEL ?? 'info',
@@ -107,11 +108,24 @@ export async function buildServer() {
     } catch {
       redisStatus = 'down';
     }
+    const [waiting, active, failed] = await Promise.all([
+      queue.getWaitingCount(),
+      queue.getActiveCount(),
+      queue.getFailedCount(),
+    ]);
+    const artifactFiles = artifactsReady() ? readdirSync(ARTIFACTS_DIR) : [];
     return {
       ok: redisStatus === 'up',
       redis: redisStatus,
       artifacts: artifactsReady() ? 'present' : 'missing',
+      circuits_loaded: artifactFiles.filter((f) => f.endsWith('.wasm')).length,
+      queue: { waiting, active, failed },
     };
+  });
+
+  app.get('/metrics', async (_req, reply) => {
+    reply.header('content-type', registry.contentType);
+    return registry.metrics();
   });
 
   app.post('/prove', async (req, reply) => {
@@ -133,7 +147,11 @@ export async function buildServer() {
 
     const pubHash = hashPublicInputs(circuit_id, public_inputs);
 
-    // PROOF-CACHE-STUB — look up cacheKey(pubHash); on hit, return { status: "completed", ... }.
+    const cached = await connection.get(cacheKey(pubHash));
+    if (cached) {
+      cacheHits.inc({ circuit: circuit_id });
+      return reply.code(200).send({ status: 'completed', cached: true, ...JSON.parse(cached) });
+    }
 
     const enc = encryptWitness(private_inputs);
     const jobId = randomUUID();

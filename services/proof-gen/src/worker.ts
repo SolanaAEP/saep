@@ -9,9 +9,12 @@ import {
   redisConnection,
   keyKey,
   resultKey,
+  cacheKey,
+  buildDlq,
   type ProveJobData,
   type ProveJobResult,
 } from './queue.js';
+import { jobsTotal, proveDuration } from './metrics.js';
 
 const logger = pino({
   level: process.env.LOG_LEVEL ?? 'info',
@@ -29,9 +32,11 @@ const CONCURRENCY = Number(process.env.PROOFGEN_WORKER_CONCURRENCY ?? 1);
 const RESULT_TTL = Number(process.env.PROOFGEN_RESULT_TTL_SEC ?? 3600);
 
 type CircuitArtifacts = { wasm: string; zkey: string };
+const artifactCache = new Map<string, CircuitArtifacts>();
 
 function loadArtifacts(circuit_id: string): CircuitArtifacts {
-  // CIRCUIT-ARTIFACT-LOAD-STUB — hardcoded resolver for task_completion.v1.
+  const cached = artifactCache.get(circuit_id);
+  if (cached) return cached;
   if (circuit_id !== 'task_completion.v1') {
     throw new Error(`unknown circuit: ${circuit_id}`);
   }
@@ -42,7 +47,9 @@ function loadArtifacts(circuit_id: string): CircuitArtifacts {
   const wasm = files.find((f) => f.endsWith('.wasm'));
   const zkey = files.find((f) => f.endsWith('.zkey'));
   if (!wasm || !zkey) throw new Error('wasm or zkey missing');
-  return { wasm: join(ARTIFACTS_DIR, wasm), zkey: join(ARTIFACTS_DIR, zkey) };
+  const a = { wasm: join(ARTIFACTS_DIR, wasm), zkey: join(ARTIFACTS_DIR, zkey) };
+  artifactCache.set(circuit_id, a);
+  return a;
 }
 
 function decryptWitness(data: ProveJobData, key: Buffer): Record<string, unknown> {
@@ -61,12 +68,14 @@ function decryptWitness(data: ProveJobData, key: Buffer): Record<string, unknown
 
 export function startWorker() {
   const connection = redisConnection(REDIS_URL);
+  const dlq = buildDlq(connection);
 
   const worker = new Worker<ProveJobData, ProveJobResult>(
     QUEUE_NAME,
     async (job) => {
       const { circuit_id, public_inputs, agent_did, public_inputs_hash } = job.data;
       const log = logger.child({ job_id: job.id, agent_did, circuit_id });
+      const stopTimer = proveDuration.startTimer({ circuit: circuit_id });
       log.info('prove:start');
 
       const artifacts = loadArtifacts(circuit_id);
@@ -92,21 +101,29 @@ export function startWorker() {
 
       const result: ProveJobResult = { proof, public_signals: publicSignals as string[] };
 
-      await connection.set(
-        resultKey(job.id!),
-        JSON.stringify({ status: 'completed', ...result }),
-        'EX',
-        RESULT_TTL,
-      );
-      // PROOF-CACHE-STUB — also SET cacheKey(public_inputs_hash) with same TTL for cross-agent reuse.
+      const payload = JSON.stringify({ status: 'completed', ...result });
+      await connection.set(resultKey(job.id!), payload, 'EX', RESULT_TTL);
+      await connection.set(cacheKey(public_inputs_hash), payload, 'EX', RESULT_TTL);
+      stopTimer();
+      jobsTotal.inc({ circuit: circuit_id, status: 'completed' });
       log.info({ public_inputs_hash }, 'prove:done');
       return result;
     },
     { connection, concurrency: CONCURRENCY },
   );
 
-  worker.on('failed', (job, err) => {
-    logger.warn({ job_id: job?.id, err: err.message }, 'prove:failed');
+  worker.on('failed', async (job, err) => {
+    logger.warn({ job_id: job?.id, err: err.message, attempts: job?.attemptsMade }, 'prove:failed');
+    if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) {
+      jobsTotal.inc({ circuit: job.data.circuit_id, status: 'dlq' });
+      try {
+        await dlq.add('dead', { ...job.data, error: err.message }, { jobId: job.id });
+      } catch (e) {
+        logger.error({ err: (e as Error).message }, 'dlq:enqueue_failed');
+      }
+    } else {
+      jobsTotal.inc({ circuit: job?.data.circuit_id ?? 'unknown', status: 'retry' });
+    }
   });
 
   const close = async () => {
