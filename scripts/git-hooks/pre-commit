@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Enforce SAEP rotation identity. Aborts any commit whose author/committer
+# is not one of the three personas. Use scripts/commit-as.sh to set them.
+set -u
+
+ALLOWED_EMAILS=(
+  "hl@buildonsaep.com"
+  "mmn@buildonsaep.com"
+  "jm@buildonsaep.com"
+)
+
+author="$(git var GIT_AUTHOR_IDENT 2>/dev/null)"
+committer="$(git var GIT_COMMITTER_IDENT 2>/dev/null)"
+
+extract_email() {
+  printf '%s' "$1" | sed -n 's/.*<\(.*\)>.*/\1/p'
+}
+
+is_allowed() {
+  local email="$1"
+  for a in "${ALLOWED_EMAILS[@]}"; do
+    [[ "$email" == "$a" ]] && return 0
+  done
+  return 1
+}
+
+fail() {
+  local role="$1" ident="$2"
+  cat >&2 <<EOF
+[pre-commit] BLOCKED: $role identity is not on the rotation allow-list.
+
+  Saw:     $ident
+  Allowed: ${ALLOWED_EMAILS[*]}
+
+Commit via the rotation wrapper instead:
+
+  scripts/commit-as.sh -- -m "your message"            # auto round-robin
+  scripts/commit-as.sh hl -- -m "your message"         # explicit persona
+
+If you intentionally need a different identity, bypass at your own risk:
+
+  git commit --no-verify ...
+
+EOF
+  exit 1
+}
+
+author_email="$(extract_email "$author")"
+committer_email="$(extract_email "$committer")"
+
+is_allowed "$author_email"   || fail "author"   "$author"
+is_allowed "$committer_email" || fail "committer" "$committer"
+
+exit 0
