@@ -5,8 +5,10 @@
     "typeRoots": ["./node_modules/@types"],
     "resolveJsonModule": true,
     "module": "commonjs",
+    "moduleResolution": "node",
     "target": "es2020",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "isolatedModules": false
   },
   "include": ["tests/**/*"]
 }
