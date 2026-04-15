@@ -2,6 +2,9 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
+use agent_registry::program::AgentRegistry;
+use agent_registry::state::{AgentAccount, RegistryGlobal};
+
 use crate::cpi_stubs::{call_record_job_outcome, JobOutcome};
 use crate::errors::TaskMarketError;
 use crate::events::TaskExpired;
@@ -37,6 +40,31 @@ pub struct Expire<'info> {
     #[account(address = task.client)]
     pub client: UncheckedAccount<'info>,
 
+    #[account(
+        constraint = agent_registry_program.key() == global.agent_registry @ TaskMarketError::Unauthorized,
+    )]
+    pub agent_registry_program: Program<'info, AgentRegistry>,
+
+    #[account(
+        seeds = [b"global"],
+        bump = registry_global.bump,
+        seeds::program = agent_registry_program.key(),
+    )]
+    pub registry_global: Account<'info, RegistryGlobal>,
+
+    #[account(
+        mut,
+        seeds = [b"agent", agent_account.operator.as_ref(), agent_account.agent_id.as_ref()],
+        bump = agent_account.bump,
+        seeds::program = agent_registry_program.key(),
+        constraint = agent_account.did == task.agent_did @ TaskMarketError::AgentMismatch,
+    )]
+    pub agent_account: Account<'info, AgentAccount>,
+
+    /// CHECK: must be this program's own executable for CPI identity proof
+    #[account(address = crate::ID)]
+    pub self_program: UncheckedAccount<'info>,
+
     pub cranker: Signer<'info>,
     pub token_program: Program<'info, Token2022>,
 }
@@ -58,11 +86,11 @@ pub fn handler(ctx: Context<Expire>) -> Result<()> {
 
     let task_key = ctx.accounts.task.key();
     let task_id = t_ref.task_id;
-    let agent_did = t_ref.agent_did;
     let refund_amount = t_ref.payment_amount;
     let escrow_bump = t_ref.escrow_bump;
+    let market_global_bump = ctx.accounts.global.bump;
 
-    // State-before-CPI: set terminal status prior to moving funds.
+    // State-before-CPI: set terminal status prior to moving funds or CPI.
     {
         let t = &mut ctx.accounts.task;
         t.status = TaskStatus::Expired;
@@ -92,10 +120,17 @@ pub fn handler(ctx: Context<Expire>) -> Result<()> {
     }
 
     call_record_job_outcome(
-        &ctx.accounts.global.agent_registry,
-        &agent_did,
+        &ctx.accounts.agent_registry_program.key(),
+        ctx.accounts.registry_global.to_account_info(),
+        ctx.accounts.agent_account.to_account_info(),
+        ctx.accounts.self_program.to_account_info(),
+        ctx.accounts.global.to_account_info(),
+        market_global_bump,
         JobOutcome {
             success: false,
+            quality_bps: 0,
+            timeliness_bps: 0,
+            cost_efficiency_bps: 0,
             disputed: false,
         },
     )?;

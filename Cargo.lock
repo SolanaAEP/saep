@@ -2090,6 +2090,7 @@ dependencies = [
 name = "task_market"
 version = "0.1.0"
 dependencies = [
+ "agent_registry",
  "anchor-lang",
  "anchor-spl",
  "proof_verifier",

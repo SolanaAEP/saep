@@ -46,4 +46,8 @@ pub enum TaskMarketError {
     GraceNotElapsed,
     #[msg("result hash must be non-zero")]
     ZeroResultHash,
+    #[msg("agent DID does not match task assignment")]
+    AgentMismatch,
+    #[msg("agent registry CPI failed")]
+    OutcomeCpiFailed,
 }
