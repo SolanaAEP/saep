@@ -57,3 +57,5 @@ cargo test -p task_market -p treasury_standard -p agent_registry -p fee_collecto
 ```
 
 ## Log
+
+- 2026-04-15: All 7 sub-specs drafted + committed (3c8db4a, 458aab5, 9151fe0, da3f4e0, 6004a6a, bcccea7, 88e60b1). Checklist tracker at `reports/pre-audit-checklist.md` (gitignored). Parent ticket remains open until implementation lands per-spec. Next: delegate item 1 to anchor-engineer teammate when human in the loop is present.
