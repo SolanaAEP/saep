@@ -5,3 +5,4 @@ packages:
   - services/iacp
   - services/mcp-bridge
   - services/x402-gateway
+  - services/compute-broker
