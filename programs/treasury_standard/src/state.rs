@@ -11,6 +11,7 @@ pub const MAX_STALENESS_SECS: i64 = 60;
 pub const MAX_CONFIDENCE_BPS: u64 = 100;
 pub const DEFAULT_SLIPPAGE_BPS: u64 = 50;
 pub const BPS_DENOM: u64 = 10_000;
+pub const BASE_DECIMALS: u8 = 6;
 
 #[account]
 #[derive(InitSpace)]
@@ -110,30 +111,142 @@ pub fn apply_rollover(treasury: &mut AgentTreasury, now: i64) {
     }
 }
 
-// ORACLE-STUB — real implementation reads Pyth/Switchboard price feed,
-// validates status == Trading, staleness < MAX_STALENESS_SECS,
-// confidence / price * 10_000 <= MAX_CONFIDENCE_BPS.
 pub struct OraclePrice {
-    pub price: u64,
-    pub staleness: i64,
-    pub confidence_bps: u64,
+    pub price: i64,
+    pub conf: u64,
+    pub exponent: i32,
 }
 
-pub fn read_price(_payer_mint: &Pubkey, _payout_mint: &Pubkey) -> Result<OraclePrice> {
+#[derive(AnchorDeserialize)]
+enum PythVerificationLevel {
+    Partial { num_signatures: u8 },
+    Full,
+}
+
+#[derive(AnchorDeserialize)]
+struct PythPriceFeedMessage {
+    pub feed_id: [u8; 32],
+    pub price: i64,
+    pub conf: u64,
+    pub exponent: i32,
+    pub publish_time: i64,
+    pub prev_publish_time: i64,
+    pub ema_price: i64,
+    pub ema_conf: u64,
+}
+
+#[derive(AnchorDeserialize)]
+struct PythPriceUpdateV2 {
+    pub write_authority: Pubkey,
+    pub verification_level: PythVerificationLevel,
+    pub price_message: PythPriceFeedMessage,
+    pub posted_slot: u64,
+}
+
+pub fn read_oracle(feed_info: &AccountInfo, clock: &Clock) -> Result<OraclePrice> {
+    let data = feed_info.try_borrow_data()?;
+    require!(data.len() >= 8, TreasuryError::OracleStale);
+
+    // sha256("account:PriceUpdateV2")[..8]
+    const PYTH_DISCRIMINATOR: [u8; 8] = [0x22, 0xf1, 0x23, 0x63, 0x9d, 0x7e, 0xf4, 0xcd];
+    require!(data[..8] == PYTH_DISCRIMINATOR, TreasuryError::OracleStale);
+
+    let update = PythPriceUpdateV2::try_from_slice(&data[8..])
+        .map_err(|_| error!(TreasuryError::OracleStale))?;
+
+    let msg = &update.price_message;
+    let age = clock.unix_timestamp.saturating_sub(msg.publish_time);
+    require!(age >= 0 && age <= MAX_STALENESS_SECS, TreasuryError::OracleStale);
+
     Ok(OraclePrice {
-        price: 1,
-        staleness: 0,
-        confidence_bps: 0,
+        price: msg.price,
+        conf: msg.conf,
+        exponent: msg.exponent,
     })
 }
 
 pub fn guard_oracle(p: &OraclePrice) -> Result<()> {
-    require!(p.staleness <= MAX_STALENESS_SECS, TreasuryError::OracleStale);
+    require!(p.price > 0, TreasuryError::OracleNonPositivePrice);
+    let price_abs = p.price as u64;
+    let conf_bps = p
+        .conf
+        .checked_mul(BPS_DENOM)
+        .ok_or(TreasuryError::ArithmeticOverflow)?
+        / price_abs;
     require!(
-        p.confidence_bps <= MAX_CONFIDENCE_BPS,
+        conf_bps <= MAX_CONFIDENCE_BPS,
         TreasuryError::OracleConfidenceTooWide
     );
     Ok(())
+}
+
+pub fn compute_swap_min_out(
+    claimable: u64,
+    payer: &OraclePrice,
+    payout: &OraclePrice,
+    payer_decimals: u8,
+    payout_decimals: u8,
+    slippage_bps: u64,
+) -> Result<u64> {
+    let payer_p = payer.price as u128;
+    let payout_p = payout.price as u128;
+
+    // combined exponent accounts for both oracle exponents and token decimals:
+    // actual_rate = (payer_price * 10^payer_exp / 10^payer_dec)
+    //             / (payout_price * 10^payout_exp / 10^payout_dec)
+    let combined_exp = (payer.exponent as i64) - (payout.exponent as i64)
+        + (payout_decimals as i64)
+        - (payer_decimals as i64);
+
+    let numerator = (claimable as u128)
+        .checked_mul(payer_p)
+        .ok_or(TreasuryError::ArithmeticOverflow)?;
+
+    let ideal = if combined_exp >= 0 {
+        numerator
+            .checked_mul(10u128.pow(combined_exp as u32))
+            .ok_or(TreasuryError::ArithmeticOverflow)?
+            .checked_div(payout_p)
+            .ok_or(TreasuryError::ArithmeticOverflow)?
+    } else {
+        let denom = payout_p
+            .checked_mul(10u128.pow((-combined_exp) as u32))
+            .ok_or(TreasuryError::ArithmeticOverflow)?;
+        numerator
+            .checked_div(denom)
+            .ok_or(TreasuryError::ArithmeticOverflow)?
+    };
+
+    let min_out = ideal
+        .checked_mul((BPS_DENOM - slippage_bps) as u128)
+        .ok_or(TreasuryError::ArithmeticOverflow)?
+        / BPS_DENOM as u128;
+
+    u64::try_from(min_out).map_err(|_| error!(TreasuryError::ArithmeticOverflow))
+}
+
+pub fn normalize_to_base_units(
+    raw_amount: u64,
+    oracle: &OraclePrice,
+    mint_decimals: u8,
+) -> Result<u64> {
+    let price = oracle.price as u128;
+    let combined_exp =
+        (oracle.exponent as i64) + (BASE_DECIMALS as i64) - (mint_decimals as i64);
+
+    let numerator = (raw_amount as u128)
+        .checked_mul(price)
+        .ok_or(TreasuryError::ArithmeticOverflow)?;
+
+    let result = if combined_exp >= 0 {
+        numerator
+            .checked_mul(10u128.pow(combined_exp as u32))
+            .ok_or(TreasuryError::ArithmeticOverflow)?
+    } else {
+        numerator / 10u128.pow((-combined_exp) as u32)
+    };
+
+    u64::try_from(result).map_err(|_| error!(TreasuryError::ArithmeticOverflow))
 }
 
 // AGENT-CPI-STUB — real implementation reads AgentRegistry::AgentAccount

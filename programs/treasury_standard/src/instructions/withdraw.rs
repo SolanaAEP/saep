@@ -4,7 +4,10 @@ use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use crate::errors::TreasuryError;
 use crate::events::TreasuryWithdraw;
-use crate::state::{apply_rollover, AgentTreasury, TreasuryGlobal};
+use crate::state::{
+    apply_rollover, guard_oracle, normalize_to_base_units, read_oracle, AgentTreasury,
+    TreasuryGlobal,
+};
 
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
@@ -32,6 +35,10 @@ pub struct Withdraw<'info> {
     #[account(mut, token::mint = mint, token::token_program = token_program)]
     pub destination: InterfaceAccount<'info, TokenAccount>,
 
+    /// CHECK: Pyth PriceUpdateV2 for mint/USD — deserialized + validated via read_oracle.
+    /// Required for non-USDC mints to normalize spend against 6-decimal limits.
+    pub price_feed: Option<UncheckedAccount<'info>>,
+
     pub operator: Signer<'info>,
     pub token_program: Program<'info, Token2022>,
 }
@@ -44,19 +51,29 @@ pub fn handler(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
         TreasuryError::InsufficientVault
     );
 
-    let now = Clock::get()?.unix_timestamp;
+    let clock = Clock::get()?;
+    let now = clock.unix_timestamp;
     let t = &mut ctx.accounts.treasury;
     apply_rollover(t, now);
 
-    require!(amount <= t.per_tx_limit, TreasuryError::LimitExceeded);
+    let normalized = match &ctx.accounts.price_feed {
+        Some(feed) => {
+            let oracle = read_oracle(&feed.to_account_info(), &clock)?;
+            guard_oracle(&oracle)?;
+            normalize_to_base_units(amount, &oracle, ctx.accounts.mint.decimals)?
+        }
+        None => amount,
+    };
+
+    require!(normalized <= t.per_tx_limit, TreasuryError::LimitExceeded);
     let new_daily = t
         .spent_today
-        .checked_add(amount)
+        .checked_add(normalized)
         .ok_or(TreasuryError::ArithmeticOverflow)?;
     require!(new_daily <= t.daily_spend_limit, TreasuryError::LimitExceeded);
     let new_weekly = t
         .spent_this_week
-        .checked_add(amount)
+        .checked_add(normalized)
         .ok_or(TreasuryError::ArithmeticOverflow)?;
     require!(new_weekly <= t.weekly_limit, TreasuryError::LimitExceeded);
 
@@ -90,6 +107,7 @@ pub fn handler(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
         agent_did,
         mint: mint_key,
         amount,
+        normalized_amount: normalized,
         destination: ctx.accounts.destination.key(),
         timestamp: now,
     });

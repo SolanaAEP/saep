@@ -6,8 +6,8 @@ use crate::errors::TreasuryError;
 use crate::events::{StreamWithdrawn, SwapExecuted};
 use crate::jupiter;
 use crate::state::{
-    guard_oracle, read_price, AgentTreasury, PaymentStream, StreamStatus,
-    TreasuryGlobal, BPS_DENOM, DEFAULT_SLIPPAGE_BPS,
+    compute_swap_min_out, guard_oracle, read_oracle, AgentTreasury, PaymentStream,
+    StreamStatus, TreasuryGlobal, DEFAULT_SLIPPAGE_BPS,
 };
 
 #[derive(Accounts)]
@@ -51,6 +51,11 @@ pub struct WithdrawEarned<'info> {
     /// CHECK: validated at runtime when swap path is taken
     pub jupiter_program: UncheckedAccount<'info>,
 
+    /// CHECK: Pyth PriceUpdateV2 for payer_mint/USD — deserialized + validated via read_oracle
+    pub payer_price_feed: Option<UncheckedAccount<'info>>,
+    /// CHECK: Pyth PriceUpdateV2 for payout_mint/USD — deserialized + validated via read_oracle
+    pub payout_price_feed: Option<UncheckedAccount<'info>>,
+
     pub operator: Signer<'info>,
     pub token_program: Program<'info, Token2022>,
 }
@@ -58,7 +63,8 @@ pub struct WithdrawEarned<'info> {
 pub fn handler<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) -> Result<()> {
     require!(!ctx.accounts.global.paused, TreasuryError::Paused);
 
-    let now = Clock::get()?.unix_timestamp;
+    let clock = Clock::get()?;
+    let now = clock.unix_timestamp;
     let s = &mut ctx.accounts.stream;
     require!(s.status == StreamStatus::Active, TreasuryError::StreamNotActive);
     require!(now > s.start_time, TreasuryError::InvalidDuration);
@@ -105,16 +111,30 @@ pub fn handler<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) ->
         );
         require!(jup.executable, TreasuryError::InvalidJupiterProgram);
 
-        let price = read_price(&ctx.accounts.payer_mint.key(), &ctx.accounts.payout_mint.key())?;
-        guard_oracle(&price)?;
+        let payer_feed = ctx
+            .accounts
+            .payer_price_feed
+            .as_ref()
+            .ok_or(error!(TreasuryError::OracleRequired))?;
+        let payout_feed = ctx
+            .accounts
+            .payout_price_feed
+            .as_ref()
+            .ok_or(error!(TreasuryError::OracleRequired))?;
 
-        let ideal = claimable
-            .checked_mul(price.price)
-            .ok_or(TreasuryError::ArithmeticOverflow)?;
-        let min_out = ideal
-            .checked_mul(BPS_DENOM - DEFAULT_SLIPPAGE_BPS)
-            .ok_or(TreasuryError::ArithmeticOverflow)?
-            / BPS_DENOM;
+        let payer_oracle = read_oracle(&payer_feed.to_account_info(), &clock)?;
+        guard_oracle(&payer_oracle)?;
+        let payout_oracle = read_oracle(&payout_feed.to_account_info(), &clock)?;
+        guard_oracle(&payout_oracle)?;
+
+        let min_out = compute_swap_min_out(
+            claimable,
+            &payer_oracle,
+            &payout_oracle,
+            ctx.accounts.payer_mint.decimals,
+            ctx.accounts.payout_mint.decimals,
+            DEFAULT_SLIPPAGE_BPS,
+        )?;
 
         let escrow_before = ctx.accounts.escrow.amount;
         let vault_before = ctx.accounts.agent_vault.amount;
