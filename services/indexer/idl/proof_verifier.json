@@ -1,0 +1,1257 @@
+{
+  "address": "DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe",
+  "metadata": {
+    "name": "proof_verifier",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "SAEP proof_verifier program (stub)"
+  },
+  "instructions": [
+    {
+      "name": "accept_authority",
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "batch_verify_stub",
+      "discriminator": [
+        158,
+        83,
+        194,
+        189,
+        137,
+        56,
+        126,
+        229
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_vk_activation",
+      "discriminator": [
+        16,
+        60,
+        214,
+        63,
+        223,
+        81,
+        171,
+        232
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "execute_vk_activation",
+      "discriminator": [
+        74,
+        212,
+        229,
+        200,
+        41,
+        188,
+        71,
+        198
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vk.vk_id",
+                "account": "VerifierKey"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_config",
+      "discriminator": [
+        23,
+        235,
+        115,
+        232,
+        168,
+        96,
+        1,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mode",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  111,
+                  100,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "authority",
+          "type": "pubkey"
+        },
+        {
+          "name": "is_mainnet",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "propose_vk_activation",
+      "discriminator": [
+        233,
+        195,
+        204,
+        114,
+        237,
+        202,
+        226,
+        208
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vk.vk_id",
+                "account": "VerifierKey"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mode",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  111,
+                  100,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "register_vk",
+      "discriminator": [
+        248,
+        1,
+        135,
+        102,
+        153,
+        191,
+        170,
+        30
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "vk_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "vk_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "alpha_g1",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "beta_g2",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "gamma_g2",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "delta_g2",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "ic",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        },
+        {
+          "name": "num_public_inputs",
+          "type": "u8"
+        },
+        {
+          "name": "circuit_label",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "is_production",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "set_paused",
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "transfer_authority",
+      "discriminator": [
+        48,
+        169,
+        76,
+        72,
+        229,
+        180,
+        55,
+        161
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "verify_proof",
+      "discriminator": [
+        217,
+        211,
+        191,
+        110,
+        144,
+        13,
+        186,
+        98
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vk.vk_id",
+                "account": "VerifierKey"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mode",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  111,
+                  100,
+                  101
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "proof_a",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "proof_b",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "proof_c",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "public_inputs",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "GlobalMode",
+      "discriminator": [
+        58,
+        46,
+        119,
+        87,
+        28,
+        120,
+        139,
+        192
+      ]
+    },
+    {
+      "name": "VerifierConfig",
+      "discriminator": [
+        176,
+        103,
+        248,
+        36,
+        138,
+        167,
+        176,
+        220
+      ]
+    },
+    {
+      "name": "VerifierKey",
+      "discriminator": [
+        27,
+        40,
+        233,
+        33,
+        249,
+        246,
+        9,
+        239
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AuthorityTransferAccepted",
+      "discriminator": [
+        149,
+        165,
+        140,
+        221,
+        104,
+        203,
+        239,
+        121
+      ]
+    },
+    {
+      "name": "AuthorityTransferProposed",
+      "discriminator": [
+        103,
+        244,
+        27,
+        116,
+        177,
+        4,
+        100,
+        119
+      ]
+    },
+    {
+      "name": "PausedSet",
+      "discriminator": [
+        171,
+        125,
+        127,
+        156,
+        233,
+        81,
+        68,
+        66
+      ]
+    },
+    {
+      "name": "VerifierInitialized",
+      "discriminator": [
+        30,
+        145,
+        238,
+        29,
+        211,
+        34,
+        68,
+        235
+      ]
+    },
+    {
+      "name": "VkActivated",
+      "discriminator": [
+        151,
+        10,
+        80,
+        204,
+        179,
+        104,
+        104,
+        236
+      ]
+    },
+    {
+      "name": "VkActivationCancelled",
+      "discriminator": [
+        29,
+        11,
+        195,
+        12,
+        165,
+        32,
+        248,
+        88
+      ]
+    },
+    {
+      "name": "VkActivationProposed",
+      "discriminator": [
+        43,
+        228,
+        190,
+        163,
+        1,
+        228,
+        47,
+        168
+      ]
+    },
+    {
+      "name": "VkRegistered",
+      "discriminator": [
+        78,
+        137,
+        114,
+        30,
+        138,
+        75,
+        201,
+        7
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "signer is not the verifier authority"
+    },
+    {
+      "code": 6001,
+      "name": "Paused",
+      "msg": "verifier is paused"
+    },
+    {
+      "code": 6002,
+      "name": "VkAlreadyExists",
+      "msg": "verifying key already exists"
+    },
+    {
+      "code": 6003,
+      "name": "VkNotFound",
+      "msg": "verifying key not found"
+    },
+    {
+      "code": 6004,
+      "name": "VkMismatch",
+      "msg": "provided verifying key does not match active vk"
+    },
+    {
+      "code": 6005,
+      "name": "PublicInputCountMismatch",
+      "msg": "public input count does not match verifying key"
+    },
+    {
+      "code": 6006,
+      "name": "PublicInputOutOfField",
+      "msg": "public input exceeds bn254 scalar field modulus"
+    },
+    {
+      "code": 6007,
+      "name": "ProofMalformed",
+      "msg": "proof bytes failed curve deserialization"
+    },
+    {
+      "code": 6008,
+      "name": "ProofInvalid",
+      "msg": "pairing check failed"
+    },
+    {
+      "code": 6009,
+      "name": "TimelockNotElapsed",
+      "msg": "timelock has not elapsed"
+    },
+    {
+      "code": 6010,
+      "name": "NoPendingActivation",
+      "msg": "no pending vk activation"
+    },
+    {
+      "code": 6011,
+      "name": "ActivationPending",
+      "msg": "a vk activation is already pending"
+    },
+    {
+      "code": 6012,
+      "name": "NotProductionVk",
+      "msg": "non-production vk cannot be activated in mainnet mode"
+    },
+    {
+      "code": 6013,
+      "name": "IcLengthMismatch",
+      "msg": "ic length must equal num_public_inputs + 1"
+    },
+    {
+      "code": 6014,
+      "name": "TooManyPublicInputs",
+      "msg": "num_public_inputs exceeds m1 cap of 16"
+    },
+    {
+      "code": 6015,
+      "name": "NoPendingAuthority",
+      "msg": "no pending authority to accept"
+    },
+    {
+      "code": 6016,
+      "name": "NotImplemented",
+      "msg": "not implemented in m1"
+    }
+  ],
+  "types": [
+    {
+      "name": "AuthorityTransferAccepted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityTransferProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pending",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GlobalMode",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "is_mainnet",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PausedSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifierConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "active_vk",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_vk",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "pending_activates_at",
+            "type": "i64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifierInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifierKey",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vk_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "alpha_g1",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "beta_g2",
+            "type": {
+              "array": [
+                "u8",
+                128
+              ]
+            }
+          },
+          {
+            "name": "gamma_g2",
+            "type": {
+              "array": [
+                "u8",
+                128
+              ]
+            }
+          },
+          {
+            "name": "delta_g2",
+            "type": {
+              "array": [
+                "u8",
+                128
+              ]
+            }
+          },
+          {
+            "name": "ic",
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  64
+                ]
+              }
+            }
+          },
+          {
+            "name": "num_public_inputs",
+            "type": "u8"
+          },
+          {
+            "name": "circuit_label",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "is_production",
+            "type": "bool"
+          },
+          {
+            "name": "registered_at",
+            "type": "i64"
+          },
+          {
+            "name": "registered_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VkActivated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vk_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "VkActivationCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vk_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "VkActivationProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vk_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "activates_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VkRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vk_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "circuit_label",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "is_production",
+            "type": "bool"
+          }
+        ]
+      }
+    }
+  ]
+}

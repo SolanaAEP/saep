@@ -1,0 +1,2785 @@
+{
+  "address": "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w",
+  "metadata": {
+    "name": "task_market",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "SAEP task_market program"
+  },
+  "instructions": [
+    {
+      "name": "accept_authority",
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_unfunded_task",
+      "discriminator": [
+        193,
+        14,
+        137,
+        66,
+        7,
+        191,
+        162,
+        99
+      ],
+      "accounts": [
+        {
+          "name": "task",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "TaskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "TaskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "client",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "task"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_task",
+      "discriminator": [
+        194,
+        80,
+        6,
+        180,
+        232,
+        127,
+        48,
+        171
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "task",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "client"
+              },
+              {
+                "kind": "arg",
+                "path": "task_nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "client",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "agent_registry_program",
+          "address": "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
+        },
+        {
+          "name": "registry_global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "agent_registry_program"
+            }
+          }
+        },
+        {
+          "name": "agent_account",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent_account.operator",
+                "account": "AgentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent_account.agent_id",
+                "account": "AgentAccount"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "agent_registry_program"
+            }
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "task_nonce",
+          "type": {
+            "array": [
+              "u8",
+              8
+            ]
+          }
+        },
+        {
+          "name": "agent_did",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "payment_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "payment_amount",
+          "type": "u64"
+        },
+        {
+          "name": "task_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "criteria_root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "deadline",
+          "type": "i64"
+        },
+        {
+          "name": "milestone_count",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "expire",
+      "discriminator": [
+        243,
+        83,
+        205,
+        58,
+        57,
+        201,
+        247,
+        146
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "task",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "TaskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "TaskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment_mint"
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task"
+              }
+            ]
+          }
+        },
+        {
+          "name": "client_token_account",
+          "writable": true
+        },
+        {
+          "name": "client"
+        },
+        {
+          "name": "agent_registry_program",
+          "address": "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
+        },
+        {
+          "name": "registry_global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "agent_registry_program"
+            }
+          }
+        },
+        {
+          "name": "agent_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent_account.operator",
+                "account": "AgentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent_account.agent_id",
+                "account": "AgentAccount"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "agent_registry_program"
+            }
+          }
+        },
+        {
+          "name": "self_program",
+          "address": "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w"
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "fund_task",
+      "discriminator": [
+        188,
+        87,
+        71,
+        120,
+        11,
+        238,
+        84,
+        232
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "task",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "TaskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "TaskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment_mint"
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task"
+              }
+            ]
+          }
+        },
+        {
+          "name": "client_token_account",
+          "writable": true
+        },
+        {
+          "name": "client",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "task"
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_global",
+      "discriminator": [
+        44,
+        238,
+        77,
+        253,
+        76,
+        182,
+        192,
+        162
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "authority",
+          "type": "pubkey"
+        },
+        {
+          "name": "agent_registry",
+          "type": "pubkey"
+        },
+        {
+          "name": "treasury_standard",
+          "type": "pubkey"
+        },
+        {
+          "name": "proof_verifier",
+          "type": "pubkey"
+        },
+        {
+          "name": "fee_collector",
+          "type": "pubkey"
+        },
+        {
+          "name": "solrep_pool",
+          "type": "pubkey"
+        },
+        {
+          "name": "protocol_fee_bps",
+          "type": "u16"
+        },
+        {
+          "name": "solrep_fee_bps",
+          "type": "u16"
+        },
+        {
+          "name": "dispute_window_secs",
+          "type": "i64"
+        },
+        {
+          "name": "max_deadline_secs",
+          "type": "i64"
+        },
+        {
+          "name": "allowed_payment_mints",
+          "type": {
+            "array": [
+              "pubkey",
+              8
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "raise_dispute",
+      "discriminator": [
+        41,
+        243,
+        1,
+        51,
+        150,
+        95,
+        246,
+        73
+      ],
+      "accounts": [
+        {
+          "name": "task",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "TaskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "TaskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "client",
+          "signer": true,
+          "relations": [
+            "task"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "release",
+      "discriminator": [
+        253,
+        249,
+        15,
+        206,
+        28,
+        127,
+        193,
+        241
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "task",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "TaskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "TaskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment_mint"
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task"
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent_token_account",
+          "writable": true
+        },
+        {
+          "name": "fee_collector_token_account",
+          "writable": true
+        },
+        {
+          "name": "solrep_pool_token_account",
+          "writable": true
+        },
+        {
+          "name": "agent_registry_program",
+          "address": "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
+        },
+        {
+          "name": "registry_global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "agent_registry_program"
+            }
+          }
+        },
+        {
+          "name": "agent_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent_account.operator",
+                "account": "AgentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent_account.agent_id",
+                "account": "AgentAccount"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "agent_registry_program"
+            }
+          }
+        },
+        {
+          "name": "self_program",
+          "address": "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w"
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_allowed_mint",
+      "discriminator": [
+        188,
+        9,
+        189,
+        141,
+        102,
+        91,
+        227,
+        254
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "slot",
+          "type": "u8"
+        },
+        {
+          "name": "mint",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "set_fees",
+      "discriminator": [
+        137,
+        178,
+        49,
+        58,
+        0,
+        245,
+        242,
+        190
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "protocol_fee_bps",
+          "type": "u16"
+        },
+        {
+          "name": "solrep_fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "set_paused",
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "submit_result",
+      "discriminator": [
+        240,
+        42,
+        89,
+        180,
+        10,
+        239,
+        9,
+        214
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "task",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "TaskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "TaskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true
+        },
+        {
+          "name": "agent_registry_program",
+          "address": "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
+        },
+        {
+          "name": "agent_account",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent_account.operator",
+                "account": "AgentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent_account.agent_id",
+                "account": "AgentAccount"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "agent_registry_program"
+            }
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "result_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "proof_key",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "transfer_authority",
+      "discriminator": [
+        48,
+        169,
+        76,
+        72,
+        229,
+        180,
+        55,
+        161
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "verify_task",
+      "discriminator": [
+        175,
+        152,
+        172,
+        204,
+        64,
+        126,
+        201,
+        206
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "task",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "TaskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "TaskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proof_verifier_program",
+          "address": "DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe"
+        },
+        {
+          "name": "verifier_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "proof_verifier_program"
+            }
+          }
+        },
+        {
+          "name": "verifier_key",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "verifier_key.vk_id",
+                "account": "VerifierKey"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "proof_verifier_program"
+            }
+          }
+        },
+        {
+          "name": "verifier_mode",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  111,
+                  100,
+                  101
+                ]
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "proof_verifier_program"
+            }
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "proof_a",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "proof_b",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "proof_c",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "MarketGlobal",
+      "discriminator": [
+        224,
+        186,
+        155,
+        178,
+        152,
+        159,
+        92,
+        240
+      ]
+    },
+    {
+      "name": "TaskContract",
+      "discriminator": [
+        71,
+        7,
+        90,
+        25,
+        16,
+        89,
+        88,
+        254
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "DisputeRaised",
+      "discriminator": [
+        246,
+        167,
+        109,
+        37,
+        142,
+        45,
+        38,
+        176
+      ]
+    },
+    {
+      "name": "GlobalInitialized",
+      "discriminator": [
+        142,
+        186,
+        188,
+        168,
+        64,
+        228,
+        8,
+        20
+      ]
+    },
+    {
+      "name": "GlobalParamsUpdated",
+      "discriminator": [
+        212,
+        96,
+        46,
+        152,
+        150,
+        242,
+        177,
+        48
+      ]
+    },
+    {
+      "name": "PausedSet",
+      "discriminator": [
+        171,
+        125,
+        127,
+        156,
+        233,
+        81,
+        68,
+        66
+      ]
+    },
+    {
+      "name": "ResultSubmitted",
+      "discriminator": [
+        156,
+        153,
+        163,
+        89,
+        245,
+        144,
+        63,
+        94
+      ]
+    },
+    {
+      "name": "TaskCancelled",
+      "discriminator": [
+        158,
+        101,
+        220,
+        187,
+        16,
+        141,
+        141,
+        64
+      ]
+    },
+    {
+      "name": "TaskCreated",
+      "discriminator": [
+        49,
+        174,
+        6,
+        7,
+        71,
+        159,
+        69,
+        175
+      ]
+    },
+    {
+      "name": "TaskExpired",
+      "discriminator": [
+        36,
+        130,
+        189,
+        154,
+        110,
+        249,
+        231,
+        45
+      ]
+    },
+    {
+      "name": "TaskFunded",
+      "discriminator": [
+        215,
+        0,
+        224,
+        16,
+        151,
+        4,
+        3,
+        195
+      ]
+    },
+    {
+      "name": "TaskReleased",
+      "discriminator": [
+        206,
+        87,
+        144,
+        39,
+        45,
+        254,
+        186,
+        247
+      ]
+    },
+    {
+      "name": "TaskVerified",
+      "discriminator": [
+        8,
+        131,
+        95,
+        118,
+        38,
+        42,
+        132,
+        106
+      ]
+    },
+    {
+      "name": "VerificationFailed",
+      "discriminator": [
+        244,
+        93,
+        101,
+        3,
+        8,
+        187,
+        51,
+        199
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "signer is not authorized for this instruction"
+    },
+    {
+      "code": 6001,
+      "name": "Paused",
+      "msg": "market is paused"
+    },
+    {
+      "code": 6002,
+      "name": "MintNotAllowed",
+      "msg": "payment mint is not allowed"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidAmount",
+      "msg": "payment amount must be positive"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidDeadline",
+      "msg": "deadline must be in the future"
+    },
+    {
+      "code": 6005,
+      "name": "DeadlineTooFar",
+      "msg": "deadline exceeds max_deadline_secs"
+    },
+    {
+      "code": 6006,
+      "name": "AgentNotActive",
+      "msg": "agent is not active"
+    },
+    {
+      "code": 6007,
+      "name": "WrongStatus",
+      "msg": "task is in the wrong status for this instruction"
+    },
+    {
+      "code": 6008,
+      "name": "DeadlinePassed",
+      "msg": "deadline has passed"
+    },
+    {
+      "code": 6009,
+      "name": "DisputeWindowClosed",
+      "msg": "dispute window has closed"
+    },
+    {
+      "code": 6010,
+      "name": "DisputeWindowOpen",
+      "msg": "dispute window is still open"
+    },
+    {
+      "code": 6011,
+      "name": "NotExpired",
+      "msg": "task is not yet expired"
+    },
+    {
+      "code": 6012,
+      "name": "EscrowMismatch",
+      "msg": "escrow balance mismatch"
+    },
+    {
+      "code": 6013,
+      "name": "ArithmeticOverflow",
+      "msg": "arithmetic overflow"
+    },
+    {
+      "code": 6014,
+      "name": "ProofInvalid",
+      "msg": "proof verification failed"
+    },
+    {
+      "code": 6015,
+      "name": "CallerNotOperator",
+      "msg": "signer is not the operator of the assigned agent"
+    },
+    {
+      "code": 6016,
+      "name": "TaskNotFound",
+      "msg": "task not found"
+    },
+    {
+      "code": 6017,
+      "name": "FeeBoundExceeded",
+      "msg": "fee bps exceeds bound"
+    },
+    {
+      "code": 6018,
+      "name": "TooManyMilestones",
+      "msg": "milestone_count exceeds maximum"
+    },
+    {
+      "code": 6019,
+      "name": "NoPendingAuthority",
+      "msg": "no pending authority to accept"
+    },
+    {
+      "code": 6020,
+      "name": "GraceNotElapsed",
+      "msg": "grace period has not elapsed"
+    },
+    {
+      "code": 6021,
+      "name": "ZeroResultHash",
+      "msg": "result hash must be non-zero"
+    },
+    {
+      "code": 6022,
+      "name": "AgentMismatch",
+      "msg": "agent DID does not match task assignment"
+    },
+    {
+      "code": 6023,
+      "name": "OutcomeCpiFailed",
+      "msg": "agent registry CPI failed"
+    },
+    {
+      "code": 6024,
+      "name": "InsufficientStake",
+      "msg": "agent stake below required minimum"
+    }
+  ],
+  "types": [
+    {
+      "name": "AgentAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "did",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "manifest_uri",
+            "type": {
+              "array": [
+                "u8",
+                128
+              ]
+            }
+          },
+          {
+            "name": "capability_mask",
+            "type": "u128"
+          },
+          {
+            "name": "price_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "stream_rate",
+            "type": "u64"
+          },
+          {
+            "name": "reputation",
+            "type": {
+              "defined": {
+                "name": "ReputationScore"
+              }
+            }
+          },
+          {
+            "name": "jobs_completed",
+            "type": "u64"
+          },
+          {
+            "name": "jobs_disputed",
+            "type": "u32"
+          },
+          {
+            "name": "stake_amount",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "AgentStatus"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "type": "u32"
+          },
+          {
+            "name": "registered_at",
+            "type": "i64"
+          },
+          {
+            "name": "last_active",
+            "type": "i64"
+          },
+          {
+            "name": "delegate",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "pending_slash",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "PendingSlash"
+                }
+              }
+            }
+          },
+          {
+            "name": "pending_withdrawal",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "PendingWithdrawal"
+                }
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vault_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AgentStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Paused"
+          },
+          {
+            "name": "Suspended"
+          },
+          {
+            "name": "Deregistered"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeRaised",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "task_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "client",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GlobalInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent_registry",
+            "type": "pubkey"
+          },
+          {
+            "name": "proof_verifier",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_collector",
+            "type": "pubkey"
+          },
+          {
+            "name": "solrep_pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GlobalMode",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "is_mainnet",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GlobalParamsUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketGlobal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "agent_registry",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury_standard",
+            "type": "pubkey"
+          },
+          {
+            "name": "proof_verifier",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_collector",
+            "type": "pubkey"
+          },
+          {
+            "name": "solrep_pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "solrep_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "dispute_window_secs",
+            "type": "i64"
+          },
+          {
+            "name": "max_deadline_secs",
+            "type": "i64"
+          },
+          {
+            "name": "allowed_payment_mints",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PausedSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PendingSlash",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "reason_code",
+            "type": "u16"
+          },
+          {
+            "name": "proposed_at",
+            "type": "i64"
+          },
+          {
+            "name": "executable_at",
+            "type": "i64"
+          },
+          {
+            "name": "proposer",
+            "type": "pubkey"
+          },
+          {
+            "name": "appeal_pending",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PendingWithdrawal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "requested_at",
+            "type": "i64"
+          },
+          {
+            "name": "executable_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RegistryGlobal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "capability_registry",
+            "type": "pubkey"
+          },
+          {
+            "name": "task_market",
+            "type": "pubkey"
+          },
+          {
+            "name": "dispute_arbitration",
+            "type": "pubkey"
+          },
+          {
+            "name": "slashing_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "stake_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_stake",
+            "type": "u64"
+          },
+          {
+            "name": "max_slash_bps",
+            "type": "u16"
+          },
+          {
+            "name": "slash_timelock_secs",
+            "type": "i64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReputationScore",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quality",
+            "type": "u16"
+          },
+          {
+            "name": "timeliness",
+            "type": "u16"
+          },
+          {
+            "name": "availability",
+            "type": "u16"
+          },
+          {
+            "name": "cost_efficiency",
+            "type": "u16"
+          },
+          {
+            "name": "honesty",
+            "type": "u16"
+          },
+          {
+            "name": "volume",
+            "type": "u16"
+          },
+          {
+            "name": "ewma_alpha_bps",
+            "type": "u16"
+          },
+          {
+            "name": "sample_count",
+            "type": "u32"
+          },
+          {
+            "name": "last_update",
+            "type": "i64"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                24
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ResultSubmitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "task_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "result_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "proof_key",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "submitted_at",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TaskCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "task_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TaskContract",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "task_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "client",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent_did",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "task_nonce",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "payment_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "payment_amount",
+            "type": "u64"
+          },
+          {
+            "name": "protocol_fee",
+            "type": "u64"
+          },
+          {
+            "name": "solrep_fee",
+            "type": "u64"
+          },
+          {
+            "name": "task_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "result_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "proof_key",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "criteria_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "milestone_count",
+            "type": "u8"
+          },
+          {
+            "name": "milestones_complete",
+            "type": "u8"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "TaskStatus"
+              }
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "funded_at",
+            "type": "i64"
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          },
+          {
+            "name": "submitted_at",
+            "type": "i64"
+          },
+          {
+            "name": "dispute_window_end",
+            "type": "i64"
+          },
+          {
+            "name": "verified",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "escrow_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TaskCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "task_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "client",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent_did",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "payment_amount",
+            "type": "u64"
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TaskExpired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "task_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "refund_amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TaskFunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "task_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TaskReleased",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "task_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "agent_payout",
+            "type": "u64"
+          },
+          {
+            "name": "protocol_fee",
+            "type": "u64"
+          },
+          {
+            "name": "solrep_fee",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TaskStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Created"
+          },
+          {
+            "name": "Funded"
+          },
+          {
+            "name": "InExecution"
+          },
+          {
+            "name": "ProofSubmitted"
+          },
+          {
+            "name": "Verified"
+          },
+          {
+            "name": "Released"
+          },
+          {
+            "name": "Expired"
+          },
+          {
+            "name": "Disputed"
+          },
+          {
+            "name": "Resolved"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TaskVerified",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "task_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "dispute_window_end",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerificationFailed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "task_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifierConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "active_vk",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_vk",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "pending_activates_at",
+            "type": "i64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifierKey",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vk_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "alpha_g1",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "beta_g2",
+            "type": {
+              "array": [
+                "u8",
+                128
+              ]
+            }
+          },
+          {
+            "name": "gamma_g2",
+            "type": {
+              "array": [
+                "u8",
+                128
+              ]
+            }
+          },
+          {
+            "name": "delta_g2",
+            "type": {
+              "array": [
+                "u8",
+                128
+              ]
+            }
+          },
+          {
+            "name": "ic",
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  64
+                ]
+              }
+            }
+          },
+          {
+            "name": "num_public_inputs",
+            "type": "u8"
+          },
+          {
+            "name": "circuit_label",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "is_production",
+            "type": "bool"
+          },
+          {
+            "name": "registered_at",
+            "type": "i64"
+          },
+          {
+            "name": "registered_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}

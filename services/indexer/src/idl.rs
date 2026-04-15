@@ -129,9 +129,16 @@ pub fn event_discriminator(name: &str) -> [u8; 8] {
 }
 
 pub fn default_idl_path() -> PathBuf {
-    std::env::var("SAEP_IDL_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("../../target/idl"))
+    if let Ok(p) = std::env::var("SAEP_IDL_DIR") {
+        return PathBuf::from(p);
+    }
+    // Committed copy inside the crate (used by docker builds and CI).
+    let local = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("idl");
+    if local.exists() {
+        return local;
+    }
+    // Fallback to anchor workspace output for local dev.
+    PathBuf::from("../../target/idl")
 }
 
 #[cfg(test)]
