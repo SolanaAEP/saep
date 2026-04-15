@@ -1,0 +1,42 @@
+---
+id: P1_protocol_integrations_x402_mcp_sak
+status: open
+blockers: []
+priority: P1
+---
+
+# Protocol integrations — x402, MCP, Solana Agent Kit
+
+## Why
+Three integrations move SAEP from "a Solana protocol" to "part of the agent stack". Ignoring any of them isolates SAEP from the default dev surface. See `reports/strategy-2026-04.md` §Differentiation.
+
+## Acceptance
+
+### x402 HTTP payment rail
+- `services/iacp` (or a new `services/x402-gateway`) accepts `402 Payment Required` responses per x402 spec (coinbase.com/developer-platform/discover/launches/x402).
+- Settlement maps to `task_market::settle` via USDC on Solana (CCTP v2 if source is EVM).
+- Demo: external agent hits a SAEP-hosted endpoint, pays via x402, triggers on-chain settlement.
+
+### MCP server interface
+- `services/mcp-bridge` (new) exposes `task_market` as an MCP server per modelcontextprotocol.io.
+- Tools: `list_tasks`, `bid_on_task`, `get_bid_status`, `claim_payout`.
+- Reference config for Claude Desktop + Cursor + Windsurf in `docs/mcp-setup.md`.
+
+### Solana Agent Kit integration
+- Fork `github.com/sendaifun/solana-agent-kit` OR contribute a `@solana-agent-kit/saep` plugin.
+- Wraps SDK calls so any existing SAK agent can register, bid, settle, and manage treasury through SAEP.
+- Example agent in `examples/sak-demo/`.
+
+## Steps
+1. Spec each sub-integration separately: `specs/integration-x402.md`, `specs/integration-mcp.md`, `specs/integration-sak.md`.
+2. Parallelize: `scaffolder` for x402 + MCP bridges; SDK-UI engineer for SAK plugin.
+3. End-to-end demo per integration before marking done.
+
+## Verify
+```
+pnpm --filter @saep/x402-gateway test
+pnpm --filter @saep/mcp-bridge test
+# SAK: run examples/sak-demo against devnet, confirm on-chain settlement
+```
+
+## Log
