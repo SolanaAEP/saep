@@ -1,0 +1,32 @@
+databases:
+  - name: saep-indexer-db
+    plan: basic-256mb
+    region: frankfurt
+    postgresMajorVersion: "16"
+
+services:
+  - type: worker
+    name: saep-indexer
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: services/indexer/Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: saep-indexer-db
+          property: connectionString
+      - key: SOLANA_CLUSTER
+        value: devnet
+      - key: HELIUS_API_KEY
+        sync: false
+      - key: POLL_INTERVAL_MS
+        value: "2000"
+      - key: RPC_PAGE_LIMIT
+        value: "200"
+      - key: HEALTHCHECK_PORT
+        value: "8080"
+      - key: RUST_LOG
+        value: info,saep_indexer=debug

@@ -1,14 +1,18 @@
 # saep-indexer
 
-Rust service. Subscribes to a Yellowstone gRPC endpoint, filters for SAEP program transactions, and persists block metadata + decoded program events to Postgres. Reorg-aware.
+Rust service. Polls Solana RPC (via Helius) for transactions touching SAEP program IDs, decodes Anchor `emit_cpi!` events against committed IDLs, and persists them to Postgres.
 
-Crate is kept out of the root `programs/*` Anchor workspace on purpose — Anchor pins a specific Solana toolchain whereas the indexer wants modern stable Rust and unrestricted dependency versions. `Cargo.toml` declares its own `[workspace]`.
+Kept out of the root `programs/*` Anchor workspace on purpose — Anchor pins a specific Solana toolchain whereas the indexer wants modern stable Rust and unrestricted dependency versions. `Cargo.toml` declares its own `[workspace]`.
+
+## Why polling, not Yellowstone
+
+The backend spec assumes Yellowstone gRPC. Helius Laserstream (their Yellowstone surface) starts at $499/mo. For M1 on devnet with low TPS this is massive overkill. The poller uses free-tier `getSignaturesForAddress` + `getTransaction`, writes a per-program cursor to Postgres, and keeps the IDL registry / decode / schema layer intact. Swap to Yellowstone later by replacing `src/poller.rs` — everything downstream stays.
 
 ## Quick start
 
 ```sh
 cp .env.example .env
-# edit DATABASE_URL + YELLOWSTONE_ENDPOINT + YELLOWSTONE_X_TOKEN
+# set HELIUS_API_KEY and DATABASE_URL
 
 cargo install diesel_cli --no-default-features --features postgres
 diesel migration run
@@ -16,42 +20,51 @@ diesel migration run
 cargo run -p saep-indexer
 ```
 
-Health probe: `curl localhost:8080/healthz`.
+On macOS the link step needs `libpq`:
 
-## Against Helius
+```sh
+brew install libpq
+export LIBRARY_PATH="/opt/homebrew/opt/libpq/lib"
+```
 
-Helius exposes Yellowstone at `https://<region>.helius-rpc.com` with the API key passed as the `x-token` gRPC metadata header. Set `YELLOWSTONE_ENDPOINT` to the https URL and `YELLOWSTONE_X_TOKEN` to the key. The subscription filters transactions where any of the 8 SAEP program IDs (see `src/programs.rs`) appear in the account list, at `Confirmed` commitment.
+Health: `curl localhost:8080/healthz` · Metrics: `curl localhost:8080/metrics`.
 
-## What's wired
+## Config
 
-- Yellowstone connection + subscribe request for the 8 SAEP program IDs.
-- Block meta + transaction update handling (dispatch only; see stubs).
-- Diesel schema + initial migration for `blocks`, `program_events`, `reorg_log`.
-- r2d2 connection pool.
-- Axum health endpoint on `HEALTHCHECK_PORT`.
-- Config loader from `.env` via `dotenvy`.
-- IDL event-discriminator registry (`src/idl.rs`) — loaded at startup from `target/idl/*.json`; maps `(program_id, 8-byte discriminator)` → event name + field schema.
+| Env | Default | Notes |
+|---|---|---|
+| `DATABASE_URL` | — | Postgres DSN |
+| `HELIUS_API_KEY` | — | Free-tier key works; mainnet + devnet |
+| `SOLANA_CLUSTER` | `devnet` | `mainnet` or `devnet` — selects Helius host |
+| `SOLANA_RPC_URL` | derived | Set to override the Helius-derived URL |
+| `POLL_INTERVAL_MS` | `2000` | Per-cycle sleep between program scans |
+| `RPC_PAGE_LIMIT` | `200` | Signatures fetched per call (Helius caps at 1000) |
+| `HEALTHCHECK_PORT` | `8080` | `/healthz` + `/metrics` |
 
 ## IDL regeneration
 
-The registry reads committed IDLs at startup. Before the indexer runs (locally or in CI) regenerate them from the Anchor workspace at repo root:
+The decode registry reads committed IDLs at startup. Regenerate from the Anchor workspace at repo root before running:
 
 ```sh
 anchor build
 ```
 
-This writes `target/idl/<program>.json` for every M1 program. The default lookup path is `../../target/idl` relative to the crate. Override with `SAEP_IDL_DIR=/absolute/path` for non-standard layouts (Render workers that unpack the repo to a fixed path).
+Writes `target/idl/<program>.json` for every M1 program. Default lookup path is `../../target/idl` relative to the crate; override with `SAEP_IDL_DIR`.
 
-## What's stubbed
+## What's wired
 
-- `// REORG-LOGIC-STUB` — `src/reorg.rs` has the function signatures and SQL intent, no implementation yet.
-- `// BORSH-FULL-DECODE-STUB` — `ingest::decode_event` identifies the event via discriminator lookup but currently emits `{ raw_hex, len }` in the `data` JSONB. Walking the IDL field schema to produce typed JSON is the next step; the schema is already carried on `EventDef`.
-- `// METRICS-STUB` — no Prometheus exporter; lag / ingest rate / reorg counters need wiring.
-- No backfill / catch-up from historical slots (M2 concern).
-- No Redis pubsub fan-out (IACP bus consumer — M2).
+- RPC poller with per-program Postgres cursor
+- Inner-instruction walk → Anchor discriminator match → Borsh decode against IDL type tree
+- Prometheus `/metrics`: `saep_indexer_events_total{program,event}`, `saep_indexer_rpc_errors_total{method}`, `saep_indexer_last_slot{program}`
+- Diesel schema: `blocks`, `program_events`, `reorg_log`, `sync_cursor`
+- Axum health + metrics endpoints
 
-## Ops notes
+## What's deferred
 
-- One Diesel pool, max 8 connections. Adjust when running behind Render's pgbouncer.
-- Migrations are checked into the repo, not baked into the binary. Run `diesel migration run` before the first deploy; schema is idempotent on subsequent boots.
-- Reorg depth assumption: < 64 slots at Confirmed commitment. Anything deeper implies network-level issue, not indexer issue — log and alert.
+- Reorg detection — not meaningful without a live slot stream. Table kept for when Yellowstone lands.
+- Redis pub-sub fan-out for the IACP bus (M2).
+- Historical backfill beyond RPC pagination window (M2).
+
+## Deploy
+
+`render.yaml` provisions a Render Background Worker + managed Postgres in Frankfurt. Build via the Dockerfile (Linux has libpq available via apt). Set `HELIUS_API_KEY` manually after the first deploy — it's marked `sync: false` so Render doesn't try to seed it.

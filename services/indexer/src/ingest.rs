@@ -3,6 +3,7 @@ use chrono::Utc;
 use diesel::prelude::*;
 use serde_json::{json, Value};
 
+use crate::borsh_decode::{decode, Cursor};
 use crate::db::PgPool;
 use crate::idl::Registry;
 use crate::schema::{blocks, program_events};
@@ -51,23 +52,30 @@ pub fn record_event(pool: &PgPool, e: NewEvent) -> Result<()> {
     Ok(())
 }
 
-/// Decode a single inner-instruction payload.
-///
-/// Anchor emits events via `emit_cpi!` — the instruction data is
-/// `[8-byte event discriminator][borsh payload]`, invoked against the
-/// `__event_authority` PDA on the owning program. We match the first 8 bytes
-/// against the IDL-derived discriminator registry.
-///
-/// BORSH-FULL-DECODE-STUB: we currently return the remaining payload as a
-/// hex-encoded string inside the data JSONB. Walking the IDL field schema to
-/// produce a structured JSON object is the follow-up — the registry already
-/// carries the schema per event.
+/// Anchor `emit_cpi!` payload = 8-byte event discriminator + Borsh body.
+/// Looks up the event by discriminator then decodes the body against the IDL
+/// type tree. Decode failures fall back to a hex dump so one malformed payload
+/// can't stall the stream.
 pub fn decode_event(registry: &Registry, program_id: &str, data: &[u8]) -> Option<(String, Value)> {
     let def = registry.lookup(program_id, data)?;
     let payload = &data[8..];
-    let body = json!({
-        "raw_hex": hex::encode(payload),
-        "len": payload.len(),
-    });
+    let mut cur = Cursor::new(payload);
+
+    let body = match decode(&def.schema, &def.type_registry, &mut cur) {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::warn!(
+                program_id,
+                event = %def.event_name,
+                err = %e,
+                "borsh decode failed; emitting raw payload"
+            );
+            json!({
+                "_decode_error": e.to_string(),
+                "raw_hex": hex::encode(payload),
+            })
+        }
+    };
+
     Some((def.event_name.clone(), body))
 }

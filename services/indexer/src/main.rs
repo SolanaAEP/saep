@@ -2,7 +2,7 @@ use anyhow::Result;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 
-use saep_indexer::{config, db, health, yellowstone};
+use saep_indexer::{config, db, health, poller};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -12,7 +12,7 @@ async fn main() -> Result<()> {
         .init();
 
     let cfg = config::Config::from_env()?;
-    tracing::info!(endpoint = %cfg.yellowstone_endpoint, "starting saep-indexer");
+    tracing::info!(?cfg, "starting saep-indexer");
 
     let pool = db::pool(&cfg.database_url)?;
 
@@ -25,7 +25,5 @@ async fn main() -> Result<()> {
         }
     });
 
-    // METRICS-STUB: register prometheus exporter + exporter endpoint here
-
-    yellowstone::run(cfg, pool).await
+    poller::run(cfg, pool).await
 }
