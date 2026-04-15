@@ -105,17 +105,3 @@ pub fn compute_fees(amount: u64, protocol_bps: u16, solrep_bps: u16) -> Result<(
     Ok((pf, sf))
 }
 
-// AGENT-ACCOUNT-READ-STUB — M2 deserializes AgentRegistry::AgentAccount via a
-// CPI-less account read and enforces `status == Active` + `agent_did` match.
-// M1 returns a synthetic ok so the lifecycle can be exercised.
-pub fn read_agent_active(_agent_registry: &Pubkey, _agent_did: &[u8; 32]) -> Result<()> {
-    Ok(())
-}
-
-pub fn read_agent_operator_match(
-    _agent_registry: &Pubkey,
-    _agent_did: &[u8; 32],
-    _operator: &Pubkey,
-) -> Result<()> {
-    Ok(())
-}

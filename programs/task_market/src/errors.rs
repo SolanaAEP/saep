@@ -50,4 +50,6 @@ pub enum TaskMarketError {
     AgentMismatch,
     #[msg("agent registry CPI failed")]
     OutcomeCpiFailed,
+    #[msg("agent stake below required minimum")]
+    InsufficientStake,
 }

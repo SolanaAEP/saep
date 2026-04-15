@@ -1,8 +1,11 @@
 use anchor_lang::prelude::*;
 
+use agent_registry::program::AgentRegistry;
+use agent_registry::state::{AgentAccount, AgentStatus};
+
 use crate::errors::TaskMarketError;
 use crate::events::ResultSubmitted;
-use crate::state::{read_agent_operator_match, MarketGlobal, TaskContract, TaskStatus};
+use crate::state::{MarketGlobal, TaskContract, TaskStatus};
 
 #[derive(Accounts)]
 pub struct SubmitResult<'info> {
@@ -17,6 +20,20 @@ pub struct SubmitResult<'info> {
     pub task: Account<'info, TaskContract>,
 
     pub operator: Signer<'info>,
+
+    #[account(
+        constraint = agent_registry_program.key() == global.agent_registry @ TaskMarketError::Unauthorized,
+    )]
+    pub agent_registry_program: Program<'info, AgentRegistry>,
+
+    #[account(
+        seeds = [b"agent", agent_account.operator.as_ref(), agent_account.agent_id.as_ref()],
+        bump = agent_account.bump,
+        seeds::program = agent_registry_program.key(),
+        constraint = agent_account.did == task.agent_did @ TaskMarketError::AgentMismatch,
+        constraint = agent_account.operator == operator.key() @ TaskMarketError::CallerNotOperator,
+    )]
+    pub agent_account: Account<'info, AgentAccount>,
 }
 
 pub fn handler(
@@ -31,11 +48,10 @@ pub fn handler(
     let now = Clock::get()?.unix_timestamp;
     require!(now <= t.deadline, TaskMarketError::DeadlinePassed);
 
-    read_agent_operator_match(
-        &ctx.accounts.global.agent_registry,
-        &t.agent_did,
-        &ctx.accounts.operator.key(),
-    )?;
+    require!(
+        ctx.accounts.agent_account.status == AgentStatus::Active,
+        TaskMarketError::AgentNotActive,
+    );
 
     t.result_hash = result_hash;
     t.proof_key = proof_key;
