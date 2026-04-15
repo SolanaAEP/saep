@@ -1,0 +1,31 @@
+{
+  "name": "@saep/mcp-bridge",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/server.js",
+  "bin": {
+    "saep-mcp": "dist/server.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "echo skip",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.0.4",
+    "@saep/sdk": "workspace:*",
+    "@solana/web3.js": "1.98.0",
+    "pino": "9.5.0",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "24.0.0",
+    "@vitest/expect": "^4.1.4",
+    "typescript": "5.7.3",
+    "vitest": "^4.1.4"
+  }
+}
