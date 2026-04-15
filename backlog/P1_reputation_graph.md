@@ -32,3 +32,5 @@ pnpm --filter @saep/portal test:e2e -- --grep reputation
 ```
 
 ## Log
+
+- 2026-04-15: Spec landed at `specs/reputation-graph.md`. Builds on pre-audit 03 on-chain surface; adds EWMA derivation per axis, unique-execution circuit public/private inputs + non-membership witness, dispute→negative-sample via distinct proof key, availability decay via indexer heartbeat + `decay_availability` crank, postgres `reputation_rollup` materialized view + portal leaderboard surface + sdk hooks (useReputation/useLeaderboard/useAgentReputationStream). Implementation pending zk-circuit-engineer + anchor-engineer + solana-indexer-engineer delegation.
