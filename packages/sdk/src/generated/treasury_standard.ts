@@ -1,0 +1,2464 @@
+/**
+ * Program IDL in camelCase format in order to be used in JS/TS.
+ *
+ * Note that this is only a type helper and is not the actual IDL. The original
+ * IDL can be found at `target/idl/treasury_standard.json`.
+ */
+export type TreasuryStandard = {
+  "address": "6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ",
+  "metadata": {
+    "name": "treasuryStandard",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "SAEP treasury_standard program"
+  },
+  "instructions": [
+    {
+      "name": "acceptAuthority",
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pendingAuthority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "addAllowedMint",
+      "discriminator": [
+        114,
+        83,
+        166,
+        247,
+        86,
+        17,
+        220,
+        147
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedMints",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "mint",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "closeStream",
+      "discriminator": [
+        255,
+        241,
+        196,
+        212,
+        95,
+        93,
+        160,
+        89
+      ],
+      "accounts": [
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stream",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  101,
+                  97,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stream.agent_did",
+                "account": "paymentStream"
+              },
+              {
+                "kind": "account",
+                "path": "stream.client",
+                "account": "paymentStream"
+              },
+              {
+                "kind": "account",
+                "path": "stream.stream_nonce",
+                "account": "paymentStream"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payerMint"
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  101,
+                  97,
+                  109,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stream"
+              }
+            ]
+          }
+        },
+        {
+          "name": "agentVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              },
+              {
+                "kind": "account",
+                "path": "payerMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "clientTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "fundTreasury",
+      "discriminator": [
+        71,
+        154,
+        45,
+        220,
+        206,
+        32,
+        174,
+        239
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "funderTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "funder",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initGlobal",
+      "discriminator": [
+        44,
+        238,
+        77,
+        253,
+        76,
+        182,
+        192,
+        162
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedMints",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "authority",
+          "type": "pubkey"
+        },
+        {
+          "name": "agentRegistry",
+          "type": "pubkey"
+        },
+        {
+          "name": "jupiterProgram",
+          "type": "pubkey"
+        },
+        {
+          "name": "defaultDailyLimit",
+          "type": "u64"
+        },
+        {
+          "name": "maxDailyLimit",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initStream",
+      "discriminator": [
+        74,
+        210,
+        201,
+        7,
+        0,
+        227,
+        146,
+        105
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stream",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  101,
+                  97,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              },
+              {
+                "kind": "account",
+                "path": "client"
+              },
+              {
+                "kind": "arg",
+                "path": "streamNonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payerMint"
+        },
+        {
+          "name": "payoutMint"
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  101,
+                  97,
+                  109,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stream"
+              }
+            ]
+          }
+        },
+        {
+          "name": "clientTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "client",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "streamNonce",
+          "type": {
+            "array": [
+              "u8",
+              8
+            ]
+          }
+        },
+        {
+          "name": "ratePerSec",
+          "type": "u64"
+        },
+        {
+          "name": "maxDuration",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "initTreasury",
+      "discriminator": [
+        105,
+        152,
+        173,
+        51,
+        158,
+        151,
+        49,
+        14
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agentDid"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "agentDid",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "dailySpendLimit",
+          "type": "u64"
+        },
+        {
+          "name": "perTxLimit",
+          "type": "u64"
+        },
+        {
+          "name": "weeklyLimit",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "payTask",
+      "discriminator": [
+        143,
+        133,
+        144,
+        74,
+        182,
+        76,
+        65,
+        12
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "removeAllowedMint",
+      "discriminator": [
+        53,
+        133,
+        46,
+        51,
+        25,
+        228,
+        27,
+        73
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedMints",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "mint",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "setDefaultDailyLimit",
+      "discriminator": [
+        193,
+        179,
+        159,
+        81,
+        165,
+        61,
+        50,
+        171
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newDefault",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setLimits",
+      "discriminator": [
+        207,
+        50,
+        250,
+        67,
+        211,
+        33,
+        70,
+        91
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "daily",
+          "type": "u64"
+        },
+        {
+          "name": "perTx",
+          "type": "u64"
+        },
+        {
+          "name": "weekly",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setMaxDailyLimit",
+      "discriminator": [
+        184,
+        60,
+        106,
+        63,
+        99,
+        191,
+        205,
+        196
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newMax",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setMaxStreamDuration",
+      "discriminator": [
+        146,
+        16,
+        3,
+        101,
+        200,
+        132,
+        231,
+        61
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newDuration",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "setPaused",
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "transferAuthority",
+      "discriminator": [
+        48,
+        169,
+        76,
+        72,
+        229,
+        180,
+        55,
+        161
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newAuthority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "withdraw",
+      "discriminator": [
+        183,
+        18,
+        70,
+        156,
+        148,
+        109,
+        161,
+        34
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "destination",
+          "writable": true
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdrawEarned",
+      "discriminator": [
+        231,
+        255,
+        26,
+        76,
+        28,
+        120,
+        137,
+        111
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stream",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  101,
+                  97,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stream.agent_did",
+                "account": "paymentStream"
+              },
+              {
+                "kind": "account",
+                "path": "stream.client",
+                "account": "paymentStream"
+              },
+              {
+                "kind": "account",
+                "path": "stream.stream_nonce",
+                "account": "paymentStream"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payerMint"
+        },
+        {
+          "name": "payoutMint"
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  101,
+                  97,
+                  109,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stream"
+              }
+            ]
+          }
+        },
+        {
+          "name": "agentVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              },
+              {
+                "kind": "account",
+                "path": "payoutMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "agentTreasury",
+      "discriminator": [
+        129,
+        97,
+        0,
+        63,
+        102,
+        222,
+        200,
+        166
+      ]
+    },
+    {
+      "name": "allowedMints",
+      "discriminator": [
+        207,
+        250,
+        95,
+        68,
+        245,
+        220,
+        110,
+        31
+      ]
+    },
+    {
+      "name": "paymentStream",
+      "discriminator": [
+        124,
+        85,
+        193,
+        22,
+        93,
+        1,
+        143,
+        75
+      ]
+    },
+    {
+      "name": "treasuryGlobal",
+      "discriminator": [
+        130,
+        123,
+        197,
+        75,
+        23,
+        55,
+        247,
+        26
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "allowedMintAdded",
+      "discriminator": [
+        211,
+        40,
+        158,
+        69,
+        225,
+        225,
+        214,
+        39
+      ]
+    },
+    {
+      "name": "allowedMintRemoved",
+      "discriminator": [
+        86,
+        214,
+        232,
+        84,
+        42,
+        65,
+        120,
+        57
+      ]
+    },
+    {
+      "name": "limitsUpdated",
+      "discriminator": [
+        160,
+        131,
+        108,
+        76,
+        91,
+        80,
+        118,
+        137
+      ]
+    },
+    {
+      "name": "pausedSet",
+      "discriminator": [
+        171,
+        125,
+        127,
+        156,
+        233,
+        81,
+        68,
+        66
+      ]
+    },
+    {
+      "name": "streamClosed",
+      "discriminator": [
+        14,
+        206,
+        32,
+        10,
+        248,
+        82,
+        169,
+        234
+      ]
+    },
+    {
+      "name": "streamInitialized",
+      "discriminator": [
+        165,
+        148,
+        216,
+        67,
+        105,
+        214,
+        199,
+        173
+      ]
+    },
+    {
+      "name": "streamWithdrawn",
+      "discriminator": [
+        229,
+        224,
+        216,
+        237,
+        68,
+        225,
+        122,
+        75
+      ]
+    },
+    {
+      "name": "treasuryCreated",
+      "discriminator": [
+        190,
+        59,
+        58,
+        105,
+        76,
+        234,
+        21,
+        199
+      ]
+    },
+    {
+      "name": "treasuryFunded",
+      "discriminator": [
+        172,
+        66,
+        241,
+        101,
+        216,
+        219,
+        147,
+        130
+      ]
+    },
+    {
+      "name": "treasuryGlobalInitialized",
+      "discriminator": [
+        164,
+        24,
+        58,
+        253,
+        151,
+        171,
+        117,
+        189
+      ]
+    },
+    {
+      "name": "treasuryWithdraw",
+      "discriminator": [
+        164,
+        41,
+        149,
+        134,
+        248,
+        87,
+        41,
+        218
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "unauthorized",
+      "msg": "signer is not authorized for this instruction"
+    },
+    {
+      "code": 6001,
+      "name": "paused",
+      "msg": "treasury is paused"
+    },
+    {
+      "code": 6002,
+      "name": "mintNotAllowed",
+      "msg": "mint is not on the allowlist"
+    },
+    {
+      "code": 6003,
+      "name": "limitExceeded",
+      "msg": "spending or transfer limit exceeded"
+    },
+    {
+      "code": 6004,
+      "name": "insufficientVault",
+      "msg": "vault balance insufficient"
+    },
+    {
+      "code": 6005,
+      "name": "streamAlreadyActive",
+      "msg": "a stream is already active for this treasury"
+    },
+    {
+      "code": 6006,
+      "name": "streamNotActive",
+      "msg": "stream is not active"
+    },
+    {
+      "code": 6007,
+      "name": "streamAlreadyClosed",
+      "msg": "stream is already closed"
+    },
+    {
+      "code": 6008,
+      "name": "invalidDuration",
+      "msg": "stream duration invalid"
+    },
+    {
+      "code": 6009,
+      "name": "invalidRate",
+      "msg": "stream rate invalid"
+    },
+    {
+      "code": 6010,
+      "name": "oracleStale",
+      "msg": "oracle price is stale"
+    },
+    {
+      "code": 6011,
+      "name": "oracleConfidenceTooWide",
+      "msg": "oracle confidence interval too wide"
+    },
+    {
+      "code": 6012,
+      "name": "swapSlippage",
+      "msg": "swap exceeded slippage tolerance"
+    },
+    {
+      "code": 6013,
+      "name": "arithmeticOverflow",
+      "msg": "arithmetic overflow"
+    },
+    {
+      "code": 6014,
+      "name": "callerNotTaskMarket",
+      "msg": "caller is not TaskMarket program"
+    },
+    {
+      "code": 6015,
+      "name": "agentNotActive",
+      "msg": "agent is not active in AgentRegistry"
+    },
+    {
+      "code": 6016,
+      "name": "invalidLimits",
+      "msg": "limits violate per_tx <= daily <= weekly invariant"
+    },
+    {
+      "code": 6017,
+      "name": "allowedMintsFull",
+      "msg": "allowed-mints list is full"
+    },
+    {
+      "code": 6018,
+      "name": "mintNotFound",
+      "msg": "mint not found in allowlist"
+    },
+    {
+      "code": 6019,
+      "name": "noPendingAuthority",
+      "msg": "no pending authority to accept"
+    },
+    {
+      "code": 6020,
+      "name": "zeroAmount",
+      "msg": "amount must be greater than zero"
+    },
+    {
+      "code": 6021,
+      "name": "payTaskDisabled",
+      "msg": "pay_task is reserved for M2 and is inert in M1"
+    }
+  ],
+  "types": [
+    {
+      "name": "agentTreasury",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "dailySpendLimit",
+            "type": "u64"
+          },
+          {
+            "name": "perTxLimit",
+            "type": "u64"
+          },
+          {
+            "name": "weeklyLimit",
+            "type": "u64"
+          },
+          {
+            "name": "spentToday",
+            "type": "u64"
+          },
+          {
+            "name": "spentThisWeek",
+            "type": "u64"
+          },
+          {
+            "name": "lastResetDay",
+            "type": "i64"
+          },
+          {
+            "name": "lastResetWeek",
+            "type": "i64"
+          },
+          {
+            "name": "streamingActive",
+            "type": "bool"
+          },
+          {
+            "name": "streamCounterparty",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "streamRatePerSec",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "allowedMintAdded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "allowedMintRemoved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "allowedMints",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "mints",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "limitsUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "daily",
+            "type": "u64"
+          },
+          {
+            "name": "perTx",
+            "type": "u64"
+          },
+          {
+            "name": "weekly",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pausedSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "paymentStream",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "client",
+            "type": "pubkey"
+          },
+          {
+            "name": "payerMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "payoutMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "ratePerSec",
+            "type": "u64"
+          },
+          {
+            "name": "startTime",
+            "type": "i64"
+          },
+          {
+            "name": "maxDuration",
+            "type": "i64"
+          },
+          {
+            "name": "depositTotal",
+            "type": "u64"
+          },
+          {
+            "name": "withdrawn",
+            "type": "u64"
+          },
+          {
+            "name": "escrowBump",
+            "type": "u8"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "streamStatus"
+              }
+            }
+          },
+          {
+            "name": "streamNonce",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "streamClosed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "agentReceipts",
+            "type": "u64"
+          },
+          {
+            "name": "clientRefund",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "streamInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "client",
+            "type": "pubkey"
+          },
+          {
+            "name": "payerMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "payoutMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "ratePerSec",
+            "type": "u64"
+          },
+          {
+            "name": "maxDuration",
+            "type": "i64"
+          },
+          {
+            "name": "depositTotal",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "streamStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "active"
+          },
+          {
+            "name": "closed"
+          }
+        ]
+      }
+    },
+    {
+      "name": "streamWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "claimable",
+            "type": "u64"
+          },
+          {
+            "name": "swapped",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "treasuryCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "dailySpendLimit",
+            "type": "u64"
+          },
+          {
+            "name": "perTxLimit",
+            "type": "u64"
+          },
+          {
+            "name": "weeklyLimit",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "treasuryFunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "funder",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "treasuryGlobal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pendingAuthority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "agentRegistry",
+            "type": "pubkey"
+          },
+          {
+            "name": "jupiterProgram",
+            "type": "pubkey"
+          },
+          {
+            "name": "allowedMints",
+            "type": "pubkey"
+          },
+          {
+            "name": "maxStreamDuration",
+            "type": "i64"
+          },
+          {
+            "name": "defaultDailyLimit",
+            "type": "u64"
+          },
+          {
+            "name": "maxDailyLimit",
+            "type": "u64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "treasuryGlobalInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "agentRegistry",
+            "type": "pubkey"
+          },
+          {
+            "name": "jupiterProgram",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "treasuryWithdraw",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "destination",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+};
