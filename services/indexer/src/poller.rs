@@ -31,6 +31,10 @@ pub async fn run(cfg: Config, pool: PgPool) -> Result<()> {
     let mut ticker = tokio::time::interval(Duration::from_millis(cfg.poll_interval_ms));
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
+    let stagger = Duration::from_millis(
+        (cfg.poll_interval_ms / programs::SAEP_PROGRAMS.len() as u64).max(250),
+    );
+
     loop {
         ticker.tick().await;
         for p in programs::SAEP_PROGRAMS {
@@ -38,6 +42,7 @@ pub async fn run(cfg: Config, pool: PgPool) -> Result<()> {
                 tracing::warn!(program = p.name, error = %e, "poll cycle failed");
                 metrics::RPC_ERRORS.with_label_values(&["poll_cycle"]).inc();
             }
+            tokio::time::sleep(stagger).await;
         }
     }
 }
