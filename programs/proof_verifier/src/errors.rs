@@ -36,4 +36,12 @@ pub enum ProofVerifierError {
     NoPendingAuthority,
     #[msg("not implemented in m1")]
     NotImplemented,
+    #[msg("batch size must be 1-10")]
+    InvalidBatchSize,
+    #[msg("batch is full")]
+    BatchFull,
+    #[msg("batch has no proofs")]
+    BatchEmpty,
+    #[msg("batch vk does not match active vk")]
+    BatchVkMismatch,
 }

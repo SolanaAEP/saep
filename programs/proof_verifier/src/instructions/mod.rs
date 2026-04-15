@@ -1,4 +1,5 @@
 pub mod authority;
+pub mod batch_verify;
 pub mod init_config;
 pub mod register_vk;
 pub mod set_paused;
@@ -6,6 +7,7 @@ pub mod verify_proof;
 pub mod vk_activation;
 
 pub use authority::*;
+pub use batch_verify::*;
 pub use init_config::*;
 pub use register_vk::*;
 pub use set_paused::*;

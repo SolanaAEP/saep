@@ -45,12 +45,3 @@ pub fn handler(
 
     verify_groth16(vk, &proof_a, &proof_b, &proof_c, &public_inputs)
 }
-
-#[derive(Accounts)]
-pub struct BatchVerifyStub<'info> {
-    pub cranker: Signer<'info>,
-}
-
-pub fn batch_verify_stub_handler(_ctx: Context<BatchVerifyStub>) -> Result<()> {
-    err!(ProofVerifierError::NotImplemented)
-}
