@@ -40,3 +40,5 @@ pnpm --filter @saep/mcp-bridge test
 ```
 
 ## Log
+
+- 2026-04-15: Three sub-specs landed: `specs/integration-x402.md` (gateway service, CCTP bridge fallback, bundle-settled task), `specs/integration-mcp.md` (stdio MCP server with 8 tools, default unsigned-tx output, Claude/Cursor/Windsurf config snippets), `specs/integration-sak.md` (external plugin package, 4 actions for M1). Implementation pending — scaffolder delegation required. Ticket stays open.
