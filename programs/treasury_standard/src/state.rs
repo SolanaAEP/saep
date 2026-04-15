@@ -136,18 +136,6 @@ pub fn guard_oracle(p: &OraclePrice) -> Result<()> {
     Ok(())
 }
 
-// JUPITER-CPI-STUB — real implementation CPIs into Jupiter aggregator with
-// a min-out computed from the oracle price and slippage bps, deposits proceeds
-// into the agent vault, and returns the actual payout amount.
-pub fn swap_via_jupiter(
-    _payer_mint: &Pubkey,
-    _payout_mint: &Pubkey,
-    amount_in: u64,
-    _min_out: u64,
-) -> Result<u64> {
-    Ok(amount_in)
-}
-
 // AGENT-CPI-STUB — real implementation reads AgentRegistry::AgentAccount
 // for (operator, agent_id) and asserts did match + status == Active.
 pub fn check_agent_operator(

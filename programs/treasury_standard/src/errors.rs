@@ -46,4 +46,10 @@ pub enum TreasuryError {
     ZeroAmount,
     #[msg("pay_task is reserved for M2 and is inert in M1")]
     PayTaskDisabled,
+    #[msg("jupiter program does not match configured address")]
+    InvalidJupiterProgram,
+    #[msg("swap route data required for cross-mint withdrawal")]
+    SwapRouteRequired,
+    #[msg("swap consumed more tokens than earned")]
+    SwapAmountExceeded,
 }

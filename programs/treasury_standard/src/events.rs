@@ -90,3 +90,13 @@ pub struct PausedSet {
     pub paused: bool,
     pub timestamp: i64,
 }
+
+#[event]
+pub struct SwapExecuted {
+    pub agent_did: [u8; 32],
+    pub amount_in: u64,
+    pub amount_out: u64,
+    pub payer_mint: Pubkey,
+    pub payout_mint: Pubkey,
+    pub timestamp: i64,
+}

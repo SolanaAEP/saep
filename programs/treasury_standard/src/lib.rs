@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 pub mod errors;
 pub mod events;
 pub mod instructions;
+pub mod jupiter;
 pub mod state;
 
 use instructions::*;
@@ -73,8 +74,8 @@ pub mod treasury_standard {
         instructions::init_stream::handler(ctx, stream_nonce, rate_per_sec, max_duration)
     }
 
-    pub fn withdraw_earned(ctx: Context<WithdrawEarned>) -> Result<()> {
-        instructions::withdraw_earned::handler(ctx)
+    pub fn withdraw_earned<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) -> Result<()> {
+        instructions::withdraw_earned::handler(ctx, route_data)
     }
 
     pub fn close_stream(ctx: Context<CloseStream>) -> Result<()> {
