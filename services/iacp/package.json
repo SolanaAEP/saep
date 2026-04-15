@@ -8,10 +8,14 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
     "lint": "echo skip",
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@noble/ed25519": "^3.1.0",
+    "@noble/hashes": "^2.2.0",
+    "bs58": "^6.0.0",
     "fastify": "5.1.0",
     "ioredis": "5.4.2",
     "pino": "9.5.0",
@@ -21,6 +25,8 @@
   "devDependencies": {
     "@types/node": "24.0.0",
     "@types/ws": "8.5.13",
-    "typescript": "5.7.3"
+    "@vitest/expect": "^4.1.4",
+    "typescript": "5.7.3",
+    "vitest": "^4.1.4"
   }
 }

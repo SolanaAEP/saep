@@ -3,6 +3,8 @@ import type { IncomingMessage } from 'node:http';
 import type { Logger } from 'pino';
 import { ClientFrameSchema, canonicalizeForSigning, type Envelope, type ServerFrame } from './schema.js';
 import type { StreamBus } from './streams.js';
+import { verifyAuthToken, verifyEnvelopeSignature } from './auth.js';
+import type { TopicRing } from './ring.js';
 
 interface Session {
   agentPubkey: string;
@@ -15,35 +17,42 @@ const MAX_QUEUE = 256;
 export class WsGateway {
   private readonly wss: WebSocketServer;
   private readonly sessions = new Map<WebSocket, Session>();
-  private readonly topicSubscribers = new Map<string, Set<WebSocket>>();
+  readonly topicSubscribers = new Map<string, Set<WebSocket>>();
 
   constructor(
     private readonly bus: StreamBus,
     private readonly log: Logger,
+    private readonly ring: TopicRing,
   ) {
     this.wss = new WebSocketServer({ noServer: true });
   }
 
-  handleUpgrade(req: IncomingMessage, socket: import('node:stream').Duplex, head: Buffer): void {
+  async handleUpgrade(
+    req: IncomingMessage,
+    socket: import('node:stream').Duplex,
+    head: Buffer,
+  ): Promise<void> {
     const url = new URL(req.url ?? '/', 'http://localhost');
     const token = url.searchParams.get('token') ?? req.headers['sec-websocket-protocol'];
-    const agentPubkey = this.verifyToken(typeof token === 'string' ? token : null);
-    if (!agentPubkey) {
+    const rawToken = typeof token === 'string' ? token : null;
+    if (!rawToken) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    const result = await verifyAuthToken(rawToken);
+    if (!result) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
       return;
     }
     this.wss.handleUpgrade(req, socket, head, (ws) => {
-      this.onConnection(ws, agentPubkey);
+      this.onConnection(ws, result.agentPubkey);
     });
   }
 
-  private verifyToken(_token: string | null): string | null {
-    // SIWS-AUTH-STUB: decode session ticket, verify signature chain,
-    // resolve to the agent's operator pubkey from agent_registry.
-    // M1 stub: accept any non-empty token, pretend it maps to a fixed devnet agent.
-    if (!_token) return null;
-    return 'StubAgent1111111111111111111111111111111111';
+  sessionCount(): number {
+    return this.sessions.size;
   }
 
   private onConnection(ws: WebSocket, agentPubkey: string): void {
@@ -122,14 +131,15 @@ export class WsGateway {
   }
 
   private async verifyEnvelope(env: Envelope): Promise<boolean> {
-    // AGENT-REGISTRY-LOOKUP-STUB: confirm env.from_agent is an Active agent,
-    // fetch its operator pubkey, pass to signature verify below.
-    // SIGNATURE-VERIFY-STUB: ed25519 verify env.signature over canonicalizeForSigning(env).
-    void canonicalizeForSigning(env);
-    return true;
+    // AGENT-REGISTRY-LOOKUP-STUB: additionally confirm env.from_agent is
+    // an Active agent in agent_registry; for M1 we treat the bs58 pubkey
+    // itself as the ed25519 verification key.
+    const canonical = canonicalizeForSigning(env);
+    return verifyEnvelopeSignature(canonical, env.signature, env.from_agent);
   }
 
   dispatch(topic: string, envelope: Envelope, streamId: string): void {
+    this.ring.push(topic, envelope, streamId);
     const subs = this.topicSubscribers.get(topic);
     if (!subs || subs.size === 0) return;
     const frame: ServerFrame = { type: 'msg', topic, envelope, stream_id: streamId };

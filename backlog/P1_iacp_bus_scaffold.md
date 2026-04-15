@@ -1,6 +1,6 @@
 ---
 id: P1_iacp_bus_scaffold
-status: open
+status: done
 blockers: []
 priority: P1
 ---
@@ -32,3 +32,5 @@ pnpm test
 ```
 
 ## Log
+
+- 2026-04-15: Real ed25519 handshake auth via `@noble/ed25519` v3 + bs58 token; tokens carry `{agent,nonce,exp,sig}`, TTL-bounded. Envelope signatures now verified on publish (no stub). Added `TopicRing` per-topic ring buffer (default cap 256) + `GET /topics/:id/recent?limit=` route. `/healthz` reports `{status, connectedClients, topics}`. REST `/publish` now gated by `IACP_SERVICE_TOKEN` header. Vitest suite: 16 tests across auth, ring, schema — all green. Workspace typecheck 12/12 green.
