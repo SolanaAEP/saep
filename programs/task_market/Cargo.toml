@@ -21,3 +21,4 @@ anchor-lang = "1.0.0"
 anchor-spl = { version = "1.0.0", features = ["token_2022"] }
 solana-keccak-hasher = "2.2.1"
 proof_verifier = { path = "../proof_verifier", features = ["cpi"] }
+agent_registry = { path = "../agent_registry", features = ["cpi"] }
