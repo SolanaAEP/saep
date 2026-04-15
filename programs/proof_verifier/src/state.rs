@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 pub const MAX_PUBLIC_INPUTS: u8 = 16;
 pub const MAX_IC_LEN: usize = (MAX_PUBLIC_INPUTS as usize) + 1;
+pub const MAX_BATCH_SIZE: usize = 10;
 pub const VK_ROTATION_TIMELOCK_SECS: i64 = 7 * 24 * 60 * 60;
 
 pub const BN254_FIELD_MODULUS_BE: [u8; 32] = [
@@ -45,6 +46,25 @@ pub struct VerifierKey {
 #[derive(InitSpace)]
 pub struct GlobalMode {
     pub is_mainnet: bool,
+    pub bump: u8,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct BatchState {
+    pub cranker: Pubkey,
+    pub vk_key: Pubkey,
+    pub batch_id: [u8; 16],
+    pub count: u8,
+    pub max_proofs: u8,
+    pub acc_alpha: [u8; 64],
+    pub acc_vk_x: [u8; 64],
+    pub acc_c: [u8; 64],
+    pub random_state: [u8; 32],
+    #[max_len(MAX_BATCH_SIZE)]
+    pub neg_a_scaled: Vec<[u8; 64]>,
+    #[max_len(MAX_BATCH_SIZE)]
+    pub b_points: Vec<[u8; 128]>,
     pub bump: u8,
 }
 

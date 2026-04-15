@@ -42,3 +42,10 @@ pub struct AuthorityTransferProposed {
 pub struct AuthorityTransferAccepted {
     pub new_authority: Pubkey,
 }
+
+#[event]
+pub struct BatchVerified {
+    pub batch_id: [u8; 16],
+    pub count: u8,
+    pub vk_id: [u8; 32],
+}

@@ -71,8 +71,36 @@ pub mod proof_verifier {
         instructions::verify_proof::handler(ctx, proof_a, proof_b, proof_c, public_inputs)
     }
 
-    pub fn batch_verify_stub(ctx: Context<BatchVerifyStub>) -> Result<()> {
-        instructions::verify_proof::batch_verify_stub_handler(ctx)
+    pub fn open_batch(
+        ctx: Context<OpenBatch>,
+        batch_id: [u8; 16],
+        max_proofs: u8,
+    ) -> Result<()> {
+        instructions::batch_verify::open_batch_handler(ctx, batch_id, max_proofs)
+    }
+
+    pub fn add_batch_proof(
+        ctx: Context<AddBatchProof>,
+        proof_a: [u8; 64],
+        proof_b: [u8; 128],
+        proof_c: [u8; 64],
+        public_inputs: Vec<[u8; 32]>,
+    ) -> Result<()> {
+        instructions::batch_verify::add_batch_proof_handler(
+            ctx,
+            proof_a,
+            proof_b,
+            proof_c,
+            public_inputs,
+        )
+    }
+
+    pub fn finalize_batch(ctx: Context<FinalizeBatch>) -> Result<()> {
+        instructions::batch_verify::finalize_batch_handler(ctx)
+    }
+
+    pub fn abort_batch(ctx: Context<AbortBatch>) -> Result<()> {
+        instructions::batch_verify::abort_batch_handler(ctx)
     }
 
     pub fn set_paused(ctx: Context<SetPaused>, paused: bool) -> Result<()> {

@@ -27,7 +27,7 @@ unsafe fn sol_alt_bn128_group_op(
     panic!("alt_bn128 syscall unavailable outside solana runtime")
 }
 
-fn g1_add(a: &[u8; 64], b: &[u8; 64]) -> std::result::Result<[u8; 64], ()> {
+pub(crate) fn g1_add(a: &[u8; 64], b: &[u8; 64]) -> std::result::Result<[u8; 64], ()> {
     let mut buf = [0u8; 128];
     buf[..64].copy_from_slice(a);
     buf[64..].copy_from_slice(b);
@@ -38,7 +38,7 @@ fn g1_add(a: &[u8; 64], b: &[u8; 64]) -> std::result::Result<[u8; 64], ()> {
     Ok(out)
 }
 
-fn g1_scalar_mul(point: &[u8; 64], scalar: &[u8; 32]) -> std::result::Result<[u8; 64], ()> {
+pub(crate) fn g1_scalar_mul(point: &[u8; 64], scalar: &[u8; 32]) -> std::result::Result<[u8; 64], ()> {
     let mut buf = [0u8; 96];
     buf[..64].copy_from_slice(point);
     buf[64..].copy_from_slice(scalar);
@@ -49,7 +49,7 @@ fn g1_scalar_mul(point: &[u8; 64], scalar: &[u8; 32]) -> std::result::Result<[u8
     Ok(out)
 }
 
-fn pairing_check(input: &[u8]) -> std::result::Result<bool, ()> {
+pub(crate) fn pairing_check(input: &[u8]) -> std::result::Result<bool, ()> {
     let mut out = [0u8; 32];
     if unsafe {
         sol_alt_bn128_group_op(ALT_BN128_PAIRING, input.as_ptr(), input.len() as u64, out.as_mut_ptr())
@@ -60,7 +60,7 @@ fn pairing_check(input: &[u8]) -> std::result::Result<bool, ()> {
     Ok(out[31] == 1)
 }
 
-fn negate_g1(point: &[u8; 64]) -> [u8; 64] {
+pub(crate) fn negate_g1(point: &[u8; 64]) -> [u8; 64] {
     let mut out = [0u8; 64];
     out[..32].copy_from_slice(&point[..32]);
 
