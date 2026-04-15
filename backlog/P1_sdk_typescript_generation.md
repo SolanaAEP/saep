@@ -1,6 +1,6 @@
 ---
 id: P1_sdk_typescript_generation
-status: open
+status: done
 blockers: []
 priority: P1
 ---
@@ -34,3 +34,5 @@ pnpm -w typecheck
 ```
 
 ## Log
+
+- 2026-04-15: `pnpm --filter @saep/sdk generate` ingests target/types + target/idl, emits src/generated/*.ts + src/idl/*.json + regenerated src/programs/index.ts with factories for all 8 programs. Build step wired `generate && tsc`. Fixed capabilityRegistry placeholder program id in cluster config. Workspace `pnpm typecheck` green (12/12 tasks). Hand-rolled; did not introduce anchor-client-gen — follow-up ticket could add richer account/event codegen.
