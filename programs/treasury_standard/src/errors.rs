@@ -52,4 +52,8 @@ pub enum TreasuryError {
     SwapRouteRequired,
     #[msg("swap consumed more tokens than earned")]
     SwapAmountExceeded,
+    #[msg("oracle price feed required for cross-mint withdrawal")]
+    OracleRequired,
+    #[msg("oracle price is non-positive")]
+    OracleNonPositivePrice,
 }

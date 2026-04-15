@@ -32,6 +32,7 @@ pub struct TreasuryWithdraw {
     pub agent_did: [u8; 32],
     pub mint: Pubkey,
     pub amount: u64,
+    pub normalized_amount: u64,
     pub destination: Pubkey,
     pub timestamp: i64,
 }
