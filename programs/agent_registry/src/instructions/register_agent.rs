@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
+use capability_registry::state::RegistryConfig as CapabilityConfig;
 
 use crate::errors::AgentRegistryError;
 use crate::events::AgentRegistered;
@@ -17,6 +18,13 @@ pub struct RegisterAgent<'info> {
         bump = global.bump,
     )]
     pub global: Account<'info, RegistryGlobal>,
+
+    #[account(
+        seeds = [b"config"],
+        seeds::program = global.capability_registry,
+        bump = capability_config.bump,
+    )]
+    pub capability_config: Account<'info, CapabilityConfig>,
 
     #[account(
         init,
@@ -70,7 +78,7 @@ pub fn handler(
     require!(!g.paused, AgentRegistryError::Paused);
     require!(stake_amount >= g.min_stake, AgentRegistryError::StakeBelowMinimum);
     validate_manifest_uri(&manifest_uri)?;
-    capability_check(&g.capability_registry, capability_mask)?;
+    capability_check(ctx.accounts.capability_config.approved_mask, capability_mask)?;
 
     let now = Clock::get()?.unix_timestamp;
     let did = compute_did(&ctx.accounts.operator.key(), &agent_id, &manifest_uri);

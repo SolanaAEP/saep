@@ -16,13 +16,13 @@ describe('agent_registry', () => {
     expect(program.programId.toBase58()).to.equal(PROGRAM_IDS.agent_registry.toBase58());
   });
 
-  it.skip('register_agent: uses capability mask from capability_registry', async () => {
-    // STUB-CPI-GATED: agent_registry validates mask via CPI to capability_registry.
-    // Current program uses a named-marker stub (mask_check). Test will be wired
-    // when CPI is real. Fixture needs:
-    //  - capability_registry initialized + tag(s) proposed
-    //  - stake mint (spl-token) created, operator ATA funded
-    //  - register_agent(agent_id, did, manifest_uri, mask, price, stream_rate)
+  it.skip('register_agent: rejects unapproved capability bits', async () => {
+    // FIXTURE-NEEDED: requires both programs deployed on localnet.
+    // Setup: capability_registry initialized + tag(s) proposed/activated,
+    // stake mint created, operator ATA funded. Then:
+    //  1. register_agent with valid mask subset → succeeds
+    //  2. register_agent with retired/unallocated bits → InvalidCapability
+    //  3. update_manifest with unapproved bits → InvalidCapability
   });
 
   it.skip('stake: deposits into stake vault PDA', async () => {
