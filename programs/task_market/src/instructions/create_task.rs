@@ -1,9 +1,12 @@
 use anchor_lang::prelude::*;
 
+use agent_registry::program::AgentRegistry;
+use agent_registry::state::{AgentAccount, AgentStatus, RegistryGlobal};
+
 use crate::errors::TaskMarketError;
 use crate::events::TaskCreated;
 use crate::state::{
-    compute_fees, compute_task_id, is_allowed_mint, read_agent_active, MarketGlobal, TaskContract,
+    compute_fees, compute_task_id, is_allowed_mint, MarketGlobal, TaskContract,
     TaskStatus, MAX_MILESTONES, MIN_DEADLINE_SECS,
 };
 
@@ -24,6 +27,25 @@ pub struct CreateTask<'info> {
 
     #[account(mut)]
     pub client: Signer<'info>,
+
+    #[account(
+        constraint = agent_registry_program.key() == global.agent_registry @ TaskMarketError::Unauthorized,
+    )]
+    pub agent_registry_program: Program<'info, AgentRegistry>,
+
+    #[account(
+        seeds = [b"global"],
+        bump = registry_global.bump,
+        seeds::program = agent_registry_program.key(),
+    )]
+    pub registry_global: Account<'info, RegistryGlobal>,
+
+    #[account(
+        seeds = [b"agent", agent_account.operator.as_ref(), agent_account.agent_id.as_ref()],
+        bump = agent_account.bump,
+        seeds::program = agent_registry_program.key(),
+    )]
+    pub agent_account: Account<'info, AgentAccount>,
 
     pub system_program: Program<'info, System>,
 }
@@ -59,7 +81,13 @@ pub fn handler(
     require!(deadline > min_deadline, TaskMarketError::InvalidDeadline);
     require!(deadline <= max_deadline, TaskMarketError::DeadlineTooFar);
 
-    read_agent_active(&g.agent_registry, &agent_did)?;
+    let agent = &ctx.accounts.agent_account;
+    require!(agent.did == agent_did, TaskMarketError::AgentMismatch);
+    require!(agent.status == AgentStatus::Active, TaskMarketError::AgentNotActive);
+    require!(
+        agent.stake_amount >= ctx.accounts.registry_global.min_stake,
+        TaskMarketError::InsufficientStake,
+    );
 
     let (protocol_fee, solrep_fee) =
         compute_fees(payment_amount, g.protocol_fee_bps, g.solrep_fee_bps)?;
