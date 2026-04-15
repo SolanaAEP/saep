@@ -13,14 +13,14 @@ pub struct CloseStream<'info> {
         seeds = [b"treasury", treasury.agent_did.as_ref()],
         bump = treasury.bump,
     )]
-    pub treasury: Account<'info, AgentTreasury>,
+    pub treasury: Box<Account<'info, AgentTreasury>>,
 
     #[account(
         mut,
         seeds = [b"stream", stream.agent_did.as_ref(), stream.client.as_ref(), stream.stream_nonce.as_ref()],
         bump = stream.bump,
     )]
-    pub stream: Account<'info, PaymentStream>,
+    pub stream: Box<Account<'info, PaymentStream>>,
 
     pub payer_mint: InterfaceAccount<'info, Mint>,
 

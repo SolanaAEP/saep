@@ -9,7 +9,7 @@ use crate::state::{MarketGlobal, TaskContract, TaskStatus};
 #[derive(Accounts)]
 pub struct FundTask<'info> {
     #[account(seeds = [b"market_global"], bump = global.bump)]
-    pub global: Account<'info, MarketGlobal>,
+    pub global: Box<Account<'info, MarketGlobal>>,
 
     #[account(
         mut,
@@ -17,10 +17,10 @@ pub struct FundTask<'info> {
         bump = task.bump,
         has_one = client @ TaskMarketError::Unauthorized,
     )]
-    pub task: Account<'info, TaskContract>,
+    pub task: Box<Account<'info, TaskContract>>,
 
     #[account(address = task.payment_mint)]
-    pub payment_mint: InterfaceAccount<'info, Mint>,
+    pub payment_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         init,
@@ -30,10 +30,10 @@ pub struct FundTask<'info> {
         token::mint = payment_mint,
         token::authority = escrow,
     )]
-    pub escrow: InterfaceAccount<'info, TokenAccount>,
+    pub escrow: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut, token::mint = payment_mint, token::authority = client)]
-    pub client_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub client_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut)]
     pub client: Signer<'info>,

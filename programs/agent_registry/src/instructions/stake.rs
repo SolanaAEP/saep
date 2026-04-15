@@ -9,7 +9,7 @@ use crate::state::{AgentAccount, AgentStatus, PendingWithdrawal, RegistryGlobal}
 #[derive(Accounts)]
 pub struct StakeIncrease<'info> {
     #[account(seeds = [b"global"], bump = global.bump)]
-    pub global: Account<'info, RegistryGlobal>,
+    pub global: Box<Account<'info, RegistryGlobal>>,
 
     #[account(
         mut,
@@ -17,7 +17,7 @@ pub struct StakeIncrease<'info> {
         bump = agent.bump,
         has_one = operator @ AgentRegistryError::Unauthorized,
     )]
-    pub agent: Account<'info, AgentAccount>,
+    pub agent: Box<Account<'info, AgentAccount>>,
 
     #[account(address = global.stake_mint)]
     pub stake_mint: InterfaceAccount<'info, Mint>,
@@ -116,7 +116,7 @@ pub fn stake_withdraw_request_handler(
 #[derive(Accounts)]
 pub struct StakeWithdrawExecute<'info> {
     #[account(seeds = [b"global"], bump = global.bump)]
-    pub global: Account<'info, RegistryGlobal>,
+    pub global: Box<Account<'info, RegistryGlobal>>,
 
     #[account(
         mut,
@@ -124,7 +124,7 @@ pub struct StakeWithdrawExecute<'info> {
         bump = agent.bump,
         has_one = operator @ AgentRegistryError::Unauthorized,
     )]
-    pub agent: Account<'info, AgentAccount>,
+    pub agent: Box<Account<'info, AgentAccount>>,
 
     #[account(address = global.stake_mint)]
     pub stake_mint: InterfaceAccount<'info, Mint>,

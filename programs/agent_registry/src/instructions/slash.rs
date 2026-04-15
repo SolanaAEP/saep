@@ -92,14 +92,14 @@ pub fn cancel_slash_handler(ctx: Context<CancelSlash>) -> Result<()> {
 #[derive(Accounts)]
 pub struct ExecuteSlash<'info> {
     #[account(seeds = [b"global"], bump = global.bump)]
-    pub global: Account<'info, RegistryGlobal>,
+    pub global: Box<Account<'info, RegistryGlobal>>,
 
     #[account(
         mut,
         seeds = [b"agent", agent.operator.as_ref(), agent.agent_id.as_ref()],
         bump = agent.bump,
     )]
-    pub agent: Account<'info, AgentAccount>,
+    pub agent: Box<Account<'info, AgentAccount>>,
 
     #[account(address = global.stake_mint)]
     pub stake_mint: InterfaceAccount<'info, Mint>,

@@ -12,7 +12,7 @@ use crate::state::{
 #[instruction(stream_nonce: [u8; 8])]
 pub struct InitStream<'info> {
     #[account(seeds = [b"treasury_global"], bump = global.bump)]
-    pub global: Account<'info, TreasuryGlobal>,
+    pub global: Box<Account<'info, TreasuryGlobal>>,
 
     #[account(
         seeds = [b"allowed_mints"],
@@ -26,7 +26,7 @@ pub struct InitStream<'info> {
         seeds = [b"treasury", treasury.agent_did.as_ref()],
         bump = treasury.bump,
     )]
-    pub treasury: Account<'info, AgentTreasury>,
+    pub treasury: Box<Account<'info, AgentTreasury>>,
 
     #[account(
         init,
@@ -40,7 +40,7 @@ pub struct InitStream<'info> {
         ],
         bump,
     )]
-    pub stream: Account<'info, PaymentStream>,
+    pub stream: Box<Account<'info, PaymentStream>>,
 
     pub payer_mint: InterfaceAccount<'info, Mint>,
     pub payout_mint: InterfaceAccount<'info, Mint>,

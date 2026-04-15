@@ -10,14 +10,14 @@ use crate::state::{MarketGlobal, TaskContract, TaskStatus};
 #[derive(Accounts)]
 pub struct SubmitResult<'info> {
     #[account(seeds = [b"market_global"], bump = global.bump)]
-    pub global: Account<'info, MarketGlobal>,
+    pub global: Box<Account<'info, MarketGlobal>>,
 
     #[account(
         mut,
         seeds = [b"task", task.client.as_ref(), task.task_nonce.as_ref()],
         bump = task.bump,
     )]
-    pub task: Account<'info, TaskContract>,
+    pub task: Box<Account<'info, TaskContract>>,
 
     pub operator: Signer<'info>,
 
@@ -33,7 +33,7 @@ pub struct SubmitResult<'info> {
         constraint = agent_account.did == task.agent_did @ TaskMarketError::AgentMismatch,
         constraint = agent_account.operator == operator.key() @ TaskMarketError::CallerNotOperator,
     )]
-    pub agent_account: Account<'info, AgentAccount>,
+    pub agent_account: Box<Account<'info, AgentAccount>>,
 }
 
 pub fn handler(

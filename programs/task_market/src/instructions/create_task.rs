@@ -14,7 +14,7 @@ use crate::state::{
 #[instruction(task_nonce: [u8; 8])]
 pub struct CreateTask<'info> {
     #[account(seeds = [b"market_global"], bump = global.bump)]
-    pub global: Account<'info, MarketGlobal>,
+    pub global: Box<Account<'info, MarketGlobal>>,
 
     #[account(
         init,
@@ -23,7 +23,7 @@ pub struct CreateTask<'info> {
         seeds = [b"task", client.key().as_ref(), task_nonce.as_ref()],
         bump,
     )]
-    pub task: Account<'info, TaskContract>,
+    pub task: Box<Account<'info, TaskContract>>,
 
     #[account(mut)]
     pub client: Signer<'info>,
@@ -38,14 +38,14 @@ pub struct CreateTask<'info> {
         bump = registry_global.bump,
         seeds::program = agent_registry_program.key(),
     )]
-    pub registry_global: Account<'info, RegistryGlobal>,
+    pub registry_global: Box<Account<'info, RegistryGlobal>>,
 
     #[account(
         seeds = [b"agent", agent_account.operator.as_ref(), agent_account.agent_id.as_ref()],
         bump = agent_account.bump,
         seeds::program = agent_registry_program.key(),
     )]
-    pub agent_account: Account<'info, AgentAccount>,
+    pub agent_account: Box<Account<'info, AgentAccount>>,
 
     pub system_program: Program<'info, System>,
 }
