@@ -35,3 +35,5 @@ pnpm --filter @saep/portal test:e2e -- --grep rent
 ```
 
 ## Log
+
+- 2026-04-15: Spec landed at `specs/program-template-registry.md` — AgentTemplate/TemplateFork/TemplateRental PDAs, fork lineage cap 8, royalty snapshot at fork time, rental drip math, settle_royalty_cpi gated to treasury_standard PDA caller. CPI-graph edges extend pre-audit 07 DAG; no back-edges. Frontend + SDK-UI hook surface enumerated. Implementation pending anchor-engineer delegation; ticket stays open.
