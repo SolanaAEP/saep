@@ -33,3 +33,5 @@ pnpm --filter @saep/portal test:e2e -- --grep allocation
 ```
 
 ## Log
+
+- 2026-04-15: Spec landed at `specs/retro-airdrop.md`. 10-15% supply, 6-epoch trailing window, operator-level aggregation, wash-trading filters (self-task graph traversal, burst detection, min-payment threshold), personhood multiplier 50/75/100, cold-start 2-week protection. Indexer rollup schema + portal check page (SIWS-gated) + deferred claim ix in `retro_distributor` program at M3. Pre-M3 all off-chain; Halborn audit scheduled M3.
