@@ -12,7 +12,6 @@ RUN cargo build --release || true
 WORKDIR /src
 
 COPY services/indexer ./services/indexer
-COPY target/idl ./target/idl
 WORKDIR /src/services/indexer
 RUN touch src/main.rs src/lib.rs && cargo build --release
 
@@ -21,7 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libpq5 ca-certi
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /src/services/indexer/target/release/saep-indexer /app/saep-indexer
-COPY --from=build /src/target/idl /app/target/idl
-ENV SAEP_IDL_DIR=/app/target/idl
+COPY --from=build /src/services/indexer/idl /app/idl
+ENV SAEP_IDL_DIR=/app/idl
 EXPOSE 8080
 CMD ["/app/saep-indexer"]

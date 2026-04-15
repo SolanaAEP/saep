@@ -1,0 +1,790 @@
+{
+  "address": "GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F",
+  "metadata": {
+    "name": "capability_registry",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "SAEP capability_registry program"
+  },
+  "instructions": [
+    {
+      "name": "accept_authority",
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "propose_tag",
+      "discriminator": [
+        3,
+        89,
+        242,
+        204,
+        217,
+        153,
+        0,
+        134
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tag",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "bit_index",
+          "type": "u8"
+        },
+        {
+          "name": "slug",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "manifest_uri",
+          "type": {
+            "array": [
+              "u8",
+              96
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "retire_tag",
+      "discriminator": [
+        11,
+        248,
+        242,
+        230,
+        59,
+        185,
+        150,
+        162
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tag",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "bit_index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "set_paused",
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "transfer_authority",
+      "discriminator": [
+        48,
+        169,
+        76,
+        72,
+        229,
+        180,
+        55,
+        161
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "update_manifest_uri",
+      "discriminator": [
+        155,
+        95,
+        45,
+        52,
+        139,
+        44,
+        16,
+        228
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tag",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "bit_index",
+          "type": "u8"
+        },
+        {
+          "name": "manifest_uri",
+          "type": {
+            "array": [
+              "u8",
+              96
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "validate_mask",
+      "discriminator": [
+        55,
+        133,
+        88,
+        171,
+        130,
+        82,
+        219,
+        242
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "mask",
+          "type": "u128"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "CapabilityTag",
+      "discriminator": [
+        51,
+        206,
+        124,
+        254,
+        215,
+        150,
+        170,
+        177
+      ]
+    },
+    {
+      "name": "RegistryConfig",
+      "discriminator": [
+        23,
+        118,
+        10,
+        246,
+        173,
+        231,
+        243,
+        156
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AuthorityTransferAccepted",
+      "discriminator": [
+        149,
+        165,
+        140,
+        221,
+        104,
+        203,
+        239,
+        121
+      ]
+    },
+    {
+      "name": "AuthorityTransferProposed",
+      "discriminator": [
+        103,
+        244,
+        27,
+        116,
+        177,
+        4,
+        100,
+        119
+      ]
+    },
+    {
+      "name": "PausedSet",
+      "discriminator": [
+        171,
+        125,
+        127,
+        156,
+        233,
+        81,
+        68,
+        66
+      ]
+    },
+    {
+      "name": "RegistryInitialized",
+      "discriminator": [
+        144,
+        138,
+        62,
+        105,
+        58,
+        38,
+        100,
+        177
+      ]
+    },
+    {
+      "name": "TagApproved",
+      "discriminator": [
+        201,
+        48,
+        240,
+        160,
+        184,
+        101,
+        162,
+        46
+      ]
+    },
+    {
+      "name": "TagManifestUpdated",
+      "discriminator": [
+        144,
+        205,
+        39,
+        53,
+        227,
+        135,
+        49,
+        89
+      ]
+    },
+    {
+      "name": "TagRetired",
+      "discriminator": [
+        24,
+        178,
+        8,
+        45,
+        96,
+        40,
+        99,
+        153
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "signer is not the registry authority"
+    },
+    {
+      "code": 6001,
+      "name": "AlreadyInitialized",
+      "msg": "registry already initialized"
+    },
+    {
+      "code": 6002,
+      "name": "BitIndexOutOfRange",
+      "msg": "bit index must be < 128"
+    },
+    {
+      "code": 6003,
+      "name": "TagAlreadyExists",
+      "msg": "tag already exists for this bit index"
+    },
+    {
+      "code": 6004,
+      "name": "TagNotFound",
+      "msg": "tag not found"
+    },
+    {
+      "code": 6005,
+      "name": "TagRetired",
+      "msg": "tag is retired"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidSlug",
+      "msg": "slug must be non-empty lowercase ascii [a-z0-9_] without leading or trailing underscore"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidManifestUri",
+      "msg": "manifest uri must be non-empty"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidCapability",
+      "msg": "mask contains unapproved or retired bits"
+    },
+    {
+      "code": 6009,
+      "name": "Paused",
+      "msg": "registry is paused"
+    },
+    {
+      "code": 6010,
+      "name": "NoPendingAuthority",
+      "msg": "no pending authority to accept"
+    },
+    {
+      "code": 6011,
+      "name": "TagCountOverflow",
+      "msg": "tag count overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "AuthorityTransferAccepted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityTransferProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pending",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CapabilityTag",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bit_index",
+            "type": "u8"
+          },
+          {
+            "name": "slug",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "manifest_uri",
+            "type": {
+              "array": [
+                "u8",
+                96
+              ]
+            }
+          },
+          {
+            "name": "added_at",
+            "type": "i64"
+          },
+          {
+            "name": "added_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "retired",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PausedSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RegistryConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "approved_mask",
+            "type": "u128"
+          },
+          {
+            "name": "tag_count",
+            "type": "u8"
+          },
+          {
+            "name": "pending_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RegistryInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TagApproved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bit_index",
+            "type": "u8"
+          },
+          {
+            "name": "slug",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "added_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TagManifestUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bit_index",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TagRetired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bit_index",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}
