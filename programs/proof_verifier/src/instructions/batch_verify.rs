@@ -33,10 +33,10 @@ pub struct OpenBatch<'info> {
         seeds = [b"batch", cranker.key().as_ref(), &batch_id],
         bump,
     )]
-    pub batch: Account<'info, BatchState>,
+    pub batch: Box<Account<'info, BatchState>>,
 
     #[account(seeds = [b"verifier_config"], bump = config.bump)]
-    pub config: Account<'info, VerifierConfig>,
+    pub config: Box<Account<'info, VerifierConfig>>,
 
     pub system_program: Program<'info, System>,
 }
@@ -84,16 +84,16 @@ pub struct AddBatchProof<'info> {
         bump = batch.bump,
         has_one = cranker,
     )]
-    pub batch: Account<'info, BatchState>,
+    pub batch: Box<Account<'info, BatchState>>,
 
     #[account(seeds = [b"verifier_config"], bump = config.bump)]
-    pub config: Account<'info, VerifierConfig>,
+    pub config: Box<Account<'info, VerifierConfig>>,
 
     #[account(seeds = [b"vk", vk.vk_id.as_ref()], bump = vk.bump)]
-    pub vk: Account<'info, VerifierKey>,
+    pub vk: Box<Account<'info, VerifierKey>>,
 
     #[account(seeds = [b"mode"], bump = mode.bump)]
-    pub mode: Account<'info, GlobalMode>,
+    pub mode: Box<Account<'info, GlobalMode>>,
 }
 
 pub fn add_batch_proof_handler(
@@ -182,13 +182,13 @@ pub struct FinalizeBatch<'info> {
         has_one = cranker,
         close = cranker,
     )]
-    pub batch: Account<'info, BatchState>,
+    pub batch: Box<Account<'info, BatchState>>,
 
     #[account(seeds = [b"verifier_config"], bump = config.bump)]
-    pub config: Account<'info, VerifierConfig>,
+    pub config: Box<Account<'info, VerifierConfig>>,
 
     #[account(seeds = [b"vk", vk.vk_id.as_ref()], bump = vk.bump)]
-    pub vk: Account<'info, VerifierKey>,
+    pub vk: Box<Account<'info, VerifierKey>>,
 }
 
 pub fn finalize_batch_handler(ctx: Context<FinalizeBatch>) -> Result<()> {
@@ -250,7 +250,7 @@ pub struct AbortBatch<'info> {
         has_one = cranker,
         close = cranker,
     )]
-    pub batch: Account<'info, BatchState>,
+    pub batch: Box<Account<'info, BatchState>>,
 }
 
 pub fn abort_batch_handler(_ctx: Context<AbortBatch>) -> Result<()> {
