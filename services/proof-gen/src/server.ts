@@ -1,5 +1,5 @@
 import { createHash, randomBytes, createCipheriv } from 'node:crypto';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import Fastify from 'fastify';
@@ -41,11 +41,12 @@ const ARTIFACTS_DIR = resolve(
 );
 const KEY_TTL = Number(process.env.PROOFGEN_KEY_TTL_SEC ?? 600);
 
+const WASM_PATH = resolve(ARTIFACTS_DIR, 'task_completion_js', 'task_completion.wasm');
+const ZKEY_PATH = resolve(ARTIFACTS_DIR, 'task_completion.zkey');
+const VK_PATH = resolve(ARTIFACTS_DIR, 'verification_key.json');
+
 function artifactsReady(): boolean {
-  // NO-ARTIFACTS-YET — circom build has not run; wasm + zkey must exist.
-  if (!existsSync(ARTIFACTS_DIR)) return false;
-  const files = readdirSync(ARTIFACTS_DIR);
-  return files.some((f) => f.endsWith('.wasm')) && files.some((f) => f.endsWith('.zkey'));
+  return existsSync(WASM_PATH) && existsSync(ZKEY_PATH);
 }
 
 function resolveAgent(authHeader: string | undefined): { agent_did: string } | null {
@@ -113,12 +114,14 @@ export async function buildServer() {
       queue.getActiveCount(),
       queue.getFailedCount(),
     ]);
-    const artifactFiles = artifactsReady() ? readdirSync(ARTIFACTS_DIR) : [];
+    const hasArtifacts = artifactsReady();
+    const hasVk = existsSync(VK_PATH);
     return {
-      ok: redisStatus === 'up',
+      ok: redisStatus === 'up' && hasArtifacts,
       redis: redisStatus,
-      artifacts: artifactsReady() ? 'present' : 'missing',
-      circuits_loaded: artifactFiles.filter((f) => f.endsWith('.wasm')).length,
+      artifacts: hasArtifacts ? 'loaded' : 'missing',
+      verification_key: hasVk ? 'present' : 'missing',
+      circuits: hasArtifacts ? ['task_completion.v1'] : [],
       queue: { waiting, active, failed },
     };
   });

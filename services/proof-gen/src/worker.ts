@@ -1,6 +1,6 @@
 import { createDecipheriv } from 'node:crypto';
-import { existsSync, readdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Worker } from 'bullmq';
 import pino from 'pino';
 import * as snarkjs from 'snarkjs';
@@ -34,22 +34,22 @@ const RESULT_TTL = Number(process.env.PROOFGEN_RESULT_TTL_SEC ?? 3600);
 type CircuitArtifacts = { wasm: string; zkey: string };
 const artifactCache = new Map<string, CircuitArtifacts>();
 
+const CIRCUIT_ARTIFACTS: Record<string, CircuitArtifacts> = {
+  'task_completion.v1': {
+    wasm: resolve(ARTIFACTS_DIR, 'task_completion_js', 'task_completion.wasm'),
+    zkey: resolve(ARTIFACTS_DIR, 'task_completion.zkey'),
+  },
+};
+
 function loadArtifacts(circuit_id: string): CircuitArtifacts {
   const cached = artifactCache.get(circuit_id);
   if (cached) return cached;
-  if (circuit_id !== 'task_completion.v1') {
-    throw new Error(`unknown circuit: ${circuit_id}`);
-  }
-  if (!existsSync(ARTIFACTS_DIR)) {
-    throw new Error(`artifacts dir missing: ${ARTIFACTS_DIR}`);
-  }
-  const files = readdirSync(ARTIFACTS_DIR);
-  const wasm = files.find((f) => f.endsWith('.wasm'));
-  const zkey = files.find((f) => f.endsWith('.zkey'));
-  if (!wasm || !zkey) throw new Error('wasm or zkey missing');
-  const a = { wasm: join(ARTIFACTS_DIR, wasm), zkey: join(ARTIFACTS_DIR, zkey) };
-  artifactCache.set(circuit_id, a);
-  return a;
+  const paths = CIRCUIT_ARTIFACTS[circuit_id];
+  if (!paths) throw new Error(`unknown circuit: ${circuit_id}`);
+  if (!existsSync(paths.wasm)) throw new Error(`wasm missing: ${paths.wasm}`);
+  if (!existsSync(paths.zkey)) throw new Error(`zkey missing: ${paths.zkey}`);
+  artifactCache.set(circuit_id, paths);
+  return paths;
 }
 
 function decryptWitness(data: ProveJobData, key: Buffer): Record<string, unknown> {
