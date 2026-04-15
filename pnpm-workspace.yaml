@@ -3,3 +3,4 @@ packages:
   - packages/*
   - services/proof-gen
   - services/iacp
+  - services/mcp-bridge

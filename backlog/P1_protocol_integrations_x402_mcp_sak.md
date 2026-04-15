@@ -42,3 +42,4 @@ pnpm --filter @saep/mcp-bridge test
 ## Log
 
 - 2026-04-15: Three sub-specs landed: `specs/integration-x402.md` (gateway service, CCTP bridge fallback, bundle-settled task), `specs/integration-mcp.md` (stdio MCP server with 8 tools, default unsigned-tx output, Claude/Cursor/Windsurf config snippets), `specs/integration-sak.md` (external plugin package, 4 actions for M1). Implementation pending — scaffolder delegation required. Ticket stays open.
+- 2026-04-16: `services/mcp-bridge` scaffold shipped — @modelcontextprotocol/sdk stdio server, 5 tools (list_tasks/get_task/get_reputation/bid_on_task/submit_result) with zod arg validation + NOT_YET_WIRED handler sentinel pending SDK program factories. vitest 8/8 green, typecheck + build clean. x402-gateway + sak-plugin scaffolds still pending.
