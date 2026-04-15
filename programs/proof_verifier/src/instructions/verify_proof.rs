@@ -47,7 +47,9 @@ pub fn handler(
 }
 
 #[derive(Accounts)]
-pub struct BatchVerifyStub {}
+pub struct BatchVerifyStub<'info> {
+    pub cranker: Signer<'info>,
+}
 
 pub fn batch_verify_stub_handler(_ctx: Context<BatchVerifyStub>) -> Result<()> {
     err!(ProofVerifierError::NotImplemented)
