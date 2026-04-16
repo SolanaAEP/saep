@@ -90,21 +90,31 @@ function computeCommitHash(amount: bigint, nonce: Uint8Array, agentDid: Uint8Arr
   return keccak_256(buf);
 }
 
-async function signOrSerialize(
-  cfg: Config,
-  ix: import('@solana/web3.js').TransactionInstruction,
-  operator: PublicKey,
-): Promise<
-  | { signed: true; signature: string }
-  | { signed: false; unsigned_tx_base64: string; last_valid_block_height: number }
-> {
-  const tx = new Transaction().add(ix);
-  if (cfg.autoSign && cfg.keypair) {
-    const signature = await cfg.provider.sendAndConfirm(tx, [cfg.keypair]);
-    return { signed: true, signature };
+const autoSignTimestamps: number[] = [];
+
+function checkVelocity(limit: number): boolean {
+  const now = Date.now();
+  const windowStart = now - 60_000;
+  while (autoSignTimestamps.length > 0 && autoSignTimestamps[0] < windowStart) {
+    autoSignTimestamps.shift();
   }
+  return autoSignTimestamps.length < limit;
+}
+
+function recordAutoSign(): void {
+  autoSignTimestamps.push(Date.now());
+}
+
+export function _resetVelocityWindow(): void {
+  autoSignTimestamps.length = 0;
+}
+
+function serializeUnsigned(
+  tx: Transaction,
+  operator: PublicKey,
+  bh: { blockhash: string; lastValidBlockHeight: number },
+): { signed: false; unsigned_tx_base64: string; last_valid_block_height: number } {
   tx.feePayer = operator;
-  const bh = await cfg.connection.getLatestBlockhash('confirmed');
   tx.recentBlockhash = bh.blockhash;
   const serialized = tx
     .serialize({ requireAllSignatures: false, verifySignatures: false })
@@ -114,6 +124,39 @@ async function signOrSerialize(
     unsigned_tx_base64: serialized,
     last_valid_block_height: bh.lastValidBlockHeight,
   };
+}
+
+async function signOrSerialize(
+  cfg: Config,
+  ix: import('@solana/web3.js').TransactionInstruction,
+  operator: PublicKey,
+  valueLamports?: number,
+): Promise<
+  | { signed: true; signature: string }
+  | { signed: false; unsigned_tx_base64: string; last_valid_block_height: number; auto_sign_rejected?: string }
+> {
+  const tx = new Transaction().add(ix);
+  if (cfg.autoSign && cfg.keypair) {
+    if (valueLamports !== undefined && valueLamports > cfg.autoSignMaxLamports) {
+      const bh = await cfg.connection.getLatestBlockhash('confirmed');
+      return {
+        ...serializeUnsigned(tx, operator, bh),
+        auto_sign_rejected: `value ${valueLamports} lamports exceeds cap ${cfg.autoSignMaxLamports}`,
+      };
+    }
+    if (!checkVelocity(cfg.autoSignVelocityLimit)) {
+      const bh = await cfg.connection.getLatestBlockhash('confirmed');
+      return {
+        ...serializeUnsigned(tx, operator, bh),
+        auto_sign_rejected: `velocity limit exceeded (${cfg.autoSignVelocityLimit} per 60s)`,
+      };
+    }
+    recordAutoSign();
+    const signature = await cfg.provider.sendAndConfirm(tx, [cfg.keypair]);
+    return { signed: true, signature };
+  }
+  const bh = await cfg.connection.getLatestBlockhash('confirmed');
+  return serializeUnsigned(tx, operator, bh);
 }
 
 export function buildTools(): Tool[] {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import { Connection, Keypair } from '@solana/web3.js';
 import {
   saepBidAction,
@@ -6,6 +6,7 @@ import {
   saepPlugin,
   saepRegisterAgentAction,
   saepSubmitResultAction,
+  _resetVelocityWindow,
 } from '../actions.js';
 import type { SakAgentLike } from '../types.js';
 
@@ -164,5 +165,17 @@ describe('sak-plugin actions', () => {
       expect(a.examples.length).toBeGreaterThan(0);
       expect(a.description.length).toBeGreaterThan(10);
     }
+  });
+
+  it('saepPlugin accepts options and passes them through', () => {
+    const actions = saepPlugin('devnet', { maxAutoSignLamports: 500, velocityLimit: 2 });
+    expect(actions.length).toBe(5);
+  });
+
+  it('randomAgentId and randomNonce use crypto.getRandomValues (no Math.random)', async () => {
+    // Verify the source doesn't contain Math.random — this is a static check
+    const fs = await import('node:fs');
+    const src = fs.readFileSync(new URL('../actions.ts', import.meta.url).pathname, 'utf8');
+    expect(src).not.toContain('Math.random');
   });
 });

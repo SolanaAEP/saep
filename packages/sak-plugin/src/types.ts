@@ -14,6 +14,11 @@ export type SakAgentLike = {
   connection: Connection;
 };
 
+export type SaepPluginOptions = {
+  maxAutoSignLamports?: number;
+  velocityLimit?: number;
+};
+
 export type Action<S extends z.ZodTypeAny = z.ZodTypeAny> = {
   name: string;
   similes: string[];
