@@ -1,32 +1,39 @@
 import { cookies } from 'next/headers';
-import { SignJWT, jwtVerify } from 'jose';
+import { SignJWT } from 'jose';
+import {
+  SESSION_ISSUER,
+  sessionSecret,
+  verifySessionJwt,
+  type SessionPayload,
+} from '@saep/sdk';
 
 const COOKIE = 'saep_session';
-const ISSUER = 'saep.portal';
 
 function secret(): Uint8Array {
-  const raw = process.env.SESSION_SECRET;
-  if (!raw) throw new Error('SESSION_SECRET is required');
-  return new TextEncoder().encode(raw);
+  return sessionSecret(process.env.SESSION_SECRET);
 }
 
-export interface SessionPayload {
-  address: string;
+export type { SessionPayload };
+
+export async function signSession(address: string, ttlSeconds: number): Promise<{
+  token: string;
   issuedAt: number;
   expiresAt: number;
-}
-
-export async function createSession(address: string, ttlSeconds = 24 * 60 * 60) {
+}> {
   const now = Math.floor(Date.now() / 1000);
   const exp = now + ttlSeconds;
   const token = await new SignJWT({ address })
     .setProtectedHeader({ alg: 'HS256' })
-    .setIssuer(ISSUER)
+    .setIssuer(SESSION_ISSUER)
     .setSubject(address)
     .setIssuedAt(now)
     .setExpirationTime(exp)
     .sign(secret());
+  return { token, issuedAt: now, expiresAt: exp };
+}
 
+export async function createSession(address: string, ttlSeconds = 24 * 60 * 60) {
+  const { token, issuedAt, expiresAt } = await signSession(address, ttlSeconds);
   const jar = await cookies();
   jar.set(COOKIE, token, {
     httpOnly: true,
@@ -35,23 +42,14 @@ export async function createSession(address: string, ttlSeconds = 24 * 60 * 60) 
     path: '/',
     maxAge: ttlSeconds,
   });
-  return { address, issuedAt: now, expiresAt: exp };
+  return { address, issuedAt, expiresAt };
 }
 
 export async function readSession(): Promise<SessionPayload | null> {
   const jar = await cookies();
   const token = jar.get(COOKIE)?.value;
   if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, secret(), { issuer: ISSUER });
-    return {
-      address: payload.sub as string,
-      issuedAt: payload.iat as number,
-      expiresAt: payload.exp as number,
-    };
-  } catch {
-    return null;
-  }
+  return verifySessionJwt(token, secret());
 }
 
 export async function destroySession() {

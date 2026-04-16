@@ -212,7 +212,7 @@ export function Footer() {
           heading="Resources"
           links={[
             { label: 'Docs', href: '/docs' },
-            { label: 'GitHub', href: 'https://github.com/buildonsaep' },
+            { label: 'GitHub', href: 'https://github.com/SolanaAEP/saep' },
             { label: 'security.txt', href: '/.well-known/security.txt' },
           ]}
         />
