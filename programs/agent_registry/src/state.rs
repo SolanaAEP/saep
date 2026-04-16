@@ -6,6 +6,26 @@ pub const MANIFEST_URI_LEN: usize = 128;
 pub const SLASH_TIMELOCK_SECS: i64 = 2_592_000;
 pub const MAX_SLASH_BPS_CAP: u16 = 1_000;
 pub const BPS_DENOM: u64 = 10_000;
+pub const MAX_GATEKEEPER_NETWORKS: usize = 8;
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
+pub enum ProviderKind {
+    Civic,
+    SAS,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, InitSpace)]
+pub enum PersonhoodTier {
+    None,
+    Basic,
+    Verified,
+}
+
+impl Default for PersonhoodTier {
+    fn default() -> Self {
+        PersonhoodTier::None
+    }
+}
 
 #[account]
 #[derive(InitSpace)]
@@ -22,7 +42,54 @@ pub struct RegistryGlobal {
     pub max_slash_bps: u16,
     pub slash_timelock_secs: i64,
     pub paused: bool,
+    pub allowed_civic_networks: [Pubkey; MAX_GATEKEEPER_NETWORKS],
+    pub allowed_civic_networks_len: u8,
+    pub allowed_sas_issuers: [Pubkey; MAX_GATEKEEPER_NETWORKS],
+    pub allowed_sas_issuers_len: u8,
+    pub personhood_basic_min_tier: PersonhoodTier,
+    pub require_personhood_for_register: bool,
     pub bump: u8,
+}
+
+impl RegistryGlobal {
+    pub fn is_allowed_gatekeeper(&self, provider: ProviderKind, gatekeeper: &Pubkey) -> bool {
+        let (list, len) = match provider {
+            ProviderKind::Civic => (&self.allowed_civic_networks, self.allowed_civic_networks_len),
+            ProviderKind::SAS => (&self.allowed_sas_issuers, self.allowed_sas_issuers_len),
+        };
+        let len = (len as usize).min(MAX_GATEKEEPER_NETWORKS);
+        list[..len].iter().any(|k| k == gatekeeper)
+    }
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct PersonhoodAttestation {
+    pub operator: Pubkey,
+    pub provider: ProviderKind,
+    pub tier: PersonhoodTier,
+    pub gatekeeper_network: Pubkey,
+    pub attestation_ref: [u8; 32],
+    pub attested_at: i64,
+    pub expires_at: i64,
+    pub revoked: bool,
+    pub bump: u8,
+}
+
+impl PersonhoodAttestation {
+    pub fn is_valid_at(&self, now: i64) -> bool {
+        if self.revoked {
+            return false;
+        }
+        if self.expires_at != 0 && now > self.expires_at {
+            return false;
+        }
+        true
+    }
+
+    pub fn meets_tier(&self, required: PersonhoodTier) -> bool {
+        self.tier >= required
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]

@@ -80,4 +80,20 @@ pub enum TaskMarketError {
     InvalidCapabilityBit,
     #[msg("agent does not advertise the requested capability_bit")]
     UnknownCapability,
+    #[msg("personhood attestation required but missing")]
+    PersonhoodRequired,
+    #[msg("personhood attestation has expired")]
+    PersonhoodExpired,
+    #[msg("personhood attestation has been revoked")]
+    PersonhoodRevoked,
+    #[msg("attestation operator does not match bidder")]
+    AttestationOperatorMismatch,
+    #[msg("transfer-hook program not on fee_collector allowlist")]
+    HookNotAllowed,
+    #[msg("mint extension configuration is not acceptable")]
+    MintExtensionRejected,
+    #[msg("hook_allowlist account does not match MarketGlobal hook_allowlist")]
+    HookAllowlistMismatch,
+    #[msg("mint already has a MintAcceptRecord")]
+    MintAlreadyAccepted,
 }

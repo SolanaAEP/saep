@@ -3,10 +3,12 @@ use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use agent_registry::program::AgentRegistry;
-use agent_registry::state::{AgentAccount, AgentStatus};
+use agent_registry::state::{AgentAccount, AgentStatus, PersonhoodAttestation, RegistryGlobal};
+use capability_registry::state::CapabilityTag;
 
 use crate::errors::TaskMarketError;
 use crate::events::BidCommitted;
+use crate::personhood::resolve_required_tier;
 use crate::state::{
     Bid, BidBook, BidPhase, MarketGlobal, TaskContract, MAX_BIDDERS_PER_TASK, SEED_BID,
     SEED_BID_BOOK, SEED_BOND_ESCROW,
@@ -64,6 +66,13 @@ pub struct CommitBid<'info> {
     pub agent_registry_program: Program<'info, AgentRegistry>,
 
     #[account(
+        seeds = [b"global"],
+        bump = registry_global.bump,
+        seeds::program = agent_registry_program.key(),
+    )]
+    pub registry_global: Box<Account<'info, RegistryGlobal>>,
+
+    #[account(
         seeds = [b"agent", agent_account.operator.as_ref(), agent_account.agent_id.as_ref()],
         bump = agent_account.bump,
         seeds::program = agent_registry_program.key(),
@@ -71,6 +80,27 @@ pub struct CommitBid<'info> {
         constraint = agent_account.did == agent_did @ TaskMarketError::AgentMismatch,
     )]
     pub agent_account: Box<Account<'info, AgentAccount>>,
+
+    /// Personhood attestation for the bidder's operator wallet. Required iff the
+    /// task payload declares a non-None `requires_personhood`, or if the tag
+    /// carries a non-zero `min_personhood_tier`. Left optional so tasks without
+    /// a personhood floor don't force the extra account.
+    #[account(
+        seeds = [b"personhood", bidder.key().as_ref()],
+        bump = personhood_attestation.bump,
+        seeds::program = agent_registry_program.key(),
+    )]
+    pub personhood_attestation: Option<Box<Account<'info, PersonhoodAttestation>>>,
+
+    /// CapabilityTag pinned to the bid's capability bit. Required iff the tag
+    /// has min_personhood_tier > 0. The tag's owning program is validated in
+    /// the handler against `registry_global.capability_registry`.
+    #[account(
+        seeds = [b"tag".as_ref(), &[task.payload.capability_bit as u8]],
+        bump = capability_tag.bump,
+        seeds::program = registry_global.capability_registry,
+    )]
+    pub capability_tag: Option<Box<Account<'info, CapabilityTag>>>,
 
     pub token_program: Program<'info, Token2022>,
     pub system_program: Program<'info, System>,
@@ -87,10 +117,29 @@ pub fn handler(
         TaskMarketError::AgentNotActive,
     );
 
+    let now = Clock::get()?.unix_timestamp;
+    let payload_tier = ctx.accounts.task.payload.requires_personhood;
+    let tag: Option<&CapabilityTag> = ctx
+        .accounts
+        .capability_tag
+        .as_ref()
+        .map(|a| &***a);
+    let required_tier = resolve_required_tier(payload_tier, tag)?;
+    let attestation: Option<&PersonhoodAttestation> = ctx
+        .accounts
+        .personhood_attestation
+        .as_ref()
+        .map(|a| &***a);
+    crate::personhood::enforce_personhood(
+        required_tier,
+        attestation,
+        &ctx.accounts.bidder.key(),
+        now,
+    )?;
+
     let book = &mut ctx.accounts.bid_book;
     require!(book.phase == BidPhase::Commit, TaskMarketError::PhaseClosed);
 
-    let now = Clock::get()?.unix_timestamp;
     require!(
         now >= book.commit_start && now < book.commit_end,
         TaskMarketError::PhaseClosed

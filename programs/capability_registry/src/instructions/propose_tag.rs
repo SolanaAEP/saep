@@ -56,6 +56,7 @@ pub fn propose_tag_handler(
     tag.added_at = Clock::get()?.unix_timestamp;
     tag.added_by = ctx.accounts.authority.key();
     tag.retired = false;
+    tag.min_personhood_tier = crate::state::PERSONHOOD_TIER_NONE;
     tag.bump = ctx.bumps.tag;
 
     config.set_bit(bit_index)?;

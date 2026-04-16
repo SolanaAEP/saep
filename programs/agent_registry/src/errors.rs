@@ -48,4 +48,24 @@ pub enum AgentRegistryError {
     CapabilityNotDeclared,
     #[msg("task_id already applied to this category reputation")]
     ReputationReplay,
+    #[msg("personhood attestation required but missing")]
+    PersonhoodRequired,
+    #[msg("personhood attestation has expired")]
+    PersonhoodExpired,
+    #[msg("personhood attestation has been revoked")]
+    PersonhoodRevoked,
+    #[msg("gatekeeper network or SAS issuer is not on the allowlist")]
+    GatekeeperNotAllowed,
+    #[msg("attestation operator does not match signer or bidder")]
+    AttestationOperatorMismatch,
+    #[msg("gateway token layout is invalid")]
+    GatewayTokenInvalid,
+    #[msg("gateway token state is not active")]
+    GatewayTokenNotActive,
+    #[msg("gateway token owner does not match operator")]
+    GatewayTokenOwnerMismatch,
+    #[msg("gatekeeper allowlist overflow")]
+    GatekeeperListFull,
+    #[msg("attestation is still valid; refresh not needed")]
+    AttestationStillValid,
 }
