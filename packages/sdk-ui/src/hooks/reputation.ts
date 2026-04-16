@@ -1,6 +1,12 @@
 'use client';
 
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
+import {
+  fetchCategoryReputation,
+  fetchCategoryReputationsByAgent,
+  type CategoryReputationSummary,
+} from '@saep/sdk';
+import { useAgentRegistryProgram } from './program.js';
 
 export interface LeaderboardRow {
   agentDidHex: string;
@@ -145,6 +151,50 @@ export interface UseRetroEligibilityArgs {
   indexerUrl: string;
   operatorHex: string | null;
   enabled?: boolean;
+}
+
+export interface UseAgentCategoryReputationArgs {
+  agentDid: Uint8Array | null;
+  capabilityBit: number | null;
+  enabled?: boolean;
+}
+
+export function useAgentCategoryReputation({
+  agentDid,
+  capabilityBit,
+  enabled = true,
+}: UseAgentCategoryReputationArgs) {
+  const program = useAgentRegistryProgram();
+  const ready = Boolean(
+    program && agentDid && agentDid.length === 32 && capabilityBit != null && capabilityBit >= 0,
+  );
+  const didHex = agentDid ? Buffer.from(agentDid).toString('hex') : null;
+  return useQuery<CategoryReputationSummary | null>({
+    queryKey: ['category-reputation', didHex, capabilityBit],
+    enabled: enabled && ready,
+    queryFn: () => fetchCategoryReputation(program!, agentDid!, capabilityBit!),
+    staleTime: 30_000,
+  });
+}
+
+export interface UseAgentCategoryReputationsArgs {
+  agentDid: Uint8Array | null;
+  enabled?: boolean;
+}
+
+export function useAgentCategoryReputations({
+  agentDid,
+  enabled = true,
+}: UseAgentCategoryReputationsArgs) {
+  const program = useAgentRegistryProgram();
+  const ready = Boolean(program && agentDid && agentDid.length === 32);
+  const didHex = agentDid ? Buffer.from(agentDid).toString('hex') : null;
+  return useQuery<CategoryReputationSummary[]>({
+    queryKey: ['category-reputations', didHex],
+    enabled: enabled && ready,
+    queryFn: () => fetchCategoryReputationsByAgent(program!, agentDid!),
+    staleTime: 30_000,
+  });
 }
 
 export function useRetroEligibility({
