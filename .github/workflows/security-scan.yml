@@ -15,8 +15,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install cargo-audit --locked
-      - run: cargo audit
+      - name: cache cargo-audit binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: cargo-audit-0.22.1-${{ runner.os }}
+      - name: install cargo-audit
+        run: |
+          if ! command -v cargo-audit >/dev/null; then
+            cargo install cargo-audit --locked --version 0.22.1
+          fi
+      - name: cargo audit (root + indexer, baselined)
+        run: ./scripts/audit.sh
 
   pnpm-audit:
     runs-on: ubuntu-latest
@@ -34,8 +44,9 @@ jobs:
 
   semgrep:
     runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:1.157.0
     steps:
       - uses: actions/checkout@v4
-      - uses: semgrep/semgrep-action@v1
-        with:
-          config: auto
+      - name: semgrep scan (solana + p/rust, baseline-annotated)
+        run: semgrep scan --error --config=.semgrep/solana.yml --config=p/rust --metrics=off programs/
