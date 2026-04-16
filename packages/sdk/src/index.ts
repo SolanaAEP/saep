@@ -9,6 +9,9 @@ export * from './programs/proof_verifier.js';
 export * from './programs/treasury_standard.js';
 export * from './accounts/index.js';
 export * from './auth/siws.js';
+export * from './auth/session.js';
 export * from './schemas/index.js';
+export * from './jito/index.js';
+export * from './submit/index.js';
 
 export { DEVNET_PROGRAM_IDS as SAEP_PROGRAM_IDS } from './cluster/index.js';

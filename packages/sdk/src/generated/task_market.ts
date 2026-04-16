@@ -62,6 +62,119 @@ export type TaskMarket = {
       "args": []
     },
     {
+      "name": "cancelBidding",
+      "discriminator": [
+        144,
+        6,
+        97,
+        99,
+        211,
+        177,
+        168,
+        245
+      ],
+      "accounts": [
+        {
+          "name": "task",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "taskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bidBook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  105,
+                  100,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "paymentMint"
+        },
+        {
+          "name": "bondEscrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "client",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "task"
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "cancelUnfundedTask",
       "discriminator": [
         193,
@@ -111,6 +224,490 @@ export type TaskMarket = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "claimBond",
+      "discriminator": [
+        173,
+        34,
+        157,
+        61,
+        45,
+        120,
+        246,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "task",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "taskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bidBook",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  105,
+                  100,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bid",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  105,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              },
+              {
+                "kind": "account",
+                "path": "bidder"
+              }
+            ]
+          }
+        },
+        {
+          "name": "paymentMint"
+        },
+        {
+          "name": "bondEscrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bidderTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "feeCollectorTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "bidder",
+          "signer": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeBidding",
+      "discriminator": [
+        219,
+        203,
+        190,
+        31,
+        25,
+        53,
+        75,
+        228
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "task",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "taskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bidBook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  105,
+                  100,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "commitBid",
+      "discriminator": [
+        149,
+        237,
+        198,
+        113,
+        53,
+        66,
+        70,
+        76
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "task",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "taskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bidBook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  105,
+                  100,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bid",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  105,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              },
+              {
+                "kind": "account",
+                "path": "bidder"
+              }
+            ]
+          }
+        },
+        {
+          "name": "paymentMint"
+        },
+        {
+          "name": "bondEscrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bidderTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "bidder",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "agentRegistryProgram",
+          "address": "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
+        },
+        {
+          "name": "agentAccount",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent_account.operator",
+                "account": "agentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent_account.agent_id",
+                "account": "agentAccount"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "agentRegistryProgram"
+            }
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "commitHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "agentDid",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "createTask",
@@ -270,12 +867,11 @@ export type TaskMarket = {
           "type": "u64"
         },
         {
-          "name": "taskHash",
+          "name": "payload",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "defined": {
+              "name": "taskPayload"
+            }
           }
         },
         {
@@ -694,6 +1290,161 @@ export type TaskMarket = {
       ]
     },
     {
+      "name": "openBidding",
+      "discriminator": [
+        89,
+        97,
+        154,
+        176,
+        213,
+        63,
+        102,
+        206
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "task",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "taskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bidBook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  105,
+                  100,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "paymentMint"
+        },
+        {
+          "name": "bondEscrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "client",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "task"
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "commitSecs",
+          "type": "i64"
+        },
+        {
+          "name": "revealSecs",
+          "type": "i64"
+        },
+        {
+          "name": "bondBps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
       "name": "raiseDispute",
       "discriminator": [
         41,
@@ -923,6 +1674,117 @@ export type TaskMarket = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "revealBid",
+      "discriminator": [
+        48,
+        73,
+        28,
+        255,
+        202,
+        126,
+        236,
+        196
+      ],
+      "accounts": [
+        {
+          "name": "task",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "taskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bidBook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  105,
+                  100,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bid",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  105,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              },
+              {
+                "kind": "account",
+                "path": "bidder"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bidder",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "nonce",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "setAllowedMint",
@@ -1455,6 +2317,32 @@ export type TaskMarket = {
   ],
   "accounts": [
     {
+      "name": "bid",
+      "discriminator": [
+        143,
+        246,
+        48,
+        245,
+        42,
+        145,
+        180,
+        88
+      ]
+    },
+    {
+      "name": "bidBook",
+      "discriminator": [
+        182,
+        97,
+        57,
+        49,
+        241,
+        83,
+        113,
+        20
+      ]
+    },
+    {
       "name": "marketGlobal",
       "discriminator": [
         224,
@@ -1482,6 +2370,71 @@ export type TaskMarket = {
     }
   ],
   "events": [
+    {
+      "name": "bidBookClosed",
+      "discriminator": [
+        81,
+        79,
+        65,
+        122,
+        112,
+        64,
+        146,
+        208
+      ]
+    },
+    {
+      "name": "bidBookOpened",
+      "discriminator": [
+        10,
+        179,
+        205,
+        134,
+        73,
+        169,
+        128,
+        54
+      ]
+    },
+    {
+      "name": "bidCommitted",
+      "discriminator": [
+        81,
+        13,
+        193,
+        139,
+        0,
+        168,
+        82,
+        55
+      ]
+    },
+    {
+      "name": "bidRevealed",
+      "discriminator": [
+        227,
+        144,
+        125,
+        229,
+        28,
+        109,
+        18,
+        209
+      ]
+    },
+    {
+      "name": "bidSlashed",
+      "discriminator": [
+        151,
+        115,
+        136,
+        75,
+        32,
+        56,
+        99,
+        5
+      ]
+    },
     {
       "name": "disputeRaised",
       "discriminator": [
@@ -1597,6 +2550,19 @@ export type TaskMarket = {
         4,
         3,
         195
+      ]
+    },
+    {
+      "name": "taskPayloadStored",
+      "discriminator": [
+        142,
+        81,
+        151,
+        192,
+        2,
+        99,
+        211,
+        205
       ]
     },
     {
@@ -1764,6 +2730,76 @@ export type TaskMarket = {
       "code": 6024,
       "name": "insufficientStake",
       "msg": "agent stake below required minimum"
+    },
+    {
+      "code": 6025,
+      "name": "phaseClosed",
+      "msg": "bid phase closed for this action"
+    },
+    {
+      "code": 6026,
+      "name": "revealMismatch",
+      "msg": "revealed bid does not match commit hash"
+    },
+    {
+      "code": 6027,
+      "name": "bondOutOfRange",
+      "msg": "bond bps out of allowed range"
+    },
+    {
+      "code": 6028,
+      "name": "tooManyBidders",
+      "msg": "bid book is at capacity"
+    },
+    {
+      "code": 6029,
+      "name": "bidBookNotSettled",
+      "msg": "bid book has not been settled"
+    },
+    {
+      "code": 6030,
+      "name": "notWinner",
+      "msg": "signer is not the winning bidder"
+    },
+    {
+      "code": 6031,
+      "name": "noReveals",
+      "msg": "no eligible reveals in bid book"
+    },
+    {
+      "code": 6032,
+      "name": "alreadyRefunded",
+      "msg": "bond has already been claimed"
+    },
+    {
+      "code": 6033,
+      "name": "windowInvalid",
+      "msg": "bid window parameters invalid"
+    },
+    {
+      "code": 6034,
+      "name": "bidBookAlreadyOpen",
+      "msg": "task already has an open bid book"
+    },
+    {
+      "code": 6035,
+      "name": "commitsPresent",
+      "msg": "bid book has active commits; cannot cancel"
+    },
+    {
+      "code": 6036,
+      "name": "payloadTooLarge",
+      "msg": "task payload exceeds size caps"
+    },
+    {
+      "code": 6037,
+      "name": "invalidCapabilityBit",
+      "msg": "capability_bit out of allowed range"
+    },
+    {
+      "code": 6038,
+      "name": "unknownCapability",
+      "msg": "agent does not advertise the requested capability_bit"
     }
   ],
   "types": [
@@ -1908,6 +2944,295 @@ export type TaskMarket = {
           },
           {
             "name": "deregistered"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "taskId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "bidder",
+            "type": "pubkey"
+          },
+          {
+            "name": "commitHash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "bondPaid",
+            "type": "u64"
+          },
+          {
+            "name": "revealedAmount",
+            "type": "u64"
+          },
+          {
+            "name": "revealed",
+            "type": "bool"
+          },
+          {
+            "name": "refunded",
+            "type": "bool"
+          },
+          {
+            "name": "slashed",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bidBook",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "taskId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "commitStart",
+            "type": "i64"
+          },
+          {
+            "name": "commitEnd",
+            "type": "i64"
+          },
+          {
+            "name": "revealEnd",
+            "type": "i64"
+          },
+          {
+            "name": "bondAmount",
+            "type": "u64"
+          },
+          {
+            "name": "bondMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "commitCount",
+            "type": "u16"
+          },
+          {
+            "name": "revealCount",
+            "type": "u16"
+          },
+          {
+            "name": "winnerAgent",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "winnerAmount",
+            "type": "u64"
+          },
+          {
+            "name": "phase",
+            "type": {
+              "defined": {
+                "name": "bidPhase"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "escrowBump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bidBookClosed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "taskId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "winnerAgent",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "winnerAmount",
+            "type": "u64"
+          },
+          {
+            "name": "revealCount",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bidBookOpened",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "taskId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "commitEnd",
+            "type": "i64"
+          },
+          {
+            "name": "revealEnd",
+            "type": "i64"
+          },
+          {
+            "name": "bondAmount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bidCommitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "taskId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "bidder",
+            "type": "pubkey"
+          },
+          {
+            "name": "bondPaid",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bidPhase",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "commit"
+          },
+          {
+            "name": "reveal"
+          },
+          {
+            "name": "settled"
+          },
+          {
+            "name": "cancelled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bidRevealed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "taskId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "bidder",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bidSlashed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "taskId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "bidder",
+            "type": "pubkey"
+          },
+          {
+            "name": "bondAmount",
+            "type": "u64"
           }
         ]
       }
@@ -2169,6 +3494,10 @@ export type TaskMarket = {
           },
           {
             "name": "stakeMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "proofVerifier",
             "type": "pubkey"
           },
           {
@@ -2446,6 +3775,26 @@ export type TaskMarket = {
           {
             "name": "escrowBump",
             "type": "u8"
+          },
+          {
+            "name": "bidBook",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "assignedAgent",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "payload",
+            "type": {
+              "defined": {
+                "name": "taskPayload"
+              }
+            }
           }
         ]
       }
@@ -2538,6 +3887,165 @@ export type TaskMarket = {
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "taskKind",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "swapExact",
+            "fields": [
+              {
+                "name": "inMint",
+                "type": "pubkey"
+              },
+              {
+                "name": "outMint",
+                "type": "pubkey"
+              },
+              {
+                "name": "amountIn",
+                "type": "u64"
+              },
+              {
+                "name": "minOut",
+                "type": "u64"
+              }
+            ]
+          },
+          {
+            "name": "transfer",
+            "fields": [
+              {
+                "name": "mint",
+                "type": "pubkey"
+              },
+              {
+                "name": "to",
+                "type": "pubkey"
+              },
+              {
+                "name": "amount",
+                "type": "u64"
+              }
+            ]
+          },
+          {
+            "name": "dataFetch",
+            "fields": [
+              {
+                "name": "urlHash",
+                "type": {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                }
+              },
+              {
+                "name": "expectedHash",
+                "type": {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "compute",
+            "fields": [
+              {
+                "name": "circuitId",
+                "type": {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                }
+              },
+              {
+                "name": "publicInputsHash",
+                "type": {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "generic",
+            "fields": [
+              {
+                "name": "capabilityBit",
+                "type": "u16"
+              },
+              {
+                "name": "argsHash",
+                "type": {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "taskPayload",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "taskKind"
+              }
+            }
+          },
+          {
+            "name": "capabilityBit",
+            "type": "u16"
+          },
+          {
+            "name": "criteria",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "taskPayloadStored",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "taskId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "kindDiscriminant",
+            "type": "u8"
+          },
+          {
+            "name": "capabilityBit",
+            "type": "u16"
           }
         ]
       }

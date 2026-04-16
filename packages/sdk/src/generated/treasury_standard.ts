@@ -158,6 +158,33 @@ export type TreasuryStandard = {
       ],
       "accounts": [
         {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "treasury",
           "writable": true,
           "pda": {
@@ -173,6 +200,39 @@ export type TreasuryStandard = {
                   117,
                   114,
                   121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedTargets",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
                 ]
               },
               {
@@ -383,6 +443,39 @@ export type TreasuryStandard = {
           }
         },
         {
+          "name": "allowedTargets",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
           "name": "mint"
         },
         {
@@ -438,6 +531,106 @@ export type TreasuryStandard = {
         {
           "name": "amount",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initAllowedTargets",
+      "discriminator": [
+        214,
+        193,
+        83,
+        242,
+        175,
+        162,
+        8,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agentDid"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedTargets",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agentDid"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "agentDid",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "targets",
+          "type": {
+            "vec": "pubkey"
+          }
         }
       ]
     },
@@ -622,6 +815,39 @@ export type TreasuryStandard = {
                   117,
                   114,
                   121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedTargets",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
                 ]
               },
               {
@@ -1061,6 +1287,70 @@ export type TreasuryStandard = {
       ]
     },
     {
+      "name": "setGlobalCallTargets",
+      "discriminator": [
+        66,
+        75,
+        1,
+        236,
+        235,
+        131,
+        193,
+        110
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "add",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "remove",
+          "type": {
+            "vec": "pubkey"
+          }
+        }
+      ]
+    },
+    {
       "name": "setLimits",
       "discriminator": [
         207,
@@ -1374,6 +1664,100 @@ export type TreasuryStandard = {
       ]
     },
     {
+      "name": "updateAllowedTargets",
+      "discriminator": [
+        20,
+        132,
+        223,
+        58,
+        251,
+        73,
+        203,
+        5
+      ],
+      "accounts": [
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedTargets",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "add",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "remove",
+          "type": {
+            "vec": "pubkey"
+          }
+        }
+      ]
+    },
+    {
       "name": "withdraw",
       "discriminator": [
         183,
@@ -1429,6 +1813,39 @@ export type TreasuryStandard = {
                   117,
                   114,
                   121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedTargets",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
                 ]
               },
               {
@@ -1554,6 +1971,39 @@ export type TreasuryStandard = {
                   117,
                   114,
                   121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedTargets",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
                 ]
               },
               {
@@ -1720,6 +2170,19 @@ export type TreasuryStandard = {
       ]
     },
     {
+      "name": "allowedTargets",
+      "discriminator": [
+        182,
+        32,
+        55,
+        95,
+        132,
+        19,
+        63,
+        154
+      ]
+    },
+    {
       "name": "paymentStream",
       "discriminator": [
         124,
@@ -1771,6 +2234,19 @@ export type TreasuryStandard = {
         65,
         120,
         57
+      ]
+    },
+    {
+      "name": "allowedTargetsUpdated",
+      "discriminator": [
+        166,
+        99,
+        157,
+        120,
+        2,
+        218,
+        94,
+        172
       ]
     },
     {
@@ -2049,6 +2525,21 @@ export type TreasuryStandard = {
       "code": 6028,
       "name": "operatorMismatch",
       "msg": "operator does not match AgentAccount operator"
+    },
+    {
+      "code": 6029,
+      "name": "targetNotAllowed",
+      "msg": "outbound CPI target is not on the allowed-call-targets list"
+    },
+    {
+      "code": 6030,
+      "name": "tooManyCallTargets",
+      "msg": "allowed-call-targets list exceeds cap"
+    },
+    {
+      "code": 6031,
+      "name": "invalidCallTarget",
+      "msg": "call target must be a non-default pubkey"
     }
   ],
   "types": [
@@ -2319,6 +2810,62 @@ export type TreasuryStandard = {
       }
     },
     {
+      "name": "allowedTargets",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "targets",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "allowedTargetsUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "addedCount",
+            "type": "u16"
+          },
+          {
+            "name": "removedCount",
+            "type": "u16"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "limitsUpdated",
       "type": {
         "kind": "struct",
@@ -2526,6 +3073,10 @@ export type TreasuryStandard = {
           },
           {
             "name": "stakeMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "proofVerifier",
             "type": "pubkey"
           },
           {
@@ -2874,6 +3425,12 @@ export type TreasuryStandard = {
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "globalCallTargets",
+            "type": {
+              "vec": "pubkey"
+            }
           }
         ]
       }

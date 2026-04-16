@@ -54,6 +54,35 @@ export async function buildInitTreasuryIx(
     .instruction();
 }
 
+export interface SetLimitsInput {
+  operator: PublicKey;
+  agentDid: Uint8Array;
+  daily: bigint;
+  perTx: bigint;
+  weekly: bigint;
+}
+
+export async function buildSetLimitsIx(
+  program: Program<TreasuryStandard>,
+  input: SetLimitsInput,
+): Promise<TransactionInstruction> {
+  const [global] = treasuryGlobalPda(program.programId);
+  const [treasury] = treasuryPda(program.programId, input.agentDid);
+
+  return program.methods
+    .setLimits(
+      new BN(input.daily.toString()),
+      new BN(input.perTx.toString()),
+      new BN(input.weekly.toString()),
+    )
+    .accounts({
+      global,
+      treasury,
+      operator: input.operator,
+    } as never)
+    .instruction();
+}
+
 export interface WithdrawInput {
   operator: PublicKey;
   agentDid: Uint8Array;
