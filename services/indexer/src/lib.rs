@@ -1,3 +1,4 @@
+pub mod api;
 pub mod borsh_decode;
 pub mod config;
 pub mod db;
