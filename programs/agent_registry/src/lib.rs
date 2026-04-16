@@ -6,7 +6,7 @@ pub mod instructions;
 pub mod state;
 
 use instructions::*;
-use state::{AgentStatus, MANIFEST_URI_LEN};
+use state::{AgentStatus, ReputationSample, MANIFEST_URI_LEN};
 
 declare_id!("EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu");
 
@@ -23,6 +23,7 @@ pub mod agent_registry {
         dispute_arbitration: Pubkey,
         slashing_treasury: Pubkey,
         stake_mint: Pubkey,
+        proof_verifier: Pubkey,
         min_stake: u64,
         max_slash_bps: u16,
         slash_timelock_secs: i64,
@@ -35,6 +36,7 @@ pub mod agent_registry {
             dispute_arbitration,
             slashing_treasury,
             stake_mint,
+            proof_verifier,
             min_stake,
             max_slash_bps,
             slash_timelock_secs,
@@ -157,5 +159,30 @@ pub mod agent_registry {
 
     pub fn set_paused(ctx: Context<GovernanceUpdate>, paused: bool) -> Result<()> {
         instructions::governance::set_paused_handler(ctx, paused)
+    }
+
+    pub fn set_proof_verifier(
+        ctx: Context<GovernanceUpdate>,
+        new_proof_verifier: Pubkey,
+    ) -> Result<()> {
+        instructions::reputation::set_proof_verifier_handler(ctx, new_proof_verifier)
+    }
+
+    pub fn update_reputation(
+        ctx: Context<UpdateReputation>,
+        agent_did: [u8; 32],
+        capability_bit: u16,
+        sample: ReputationSample,
+        task_id: [u8; 32],
+        proof_key: [u8; 32],
+    ) -> Result<()> {
+        instructions::reputation::update_reputation_handler(
+            ctx,
+            agent_did,
+            capability_bit,
+            sample,
+            task_id,
+            proof_key,
+        )
     }
 }

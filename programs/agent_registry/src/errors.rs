@@ -40,4 +40,12 @@ pub enum AgentRegistryError {
     SlashCapTooHigh,
     #[msg("reputation value out of range")]
     ReputationOutOfRange,
+    #[msg("only the proof_verifier program may update reputation")]
+    UnauthorizedReputationUpdate,
+    #[msg("capability bit exceeds capability_mask width")]
+    InvalidCapabilityBit,
+    #[msg("agent has not declared this capability bit")]
+    CapabilityNotDeclared,
+    #[msg("task_id already applied to this category reputation")]
+    ReputationReplay,
 }

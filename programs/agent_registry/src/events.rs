@@ -98,3 +98,18 @@ pub struct SlashExecuted {
 pub struct GlobalParamsUpdated {
     pub timestamp: i64,
 }
+
+#[event]
+pub struct CategoryReputationUpdated {
+    pub agent_did: [u8; 32],
+    pub capability_bit: u16,
+    pub quality: u16,
+    pub timeliness: u16,
+    pub availability: u16,
+    pub cost_efficiency: u16,
+    pub honesty: u16,
+    pub jobs_completed: u32,
+    pub jobs_disputed: u16,
+    pub task_id: [u8; 32],
+    pub timestamp: i64,
+}

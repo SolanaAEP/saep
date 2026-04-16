@@ -117,4 +117,29 @@ pub mod proof_verifier {
     pub fn accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
         instructions::authority::accept_authority_handler(ctx)
     }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn verify_and_update_reputation(
+        ctx: Context<VerifyAndUpdateReputation>,
+        proof_a: [u8; 64],
+        proof_b: [u8; 128],
+        proof_c: [u8; 64],
+        public_inputs: Vec<[u8; 32]>,
+        agent_did: [u8; 32],
+        capability_bit: u16,
+        sample: agent_registry::state::ReputationSample,
+        task_id: [u8; 32],
+    ) -> Result<()> {
+        instructions::reputation_cpi::verify_and_update_reputation_handler(
+            ctx,
+            proof_a,
+            proof_b,
+            proof_c,
+            public_inputs,
+            agent_did,
+            capability_bit,
+            sample,
+            task_id,
+        )
+    }
 }

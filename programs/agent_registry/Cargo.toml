@@ -17,7 +17,10 @@ default = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
-anchor-lang = "1.0.0"
+anchor-lang = { version = "1.0.0", features = ["init-if-needed"] }
 anchor-spl = { version = "1.0.0", features = ["token_2022"] }
 capability_registry = { path = "../capability_registry", features = ["cpi"] }
 solana-keccak-hasher = "2.2.1"
+
+[dev-dependencies]
+proptest = "1"
