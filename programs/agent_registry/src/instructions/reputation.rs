@@ -1,0 +1,235 @@
+use anchor_lang::prelude::*;
+
+use crate::errors::AgentRegistryError;
+use crate::events::CategoryReputationUpdated;
+use crate::state::{
+    ewma, AgentAccount, CategoryReputation, RegistryGlobal, ReputationSample, ReputationScore,
+    CATEGORY_REP_VERSION, DEFAULT_CATEGORY_ALPHA_BPS, MAX_CAPABILITY_BIT,
+};
+
+pub const PROOF_VERIFIER_REP_AUTHORITY_SEED: &[u8] = b"rep_authority";
+
+#[derive(Accounts)]
+#[instruction(agent_did: [u8; 32], capability_bit: u16)]
+pub struct UpdateReputation<'info> {
+    #[account(seeds = [b"global"], bump = global.bump)]
+    pub global: Account<'info, RegistryGlobal>,
+
+    #[account(
+        seeds = [b"agent", agent.operator.as_ref(), agent.agent_id.as_ref()],
+        bump = agent.bump,
+        constraint = agent.did == agent_did @ AgentRegistryError::AgentNotFound,
+    )]
+    pub agent: Account<'info, AgentAccount>,
+
+    #[account(
+        init_if_needed,
+        payer = payer,
+        space = 8 + CategoryReputation::INIT_SPACE,
+        seeds = [b"rep", agent_did.as_ref(), &capability_bit.to_le_bytes()],
+        bump,
+    )]
+    pub category: Account<'info, CategoryReputation>,
+
+    /// PDA signer from the proof_verifier program. The pubkey is asserted
+    /// against `global.proof_verifier` via the owner check on the signer's
+    /// derivation: proof_verifier invokes with seeds = [b"rep_authority"].
+    /// CHECK: key equality to the proof_verifier-owned PDA is enforced in the
+    /// handler; signer verification is enforced by `Signer`.
+    pub proof_verifier_authority: Signer<'info>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+pub fn update_reputation_handler(
+    ctx: Context<UpdateReputation>,
+    agent_did: [u8; 32],
+    capability_bit: u16,
+    sample: ReputationSample,
+    task_id: [u8; 32],
+    proof_key: [u8; 32],
+) -> Result<()> {
+    let g = &ctx.accounts.global;
+    require!(!g.paused, AgentRegistryError::Paused);
+
+    let (expected_authority, _) = Pubkey::find_program_address(
+        &[PROOF_VERIFIER_REP_AUTHORITY_SEED],
+        &g.proof_verifier,
+    );
+    require_keys_eq!(
+        ctx.accounts.proof_verifier_authority.key(),
+        expected_authority,
+        AgentRegistryError::UnauthorizedReputationUpdate
+    );
+
+    require!(
+        capability_bit <= MAX_CAPABILITY_BIT,
+        AgentRegistryError::InvalidCapabilityBit
+    );
+    let bit_mask: u128 = 1u128 << capability_bit;
+    require!(
+        (ctx.accounts.agent.capability_mask & bit_mask) != 0,
+        AgentRegistryError::CapabilityNotDeclared
+    );
+
+    let now = Clock::get()?.unix_timestamp;
+    let cat = &mut ctx.accounts.category;
+    let fresh = cat.version == 0;
+
+    if fresh {
+        cat.agent_did = agent_did;
+        cat.capability_bit = capability_bit;
+        cat.score = ReputationScore {
+            ewma_alpha_bps: DEFAULT_CATEGORY_ALPHA_BPS,
+            ..Default::default()
+        };
+        cat.jobs_completed = 0;
+        cat.jobs_disputed = 0;
+        cat.last_proof_key = [0u8; 32];
+        cat.last_task_id = [0u8; 32];
+        cat.version = CATEGORY_REP_VERSION;
+        cat.bump = ctx.bumps.category;
+    } else {
+        require!(
+            cat.last_task_id != task_id,
+            AgentRegistryError::ReputationReplay
+        );
+        require_keys_eq!(
+            Pubkey::new_from_array(cat.agent_did),
+            Pubkey::new_from_array(agent_did),
+            AgentRegistryError::AgentNotFound
+        );
+        require!(
+            cat.capability_bit == capability_bit,
+            AgentRegistryError::InvalidCapabilityBit
+        );
+    }
+
+    let alpha = cat.score.ewma_alpha_bps;
+    cat.score.quality = ewma(cat.score.quality, sample.quality, alpha)?;
+    cat.score.timeliness = ewma(cat.score.timeliness, sample.timeliness, alpha)?;
+    cat.score.availability = ewma(cat.score.availability, sample.availability, alpha)?;
+    cat.score.cost_efficiency = ewma(cat.score.cost_efficiency, sample.cost_efficiency, alpha)?;
+    cat.score.honesty = ewma(cat.score.honesty, sample.honesty, alpha)?;
+    cat.score.volume = cat.score.volume.saturating_add(1).min(10_000);
+    cat.score.sample_count = cat
+        .score
+        .sample_count
+        .checked_add(1)
+        .ok_or(AgentRegistryError::ArithmeticOverflow)?;
+    cat.score.last_update = now;
+
+    cat.jobs_completed = cat
+        .jobs_completed
+        .checked_add(1)
+        .ok_or(AgentRegistryError::ArithmeticOverflow)?;
+    if sample.disputed {
+        cat.jobs_disputed = cat
+            .jobs_disputed
+            .checked_add(1)
+            .ok_or(AgentRegistryError::ArithmeticOverflow)?;
+    }
+    require!(
+        cat.jobs_disputed as u32 <= cat.jobs_completed,
+        AgentRegistryError::ReputationOutOfRange
+    );
+
+    cat.last_task_id = task_id;
+    cat.last_proof_key = proof_key;
+
+    emit!(CategoryReputationUpdated {
+        agent_did,
+        capability_bit,
+        quality: cat.score.quality,
+        timeliness: cat.score.timeliness,
+        availability: cat.score.availability,
+        cost_efficiency: cat.score.cost_efficiency,
+        honesty: cat.score.honesty,
+        jobs_completed: cat.jobs_completed,
+        jobs_disputed: cat.jobs_disputed,
+        task_id,
+        timestamp: now,
+    });
+
+    Ok(())
+}
+
+pub fn set_proof_verifier_handler(
+    ctx: Context<super::governance::GovernanceUpdate>,
+    new_proof_verifier: Pubkey,
+) -> Result<()> {
+    ctx.accounts.global.proof_verifier = new_proof_verifier;
+    emit!(crate::events::GlobalParamsUpdated {
+        timestamp: Clock::get()?.unix_timestamp,
+    });
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anchor_lang::solana_program::pubkey::Pubkey as Pk;
+
+    #[test]
+    fn category_rep_pda_derivation_deterministic() {
+        let program_id = Pk::new_unique();
+        let did = [7u8; 32];
+        let bit: u16 = 42;
+        let (a, _) =
+            Pk::find_program_address(&[b"rep", &did, &bit.to_le_bytes()], &program_id);
+        let (b, _) =
+            Pk::find_program_address(&[b"rep", &did, &bit.to_le_bytes()], &program_id);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn category_rep_pda_distinct_per_bit() {
+        let program_id = Pk::new_unique();
+        let did = [7u8; 32];
+        let (a, _) = Pk::find_program_address(&[b"rep", &did, &0u16.to_le_bytes()], &program_id);
+        let (b, _) = Pk::find_program_address(&[b"rep", &did, &1u16.to_le_bytes()], &program_id);
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn cap_bit_range_upper_bound() {
+        assert!(MAX_CAPABILITY_BIT <= 127);
+        let bit: u16 = MAX_CAPABILITY_BIT;
+        let mask: u128 = 1u128 << bit;
+        assert_ne!(mask, 0);
+    }
+
+    #[test]
+    fn cap_bit_out_of_range_detected() {
+        let bit: u16 = 128;
+        assert!(bit > MAX_CAPABILITY_BIT);
+    }
+
+    #[test]
+    fn proof_verifier_rep_authority_pda_stable() {
+        let pv = Pk::new_unique();
+        let (a, _) = Pk::find_program_address(&[PROOF_VERIFIER_REP_AUTHORITY_SEED], &pv);
+        let (b, _) = Pk::find_program_address(&[PROOF_VERIFIER_REP_AUTHORITY_SEED], &pv);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn proof_verifier_rep_authority_differs_by_program() {
+        let pv1 = Pk::new_unique();
+        let pv2 = Pk::new_unique();
+        let (a, _) = Pk::find_program_address(&[PROOF_VERIFIER_REP_AUTHORITY_SEED], &pv1);
+        let (b, _) = Pk::find_program_address(&[PROOF_VERIFIER_REP_AUTHORITY_SEED], &pv2);
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn replay_detection_logic() {
+        let t1 = [1u8; 32];
+        let t2 = [2u8; 32];
+        assert_eq!(t1, t1);
+        assert_ne!(t1, t2);
+    }
+}

@@ -32,6 +32,7 @@ pub(crate) fn g1_add(a: &[u8; 64], b: &[u8; 64]) -> std::result::Result<[u8; 64]
     buf[..64].copy_from_slice(a);
     buf[64..].copy_from_slice(b);
     let mut out = [0u8; 64];
+    // nosemgrep: rust.lang.security.unsafe-usage.unsafe-usage — direct syscall to alt_bn128 group op; arguments are fixed-size stack buffers, bounds statically provable (128 in, 64 out).
     if unsafe { sol_alt_bn128_group_op(ALT_BN128_ADD, buf.as_ptr(), 128, out.as_mut_ptr()) } != 0 {
         return Err(());
     }
@@ -43,6 +44,7 @@ pub(crate) fn g1_scalar_mul(point: &[u8; 64], scalar: &[u8; 32]) -> std::result:
     buf[..64].copy_from_slice(point);
     buf[64..].copy_from_slice(scalar);
     let mut out = [0u8; 64];
+    // nosemgrep: rust.lang.security.unsafe-usage.unsafe-usage — direct syscall to alt_bn128 group op; arguments are fixed-size stack buffers, bounds statically provable (96 in, 64 out).
     if unsafe { sol_alt_bn128_group_op(ALT_BN128_MUL, buf.as_ptr(), 96, out.as_mut_ptr()) } != 0 {
         return Err(());
     }
@@ -51,6 +53,7 @@ pub(crate) fn g1_scalar_mul(point: &[u8; 64], scalar: &[u8; 32]) -> std::result:
 
 pub(crate) fn pairing_check(input: &[u8]) -> std::result::Result<bool, ()> {
     let mut out = [0u8; 32];
+    // nosemgrep: rust.lang.security.unsafe-usage.unsafe-usage — direct syscall to alt_bn128 pairing; input is a rust &[u8] slice so .as_ptr()/.len() are valid; out is fixed 32-byte stack buffer.
     if unsafe {
         sol_alt_bn128_group_op(ALT_BN128_PAIRING, input.as_ptr(), input.len() as u64, out.as_mut_ptr())
     } != 0
@@ -70,6 +73,7 @@ pub(crate) fn negate_g1(point: &[u8; 64]) -> [u8; 64] {
 
     let mut borrow: u16 = 0;
     for i in (0..32).rev() {
+        // nosemgrep: saep.solana.wrapping-arithmetic — bn254 field-element subtraction; wrap is the defined modular behavior, not silent financial overflow.
         let diff = (BN254_FIELD_MODULUS_BE[i] as u16)
             .wrapping_sub(point[32 + i] as u16)
             .wrapping_sub(borrow);

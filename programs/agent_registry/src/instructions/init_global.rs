@@ -30,6 +30,7 @@ pub fn handler(
     dispute_arbitration: Pubkey,
     slashing_treasury: Pubkey,
     stake_mint: Pubkey,
+    proof_verifier: Pubkey,
     min_stake: u64,
     max_slash_bps: u16,
     slash_timelock_secs: i64,
@@ -45,6 +46,7 @@ pub fn handler(
     g.dispute_arbitration = dispute_arbitration;
     g.slashing_treasury = slashing_treasury;
     g.stake_mint = stake_mint;
+    g.proof_verifier = proof_verifier;
     g.min_stake = min_stake;
     g.max_slash_bps = max_slash_bps;
     g.slash_timelock_secs = slash_timelock_secs;
