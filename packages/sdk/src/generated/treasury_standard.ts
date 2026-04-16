@@ -648,6 +648,10 @@ export type TreasuryStandard = {
           "writable": true
         },
         {
+          "name": "hookAllowlist",
+          "optional": true
+        },
+        {
           "name": "funder",
           "writable": true,
           "signer": true
@@ -1175,6 +1179,10 @@ export type TreasuryStandard = {
         {
           "name": "clientTokenAccount",
           "writable": true
+        },
+        {
+          "name": "hookAllowlist",
+          "optional": true
         },
         {
           "name": "client",
@@ -2350,6 +2358,10 @@ export type TreasuryStandard = {
           "docs": [
             "Required for non-USDC mints to normalize spend against 6-decimal limits."
           ],
+          "optional": true
+        },
+        {
+          "name": "hookAllowlist",
           "optional": true
         },
         {
@@ -3943,6 +3955,10 @@ export type TreasuryStandard = {
           {
             "name": "requirePersonhoodForRegister",
             "type": "bool"
+          },
+          {
+            "name": "civicGatewayProgram",
+            "type": "pubkey"
           },
           {
             "name": "bump",

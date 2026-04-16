@@ -536,6 +536,10 @@
           "writable": true
         },
         {
+          "name": "hook_allowlist",
+          "optional": true
+        },
+        {
           "name": "bidder",
           "signer": true
         },
@@ -922,6 +926,10 @@
           "optional": true
         },
         {
+          "name": "hook_allowlist",
+          "optional": true
+        },
+        {
           "name": "token_program",
           "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
@@ -1266,7 +1274,6 @@
         },
         {
           "name": "agent_account",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -2088,7 +2095,6 @@
         },
         {
           "name": "agent_account",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -3625,6 +3631,21 @@
       "code": 6053,
       "name": "AdminResetNotTimelocked",
       "msg": "admin reset has not met the 24h timelock"
+    },
+    {
+      "code": 6054,
+      "name": "IncompleteBidEnumeration",
+      "msg": "close_bidding must receive every revealed bid in remaining_accounts"
+    },
+    {
+      "code": 6055,
+      "name": "DuplicateBidEnumeration",
+      "msg": "duplicate bid detected in close_bidding enumeration"
+    },
+    {
+      "code": 6056,
+      "name": "CapabilityNotInAgentMask",
+      "msg": "agent has not declared the task's capability bit"
     }
   ],
   "types": [
@@ -4706,6 +4727,10 @@
           {
             "name": "require_personhood_for_register",
             "type": "bool"
+          },
+          {
+            "name": "civic_gateway_program",
+            "type": "pubkey"
           },
           {
             "name": "bump",

@@ -726,84 +726,6 @@
       ]
     },
     {
-      "name": "record_job_outcome",
-      "discriminator": [
-        110,
-        63,
-        150,
-        59,
-        135,
-        75,
-        121,
-        49
-      ],
-      "accounts": [
-        {
-          "name": "global",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  108,
-                  111,
-                  98,
-                  97,
-                  108
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "agent",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  103,
-                  101,
-                  110,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "agent.operator",
-                "account": "AgentAccount"
-              },
-              {
-                "kind": "account",
-                "path": "agent.agent_id",
-                "account": "AgentAccount"
-              }
-            ]
-          }
-        },
-        {
-          "name": "task_market_program"
-        },
-        {
-          "name": "task_market_authority",
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "outcome",
-          "type": {
-            "defined": {
-              "name": "JobOutcome"
-            }
-          }
-        }
-      ]
-    },
-    {
       "name": "refresh_personhood",
       "discriminator": [
         225,
@@ -1211,6 +1133,53 @@
           "type": {
             "vec": "pubkey"
           }
+        }
+      ]
+    },
+    {
+      "name": "set_civic_gateway_program",
+      "discriminator": [
+        139,
+        40,
+        183,
+        46,
+        216,
+        203,
+        171,
+        83
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_civic_gateway_program",
+          "type": "pubkey"
         }
       ]
     },
@@ -2195,9 +2164,10 @@
         {
           "name": "caller_guard",
           "docs": [
-            "Caller program's reentrancy guard PDA. Must be `[b\"guard\"]` under one of",
-            "the programs listed in `allowed_callers`. Active flag is asserted in the",
-            "handler."
+            "one of the programs listed in `allowed_callers`. Validated at runtime via",
+            "`load_caller_guard` against the caller program derived from the",
+            "instructions sysvar; Anchor's default owner check (=crate::ID) cannot",
+            "accept a foreign-owned account. See F-2026-04."
           ]
         },
         {
@@ -2833,6 +2803,16 @@
       "code": 6039,
       "name": "AdminResetNotTimelocked",
       "msg": "admin reset has not met the 24h timelock"
+    },
+    {
+      "code": 6040,
+      "name": "CivicGatewayProgramNotSet",
+      "msg": "civic gateway program id has not been configured on RegistryGlobal"
+    },
+    {
+      "code": 6041,
+      "name": "CivicGatewayProgramMismatch",
+      "msg": "civic gateway token account owner does not match civic gateway program"
     }
   ],
   "types": [
@@ -3325,34 +3305,6 @@
       }
     },
     {
-      "name": "JobOutcome",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "success",
-            "type": "bool"
-          },
-          {
-            "name": "quality_bps",
-            "type": "u16"
-          },
-          {
-            "name": "timeliness_bps",
-            "type": "u16"
-          },
-          {
-            "name": "cost_efficiency_bps",
-            "type": "u16"
-          },
-          {
-            "name": "disputed",
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
       "name": "JobOutcomeRecorded",
       "type": {
         "kind": "struct",
@@ -3796,6 +3748,10 @@
           {
             "name": "require_personhood_for_register",
             "type": "bool"
+          },
+          {
+            "name": "civic_gateway_program",
+            "type": "pubkey"
           },
           {
             "name": "bump",

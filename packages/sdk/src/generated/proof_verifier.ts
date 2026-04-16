@@ -1640,7 +1640,12 @@ export type ProofVerifier = {
           }
         },
         {
-          "name": "callerGuard"
+          "name": "callerGuard",
+          "docs": [
+            "via `load_caller_guard` against the expected caller program derived from",
+            "the instructions sysvar; Anchor's default owner check (=crate::ID) would",
+            "reject a legitimately-foreign-owned guard. See F-2026-04."
+          ]
         },
         {
           "name": "instructions",
@@ -2054,6 +2059,11 @@ export type ProofVerifier = {
       "code": 6027,
       "name": "adminResetNotTimelocked",
       "msg": "admin reset has not met the 24h timelock"
+    },
+    {
+      "code": 6028,
+      "name": "reputationBindingNotReady",
+      "msg": "reputation args are not yet bound to the circuit's public outputs; rail disabled"
     }
   ],
   "types": [

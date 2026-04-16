@@ -734,84 +734,6 @@ export type AgentRegistry = {
       ]
     },
     {
-      "name": "recordJobOutcome",
-      "discriminator": [
-        110,
-        63,
-        150,
-        59,
-        135,
-        75,
-        121,
-        49
-      ],
-      "accounts": [
-        {
-          "name": "global",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  108,
-                  111,
-                  98,
-                  97,
-                  108
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "agent",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  103,
-                  101,
-                  110,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "agent.operator",
-                "account": "agentAccount"
-              },
-              {
-                "kind": "account",
-                "path": "agent.agent_id",
-                "account": "agentAccount"
-              }
-            ]
-          }
-        },
-        {
-          "name": "taskMarketProgram"
-        },
-        {
-          "name": "taskMarketAuthority",
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "outcome",
-          "type": {
-            "defined": {
-              "name": "jobOutcome"
-            }
-          }
-        }
-      ]
-    },
-    {
       "name": "refreshPersonhood",
       "discriminator": [
         225,
@@ -1219,6 +1141,53 @@ export type AgentRegistry = {
           "type": {
             "vec": "pubkey"
           }
+        }
+      ]
+    },
+    {
+      "name": "setCivicGatewayProgram",
+      "discriminator": [
+        139,
+        40,
+        183,
+        46,
+        216,
+        203,
+        171,
+        83
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newCivicGatewayProgram",
+          "type": "pubkey"
         }
       ]
     },
@@ -2203,9 +2172,10 @@ export type AgentRegistry = {
         {
           "name": "callerGuard",
           "docs": [
-            "Caller program's reentrancy guard PDA. Must be `[b\"guard\"]` under one of",
-            "the programs listed in `allowed_callers`. Active flag is asserted in the",
-            "handler."
+            "one of the programs listed in `allowed_callers`. Validated at runtime via",
+            "`load_caller_guard` against the caller program derived from the",
+            "instructions sysvar; Anchor's default owner check (=crate::ID) cannot",
+            "accept a foreign-owned account. See F-2026-04."
           ]
         },
         {
@@ -2841,6 +2811,16 @@ export type AgentRegistry = {
       "code": 6039,
       "name": "adminResetNotTimelocked",
       "msg": "admin reset has not met the 24h timelock"
+    },
+    {
+      "code": 6040,
+      "name": "civicGatewayProgramNotSet",
+      "msg": "civic gateway program id has not been configured on RegistryGlobal"
+    },
+    {
+      "code": 6041,
+      "name": "civicGatewayProgramMismatch",
+      "msg": "civic gateway token account owner does not match civic gateway program"
     }
   ],
   "types": [
@@ -3333,34 +3313,6 @@ export type AgentRegistry = {
       }
     },
     {
-      "name": "jobOutcome",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "success",
-            "type": "bool"
-          },
-          {
-            "name": "qualityBps",
-            "type": "u16"
-          },
-          {
-            "name": "timelinessBps",
-            "type": "u16"
-          },
-          {
-            "name": "costEfficiencyBps",
-            "type": "u16"
-          },
-          {
-            "name": "disputed",
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
       "name": "jobOutcomeRecorded",
       "type": {
         "kind": "struct",
@@ -3804,6 +3756,10 @@ export type AgentRegistry = {
           {
             "name": "requirePersonhoodForRegister",
             "type": "bool"
+          },
+          {
+            "name": "civicGatewayProgram",
+            "type": "pubkey"
           },
           {
             "name": "bump",

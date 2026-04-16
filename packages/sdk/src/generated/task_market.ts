@@ -544,6 +544,10 @@ export type TaskMarket = {
           "writable": true
         },
         {
+          "name": "hookAllowlist",
+          "optional": true
+        },
+        {
           "name": "bidder",
           "signer": true
         },
@@ -930,6 +934,10 @@ export type TaskMarket = {
           "optional": true
         },
         {
+          "name": "hookAllowlist",
+          "optional": true
+        },
+        {
           "name": "tokenProgram",
           "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
@@ -1274,7 +1282,6 @@ export type TaskMarket = {
         },
         {
           "name": "agentAccount",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -2096,7 +2103,6 @@ export type TaskMarket = {
         },
         {
           "name": "agentAccount",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -3633,6 +3639,21 @@ export type TaskMarket = {
       "code": 6053,
       "name": "adminResetNotTimelocked",
       "msg": "admin reset has not met the 24h timelock"
+    },
+    {
+      "code": 6054,
+      "name": "incompleteBidEnumeration",
+      "msg": "close_bidding must receive every revealed bid in remaining_accounts"
+    },
+    {
+      "code": 6055,
+      "name": "duplicateBidEnumeration",
+      "msg": "duplicate bid detected in close_bidding enumeration"
+    },
+    {
+      "code": 6056,
+      "name": "capabilityNotInAgentMask",
+      "msg": "agent has not declared the task's capability bit"
     }
   ],
   "types": [
@@ -4714,6 +4735,10 @@ export type TaskMarket = {
           {
             "name": "requirePersonhoodForRegister",
             "type": "bool"
+          },
+          {
+            "name": "civicGatewayProgram",
+            "type": "pubkey"
           },
           {
             "name": "bump",

@@ -640,6 +640,10 @@
           "writable": true
         },
         {
+          "name": "hook_allowlist",
+          "optional": true
+        },
+        {
           "name": "funder",
           "writable": true,
           "signer": true
@@ -1167,6 +1171,10 @@
         {
           "name": "client_token_account",
           "writable": true
+        },
+        {
+          "name": "hook_allowlist",
+          "optional": true
         },
         {
           "name": "client",
@@ -2342,6 +2350,10 @@
           "docs": [
             "Required for non-USDC mints to normalize spend against 6-decimal limits."
           ],
+          "optional": true
+        },
+        {
+          "name": "hook_allowlist",
           "optional": true
         },
         {
@@ -3935,6 +3947,10 @@
           {
             "name": "require_personhood_for_register",
             "type": "bool"
+          },
+          {
+            "name": "civic_gateway_program",
+            "type": "pubkey"
           },
           {
             "name": "bump",
