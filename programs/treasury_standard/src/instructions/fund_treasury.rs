@@ -4,7 +4,9 @@ use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use crate::errors::TreasuryError;
 use crate::events::TreasuryFunded;
-use crate::state::{AgentTreasury, AllowedMints, TreasuryGlobal};
+use crate::state::{
+    assert_call_target_allowed, AgentTreasury, AllowedMints, AllowedTargets, TreasuryGlobal,
+};
 
 #[derive(Accounts)]
 pub struct FundTreasury<'info> {
@@ -23,6 +25,12 @@ pub struct FundTreasury<'info> {
         bump = treasury.bump,
     )]
     pub treasury: Account<'info, AgentTreasury>,
+
+    #[account(
+        seeds = [b"allowed_targets", treasury.agent_did.as_ref()],
+        bump = allowed_targets.bump,
+    )]
+    pub allowed_targets: Option<Account<'info, AllowedTargets>>,
 
     pub mint: InterfaceAccount<'info, Mint>,
 
@@ -59,13 +67,19 @@ pub fn handler(ctx: Context<FundTreasury>, amount: u64) -> Result<()> {
     );
 
     let decimals = ctx.accounts.mint.decimals;
+    let token_program_key = ctx.accounts.token_program.key();
+    assert_call_target_allowed(
+        &ctx.accounts.global,
+        ctx.accounts.allowed_targets.as_deref(),
+        &token_program_key,
+    )?;
     let cpi_accounts = TransferChecked {
         from: ctx.accounts.funder_token_account.to_account_info(),
         mint: ctx.accounts.mint.to_account_info(),
         to: ctx.accounts.vault.to_account_info(),
         authority: ctx.accounts.funder.to_account_info(),
     };
-    let cpi_ctx = CpiContext::new(ctx.accounts.token_program.key(), cpi_accounts);
+    let cpi_ctx = CpiContext::new(token_program_key, cpi_accounts);
     transfer_checked(cpi_ctx, amount, decimals)?;
 
     emit!(TreasuryFunded {

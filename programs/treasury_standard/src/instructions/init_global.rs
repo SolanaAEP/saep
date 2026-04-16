@@ -48,6 +48,7 @@ pub fn handler(
     g.max_daily_limit = max_daily_limit;
     g.paused = false;
     g.bump = ctx.bumps.global;
+    g.global_call_targets = Vec::new();
 
     let a = &mut ctx.accounts.allowed_mints;
     a.authority = authority;

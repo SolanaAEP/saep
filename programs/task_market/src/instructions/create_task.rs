@@ -4,10 +4,10 @@ use agent_registry::program::AgentRegistry;
 use agent_registry::state::{AgentAccount, AgentStatus, RegistryGlobal};
 
 use crate::errors::TaskMarketError;
-use crate::events::TaskCreated;
+use crate::events::{TaskCreated, TaskPayloadStored};
 use crate::state::{
-    compute_fees, compute_task_id, is_allowed_mint, MarketGlobal, TaskContract,
-    TaskStatus, MAX_MILESTONES, MIN_DEADLINE_SECS,
+    compute_fees, compute_task_id, derive_task_hash, is_allowed_mint, MarketGlobal, TaskContract,
+    TaskPayload, TaskStatus, MAX_MILESTONES, MIN_DEADLINE_SECS,
 };
 
 #[derive(Accounts)]
@@ -57,7 +57,7 @@ pub fn handler(
     agent_did: [u8; 32],
     payment_mint: Pubkey,
     payment_amount: u64,
-    task_hash: [u8; 32],
+    payload: TaskPayload,
     criteria_root: [u8; 32],
     deadline: i64,
     milestone_count: u8,
@@ -70,6 +70,8 @@ pub fn handler(
     );
     require!(payment_amount > 0, TaskMarketError::InvalidAmount);
     require!(milestone_count <= MAX_MILESTONES, TaskMarketError::TooManyMilestones);
+
+    payload.validate()?;
 
     let now = Clock::get()?.unix_timestamp;
     let min_deadline = now
@@ -89,10 +91,19 @@ pub fn handler(
         TaskMarketError::InsufficientStake,
     );
 
+    let cap_mask = 1u128 << (payload.capability_bit as u32);
+    require!(
+        agent.capability_mask & cap_mask != 0,
+        TaskMarketError::UnknownCapability
+    );
+
     let (protocol_fee, solrep_fee) =
         compute_fees(payment_amount, g.protocol_fee_bps, g.solrep_fee_bps)?;
 
     let task_id = compute_task_id(&ctx.accounts.client.key(), &task_nonce, now);
+    let task_hash = derive_task_hash(&task_id, &payload)?;
+    let kind_discriminant = payload.kind_discriminant();
+    let capability_bit = payload.capability_bit;
 
     let t = &mut ctx.accounts.task;
     t.task_id = task_id;
@@ -118,6 +129,9 @@ pub fn handler(
     t.verified = false;
     t.bump = ctx.bumps.task;
     t.escrow_bump = 0;
+    t.bid_book = None;
+    t.assigned_agent = None;
+    t.payload = payload;
 
     emit!(TaskCreated {
         task_id,
@@ -126,6 +140,11 @@ pub fn handler(
         payment_amount,
         deadline,
         timestamp: now,
+    });
+    emit!(TaskPayloadStored {
+        task_id,
+        kind_discriminant,
+        capability_bit,
     });
     Ok(())
 }

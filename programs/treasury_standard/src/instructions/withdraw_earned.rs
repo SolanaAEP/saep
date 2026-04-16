@@ -6,8 +6,8 @@ use crate::errors::TreasuryError;
 use crate::events::{StreamWithdrawn, SwapExecuted};
 use crate::jupiter;
 use crate::state::{
-    compute_swap_min_out, guard_oracle, read_oracle, AgentTreasury, PaymentStream,
-    StreamStatus, TreasuryGlobal, DEFAULT_SLIPPAGE_BPS,
+    assert_call_target_allowed, compute_swap_min_out, guard_oracle, read_oracle, AgentTreasury,
+    AllowedTargets, PaymentStream, StreamStatus, TreasuryGlobal, DEFAULT_SLIPPAGE_BPS,
 };
 
 #[derive(Accounts)]
@@ -21,6 +21,12 @@ pub struct WithdrawEarned<'info> {
         has_one = operator @ TreasuryError::Unauthorized,
     )]
     pub treasury: Box<Account<'info, AgentTreasury>>,
+
+    #[account(
+        seeds = [b"allowed_targets", treasury.agent_did.as_ref()],
+        bump = allowed_targets.bump,
+    )]
+    pub allowed_targets: Option<Account<'info, AllowedTargets>>,
 
     #[account(
         mut,
@@ -110,6 +116,12 @@ pub fn handler<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) ->
             TreasuryError::InvalidJupiterProgram
         );
         require!(jup.executable, TreasuryError::InvalidJupiterProgram);
+        let jup_key = jup.key();
+        assert_call_target_allowed(
+            &ctx.accounts.global,
+            ctx.accounts.allowed_targets.as_deref(),
+            &jup_key,
+        )?;
 
         let payer_feed = ctx
             .accounts
@@ -176,17 +188,19 @@ pub fn handler<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) ->
         vault_received
     } else {
         let decimals = ctx.accounts.payer_mint.decimals;
+        let token_program_key = ctx.accounts.token_program.key();
+        assert_call_target_allowed(
+            &ctx.accounts.global,
+            ctx.accounts.allowed_targets.as_deref(),
+            &token_program_key,
+        )?;
         let cpi_accounts = TransferChecked {
             from: ctx.accounts.escrow.to_account_info(),
             mint: ctx.accounts.payer_mint.to_account_info(),
             to: ctx.accounts.agent_vault.to_account_info(),
             authority: ctx.accounts.escrow.to_account_info(),
         };
-        let cpi_ctx = CpiContext::new_with_signer(
-            ctx.accounts.token_program.key(),
-            cpi_accounts,
-            escrow_signer,
-        );
+        let cpi_ctx = CpiContext::new_with_signer(token_program_key, cpi_accounts, escrow_signer);
         transfer_checked(cpi_ctx, claimable, decimals)?;
         claimable
     };

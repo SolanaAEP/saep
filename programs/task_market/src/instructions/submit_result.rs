@@ -53,6 +53,13 @@ pub fn handler(
         TaskMarketError::AgentNotActive,
     );
 
+    if t.bid_book.is_some() {
+        require!(
+            t.assigned_agent == Some(ctx.accounts.agent_account.key()),
+            TaskMarketError::AgentMismatch,
+        );
+    }
+
     t.result_hash = result_hash;
     t.proof_key = proof_key;
     t.submitted_at = now;

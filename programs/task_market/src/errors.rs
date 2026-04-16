@@ -52,4 +52,32 @@ pub enum TaskMarketError {
     OutcomeCpiFailed,
     #[msg("agent stake below required minimum")]
     InsufficientStake,
+    #[msg("bid phase closed for this action")]
+    PhaseClosed,
+    #[msg("revealed bid does not match commit hash")]
+    RevealMismatch,
+    #[msg("bond bps out of allowed range")]
+    BondOutOfRange,
+    #[msg("bid book is at capacity")]
+    TooManyBidders,
+    #[msg("bid book has not been settled")]
+    BidBookNotSettled,
+    #[msg("signer is not the winning bidder")]
+    NotWinner,
+    #[msg("no eligible reveals in bid book")]
+    NoReveals,
+    #[msg("bond has already been claimed")]
+    AlreadyRefunded,
+    #[msg("bid window parameters invalid")]
+    WindowInvalid,
+    #[msg("task already has an open bid book")]
+    BidBookAlreadyOpen,
+    #[msg("bid book has active commits; cannot cancel")]
+    CommitsPresent,
+    #[msg("task payload exceeds size caps")]
+    PayloadTooLarge,
+    #[msg("capability_bit out of allowed range")]
+    InvalidCapabilityBit,
+    #[msg("agent does not advertise the requested capability_bit")]
+    UnknownCapability,
 }

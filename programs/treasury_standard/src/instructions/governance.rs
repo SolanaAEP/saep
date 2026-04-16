@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::errors::TreasuryError;
 use crate::events::PausedSet;
-use crate::state::TreasuryGlobal;
+use crate::state::{apply_target_mutation, TreasuryGlobal, MAX_GLOBAL_CALL_TARGETS};
 
 #[derive(Accounts)]
 pub struct GovernanceUpdate<'info> {
@@ -51,5 +51,19 @@ pub fn set_paused_handler(ctx: Context<GovernanceUpdate>, paused: bool) -> Resul
         paused,
         timestamp: Clock::get()?.unix_timestamp,
     });
+    Ok(())
+}
+
+pub fn set_global_call_targets_handler(
+    ctx: Context<GovernanceUpdate>,
+    add: Vec<Pubkey>,
+    remove: Vec<Pubkey>,
+) -> Result<()> {
+    let g = &mut ctx.accounts.global;
+    apply_target_mutation(&mut g.global_call_targets, &add, &remove)?;
+    require!(
+        g.global_call_targets.len() <= MAX_GLOBAL_CALL_TARGETS,
+        TreasuryError::TooManyCallTargets
+    );
     Ok(())
 }

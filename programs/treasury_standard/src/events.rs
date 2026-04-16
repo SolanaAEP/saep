@@ -101,3 +101,11 @@ pub struct SwapExecuted {
     pub payout_mint: Pubkey,
     pub timestamp: i64,
 }
+
+#[event]
+pub struct AllowedTargetsUpdated {
+    pub agent_did: [u8; 32],
+    pub added_count: u16,
+    pub removed_count: u16,
+    pub timestamp: i64,
+}

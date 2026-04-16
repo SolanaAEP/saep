@@ -7,7 +7,7 @@ pub mod instructions;
 pub mod state;
 
 use instructions::*;
-use state::ALLOWED_MINTS_LEN;
+use state::{TaskPayload, ALLOWED_MINTS_LEN};
 
 declare_id!("HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w");
 
@@ -53,7 +53,7 @@ pub mod task_market {
         agent_did: [u8; 32],
         payment_mint: Pubkey,
         payment_amount: u64,
-        task_hash: [u8; 32],
+        payload: TaskPayload,
         criteria_root: [u8; 32],
         deadline: i64,
         milestone_count: u8,
@@ -64,7 +64,7 @@ pub mod task_market {
             agent_did,
             payment_mint,
             payment_amount,
-            task_hash,
+            payload,
             criteria_root,
             deadline,
             milestone_count,
@@ -137,5 +137,42 @@ pub mod task_market {
 
     pub fn accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
         instructions::authority::accept_authority_handler(ctx)
+    }
+
+    pub fn open_bidding(
+        ctx: Context<OpenBidding>,
+        commit_secs: i64,
+        reveal_secs: i64,
+        bond_bps: u16,
+    ) -> Result<()> {
+        instructions::open_bidding::handler(ctx, commit_secs, reveal_secs, bond_bps)
+    }
+
+    pub fn commit_bid(
+        ctx: Context<CommitBid>,
+        commit_hash: [u8; 32],
+        agent_did: [u8; 32],
+    ) -> Result<()> {
+        instructions::commit_bid::handler(ctx, commit_hash, agent_did)
+    }
+
+    pub fn reveal_bid(
+        ctx: Context<RevealBid>,
+        amount: u64,
+        nonce: [u8; 32],
+    ) -> Result<()> {
+        instructions::reveal_bid::handler(ctx, amount, nonce)
+    }
+
+    pub fn close_bidding<'info>(ctx: Context<'info, CloseBidding<'info>>) -> Result<()> {
+        instructions::close_bidding::handler(ctx)
+    }
+
+    pub fn claim_bond(ctx: Context<ClaimBond>) -> Result<()> {
+        instructions::claim_bond::handler(ctx)
+    }
+
+    pub fn cancel_bidding(ctx: Context<CancelBidding>) -> Result<()> {
+        instructions::cancel_bidding::handler(ctx)
     }
 }
