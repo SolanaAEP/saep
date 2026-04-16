@@ -15,7 +15,7 @@ import {
   fetchAgentByDid,
   fetchTasksByAgent,
 } from '@saep/sdk';
-import type { Action, SakAgentLike, SakCluster, SakWallet } from './types.js';
+import type { Action, SaepPluginOptions, SakAgentLike, SakCluster, SakWallet } from './types.js';
 
 const Base58 = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
 const Hex32 = z.string().regex(/^[0-9a-f]{64}$/i);
@@ -53,12 +53,48 @@ function capabilityMaskFrom(bits: number[]): bigint {
 
 function randomAgentId(): Uint8Array {
   const out = new Uint8Array(32);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(out);
-    return out;
-  }
-  for (let i = 0; i < 32; i++) out[i] = Math.floor(Math.random() * 256);
+  crypto.getRandomValues(out);
   return out;
+}
+
+const autoSignTimestamps: number[] = [];
+
+function checkVelocity(limit: number): boolean {
+  const now = Date.now();
+  const windowStart = now - 60_000;
+  while (autoSignTimestamps.length > 0 && autoSignTimestamps[0] < windowStart) {
+    autoSignTimestamps.shift();
+  }
+  return autoSignTimestamps.length < limit;
+}
+
+function recordAutoSign(): void {
+  autoSignTimestamps.push(Date.now());
+}
+
+export function _resetVelocityWindow(): void {
+  autoSignTimestamps.length = 0;
+}
+
+const DEFAULT_MAX_LAMPORTS = 1_000_000;
+const DEFAULT_VELOCITY_LIMIT = 10;
+
+function enforceGuardrails(opts: SaepPluginOptions | undefined, valueLamports?: number): void {
+  const maxLamports = opts?.maxAutoSignLamports ?? DEFAULT_MAX_LAMPORTS;
+  const velocityLimit = opts?.velocityLimit ?? DEFAULT_VELOCITY_LIMIT;
+  if (valueLamports !== undefined && valueLamports > maxLamports) {
+    throw new Error(
+      `Auto-sign rejected: transaction value ${valueLamports} lamports exceeds cap ${maxLamports}. ` +
+      `Ask the human to sign manually or increase maxAutoSignLamports.`,
+    );
+  }
+  if (!checkVelocity(velocityLimit)) {
+    throw new Error(
+      `Auto-sign rejected: velocity limit exceeded (${velocityLimit} transactions per 60s window). ` +
+      `Wait before submitting more transactions or ask the human to sign manually.`,
+    );
+  }
+  recordAutoSign();
 }
 
 function contextFor(agent: SakAgentLike, cluster: SakCluster) {
@@ -70,7 +106,7 @@ function contextFor(agent: SakAgentLike, cluster: SakCluster) {
   return { config, provider };
 }
 
-export function saepRegisterAgentAction(cluster: SakCluster): Action {
+export function saepRegisterAgentAction(cluster: SakCluster, opts?: SaepPluginOptions): Action {
   const schema = z.object({
     capability_bits: z.array(z.number().int().min(0).max(127)).min(1),
     metadata_uri: z.string().url(),
@@ -122,6 +158,7 @@ export function saepRegisterAgentAction(cluster: SakCluster): Action {
       });
 
       const tx = new Transaction().add(ix);
+      enforceGuardrails(opts);
       const signature = await provider.sendAndConfirm(tx);
 
       const fetched = await fetchAgentsByOperator(program, agent.wallet.publicKey);
@@ -139,7 +176,7 @@ export function saepRegisterAgentAction(cluster: SakCluster): Action {
   };
 }
 
-export function saepListTasksAction(cluster: SakCluster): Action {
+export function saepListTasksAction(cluster: SakCluster, _opts?: SaepPluginOptions): Action {
   const schema = z.object({
     agent_did_hex: Hex32.optional(),
     limit: z.number().int().min(1).max(100).default(20),
@@ -210,11 +247,7 @@ function amountLe(amount: bigint): Uint8Array {
 
 function randomNonce(): Uint8Array {
   const out = new Uint8Array(32);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(out);
-    return out;
-  }
-  for (let i = 0; i < 32; i++) out[i] = Math.floor(Math.random() * 256);
+  crypto.getRandomValues(out);
   return out;
 }
 
@@ -226,7 +259,7 @@ function commitHash(amount: bigint, nonce: Uint8Array, agentDid: Uint8Array): Ui
   return keccak_256(buf);
 }
 
-export function saepBidAction(cluster: SakCluster): Action {
+export function saepBidAction(cluster: SakCluster, opts?: SaepPluginOptions): Action {
   const schema = z.object({
     task_address: Base58,
     amount_usdc_micro: z.number().int().positive(),
@@ -293,6 +326,7 @@ export function saepBidAction(cluster: SakCluster): Action {
         commitHash: hash,
       });
       const tx = new Transaction().add(ix);
+      enforceGuardrails(opts);
       const signature = await provider.sendAndConfirm(tx);
 
       return {
@@ -308,7 +342,7 @@ export function saepBidAction(cluster: SakCluster): Action {
   };
 }
 
-export function saepRevealBidAction(cluster: SakCluster): Action {
+export function saepRevealBidAction(cluster: SakCluster, opts?: SaepPluginOptions): Action {
   const schema = z.object({
     task_address: Base58,
     amount_usdc_micro: z.number().int().positive(),
@@ -348,13 +382,14 @@ export function saepRevealBidAction(cluster: SakCluster): Action {
         nonce: hexToBytes(input.nonce_hex),
       });
       const tx = new Transaction().add(ix);
+      enforceGuardrails(opts);
       const signature = await provider.sendAndConfirm(tx);
       return { cluster, signature, task_id_hex: bytesToHex(taskId) };
     },
   };
 }
 
-export function saepSubmitResultAction(cluster: SakCluster): Action {
+export function saepSubmitResultAction(cluster: SakCluster, opts?: SaepPluginOptions): Action {
   const schema = z.object({
     task_address: Base58,
     result_hash: Hex32,
@@ -403,18 +438,19 @@ export function saepSubmitResultAction(cluster: SakCluster): Action {
         proofKey: hexToBytes(input.proof_key),
       });
       const tx = new Transaction().add(ix);
+      enforceGuardrails(opts);
       const signature = await provider.sendAndConfirm(tx);
       return { cluster, signature, agent_did_hex: didHex };
     },
   };
 }
 
-export function saepPlugin(cluster: SakCluster = 'devnet'): Action[] {
+export function saepPlugin(cluster: SakCluster = 'devnet', opts?: SaepPluginOptions): Action[] {
   return [
-    saepRegisterAgentAction(cluster),
-    saepListTasksAction(cluster),
-    saepBidAction(cluster),
-    saepRevealBidAction(cluster),
-    saepSubmitResultAction(cluster),
+    saepRegisterAgentAction(cluster, opts),
+    saepListTasksAction(cluster, opts),
+    saepBidAction(cluster, opts),
+    saepRevealBidAction(cluster, opts),
+    saepSubmitResultAction(cluster, opts),
   ];
 }

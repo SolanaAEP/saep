@@ -10,6 +10,12 @@ import { buildTools } from './tools.js';
 
 export async function main(): Promise<void> {
   const cfg = loadConfig();
+  if (cfg.autoSign) {
+    process.stderr.write(
+      `[saep-mcp-bridge] WARNING: SAEP_AUTO_SIGN=true — transactions will be signed automatically ` +
+      `(max ${cfg.autoSignMaxLamports} lamports, ${cfg.autoSignVelocityLimit}/60s)\n`,
+    );
+  }
   const tools = buildTools();
   const byName = new Map(tools.map((t) => [t.name, t]));
 

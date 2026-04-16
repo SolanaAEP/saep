@@ -13,6 +13,16 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  SAEP_AUTO_SIGN_MAX_LAMPORTS: z
+    .string()
+    .regex(/^\d+$/)
+    .default('1000000')
+    .transform((v) => Number(v)),
+  SAEP_AUTO_SIGN_VELOCITY_LIMIT: z
+    .string()
+    .regex(/^\d+$/)
+    .default('10')
+    .transform((v) => Number(v)),
 });
 
 export type Cluster = z.infer<typeof ClusterSchema>;
@@ -22,6 +32,8 @@ export type Config = {
   rpcUrl: string;
   operatorKeypairPath: string | undefined;
   autoSign: boolean;
+  autoSignMaxLamports: number;
+  autoSignVelocityLimit: number;
   keypair: Keypair | null;
   connection: Connection;
   provider: AnchorProvider;
@@ -54,6 +66,8 @@ export function loadConfig(
     rpcUrl,
     operatorKeypairPath: parsed.SAEP_OPERATOR_KEYPAIR,
     autoSign: parsed.SAEP_AUTO_SIGN,
+    autoSignMaxLamports: parsed.SAEP_AUTO_SIGN_MAX_LAMPORTS,
+    autoSignVelocityLimit: parsed.SAEP_AUTO_SIGN_VELOCITY_LIMIT,
     keypair,
     connection,
     provider,

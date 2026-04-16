@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import {
   buildTools,
   ListTasksArgs,
@@ -6,6 +6,7 @@ import {
   GetReputationArgs,
   BidOnTaskArgs,
   SubmitResultArgs,
+  _resetVelocityWindow,
 } from '../tools.js';
 import { loadConfig } from '../config.js';
 
@@ -134,6 +135,24 @@ describe('mcp-bridge config', () => {
 
   it('honors SAEP_AUTO_SIGN=true', () => {
     expect(loadConfig({ SAEP_AUTO_SIGN: 'true' }).autoSign).toBe(true);
+  });
+
+  it('defaults autoSignMaxLamports to 1_000_000', () => {
+    expect(loadConfig({}).autoSignMaxLamports).toBe(1_000_000);
+  });
+
+  it('defaults autoSignVelocityLimit to 10', () => {
+    expect(loadConfig({}).autoSignVelocityLimit).toBe(10);
+  });
+
+  it('parses custom SAEP_AUTO_SIGN_MAX_LAMPORTS', () => {
+    const cfg = loadConfig({ SAEP_AUTO_SIGN_MAX_LAMPORTS: '5000000' });
+    expect(cfg.autoSignMaxLamports).toBe(5_000_000);
+  });
+
+  it('parses custom SAEP_AUTO_SIGN_VELOCITY_LIMIT', () => {
+    const cfg = loadConfig({ SAEP_AUTO_SIGN_VELOCITY_LIMIT: '3' });
+    expect(cfg.autoSignVelocityLimit).toBe(3);
   });
 
   it('exposes a provider even without a keypair (read-only mode)', () => {
