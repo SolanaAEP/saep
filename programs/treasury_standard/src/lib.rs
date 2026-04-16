@@ -7,6 +7,9 @@ pub mod instructions;
 pub mod jupiter;
 pub mod state;
 
+#[cfg(test)]
+mod fuzz;
+
 use instructions::*;
 
 declare_id!("6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ");
