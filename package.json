@@ -32,6 +32,7 @@
     "@types/node": "24.0.0",
     "anchor-bankrun": "^0.5.0",
     "chai": "4.5.0",
+    "js-sha3": "^0.9.3",
     "mocha": "11.0.1",
     "prettier": "3.4.2",
     "solana-bankrun": "^0.4.0",
