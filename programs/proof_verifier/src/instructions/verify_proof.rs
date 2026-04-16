@@ -54,11 +54,16 @@ pub fn handler(
     let current_index = load_current_index_checked(ix_ai)?;
     let current_ix = load_instruction_at_checked(current_index as usize, ix_ai)?;
     let stack_height = anchor_lang::solana_program::instruction::get_stack_height();
-    let caller_program = if stack_height > 1 && current_index > 0 {
-        load_instruction_at_checked((current_index - 1) as usize, ix_ai)?.program_id
-    } else {
-        current_ix.program_id
-    };
+    // F-2026-12: the instructions sysvar exposes top-level tx instructions,
+    // not the CPI stack. For a single-level CPI (stack_height == 2), the
+    // immediate caller is always the program invoking us, which Solana
+    // records as `current_ix.program_id`. Deeper CPI chains cannot be
+    // resolved from the sysvar alone, so we reject them here.
+    require!(
+        stack_height <= 2,
+        ProofVerifierError::CpiDepthExceeded
+    );
+    let caller_program = current_ix.program_id;
 
     let caller_guard = match load_caller_guard(
         &ctx.accounts.caller_guard.to_account_info(),
