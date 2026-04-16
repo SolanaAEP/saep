@@ -3654,6 +3654,11 @@ export type TaskMarket = {
       "code": 6056,
       "name": "capabilityNotInAgentMask",
       "msg": "agent has not declared the task's capability bit"
+    },
+    {
+      "code": 6057,
+      "name": "invalidBidInEnumeration",
+      "msg": "unrevealed or slashed bid present in close_bidding enumeration"
     }
   ],
   "types": [
@@ -3927,6 +3932,12 @@ export type TaskMarket = {
           },
           {
             "name": "winnerAgent",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "winnerBidder",
             "type": {
               "option": "pubkey"
             }

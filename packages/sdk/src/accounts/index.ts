@@ -425,6 +425,7 @@ export interface BidBookSummary {
   commitCount: number;
   revealCount: number;
   winnerAgent: PublicKey | null;
+  winnerBidder: PublicKey | null;
   winnerAmount: bigint;
   phase: BidPhase;
 }
@@ -449,6 +450,7 @@ export async function fetchBidBook(
     commitCount: raw.commitCount as number,
     revealCount: raw.revealCount as number,
     winnerAgent: (raw.winnerAgent as PublicKey | null) ?? null,
+    winnerBidder: (raw.winnerBidder as PublicKey | null) ?? null,
     winnerAmount: BigInt((raw.winnerAmount as BN).toString()),
     phase: bidPhaseFromEnum(raw.phase as Record<string, unknown>),
   };

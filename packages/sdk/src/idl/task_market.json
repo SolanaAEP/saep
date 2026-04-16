@@ -3646,6 +3646,11 @@
       "code": 6056,
       "name": "CapabilityNotInAgentMask",
       "msg": "agent has not declared the task's capability bit"
+    },
+    {
+      "code": 6057,
+      "name": "InvalidBidInEnumeration",
+      "msg": "unrevealed or slashed bid present in close_bidding enumeration"
     }
   ],
   "types": [
@@ -3919,6 +3924,12 @@
           },
           {
             "name": "winner_agent",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "winner_bidder",
             "type": {
               "option": "pubkey"
             }
