@@ -2,11 +2,13 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
+use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_INIT_STREAM};
+
 use crate::errors::TreasuryError;
 use crate::events::StreamInitialized;
 use crate::state::{
-    assert_call_target_allowed, AgentTreasury, AllowedMints, AllowedTargets, PaymentStream,
-    StreamStatus, TreasuryGlobal,
+    assert_call_target_allowed, resolve_hook_allowlist, AgentTreasury, AllowedMints,
+    AllowedTargets, PaymentStream, StreamStatus, TreasuryGlobal,
 };
 
 #[derive(Accounts)]
@@ -20,7 +22,7 @@ pub struct InitStream<'info> {
         bump = allowed_mints.bump,
         address = global.allowed_mints,
     )]
-    pub allowed_mints: Account<'info, AllowedMints>,
+    pub allowed_mints: Box<Account<'info, AllowedMints>>,
 
     #[account(
         mut,
@@ -49,8 +51,8 @@ pub struct InitStream<'info> {
     )]
     pub stream: Box<Account<'info, PaymentStream>>,
 
-    pub payer_mint: InterfaceAccount<'info, Mint>,
-    pub payout_mint: InterfaceAccount<'info, Mint>,
+    pub payer_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub payout_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         init,
@@ -61,7 +63,7 @@ pub struct InitStream<'info> {
         seeds = [b"stream_escrow", stream.key().as_ref()],
         bump,
     )]
-    pub escrow: InterfaceAccount<'info, TokenAccount>,
+    pub escrow: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -69,7 +71,9 @@ pub struct InitStream<'info> {
         token::authority = client,
         token::token_program = token_program,
     )]
-    pub client_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub client_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    pub hook_allowlist: Option<Account<'info, HookAllowlist>>,
 
     #[account(mut)]
     pub client: Signer<'info>,
@@ -134,6 +138,18 @@ pub fn handler(
         ctx.accounts.allowed_targets.as_deref(),
         &token_program_key,
     )?;
+    if let Some(g) = resolve_hook_allowlist(
+        &ctx.accounts.global,
+        ctx.accounts.hook_allowlist.as_ref(),
+    )? {
+        assert_hook_allowed_at_site(
+            &ctx.accounts.payer_mint.to_account_info(),
+            g,
+            None,
+            SITE_INIT_STREAM,
+        )
+        .map_err(|_| error!(TreasuryError::HookNotAllowed))?;
+    }
     let cpi_accounts = TransferChecked {
         from: ctx.accounts.client_token_account.to_account_info(),
         mint: ctx.accounts.payer_mint.to_account_info(),

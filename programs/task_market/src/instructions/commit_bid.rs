@@ -5,13 +5,14 @@ use anchor_spl::token_interface::{Mint, TokenAccount};
 use agent_registry::program::AgentRegistry;
 use agent_registry::state::{AgentAccount, AgentStatus, PersonhoodAttestation, RegistryGlobal};
 use capability_registry::state::CapabilityTag;
+use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_COMMIT_BID_BOND};
 
 use crate::errors::TaskMarketError;
 use crate::events::BidCommitted;
 use crate::personhood::resolve_required_tier;
 use crate::state::{
-    Bid, BidBook, BidPhase, MarketGlobal, TaskContract, MAX_BIDDERS_PER_TASK, SEED_BID,
-    SEED_BID_BOOK, SEED_BOND_ESCROW,
+    resolve_hook_allowlist, Bid, BidBook, BidPhase, MarketGlobal, TaskContract,
+    MAX_BIDDERS_PER_TASK, SEED_BID, SEED_BID_BOOK, SEED_BOND_ESCROW,
 };
 
 #[derive(Accounts)]
@@ -102,6 +103,8 @@ pub struct CommitBid<'info> {
     )]
     pub capability_tag: Option<Box<Account<'info, CapabilityTag>>>,
 
+    pub hook_allowlist: Option<Account<'info, HookAllowlist>>,
+
     pub token_program: Program<'info, Token2022>,
     pub system_program: Program<'info, System>,
 }
@@ -115,6 +118,15 @@ pub fn handler(
     require!(
         ctx.accounts.agent_account.status == AgentStatus::Active,
         TaskMarketError::AgentNotActive,
+    );
+
+    // F-2026-08: mirror create_task's capability check so Sybil bidders
+    // can't grief high-value tasks by winning then failing submit_result.
+    let cap_bit = ctx.accounts.task.payload.capability_bit;
+    let cap_mask: u128 = 1u128 << (cap_bit as u32);
+    require!(
+        (ctx.accounts.agent_account.capability_mask & cap_mask) != 0,
+        TaskMarketError::CapabilityNotInAgentMask,
     );
 
     let now = Clock::get()?.unix_timestamp;
@@ -172,6 +184,18 @@ pub fn handler(
         .ok_or(TaskMarketError::ArithmeticOverflow)?;
 
     if bond_amount > 0 {
+        if let Some(g) = resolve_hook_allowlist(
+            &ctx.accounts.global,
+            ctx.accounts.hook_allowlist.as_ref(),
+        )? {
+            assert_hook_allowed_at_site(
+                &ctx.accounts.payment_mint.to_account_info(),
+                g,
+                None,
+                SITE_COMMIT_BID_BOND,
+            )
+            .map_err(|_| error!(TaskMarketError::HookNotAllowed))?;
+        }
         let cpi = TransferChecked {
             from: ctx.accounts.bidder_token_account.to_account_info(),
             mint: ctx.accounts.payment_mint.to_account_info(),

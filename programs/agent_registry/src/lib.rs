@@ -92,13 +92,12 @@ pub mod agent_registry {
         instructions::lifecycle::set_status_handler(ctx, new_status)
     }
 
-    pub fn record_job_outcome(
-        ctx: Context<RecordJobOutcome>,
-        outcome: JobOutcome,
-    ) -> Result<()> {
-        instructions::lifecycle::record_job_outcome_handler(ctx, outcome)
-    }
-
+    // F-2026-03: `record_job_outcome` was the legacy scalar-reputation update
+    // path. It has been retired in favour of `update_reputation`, which is
+    // driven by proof_verifier over per-category PDAs. Removing the exported
+    // entrypoint eliminates the silent-revert CPI callsite in task_market
+    // (release/expire) and keeps the handler code in-tree only as a reference
+    // while the surrounding state (`reputation`, stub events) is untangled.
     pub fn stake_increase(ctx: Context<StakeIncrease>, amount: u64) -> Result<()> {
         instructions::stake::stake_increase_handler(ctx, amount)
     }
@@ -161,6 +160,16 @@ pub mod agent_registry {
 
     pub fn set_paused(ctx: Context<GovernanceUpdate>, paused: bool) -> Result<()> {
         instructions::governance::set_paused_handler(ctx, paused)
+    }
+
+    pub fn set_civic_gateway_program(
+        ctx: Context<GovernanceUpdate>,
+        new_civic_gateway_program: Pubkey,
+    ) -> Result<()> {
+        instructions::governance::set_civic_gateway_program_handler(
+            ctx,
+            new_civic_gateway_program,
+        )
     }
 
     pub fn set_proof_verifier(

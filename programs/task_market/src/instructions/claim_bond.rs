@@ -2,10 +2,15 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
+use fee_collector::{
+    assert_hook_allowed_at_site, HookAllowlist, SITE_CLAIM_BOND_REFUND, SITE_CLAIM_BOND_SLASH,
+};
+
 use crate::errors::TaskMarketError;
 use crate::events::BidSlashed;
 use crate::state::{
-    Bid, BidBook, BidPhase, MarketGlobal, TaskContract, SEED_BID, SEED_BID_BOOK, SEED_BOND_ESCROW,
+    resolve_hook_allowlist, Bid, BidBook, BidPhase, MarketGlobal, TaskContract, SEED_BID,
+    SEED_BID_BOOK, SEED_BOND_ESCROW,
 };
 
 #[derive(Accounts)]
@@ -50,6 +55,8 @@ pub struct ClaimBond<'info> {
 
     #[account(mut, token::mint = payment_mint)]
     pub fee_collector_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    pub hook_allowlist: Option<Account<'info, HookAllowlist>>,
 
     pub bidder: Signer<'info>,
     pub token_program: Program<'info, Token2022>,
@@ -105,6 +112,24 @@ pub fn handler(ctx: Context<ClaimBond>) -> Result<()> {
     }
 
     if bond_paid > 0 && !matches!(outcome, Outcome::WinnerRetain) {
+        if let Some(g) = resolve_hook_allowlist(
+            &ctx.accounts.global,
+            ctx.accounts.hook_allowlist.as_ref(),
+        )? {
+            let site = match outcome {
+                Outcome::Refund => SITE_CLAIM_BOND_REFUND,
+                Outcome::Slash => SITE_CLAIM_BOND_SLASH,
+                Outcome::WinnerRetain => unreachable!(),
+            };
+            assert_hook_allowed_at_site(
+                &ctx.accounts.payment_mint.to_account_info(),
+                g,
+                None,
+                site,
+            )
+            .map_err(|_| error!(TaskMarketError::HookNotAllowed))?;
+        }
+
         let seeds: &[&[u8]] = &[
             SEED_BOND_ESCROW,
             task_id.as_ref(),

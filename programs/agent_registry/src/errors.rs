@@ -82,4 +82,8 @@ pub enum AgentRegistryError {
     GuardNotInitialized,
     #[msg("admin reset has not met the 24h timelock")]
     AdminResetNotTimelocked,
+    #[msg("civic gateway program id has not been configured on RegistryGlobal")]
+    CivicGatewayProgramNotSet,
+    #[msg("civic gateway token account owner does not match civic gateway program")]
+    CivicGatewayProgramMismatch,
 }

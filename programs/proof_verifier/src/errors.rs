@@ -58,4 +58,6 @@ pub enum ProofVerifierError {
     GuardNotInitialized,
     #[msg("admin reset has not met the 24h timelock")]
     AdminResetNotTimelocked,
+    #[msg("reputation args are not yet bound to the circuit's public outputs; rail disabled")]
+    ReputationBindingNotReady,
 }

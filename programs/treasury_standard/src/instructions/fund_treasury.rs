@@ -2,10 +2,13 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
+use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_FUND_TREASURY};
+
 use crate::errors::TreasuryError;
 use crate::events::TreasuryFunded;
 use crate::state::{
-    assert_call_target_allowed, AgentTreasury, AllowedMints, AllowedTargets, TreasuryGlobal,
+    assert_call_target_allowed, resolve_hook_allowlist, AgentTreasury, AllowedMints,
+    AllowedTargets, TreasuryGlobal,
 };
 
 #[derive(Accounts)]
@@ -48,6 +51,8 @@ pub struct FundTreasury<'info> {
     #[account(mut, token::mint = mint, token::authority = funder, token::token_program = token_program)]
     pub funder_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    pub hook_allowlist: Option<Account<'info, HookAllowlist>>,
+
     #[account(mut)]
     pub funder: Signer<'info>,
 
@@ -73,6 +78,18 @@ pub fn handler(ctx: Context<FundTreasury>, amount: u64) -> Result<()> {
         ctx.accounts.allowed_targets.as_deref(),
         &token_program_key,
     )?;
+    if let Some(g) = resolve_hook_allowlist(
+        &ctx.accounts.global,
+        ctx.accounts.hook_allowlist.as_ref(),
+    )? {
+        assert_hook_allowed_at_site(
+            &ctx.accounts.mint.to_account_info(),
+            g,
+            None,
+            SITE_FUND_TREASURY,
+        )
+        .map_err(|_| error!(TreasuryError::HookNotAllowed))?;
+    }
     let cpi_accounts = TransferChecked {
         from: ctx.accounts.funder_token_account.to_account_info(),
         mint: ctx.accounts.mint.to_account_info(),

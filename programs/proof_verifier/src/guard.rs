@@ -1,4 +1,13 @@
+// F-2026-04: callee instructions must NOT declare the caller's ReentrancyGuard
+// PDA as `Account<'info, ReentrancyGuard>`. Anchor's generated Accounts deser
+// runs `assert_owner == crate::ID` for any `#[account]`-typed reference, which
+// is wrong when the account is owned by a different program (the caller).
+// Pass the caller guard as `UncheckedAccount<'info>` and validate it via
+// `load_caller_guard` below: owner == expected caller program, PDA derivation
+// matches `[SEED_GUARD]` under that program, discriminator matches
+// ReentrancyGuard, and the deserialised `active` flag is true.
 use anchor_lang::prelude::*;
+use anchor_lang::Discriminator;
 
 use crate::errors::ProofVerifierError;
 
@@ -7,6 +16,34 @@ pub const SEED_ALLOWED_CALLERS: &[u8] = b"allowed_callers";
 pub const MAX_ALLOWED_CALLERS: usize = 8;
 pub const MAX_CPI_STACK_HEIGHT: usize = 3;
 pub const ADMIN_RESET_TIMELOCK_SECS: i64 = 24 * 60 * 60;
+
+pub fn load_caller_guard(
+    caller_guard_ai: &AccountInfo,
+    expected_caller_program: &Pubkey,
+) -> Result<ReentrancyGuard> {
+    require_keys_eq!(
+        *caller_guard_ai.owner,
+        *expected_caller_program,
+        ProofVerifierError::UnauthorizedCaller
+    );
+    let (expected_pda, _bump) =
+        Pubkey::find_program_address(&[SEED_GUARD], expected_caller_program);
+    require_keys_eq!(
+        caller_guard_ai.key(),
+        expected_pda,
+        ProofVerifierError::UnauthorizedCaller
+    );
+    let data = caller_guard_ai
+        .try_borrow_data()
+        .map_err(|_| error!(ProofVerifierError::UnauthorizedCaller))?;
+    require!(
+        data.len() >= 8 && &data[..8] == ReentrancyGuard::DISCRIMINATOR,
+        ProofVerifierError::UnauthorizedCaller
+    );
+    let guard = ReentrancyGuard::try_deserialize(&mut &data[..])
+        .map_err(|_| error!(ProofVerifierError::UnauthorizedCaller))?;
+    Ok(guard)
+}
 
 #[account]
 #[derive(InitSpace)]
@@ -141,5 +178,74 @@ mod tests {
         g.reset_proposed_at = 1_000;
         assert!(assert_reset_timelock(&g, 1_000 + ADMIN_RESET_TIMELOCK_SECS - 1).is_err());
         assert!(assert_reset_timelock(&g, 1_000 + ADMIN_RESET_TIMELOCK_SECS).is_ok());
+    }
+
+    // F-2026-04: load_caller_guard validates (owner, PDA-derivation, discriminator).
+    // Build a raw buffer with a ReentrancyGuard layout and wrap in an AccountInfo
+    // via AccountInfo::new, then exercise each rejection branch.
+    fn mk_guard_buf(active: bool) -> Vec<u8> {
+        let g = ReentrancyGuard {
+            active,
+            entered_by: Pubkey::default(),
+            entered_at_slot: 0,
+            reset_proposed_at: 0,
+            bump: 0,
+        };
+        let mut buf = Vec::with_capacity(8 + ReentrancyGuard::INIT_SPACE);
+        buf.extend_from_slice(ReentrancyGuard::DISCRIMINATOR);
+        anchor_lang::AnchorSerialize::serialize(&g, &mut buf).unwrap();
+        buf
+    }
+
+    fn mk_ai<'a>(
+        key: &'a Pubkey,
+        owner: &'a Pubkey,
+        lamports: &'a mut u64,
+        data: &'a mut [u8],
+    ) -> AccountInfo<'a> {
+        AccountInfo::new(key, false, false, lamports, data, owner, false)
+    }
+
+    #[test]
+    fn load_caller_guard_happy_path() {
+        let expected_caller = Pubkey::new_unique();
+        let (pda, _bump) = Pubkey::find_program_address(&[SEED_GUARD], &expected_caller);
+        let mut data = mk_guard_buf(true);
+        let mut lamports = 0u64;
+        let ai = mk_ai(&pda, &expected_caller, &mut lamports, &mut data);
+        let g = load_caller_guard(&ai, &expected_caller).unwrap();
+        assert!(g.active);
+    }
+
+    #[test]
+    fn load_caller_guard_rejects_wrong_owner() {
+        let expected_caller = Pubkey::new_unique();
+        let actual_owner = Pubkey::new_unique();
+        let (pda, _bump) = Pubkey::find_program_address(&[SEED_GUARD], &expected_caller);
+        let mut data = mk_guard_buf(true);
+        let mut lamports = 0u64;
+        let ai = mk_ai(&pda, &actual_owner, &mut lamports, &mut data);
+        assert!(load_caller_guard(&ai, &expected_caller).is_err());
+    }
+
+    #[test]
+    fn load_caller_guard_rejects_wrong_pda() {
+        let expected_caller = Pubkey::new_unique();
+        let bogus_key = Pubkey::new_unique();
+        let mut data = mk_guard_buf(true);
+        let mut lamports = 0u64;
+        let ai = mk_ai(&bogus_key, &expected_caller, &mut lamports, &mut data);
+        assert!(load_caller_guard(&ai, &expected_caller).is_err());
+    }
+
+    #[test]
+    fn load_caller_guard_rejects_bad_discriminator() {
+        let expected_caller = Pubkey::new_unique();
+        let (pda, _bump) = Pubkey::find_program_address(&[SEED_GUARD], &expected_caller);
+        let mut data = mk_guard_buf(true);
+        data[0] ^= 0xFF; // corrupt discriminator
+        let mut lamports = 0u64;
+        let ai = mk_ai(&pda, &expected_caller, &mut lamports, &mut data);
+        assert!(load_caller_guard(&ai, &expected_caller).is_err());
     }
 }

@@ -6,7 +6,8 @@ use crate::errors::TaskMarketError;
 use crate::events::{BidBookClosed, GuardEntered};
 use crate::guard::{exit as guard_exit, try_enter, ReentrancyGuard, SEED_GUARD};
 use crate::state::{
-    bid_beats, Bid, BidBook, BidPhase, MarketGlobal, TaskContract, SEED_BID, SEED_BID_BOOK,
+    bid_beats, Bid, BidBook, BidPhase, MarketGlobal, TaskContract, TaskStatus, SEED_BID,
+    SEED_BID_BOOK,
 };
 
 #[derive(Accounts)]
@@ -61,10 +62,19 @@ pub fn handler<'info>(ctx: Context<'info, CloseBidding<'info>>) -> Result<()> {
         remaining.len() % 2 == 0,
         TaskMarketError::Unauthorized
     );
+    // F-2026-07: cranker must submit every revealed bid (each as a
+    // [Bid, AgentAccount] pair). Otherwise a partial submission could
+    // settle on a suboptimal winner.
+    require!(
+        remaining.len() == (book.reveal_count as usize) * 2,
+        TaskMarketError::IncompleteBidEnumeration,
+    );
 
     let mut winner_agent: Option<Pubkey> = None;
+    let mut winner_did: Option<[u8; 32]> = None;
     let mut winner_amount: u64 = 0;
     let mut winner_stake: u64 = 0;
+    let mut seen_bidders: Vec<Pubkey> = Vec::with_capacity(remaining.len() / 2);
 
     let mut i = 0usize;
     while i < remaining.len() {
@@ -87,6 +97,14 @@ pub fn handler<'info>(ctx: Context<'info, CloseBidding<'info>>) -> Result<()> {
             bid_ai.key() == expected_bid_pda,
             TaskMarketError::Unauthorized
         );
+
+        // F-2026-07: reject duplicates so a cranker can't double-count a
+        // single bid to pad `reveal_count`.
+        require!(
+            !seen_bidders.iter().any(|b| b == &bid.bidder),
+            TaskMarketError::DuplicateBidEnumeration
+        );
+        seen_bidders.push(bid.bidder);
 
         if !bid.revealed || bid.slashed {
             i += 2;
@@ -121,6 +139,7 @@ pub fn handler<'info>(ctx: Context<'info, CloseBidding<'info>>) -> Result<()> {
 
         if take {
             winner_agent = Some(candidate_key);
+            winner_did = Some(agent.did);
             winner_amount = candidate_amount;
             winner_stake = candidate_stake;
         }
@@ -135,10 +154,22 @@ pub fn handler<'info>(ctx: Context<'info, CloseBidding<'info>>) -> Result<()> {
         book.winner_agent = Some(w);
         book.winner_amount = winner_amount;
         ctx.accounts.task.assigned_agent = Some(w);
+        // F-2026-05: rewrite task.agent_did to the winning bidder's DID so
+        // downstream ix (submit_result/release/expire) that consult
+        // task.agent_did observe a consistent value.
+        if let Some(did) = winner_did {
+            ctx.accounts.task.agent_did = did;
+        }
     } else {
         book.phase = BidPhase::Cancelled;
         book.winner_agent = None;
         book.winner_amount = 0;
+        // F-2026-07: when no revealed bid survives, reset task.status to
+        // Funded so the client can re-open bidding per spec §Invariant 5.
+        ctx.accounts.task.status = TaskStatus::Funded;
+        // Detach the now-cancelled bid book so re-open_bidding can attach a
+        // fresh one without hitting `BidBookAlreadyOpen`.
+        ctx.accounts.task.bid_book = None;
     }
 
     emit!(BidBookClosed {

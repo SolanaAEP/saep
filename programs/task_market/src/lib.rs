@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 
-pub mod cpi_stubs;
 pub mod errors;
 pub mod events;
 pub mod guard;

@@ -57,6 +57,7 @@ pub fn handler(
     g.allowed_sas_issuers_len = 0;
     g.personhood_basic_min_tier = PersonhoodTier::Basic;
     g.require_personhood_for_register = false;
+    g.civic_gateway_program = Pubkey::default();
     g.bump = ctx.bumps.global;
 
     emit!(GlobalInitialized {
