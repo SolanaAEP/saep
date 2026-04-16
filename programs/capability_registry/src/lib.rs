@@ -5,6 +5,9 @@ pub mod events;
 pub mod instructions;
 pub mod state;
 
+#[cfg(test)]
+mod fuzz;
+
 use instructions::*;
 use state::{MANIFEST_URI_LEN, SLUG_LEN};
 
