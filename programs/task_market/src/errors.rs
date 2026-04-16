@@ -116,4 +116,6 @@ pub enum TaskMarketError {
     DuplicateBidEnumeration,
     #[msg("agent has not declared the task's capability bit")]
     CapabilityNotInAgentMask,
+    #[msg("unrevealed or slashed bid present in close_bidding enumeration")]
+    InvalidBidInEnumeration,
 }
