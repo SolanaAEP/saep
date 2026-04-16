@@ -12,23 +12,811 @@ export type FeeCollector = {
     "name": "feeCollector",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "SAEP fee_collector program (stub)"
+    "description": "SAEP fee_collector program"
   },
   "instructions": [
     {
-      "name": "initialize",
+      "name": "acceptHookAuthority",
       "discriminator": [
-        175,
-        175,
-        109,
-        31,
-        13,
-        152,
-        155,
-        237
+        95,
+        44,
+        71,
+        69,
+        253,
+        26,
+        215,
+        127
       ],
-      "accounts": [],
+      "accounts": [
+        {
+          "name": "allowlist",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  111,
+                  107,
+                  95,
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pendingAuthority",
+          "signer": true
+        }
+      ],
       "args": []
+    },
+    {
+      "name": "initAgentHookAllowlist",
+      "discriminator": [
+        3,
+        3,
+        31,
+        107,
+        104,
+        128,
+        142,
+        35
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  111,
+                  107,
+                  95,
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116,
+                  95,
+                  104,
+                  111,
+                  111,
+                  107,
+                  115
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agentDid"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "agentDid",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "initHookAllowlist",
+      "discriminator": [
+        203,
+        85,
+        11,
+        47,
+        15,
+        16,
+        166,
+        38
+      ],
+      "accounts": [
+        {
+          "name": "allowlist",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  111,
+                  107,
+                  95,
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "enforced on later mutation ixs."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "defaultDeny",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setDefaultDeny",
+      "discriminator": [
+        81,
+        107,
+        154,
+        245,
+        11,
+        13,
+        253,
+        216
+      ],
+      "accounts": [
+        {
+          "name": "allowlist",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  111,
+                  107,
+                  95,
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "allowlist"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "defaultDeny",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "transferHookAuthority",
+      "discriminator": [
+        40,
+        141,
+        27,
+        143,
+        115,
+        132,
+        27,
+        111
+      ],
+      "accounts": [
+        {
+          "name": "allowlist",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  111,
+                  107,
+                  95,
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "allowlist"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newAuthority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "updateAgentHookAllowlist",
+      "discriminator": [
+        4,
+        6,
+        95,
+        64,
+        132,
+        214,
+        121,
+        6
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  111,
+                  107,
+                  95,
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116,
+                  95,
+                  104,
+                  111,
+                  111,
+                  107,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_did",
+                "account": "agentHookAllowlist"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "add",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "remove",
+          "type": {
+            "vec": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "updateHookAllowlist",
+      "discriminator": [
+        221,
+        65,
+        122,
+        15,
+        71,
+        72,
+        185,
+        111
+      ],
+      "accounts": [
+        {
+          "name": "allowlist",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  111,
+                  107,
+                  95,
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "allowlist"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "add",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "remove",
+          "type": {
+            "vec": "pubkey"
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "agentHookAllowlist",
+      "discriminator": [
+        237,
+        186,
+        161,
+        34,
+        128,
+        43,
+        189,
+        86
+      ]
+    },
+    {
+      "name": "hookAllowlist",
+      "discriminator": [
+        252,
+        161,
+        123,
+        56,
+        148,
+        215,
+        101,
+        245
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "agentHookAllowlistUpdated",
+      "discriminator": [
+        124,
+        73,
+        172,
+        159,
+        112,
+        203,
+        20,
+        172
+      ]
+    },
+    {
+      "name": "hookAllowlistInitialized",
+      "discriminator": [
+        105,
+        19,
+        169,
+        167,
+        13,
+        48,
+        34,
+        167
+      ]
+    },
+    {
+      "name": "hookAllowlistUpdated",
+      "discriminator": [
+        122,
+        246,
+        214,
+        53,
+        41,
+        164,
+        241,
+        135
+      ]
+    },
+    {
+      "name": "hookRejected",
+      "discriminator": [
+        108,
+        207,
+        249,
+        27,
+        219,
+        185,
+        119,
+        73
+      ]
+    },
+    {
+      "name": "mintAccepted",
+      "discriminator": [
+        64,
+        209,
+        5,
+        8,
+        70,
+        172,
+        222,
+        50
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "unauthorized",
+      "msg": "signer is not authorized for this instruction"
+    },
+    {
+      "code": 6001,
+      "name": "hookNotAllowed",
+      "msg": "transfer-hook program is not on the allowlist"
+    },
+    {
+      "code": 6002,
+      "name": "hookAllowlistFull",
+      "msg": "hook allowlist is at capacity"
+    },
+    {
+      "code": 6003,
+      "name": "agentHookAllowlistFull",
+      "msg": "per-agent hook allowlist is at capacity"
+    },
+    {
+      "code": 6004,
+      "name": "invalidProgramId",
+      "msg": "program id must be a non-default pubkey"
+    },
+    {
+      "code": 6005,
+      "name": "mintExtensionRejected",
+      "msg": "mint extension configuration is not acceptable"
+    },
+    {
+      "code": 6006,
+      "name": "mintParseFailed",
+      "msg": "failed to parse Token-2022 mint extensions"
+    },
+    {
+      "code": 6007,
+      "name": "noPendingAuthority",
+      "msg": "no pending authority to accept"
+    }
+  ],
+  "types": [
+    {
+      "name": "agentHookAllowlist",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "extraPrograms",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "agentHookAllowlistUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "added",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "removed",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "hookAllowlist",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pendingAuthority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "programs",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "defaultDeny",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "hookAllowlistInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "defaultDeny",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "hookAllowlistUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "added",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "removed",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "defaultDeny",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "hookRejected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "hookProgram",
+            "type": "pubkey"
+          },
+          {
+            "name": "site",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mintAccepted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "acceptFlags",
+            "type": "u32"
+          },
+          {
+            "name": "hookProgram",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
     }
   ]
 };

@@ -55,6 +55,79 @@ export type AgentRegistry = {
       "args": []
     },
     {
+      "name": "attestPersonhood",
+      "discriminator": [
+        56,
+        197,
+        168,
+        156,
+        217,
+        134,
+        153,
+        198
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "attestation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  115,
+                  111,
+                  110,
+                  104,
+                  111,
+                  111,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "operator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "civicGatewayToken"
+        },
+        {
+          "name": "operator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "cancelSlash",
       "discriminator": [
         222,
@@ -522,6 +595,74 @@ export type AgentRegistry = {
       ]
     },
     {
+      "name": "refreshPersonhood",
+      "discriminator": [
+        225,
+        40,
+        189,
+        150,
+        68,
+        40,
+        143,
+        165
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "attestation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  115,
+                  111,
+                  110,
+                  104,
+                  111,
+                  111,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "operator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "civicGatewayToken"
+        },
+        {
+          "name": "operator",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "registerAgent",
       "discriminator": [
         135,
@@ -616,6 +757,37 @@ export type AgentRegistry = {
           "signer": true
         },
         {
+          "name": "personhoodAttestation",
+          "docs": [
+            "Personhood attestation, required iff `global.require_personhood_for_register`.",
+            "Passed as optional so devnet flows without the flag don't need to supply it."
+          ],
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  115,
+                  111,
+                  110,
+                  104,
+                  111,
+                  111,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "operator"
+              }
+            ]
+          }
+        },
+        {
           "name": "tokenProgram",
           "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
@@ -662,6 +834,147 @@ export type AgentRegistry = {
         {
           "name": "stakeAmount",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "revokePersonhood",
+      "discriminator": [
+        16,
+        166,
+        49,
+        138,
+        181,
+        47,
+        237,
+        4
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "attestation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  115,
+                  111,
+                  110,
+                  104,
+                  111,
+                  111,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "attestation.operator",
+                "account": "personhoodAttestation"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "reasonCode",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "setGatekeeperAllowlist",
+      "discriminator": [
+        146,
+        73,
+        162,
+        148,
+        85,
+        133,
+        71,
+        251
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "civicNetworks",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "sasIssuers",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "basicMinTier",
+          "type": {
+            "defined": {
+              "name": "personhoodTier"
+            }
+          }
+        },
+        {
+          "name": "requireForRegister",
+          "type": "bool"
         }
       ]
     },
@@ -1572,6 +1885,19 @@ export type AgentRegistry = {
       ]
     },
     {
+      "name": "personhoodAttestation",
+      "discriminator": [
+        133,
+        103,
+        115,
+        254,
+        161,
+        136,
+        144,
+        234
+      ]
+    },
+    {
       "name": "registryGlobal",
       "discriminator": [
         78,
@@ -1626,6 +1952,19 @@ export type AgentRegistry = {
       ]
     },
     {
+      "name": "gatekeeperAllowlistUpdated",
+      "discriminator": [
+        111,
+        247,
+        60,
+        10,
+        16,
+        126,
+        110,
+        253
+      ]
+    },
+    {
       "name": "globalInitialized",
       "discriminator": [
         142,
@@ -1675,6 +2014,45 @@ export type AgentRegistry = {
         175,
         253,
         179
+      ]
+    },
+    {
+      "name": "personhoodAttested",
+      "discriminator": [
+        58,
+        7,
+        64,
+        92,
+        141,
+        226,
+        44,
+        180
+      ]
+    },
+    {
+      "name": "personhoodRefreshed",
+      "discriminator": [
+        67,
+        167,
+        208,
+        170,
+        60,
+        140,
+        8,
+        100
+      ]
+    },
+    {
+      "name": "personhoodRevoked",
+      "discriminator": [
+        70,
+        140,
+        174,
+        184,
+        165,
+        47,
+        241,
+        219
       ]
     },
     {
@@ -1884,6 +2262,56 @@ export type AgentRegistry = {
       "code": 6022,
       "name": "reputationReplay",
       "msg": "task_id already applied to this category reputation"
+    },
+    {
+      "code": 6023,
+      "name": "personhoodRequired",
+      "msg": "personhood attestation required but missing"
+    },
+    {
+      "code": 6024,
+      "name": "personhoodExpired",
+      "msg": "personhood attestation has expired"
+    },
+    {
+      "code": 6025,
+      "name": "personhoodRevoked",
+      "msg": "personhood attestation has been revoked"
+    },
+    {
+      "code": 6026,
+      "name": "gatekeeperNotAllowed",
+      "msg": "gatekeeper network or SAS issuer is not on the allowlist"
+    },
+    {
+      "code": 6027,
+      "name": "attestationOperatorMismatch",
+      "msg": "attestation operator does not match signer or bidder"
+    },
+    {
+      "code": 6028,
+      "name": "gatewayTokenInvalid",
+      "msg": "gateway token layout is invalid"
+    },
+    {
+      "code": 6029,
+      "name": "gatewayTokenNotActive",
+      "msg": "gateway token state is not active"
+    },
+    {
+      "code": 6030,
+      "name": "gatewayTokenOwnerMismatch",
+      "msg": "gateway token owner does not match operator"
+    },
+    {
+      "code": 6031,
+      "name": "gatekeeperListFull",
+      "msg": "gatekeeper allowlist overflow"
+    },
+    {
+      "code": 6032,
+      "name": "attestationStillValid",
+      "msg": "attestation is still valid; refresh not needed"
     }
   ],
   "types": [
@@ -2218,6 +2646,26 @@ export type AgentRegistry = {
       }
     },
     {
+      "name": "gatekeeperAllowlistUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "civicLen",
+            "type": "u8"
+          },
+          {
+            "name": "sasLen",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "globalInitialized",
       "type": {
         "kind": "struct",
@@ -2400,6 +2848,162 @@ export type AgentRegistry = {
       }
     },
     {
+      "name": "personhoodAttestation",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "provider",
+            "type": {
+              "defined": {
+                "name": "providerKind"
+              }
+            }
+          },
+          {
+            "name": "tier",
+            "type": {
+              "defined": {
+                "name": "personhoodTier"
+              }
+            }
+          },
+          {
+            "name": "gatekeeperNetwork",
+            "type": "pubkey"
+          },
+          {
+            "name": "attestationRef",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "attestedAt",
+            "type": "i64"
+          },
+          {
+            "name": "expiresAt",
+            "type": "i64"
+          },
+          {
+            "name": "revoked",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "personhoodAttested",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "provider",
+            "type": "u8"
+          },
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "expiresAt",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "personhoodRefreshed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "newExpiresAt",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "personhoodRevoked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "reasonCode",
+            "type": "u16"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "personhoodTier",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "none"
+          },
+          {
+            "name": "basic"
+          },
+          {
+            "name": "verified"
+          }
+        ]
+      }
+    },
+    {
+      "name": "providerKind",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "civic"
+          },
+          {
+            "name": "sas"
+          }
+        ]
+      }
+    },
+    {
       "name": "registryConfig",
       "type": {
         "kind": "struct",
@@ -2486,6 +3090,44 @@ export type AgentRegistry = {
           },
           {
             "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "allowedCivicNetworks",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "allowedCivicNetworksLen",
+            "type": "u8"
+          },
+          {
+            "name": "allowedSasIssuers",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "allowedSasIssuersLen",
+            "type": "u8"
+          },
+          {
+            "name": "personhoodBasicMinTier",
+            "type": {
+              "defined": {
+                "name": "personhoodTier"
+              }
+            }
+          },
+          {
+            "name": "requirePersonhoodForRegister",
             "type": "bool"
           },
           {

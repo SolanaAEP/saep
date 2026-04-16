@@ -342,6 +342,76 @@ export type TreasuryStandard = {
           "writable": true
         },
         {
+          "name": "hookAllowlist",
+          "optional": true
+        },
+        {
+          "name": "agentHooks",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116,
+                  95,
+                  104,
+                  111,
+                  111,
+                  107,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                58,
+                192,
+                104,
+                235,
+                111,
+                55,
+                163,
+                185,
+                224,
+                202,
+                17,
+                51,
+                151,
+                168,
+                139,
+                20,
+                235,
+                153,
+                53,
+                111,
+                219,
+                212,
+                208,
+                244,
+                93,
+                58,
+                84,
+                237,
+                247,
+                91,
+                204,
+                0
+              ]
+            }
+          }
+        },
+        {
           "name": "signer",
           "signer": true
         },
@@ -1351,6 +1421,62 @@ export type TreasuryStandard = {
       ]
     },
     {
+      "name": "setHookAllowlistPtr",
+      "discriminator": [
+        194,
+        79,
+        184,
+        147,
+        229,
+        169,
+        201,
+        31
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "hookAllowlist",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "setLimits",
       "discriminator": [
         207,
@@ -2123,6 +2249,76 @@ export type TreasuryStandard = {
           "optional": true
         },
         {
+          "name": "hookAllowlist",
+          "optional": true
+        },
+        {
+          "name": "agentHooks",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116,
+                  95,
+                  104,
+                  111,
+                  111,
+                  107,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                58,
+                192,
+                104,
+                235,
+                111,
+                55,
+                163,
+                185,
+                224,
+                202,
+                17,
+                51,
+                151,
+                168,
+                139,
+                20,
+                235,
+                153,
+                53,
+                111,
+                219,
+                212,
+                208,
+                244,
+                93,
+                58,
+                84,
+                237,
+                247,
+                91,
+                204,
+                0
+              ]
+            }
+          }
+        },
+        {
           "name": "operator",
           "signer": true,
           "relations": [
@@ -2540,6 +2736,21 @@ export type TreasuryStandard = {
       "code": 6031,
       "name": "invalidCallTarget",
       "msg": "call target must be a non-default pubkey"
+    },
+    {
+      "code": 6032,
+      "name": "hookNotAllowed",
+      "msg": "transfer-hook program not on fee_collector allowlist"
+    },
+    {
+      "code": 6033,
+      "name": "hookAllowlistAlreadySet",
+      "msg": "hook_allowlist pointer has already been set"
+    },
+    {
+      "code": 6034,
+      "name": "hookAllowlistMismatch",
+      "msg": "hook_allowlist account does not match TreasuryGlobal.hook_allowlist"
     }
   ],
   "types": [
@@ -2663,6 +2874,33 @@ export type TreasuryStandard = {
           },
           {
             "name": "vaultBump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "agentHookAllowlist",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "extraPrograms",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
             "type": "u8"
           }
         ]
@@ -2866,6 +3104,38 @@ export type TreasuryStandard = {
       }
     },
     {
+      "name": "hookAllowlist",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pendingAuthority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "programs",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "defaultDeny",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "limitsUpdated",
       "type": {
         "kind": "struct",
@@ -3041,6 +3311,23 @@ export type TreasuryStandard = {
       }
     },
     {
+      "name": "personhoodTier",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "none"
+          },
+          {
+            "name": "basic"
+          },
+          {
+            "name": "verified"
+          }
+        ]
+      }
+    },
+    {
       "name": "registryGlobal",
       "type": {
         "kind": "struct",
@@ -3093,6 +3380,44 @@ export type TreasuryStandard = {
           },
           {
             "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "allowedCivicNetworks",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "allowedCivicNetworksLen",
+            "type": "u8"
+          },
+          {
+            "name": "allowedSasIssuers",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "allowedSasIssuersLen",
+            "type": "u8"
+          },
+          {
+            "name": "personhoodBasicMinTier",
+            "type": {
+              "defined": {
+                "name": "personhoodTier"
+              }
+            }
+          },
+          {
+            "name": "requirePersonhoodForRegister",
             "type": "bool"
           },
           {
@@ -3431,6 +3756,10 @@ export type TreasuryStandard = {
             "type": {
               "vec": "pubkey"
             }
+          },
+          {
+            "name": "hookAllowlist",
+            "type": "pubkey"
           }
         ]
       }

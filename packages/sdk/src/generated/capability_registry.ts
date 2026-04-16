@@ -280,6 +280,60 @@ export type CapabilityRegistry = {
       ]
     },
     {
+      "name": "setTagPersonhood",
+      "discriminator": [
+        175,
+        150,
+        246,
+        11,
+        176,
+        36,
+        59,
+        134
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tag",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "bitIndex",
+          "type": "u8"
+        },
+        {
+          "name": "minTier",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "transferAuthority",
       "discriminator": [
         48,
@@ -606,6 +660,11 @@ export type CapabilityRegistry = {
       "code": 6011,
       "name": "tagCountOverflow",
       "msg": "tag count overflow"
+    },
+    {
+      "code": 6012,
+      "name": "invalidPersonhoodTier",
+      "msg": "personhood tier value out of range"
     }
   ],
   "types": [
@@ -671,6 +730,10 @@ export type CapabilityRegistry = {
           {
             "name": "retired",
             "type": "bool"
+          },
+          {
+            "name": "minPersonhoodTier",
+            "type": "u8"
           },
           {
             "name": "bump",

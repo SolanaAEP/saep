@@ -47,6 +47,79 @@
       "args": []
     },
     {
+      "name": "attest_personhood",
+      "discriminator": [
+        56,
+        197,
+        168,
+        156,
+        217,
+        134,
+        153,
+        198
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "attestation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  115,
+                  111,
+                  110,
+                  104,
+                  111,
+                  111,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "operator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "civic_gateway_token"
+        },
+        {
+          "name": "operator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "cancel_slash",
       "discriminator": [
         222,
@@ -514,6 +587,74 @@
       ]
     },
     {
+      "name": "refresh_personhood",
+      "discriminator": [
+        225,
+        40,
+        189,
+        150,
+        68,
+        40,
+        143,
+        165
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "attestation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  115,
+                  111,
+                  110,
+                  104,
+                  111,
+                  111,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "operator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "civic_gateway_token"
+        },
+        {
+          "name": "operator",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "register_agent",
       "discriminator": [
         135,
@@ -608,6 +749,37 @@
           "signer": true
         },
         {
+          "name": "personhood_attestation",
+          "docs": [
+            "Personhood attestation, required iff `global.require_personhood_for_register`.",
+            "Passed as optional so devnet flows without the flag don't need to supply it."
+          ],
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  115,
+                  111,
+                  110,
+                  104,
+                  111,
+                  111,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "operator"
+              }
+            ]
+          }
+        },
+        {
           "name": "token_program",
           "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
@@ -654,6 +826,147 @@
         {
           "name": "stake_amount",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "revoke_personhood",
+      "discriminator": [
+        16,
+        166,
+        49,
+        138,
+        181,
+        47,
+        237,
+        4
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "attestation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  115,
+                  111,
+                  110,
+                  104,
+                  111,
+                  111,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "attestation.operator",
+                "account": "PersonhoodAttestation"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "reason_code",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "set_gatekeeper_allowlist",
+      "discriminator": [
+        146,
+        73,
+        162,
+        148,
+        85,
+        133,
+        71,
+        251
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "civic_networks",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "sas_issuers",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "basic_min_tier",
+          "type": {
+            "defined": {
+              "name": "PersonhoodTier"
+            }
+          }
+        },
+        {
+          "name": "require_for_register",
+          "type": "bool"
         }
       ]
     },
@@ -1564,6 +1877,19 @@
       ]
     },
     {
+      "name": "PersonhoodAttestation",
+      "discriminator": [
+        133,
+        103,
+        115,
+        254,
+        161,
+        136,
+        144,
+        234
+      ]
+    },
+    {
       "name": "RegistryGlobal",
       "discriminator": [
         78,
@@ -1618,6 +1944,19 @@
       ]
     },
     {
+      "name": "GatekeeperAllowlistUpdated",
+      "discriminator": [
+        111,
+        247,
+        60,
+        10,
+        16,
+        126,
+        110,
+        253
+      ]
+    },
+    {
       "name": "GlobalInitialized",
       "discriminator": [
         142,
@@ -1667,6 +2006,45 @@
         175,
         253,
         179
+      ]
+    },
+    {
+      "name": "PersonhoodAttested",
+      "discriminator": [
+        58,
+        7,
+        64,
+        92,
+        141,
+        226,
+        44,
+        180
+      ]
+    },
+    {
+      "name": "PersonhoodRefreshed",
+      "discriminator": [
+        67,
+        167,
+        208,
+        170,
+        60,
+        140,
+        8,
+        100
+      ]
+    },
+    {
+      "name": "PersonhoodRevoked",
+      "discriminator": [
+        70,
+        140,
+        174,
+        184,
+        165,
+        47,
+        241,
+        219
       ]
     },
     {
@@ -1876,6 +2254,56 @@
       "code": 6022,
       "name": "ReputationReplay",
       "msg": "task_id already applied to this category reputation"
+    },
+    {
+      "code": 6023,
+      "name": "PersonhoodRequired",
+      "msg": "personhood attestation required but missing"
+    },
+    {
+      "code": 6024,
+      "name": "PersonhoodExpired",
+      "msg": "personhood attestation has expired"
+    },
+    {
+      "code": 6025,
+      "name": "PersonhoodRevoked",
+      "msg": "personhood attestation has been revoked"
+    },
+    {
+      "code": 6026,
+      "name": "GatekeeperNotAllowed",
+      "msg": "gatekeeper network or SAS issuer is not on the allowlist"
+    },
+    {
+      "code": 6027,
+      "name": "AttestationOperatorMismatch",
+      "msg": "attestation operator does not match signer or bidder"
+    },
+    {
+      "code": 6028,
+      "name": "GatewayTokenInvalid",
+      "msg": "gateway token layout is invalid"
+    },
+    {
+      "code": 6029,
+      "name": "GatewayTokenNotActive",
+      "msg": "gateway token state is not active"
+    },
+    {
+      "code": 6030,
+      "name": "GatewayTokenOwnerMismatch",
+      "msg": "gateway token owner does not match operator"
+    },
+    {
+      "code": 6031,
+      "name": "GatekeeperListFull",
+      "msg": "gatekeeper allowlist overflow"
+    },
+    {
+      "code": 6032,
+      "name": "AttestationStillValid",
+      "msg": "attestation is still valid; refresh not needed"
     }
   ],
   "types": [
@@ -2210,6 +2638,26 @@
       }
     },
     {
+      "name": "GatekeeperAllowlistUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "civic_len",
+            "type": "u8"
+          },
+          {
+            "name": "sas_len",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "GlobalInitialized",
       "type": {
         "kind": "struct",
@@ -2392,6 +2840,162 @@
       }
     },
     {
+      "name": "PersonhoodAttestation",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "provider",
+            "type": {
+              "defined": {
+                "name": "ProviderKind"
+              }
+            }
+          },
+          {
+            "name": "tier",
+            "type": {
+              "defined": {
+                "name": "PersonhoodTier"
+              }
+            }
+          },
+          {
+            "name": "gatekeeper_network",
+            "type": "pubkey"
+          },
+          {
+            "name": "attestation_ref",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "attested_at",
+            "type": "i64"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "revoked",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PersonhoodAttested",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "provider",
+            "type": "u8"
+          },
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PersonhoodRefreshed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PersonhoodRevoked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "reason_code",
+            "type": "u16"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PersonhoodTier",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "None"
+          },
+          {
+            "name": "Basic"
+          },
+          {
+            "name": "Verified"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProviderKind",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Civic"
+          },
+          {
+            "name": "SAS"
+          }
+        ]
+      }
+    },
+    {
       "name": "RegistryConfig",
       "type": {
         "kind": "struct",
@@ -2478,6 +3082,44 @@
           },
           {
             "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "allowed_civic_networks",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "allowed_civic_networks_len",
+            "type": "u8"
+          },
+          {
+            "name": "allowed_sas_issuers",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "allowed_sas_issuers_len",
+            "type": "u8"
+          },
+          {
+            "name": "personhood_basic_min_tier",
+            "type": {
+              "defined": {
+                "name": "PersonhoodTier"
+              }
+            }
+          },
+          {
+            "name": "require_personhood_for_register",
             "type": "bool"
           },
           {

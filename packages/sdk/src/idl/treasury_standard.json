@@ -334,6 +334,76 @@
           "writable": true
         },
         {
+          "name": "hook_allowlist",
+          "optional": true
+        },
+        {
+          "name": "agent_hooks",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116,
+                  95,
+                  104,
+                  111,
+                  111,
+                  107,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "AgentTreasury"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                58,
+                192,
+                104,
+                235,
+                111,
+                55,
+                163,
+                185,
+                224,
+                202,
+                17,
+                51,
+                151,
+                168,
+                139,
+                20,
+                235,
+                153,
+                53,
+                111,
+                219,
+                212,
+                208,
+                244,
+                93,
+                58,
+                84,
+                237,
+                247,
+                91,
+                204,
+                0
+              ]
+            }
+          }
+        },
+        {
           "name": "signer",
           "signer": true
         },
@@ -1343,6 +1413,62 @@
       ]
     },
     {
+      "name": "set_hook_allowlist_ptr",
+      "discriminator": [
+        194,
+        79,
+        184,
+        147,
+        229,
+        169,
+        201,
+        31
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "hook_allowlist",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "set_limits",
       "discriminator": [
         207,
@@ -2115,6 +2241,76 @@
           "optional": true
         },
         {
+          "name": "hook_allowlist",
+          "optional": true
+        },
+        {
+          "name": "agent_hooks",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116,
+                  95,
+                  104,
+                  111,
+                  111,
+                  107,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "AgentTreasury"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                58,
+                192,
+                104,
+                235,
+                111,
+                55,
+                163,
+                185,
+                224,
+                202,
+                17,
+                51,
+                151,
+                168,
+                139,
+                20,
+                235,
+                153,
+                53,
+                111,
+                219,
+                212,
+                208,
+                244,
+                93,
+                58,
+                84,
+                237,
+                247,
+                91,
+                204,
+                0
+              ]
+            }
+          }
+        },
+        {
           "name": "operator",
           "signer": true,
           "relations": [
@@ -2532,6 +2728,21 @@
       "code": 6031,
       "name": "InvalidCallTarget",
       "msg": "call target must be a non-default pubkey"
+    },
+    {
+      "code": 6032,
+      "name": "HookNotAllowed",
+      "msg": "transfer-hook program not on fee_collector allowlist"
+    },
+    {
+      "code": 6033,
+      "name": "HookAllowlistAlreadySet",
+      "msg": "hook_allowlist pointer has already been set"
+    },
+    {
+      "code": 6034,
+      "name": "HookAllowlistMismatch",
+      "msg": "hook_allowlist account does not match TreasuryGlobal.hook_allowlist"
     }
   ],
   "types": [
@@ -2655,6 +2866,33 @@
           },
           {
             "name": "vault_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AgentHookAllowlist",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agent_did",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "extra_programs",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
             "type": "u8"
           }
         ]
@@ -2858,6 +3096,38 @@
       }
     },
     {
+      "name": "HookAllowlist",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "programs",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "default_deny",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "LimitsUpdated",
       "type": {
         "kind": "struct",
@@ -3033,6 +3303,23 @@
       }
     },
     {
+      "name": "PersonhoodTier",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "None"
+          },
+          {
+            "name": "Basic"
+          },
+          {
+            "name": "Verified"
+          }
+        ]
+      }
+    },
+    {
       "name": "RegistryGlobal",
       "type": {
         "kind": "struct",
@@ -3085,6 +3372,44 @@
           },
           {
             "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "allowed_civic_networks",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "allowed_civic_networks_len",
+            "type": "u8"
+          },
+          {
+            "name": "allowed_sas_issuers",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "allowed_sas_issuers_len",
+            "type": "u8"
+          },
+          {
+            "name": "personhood_basic_min_tier",
+            "type": {
+              "defined": {
+                "name": "PersonhoodTier"
+              }
+            }
+          },
+          {
+            "name": "require_personhood_for_register",
             "type": "bool"
           },
           {
@@ -3423,6 +3748,10 @@
             "type": {
               "vec": "pubkey"
             }
+          },
+          {
+            "name": "hook_allowlist",
+            "type": "pubkey"
           }
         ]
       }
