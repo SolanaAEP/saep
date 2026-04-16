@@ -135,9 +135,8 @@ describe('proof_verifier', () => {
     expect(cfg.pendingActivatesAt.toNumber()).to.be.greaterThan(0);
   });
 
-  it.skip('execute_vk_activation: 7-day timelock (requires bankrun)', async () => {
-    // Requires bankrun adapter to warp clock forward 7 days.
-  });
+  // execute_vk_activation 7-day timelock coverage lives in
+  // `tests/bankrun_timelocks.ts` (in-process clock warp, no localnet).
 
   it.skip('verify_proof: happy-path with real VK + real proof (integration-gated)', async () => {
     // Needs: VK activated (requires bankrun for timelock warp),
