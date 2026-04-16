@@ -1,0 +1,94 @@
+rules:
+  - id: saep.solana.direct-lamport-mutation
+    languages: [rust]
+    severity: ERROR
+    message: >-
+      Direct mutation of `AccountInfo::lamports` bypasses Anchor's transfer
+      helpers and SPL `system_program::transfer` CPI. Use Anchor `Transfer`
+      CPI or System Program transfer; direct mutation is permitted only when
+      transferring between accounts the program owns in a single instruction
+      and the reader can verify conservation-of-lamports at a glance.
+    paths:
+      include:
+        - programs/
+    pattern-either:
+      - pattern: $X.lamports.borrow_mut()
+      - pattern: $X.to_account_info().lamports.borrow_mut()
+
+  - id: saep.solana.account-data-raw-deserialize
+    languages: [rust]
+    severity: WARNING
+    message: >-
+      `try_from_slice` on raw account data skips Anchor's 8-byte discriminator
+      validation. Any call site must (1) verify the 8-byte discriminator
+      before slicing, and (2) verify account owner. Prefer typed
+      `Account<'info, T>` unless interop with a non-Anchor program demands
+      manual decode (e.g. Pyth/Switchboard price feeds).
+    paths:
+      include:
+        - programs/
+    pattern-either:
+      - pattern: $T::try_from_slice(&$A.data.borrow()[..])
+      - pattern: $T::try_from_slice(&$A.data.borrow())
+      - pattern: $T::try_from_slice(&$A.try_borrow_data()?)
+      - pattern: $T::try_from_slice(&$A.try_borrow_data()?[..])
+
+  - id: saep.solana.wrapping-arithmetic
+    languages: [rust]
+    severity: WARNING
+    message: >-
+      `wrapping_{add,sub,mul}` on program state silently wraps on overflow.
+      For financial math (balances, stake, fees, escrow), use `checked_*` and
+      return an error on `None`. Wrapping is only appropriate for explicit
+      modular arithmetic (e.g. field-element math in proof_verifier::pairing).
+    paths:
+      include:
+        - programs/
+    pattern-either:
+      - pattern: $X.wrapping_add($Y)
+      - pattern: $X.wrapping_sub($Y)
+      - pattern: $X.wrapping_mul($Y)
+
+  - id: saep.solana.accountinfo-data-borrow-mut
+    languages: [rust]
+    severity: WARNING
+    message: >-
+      Directly mutating raw `AccountInfo::data` bytes skips Anchor's
+      serialization layer, discriminator check, and owner check. If you need
+      to resize / zero an account, use Anchor `realloc` or `close`. If
+      interacting with a non-Anchor account layout, keep the mutation scoped
+      and add an explicit owner + discriminator check at the call site.
+    paths:
+      include:
+        - programs/
+    pattern-either:
+      - pattern: $X.data.borrow_mut()
+      - pattern: $X.try_borrow_mut_data()
+
+  - id: saep.solana.realloc-without-require
+    languages: [rust]
+    severity: WARNING
+    message: >-
+      `AccountInfo::realloc` can shrink an account and leave stale bytes
+      exposed, or grow it past rent-exemption. Wrap every realloc call with
+      (1) a size bound check, (2) explicit zero-init of any grown region
+      (`realloc(size, true)`), and (3) a rent top-up if the account grows.
+    paths:
+      include:
+        - programs/
+    pattern: $X.realloc($SIZE, $ZERO)
+
+  - id: saep.solana.sysvar-clock-unchecked-skew
+    languages: [rust]
+    severity: INFO
+    message: >-
+      `Clock::get()?.unix_timestamp` reflects validator-reported time with
+      bounded skew (~ a few seconds). Any deadline/timelock check that
+      compares to a user-supplied timestamp must tolerate the skew; equality
+      checks against block time are almost always a bug.
+    paths:
+      include:
+        - programs/
+    pattern-either:
+      - pattern: Clock::get()?.unix_timestamp == $X
+      - pattern: $X == Clock::get()?.unix_timestamp

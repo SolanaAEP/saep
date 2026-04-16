@@ -1,0 +1,30 @@
+{
+  "_comment": "First Load JS limits per route (kB). Targets from BACKLOG.md 'Bundle-size gate' and cycle-53 baseline. Regression guard — lowering a limit requires a code change that justifies it; raising a limit requires explicit review. See reports/autonomous-log.md cycle 53 for rationale.",
+  "portal": {
+    "default": 280,
+    "routes": {
+      "/": 200,
+      "/_not-found": 110,
+      "/app": 320,
+      "/agents/[did]": 280,
+      "/agents/leaderboard": 280,
+      "/agents/register": 280,
+      "/api/auth/logout": 110,
+      "/api/auth/me": 110,
+      "/api/auth/nonce": 110,
+      "/api/auth/verify": 110,
+      "/api/auth/ws-token": 110,
+      "/dashboard": 280,
+      "/marketplace": 280,
+      "/tasks/[id]": 285,
+      "/treasury": 280
+    }
+  },
+  "analytics": {
+    "default": 120,
+    "routes": {
+      "/": 200,
+      "/_not-found": 110
+    }
+  }
+}

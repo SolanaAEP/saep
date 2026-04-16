@@ -1,0 +1,29 @@
+# cargo-audit baseline for SAEP.
+#
+# Policy: `cargo audit --deny warnings` must stay green for every
+# Cargo.lock in the repo. Each entry in `[advisories].ignore` is a
+# consciously accepted risk — every ID lists rationale, upstream
+# owner, and a review date. Revisit quarterly.
+#
+# NOTE: cargo-audit 0.22 does not auto-discover this file. The
+# source of truth is consumed by `scripts/audit.sh`, which reads
+# the ignore list here and forwards `--ignore` flags to cargo-audit.
+# Keep this file + the script in sync (the script fails closed if
+# the TOML is malformed).
+
+[advisories]
+ignore = [
+  # bincode 1.x flagged unmaintained. Comes in transitively from
+  # solana-sdk / anchor-lang 1.0. Solana has announced migration to
+  # bincode 2 but anchor-lang 1.0 has not shipped it. No code path
+  # in SAEP crates uses bincode directly. Review: 2026-07-01.
+  "RUSTSEC-2025-0141",
+
+  # rand 0.8 soundness advisory applies only when a custom global
+  # logger calls `rand::rng()` on threads that outlive main. SAEP
+  # does not install a custom logger (we use tracing-subscriber's
+  # default). Dep enters via solana-zk-sdk 4.0 → spl-token-2022.
+  # Review: 2026-07-01 — bump when anchor-lang 1.x upgrades the
+  # Solana SDK chain.
+  "RUSTSEC-2026-0097",
+]

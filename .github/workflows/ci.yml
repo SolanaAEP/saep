@@ -25,6 +25,10 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm -r build
+      - name: bundle size gate
+        run: |
+          node scripts/check-bundle-size.mjs apps/portal --build
+          node scripts/check-bundle-size.mjs apps/analytics --build
 
   rust-fast:
     runs-on: ubuntu-latest
