@@ -12,9 +12,37 @@ export type ProofVerifier = {
     "name": "proofVerifier",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "SAEP proof_verifier program (stub)"
+    "description": "SAEP proof_verifier program"
   },
   "instructions": [
+    {
+      "name": "abortBatch",
+      "discriminator": [
+        57,
+        46,
+        251,
+        27,
+        67,
+        79,
+        55,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "batch"
+          ]
+        },
+        {
+          "name": "batch",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
     {
       "name": "acceptAuthority",
       "discriminator": [
@@ -64,24 +92,132 @@ export type ProofVerifier = {
       "args": []
     },
     {
-      "name": "batchVerifyStub",
+      "name": "addBatchProof",
       "discriminator": [
-        158,
-        83,
-        194,
-        189,
-        137,
-        56,
-        126,
-        229
+        203,
+        191,
+        192,
+        8,
+        77,
+        92,
+        113,
+        198
       ],
       "accounts": [
         {
           "name": "cranker",
-          "signer": true
+          "signer": true,
+          "relations": [
+            "batch"
+          ]
+        },
+        {
+          "name": "batch",
+          "writable": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vk.vk_id",
+                "account": "verifierKey"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mode",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  111,
+                  100,
+                  101
+                ]
+              }
+            ]
+          }
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "proofA",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "proofB",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "proofC",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "publicInputs",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        }
+      ]
     },
     {
       "name": "cancelVkActivation",
@@ -150,6 +286,80 @@ export type ProofVerifier = {
         {
           "name": "config",
           "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vk.vk_id",
+                "account": "verifierKey"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "finalizeBatch",
+      "discriminator": [
+        255,
+        211,
+        130,
+        81,
+        161,
+        239,
+        27,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "batch"
+          ]
+        },
+        {
+          "name": "batch",
+          "writable": true
+        },
+        {
+          "name": "config",
           "pda": {
             "seeds": [
               {
@@ -273,6 +483,98 @@ export type ProofVerifier = {
         {
           "name": "isMainnet",
           "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "openBatch",
+      "discriminator": [
+        103,
+        163,
+        23,
+        69,
+        63,
+        155,
+        108,
+        163
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "batch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cranker"
+              },
+              {
+                "kind": "arg",
+                "path": "batchId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "batchId",
+          "type": {
+            "array": [
+              "u8",
+              16
+            ]
+          }
+        },
+        {
+          "name": "maxProofs",
+          "type": "u8"
         }
       ]
     },
@@ -627,6 +929,206 @@ export type ProofVerifier = {
       ]
     },
     {
+      "name": "verifyAndUpdateReputation",
+      "discriminator": [
+        253,
+        12,
+        70,
+        42,
+        191,
+        185,
+        31,
+        98
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vk.vk_id",
+                "account": "verifierKey"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mode",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  111,
+                  100,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "repAuthority",
+          "docs": [
+            "Only passed through to agent_registry as the CPI signer; ownership of",
+            "the derivation is the security guarantee."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "registryGlobal",
+          "writable": true
+        },
+        {
+          "name": "registryAgent"
+        },
+        {
+          "name": "categoryReputation",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "agentRegistryProgram",
+          "address": "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "proofA",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "proofB",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "proofC",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "publicInputs",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        },
+        {
+          "name": "agentDid",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "capabilityBit",
+          "type": "u16"
+        },
+        {
+          "name": "sample",
+          "type": {
+            "defined": {
+              "name": "reputationSample"
+            }
+          }
+        },
+        {
+          "name": "taskId",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "verifyProof",
       "discriminator": [
         217,
@@ -746,6 +1248,19 @@ export type ProofVerifier = {
   ],
   "accounts": [
     {
+      "name": "batchState",
+      "discriminator": [
+        45,
+        46,
+        153,
+        185,
+        167,
+        42,
+        128,
+        10
+      ]
+    },
+    {
       "name": "globalMode",
       "discriminator": [
         58,
@@ -810,6 +1325,19 @@ export type ProofVerifier = {
         4,
         100,
         119
+      ]
+    },
+    {
+      "name": "batchVerified",
+      "discriminator": [
+        88,
+        129,
+        192,
+        196,
+        64,
+        124,
+        188,
+        239
       ]
     },
     {
@@ -976,6 +1504,26 @@ export type ProofVerifier = {
       "code": 6016,
       "name": "notImplemented",
       "msg": "not implemented in m1"
+    },
+    {
+      "code": 6017,
+      "name": "invalidBatchSize",
+      "msg": "batch size must be 1-10"
+    },
+    {
+      "code": 6018,
+      "name": "batchFull",
+      "msg": "batch is full"
+    },
+    {
+      "code": 6019,
+      "name": "batchEmpty",
+      "msg": "batch has no proofs"
+    },
+    {
+      "code": 6020,
+      "name": "batchVkMismatch",
+      "msg": "batch vk does not match active vk"
     }
   ],
   "types": [
@@ -1004,6 +1552,131 @@ export type ProofVerifier = {
       }
     },
     {
+      "name": "batchState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cranker",
+            "type": "pubkey"
+          },
+          {
+            "name": "vkKey",
+            "type": "pubkey"
+          },
+          {
+            "name": "batchId",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "count",
+            "type": "u8"
+          },
+          {
+            "name": "maxProofs",
+            "type": "u8"
+          },
+          {
+            "name": "accAlpha",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "accVkX",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "accC",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "randomState",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "negAScaled",
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  64
+                ]
+              }
+            }
+          },
+          {
+            "name": "bPoints",
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  128
+                ]
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "batchVerified",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "batchId",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "count",
+            "type": "u8"
+          },
+          {
+            "name": "vkId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "globalMode",
       "type": {
         "kind": "struct",
@@ -1026,6 +1699,38 @@ export type ProofVerifier = {
         "fields": [
           {
             "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "reputationSample",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quality",
+            "type": "u16"
+          },
+          {
+            "name": "timeliness",
+            "type": "u16"
+          },
+          {
+            "name": "availability",
+            "type": "u16"
+          },
+          {
+            "name": "costEfficiency",
+            "type": "u16"
+          },
+          {
+            "name": "honesty",
+            "type": "u16"
+          },
+          {
+            "name": "disputed",
             "type": "bool"
           }
         ]

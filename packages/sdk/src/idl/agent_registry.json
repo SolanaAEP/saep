@@ -340,6 +340,10 @@
           "type": "pubkey"
         },
         {
+          "name": "proof_verifier",
+          "type": "pubkey"
+        },
+        {
           "name": "min_stake",
           "type": "u64"
         },
@@ -791,6 +795,53 @@
         {
           "name": "paused",
           "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "set_proof_verifier",
+      "discriminator": [
+        219,
+        102,
+        103,
+        107,
+        91,
+        80,
+        181,
+        120
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_proof_verifier",
+          "type": "pubkey"
         }
       ]
     },
@@ -1339,6 +1390,150 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "update_reputation",
+      "discriminator": [
+        194,
+        220,
+        43,
+        201,
+        54,
+        209,
+        49,
+        178
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent.operator",
+                "account": "AgentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "AgentAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "category",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agent_did"
+              },
+              {
+                "kind": "arg",
+                "path": "capability_bit"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proof_verifier_authority",
+          "docs": [
+            "PDA signer from the proof_verifier program. The pubkey is asserted",
+            "against `global.proof_verifier` via the owner check on the signer's",
+            "derivation: proof_verifier invokes with seeds = [b\"rep_authority\"].",
+            "handler; signer verification is enforced by `Signer`."
+          ],
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "agent_did",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "capability_bit",
+          "type": "u16"
+        },
+        {
+          "name": "sample",
+          "type": {
+            "defined": {
+              "name": "ReputationSample"
+            }
+          }
+        },
+        {
+          "name": "task_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "proof_key",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1353,6 +1548,19 @@
         9,
         112,
         50
+      ]
+    },
+    {
+      "name": "CategoryReputation",
+      "discriminator": [
+        155,
+        22,
+        43,
+        177,
+        112,
+        216,
+        161,
+        121
       ]
     },
     {
@@ -1381,6 +1589,19 @@
         100,
         189,
         85
+      ]
+    },
+    {
+      "name": "CategoryReputationUpdated",
+      "discriminator": [
+        107,
+        50,
+        33,
+        135,
+        144,
+        70,
+        245,
+        108
       ]
     },
     {
@@ -1635,6 +1856,26 @@
       "code": 6018,
       "name": "ReputationOutOfRange",
       "msg": "reputation value out of range"
+    },
+    {
+      "code": 6019,
+      "name": "UnauthorizedReputationUpdate",
+      "msg": "only the proof_verifier program may update reputation"
+    },
+    {
+      "code": 6020,
+      "name": "InvalidCapabilityBit",
+      "msg": "capability bit exceeds capability_mask width"
+    },
+    {
+      "code": 6021,
+      "name": "CapabilityNotDeclared",
+      "msg": "agent has not declared this capability bit"
+    },
+    {
+      "code": 6022,
+      "name": "ReputationReplay",
+      "msg": "task_id already applied to this category reputation"
     }
   ],
   "types": [
@@ -1812,6 +2053,131 @@
           },
           {
             "name": "Deregistered"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CategoryReputation",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agent_did",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "capability_bit",
+            "type": "u16"
+          },
+          {
+            "name": "score",
+            "type": {
+              "defined": {
+                "name": "ReputationScore"
+              }
+            }
+          },
+          {
+            "name": "jobs_completed",
+            "type": "u32"
+          },
+          {
+            "name": "jobs_disputed",
+            "type": "u16"
+          },
+          {
+            "name": "last_proof_key",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "last_task_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CategoryReputationUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agent_did",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "capability_bit",
+            "type": "u16"
+          },
+          {
+            "name": "quality",
+            "type": "u16"
+          },
+          {
+            "name": "timeliness",
+            "type": "u16"
+          },
+          {
+            "name": "availability",
+            "type": "u16"
+          },
+          {
+            "name": "cost_efficiency",
+            "type": "u16"
+          },
+          {
+            "name": "honesty",
+            "type": "u16"
+          },
+          {
+            "name": "jobs_completed",
+            "type": "u32"
+          },
+          {
+            "name": "jobs_disputed",
+            "type": "u16"
+          },
+          {
+            "name": "task_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -2095,6 +2461,10 @@
             "type": "pubkey"
           },
           {
+            "name": "proof_verifier",
+            "type": "pubkey"
+          },
+          {
             "name": "min_stake",
             "type": "u64"
           },
@@ -2113,6 +2483,38 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReputationSample",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quality",
+            "type": "u16"
+          },
+          {
+            "name": "timeliness",
+            "type": "u16"
+          },
+          {
+            "name": "availability",
+            "type": "u16"
+          },
+          {
+            "name": "cost_efficiency",
+            "type": "u16"
+          },
+          {
+            "name": "honesty",
+            "type": "u16"
+          },
+          {
+            "name": "disputed",
+            "type": "bool"
           }
         ]
       }

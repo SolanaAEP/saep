@@ -348,6 +348,10 @@ export type AgentRegistry = {
           "type": "pubkey"
         },
         {
+          "name": "proofVerifier",
+          "type": "pubkey"
+        },
+        {
           "name": "minStake",
           "type": "u64"
         },
@@ -799,6 +803,53 @@ export type AgentRegistry = {
         {
           "name": "paused",
           "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setProofVerifier",
+      "discriminator": [
+        219,
+        102,
+        103,
+        107,
+        91,
+        80,
+        181,
+        120
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newProofVerifier",
+          "type": "pubkey"
         }
       ]
     },
@@ -1347,6 +1398,150 @@ export type AgentRegistry = {
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "updateReputation",
+      "discriminator": [
+        194,
+        220,
+        43,
+        201,
+        54,
+        209,
+        49,
+        178
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent.operator",
+                "account": "agentAccount"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "agentAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "category",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agentDid"
+              },
+              {
+                "kind": "arg",
+                "path": "capabilityBit"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proofVerifierAuthority",
+          "docs": [
+            "PDA signer from the proof_verifier program. The pubkey is asserted",
+            "against `global.proof_verifier` via the owner check on the signer's",
+            "derivation: proof_verifier invokes with seeds = [b\"rep_authority\"].",
+            "handler; signer verification is enforced by `Signer`."
+          ],
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "agentDid",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "capabilityBit",
+          "type": "u16"
+        },
+        {
+          "name": "sample",
+          "type": {
+            "defined": {
+              "name": "reputationSample"
+            }
+          }
+        },
+        {
+          "name": "taskId",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "proofKey",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1361,6 +1556,19 @@ export type AgentRegistry = {
         9,
         112,
         50
+      ]
+    },
+    {
+      "name": "categoryReputation",
+      "discriminator": [
+        155,
+        22,
+        43,
+        177,
+        112,
+        216,
+        161,
+        121
       ]
     },
     {
@@ -1389,6 +1597,19 @@ export type AgentRegistry = {
         100,
         189,
         85
+      ]
+    },
+    {
+      "name": "categoryReputationUpdated",
+      "discriminator": [
+        107,
+        50,
+        33,
+        135,
+        144,
+        70,
+        245,
+        108
       ]
     },
     {
@@ -1643,6 +1864,26 @@ export type AgentRegistry = {
       "code": 6018,
       "name": "reputationOutOfRange",
       "msg": "reputation value out of range"
+    },
+    {
+      "code": 6019,
+      "name": "unauthorizedReputationUpdate",
+      "msg": "only the proof_verifier program may update reputation"
+    },
+    {
+      "code": 6020,
+      "name": "invalidCapabilityBit",
+      "msg": "capability bit exceeds capability_mask width"
+    },
+    {
+      "code": 6021,
+      "name": "capabilityNotDeclared",
+      "msg": "agent has not declared this capability bit"
+    },
+    {
+      "code": 6022,
+      "name": "reputationReplay",
+      "msg": "task_id already applied to this category reputation"
     }
   ],
   "types": [
@@ -1820,6 +2061,131 @@ export type AgentRegistry = {
           },
           {
             "name": "deregistered"
+          }
+        ]
+      }
+    },
+    {
+      "name": "categoryReputation",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "capabilityBit",
+            "type": "u16"
+          },
+          {
+            "name": "score",
+            "type": {
+              "defined": {
+                "name": "reputationScore"
+              }
+            }
+          },
+          {
+            "name": "jobsCompleted",
+            "type": "u32"
+          },
+          {
+            "name": "jobsDisputed",
+            "type": "u16"
+          },
+          {
+            "name": "lastProofKey",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "lastTaskId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "categoryReputationUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "capabilityBit",
+            "type": "u16"
+          },
+          {
+            "name": "quality",
+            "type": "u16"
+          },
+          {
+            "name": "timeliness",
+            "type": "u16"
+          },
+          {
+            "name": "availability",
+            "type": "u16"
+          },
+          {
+            "name": "costEfficiency",
+            "type": "u16"
+          },
+          {
+            "name": "honesty",
+            "type": "u16"
+          },
+          {
+            "name": "jobsCompleted",
+            "type": "u32"
+          },
+          {
+            "name": "jobsDisputed",
+            "type": "u16"
+          },
+          {
+            "name": "taskId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -2103,6 +2469,10 @@ export type AgentRegistry = {
             "type": "pubkey"
           },
           {
+            "name": "proofVerifier",
+            "type": "pubkey"
+          },
+          {
             "name": "minStake",
             "type": "u64"
           },
@@ -2121,6 +2491,38 @@ export type AgentRegistry = {
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "reputationSample",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quality",
+            "type": "u16"
+          },
+          {
+            "name": "timeliness",
+            "type": "u16"
+          },
+          {
+            "name": "availability",
+            "type": "u16"
+          },
+          {
+            "name": "costEfficiency",
+            "type": "u16"
+          },
+          {
+            "name": "honesty",
+            "type": "u16"
+          },
+          {
+            "name": "disputed",
+            "type": "bool"
           }
         ]
       }

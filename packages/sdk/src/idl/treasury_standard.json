@@ -150,6 +150,33 @@
       ],
       "accounts": [
         {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "treasury",
           "writable": true,
           "pda": {
@@ -165,6 +192,39 @@
                   117,
                   114,
                   121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "AgentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowed_targets",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
                 ]
               },
               {
@@ -375,6 +435,39 @@
           }
         },
         {
+          "name": "allowed_targets",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "AgentTreasury"
+              }
+            ]
+          }
+        },
+        {
           "name": "mint"
         },
         {
@@ -430,6 +523,106 @@
         {
           "name": "amount",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "init_allowed_targets",
+      "discriminator": [
+        214,
+        193,
+        83,
+        242,
+        175,
+        162,
+        8,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agent_did"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowed_targets",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agent_did"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "agent_did",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "targets",
+          "type": {
+            "vec": "pubkey"
+          }
         }
       ]
     },
@@ -614,6 +807,39 @@
                   117,
                   114,
                   121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "AgentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowed_targets",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
                 ]
               },
               {
@@ -1053,6 +1279,70 @@
       ]
     },
     {
+      "name": "set_global_call_targets",
+      "discriminator": [
+        66,
+        75,
+        1,
+        236,
+        235,
+        131,
+        193,
+        110
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "add",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "remove",
+          "type": {
+            "vec": "pubkey"
+          }
+        }
+      ]
+    },
+    {
       "name": "set_limits",
       "discriminator": [
         207,
@@ -1366,6 +1656,100 @@
       ]
     },
     {
+      "name": "update_allowed_targets",
+      "discriminator": [
+        20,
+        132,
+        223,
+        58,
+        251,
+        73,
+        203,
+        5
+      ],
+      "accounts": [
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "AgentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowed_targets",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "AgentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "add",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "remove",
+          "type": {
+            "vec": "pubkey"
+          }
+        }
+      ]
+    },
+    {
       "name": "withdraw",
       "discriminator": [
         183,
@@ -1421,6 +1805,39 @@
                   117,
                   114,
                   121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "AgentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowed_targets",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
                 ]
               },
               {
@@ -1546,6 +1963,39 @@
                   117,
                   114,
                   121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "AgentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowed_targets",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
                 ]
               },
               {
@@ -1712,6 +2162,19 @@
       ]
     },
     {
+      "name": "AllowedTargets",
+      "discriminator": [
+        182,
+        32,
+        55,
+        95,
+        132,
+        19,
+        63,
+        154
+      ]
+    },
+    {
       "name": "PaymentStream",
       "discriminator": [
         124,
@@ -1763,6 +2226,19 @@
         65,
         120,
         57
+      ]
+    },
+    {
+      "name": "AllowedTargetsUpdated",
+      "discriminator": [
+        166,
+        99,
+        157,
+        120,
+        2,
+        218,
+        94,
+        172
       ]
     },
     {
@@ -2041,6 +2517,21 @@
       "code": 6028,
       "name": "OperatorMismatch",
       "msg": "operator does not match AgentAccount operator"
+    },
+    {
+      "code": 6029,
+      "name": "TargetNotAllowed",
+      "msg": "outbound CPI target is not on the allowed-call-targets list"
+    },
+    {
+      "code": 6030,
+      "name": "TooManyCallTargets",
+      "msg": "allowed-call-targets list exceeds cap"
+    },
+    {
+      "code": 6031,
+      "name": "InvalidCallTarget",
+      "msg": "call target must be a non-default pubkey"
     }
   ],
   "types": [
@@ -2311,6 +2802,62 @@
       }
     },
     {
+      "name": "AllowedTargets",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agent_did",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "targets",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AllowedTargetsUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agent_did",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "added_count",
+            "type": "u16"
+          },
+          {
+            "name": "removed_count",
+            "type": "u16"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "LimitsUpdated",
       "type": {
         "kind": "struct",
@@ -2518,6 +3065,10 @@
           },
           {
             "name": "stake_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "proof_verifier",
             "type": "pubkey"
           },
           {
@@ -2866,6 +3417,12 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "global_call_targets",
+            "type": {
+              "vec": "pubkey"
+            }
           }
         ]
       }

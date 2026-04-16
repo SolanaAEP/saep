@@ -10,6 +10,9 @@ import {
   verifierConfigPda,
   verifierKeyPda,
   verifierModePda,
+  bidBookPda,
+  bondEscrowPda,
+  bidPda,
 } from '../pda/index.js';
 
 const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
@@ -247,6 +250,206 @@ export async function buildRaiseDisputeIx(
     .accounts({
       task: input.task,
       client: input.client,
+    } as never)
+    .instruction();
+}
+
+export interface OpenBiddingInput {
+  client: PublicKey;
+  task: PublicKey;
+  taskId: Uint8Array;
+  paymentMint: PublicKey;
+  commitSecs: bigint;
+  revealSecs: bigint;
+  bondBps: number;
+}
+
+export async function buildOpenBiddingIx(
+  program: Program<TaskMarket>,
+  input: OpenBiddingInput,
+): Promise<TransactionInstruction> {
+  const [global] = marketGlobalPda(program.programId);
+  const [bidBook] = bidBookPda(program.programId, input.taskId);
+  const [bondEscrow] = bondEscrowPda(program.programId, input.taskId);
+
+  return program.methods
+    .openBidding(
+      new BN(input.commitSecs.toString()),
+      new BN(input.revealSecs.toString()),
+      input.bondBps,
+    )
+    .accounts({
+      global,
+      task: input.task,
+      bidBook,
+      paymentMint: input.paymentMint,
+      bondEscrow,
+      client: input.client,
+      tokenProgram: TOKEN_2022_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+    } as never)
+    .instruction();
+}
+
+export interface CommitBidInput {
+  bidder: PublicKey;
+  task: PublicKey;
+  taskId: Uint8Array;
+  paymentMint: PublicKey;
+  bidderTokenAccount: PublicKey;
+  agentOperator: PublicKey;
+  agentId: Uint8Array;
+  agentDid: Uint8Array;
+  commitHash: Uint8Array;
+}
+
+export async function buildCommitBidIx(
+  program: Program<TaskMarket>,
+  input: CommitBidInput,
+): Promise<TransactionInstruction> {
+  const [global] = marketGlobalPda(program.programId);
+  const [bidBook] = bidBookPda(program.programId, input.taskId);
+  const [bid] = bidPda(program.programId, input.taskId, input.bidder);
+  const [bondEscrow] = bondEscrowPda(program.programId, input.taskId);
+  const [agentAccount] = agentAccountPda(
+    AGENT_REGISTRY_PROGRAM_ID,
+    input.agentOperator,
+    input.agentId,
+  );
+
+  return program.methods
+    .commitBid(
+      Array.from(input.commitHash) as unknown as number[],
+      Array.from(input.agentDid) as unknown as number[],
+    )
+    .accounts({
+      global,
+      task: input.task,
+      bidBook,
+      bid,
+      paymentMint: input.paymentMint,
+      bondEscrow,
+      bidderTokenAccount: input.bidderTokenAccount,
+      bidder: input.bidder,
+      agentRegistryProgram: AGENT_REGISTRY_PROGRAM_ID,
+      agentAccount,
+      tokenProgram: TOKEN_2022_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+    } as never)
+    .instruction();
+}
+
+export interface RevealBidInput {
+  bidder: PublicKey;
+  task: PublicKey;
+  taskId: Uint8Array;
+  amount: bigint;
+  nonce: Uint8Array;
+}
+
+export async function buildRevealBidIx(
+  program: Program<TaskMarket>,
+  input: RevealBidInput,
+): Promise<TransactionInstruction> {
+  const [bidBook] = bidBookPda(program.programId, input.taskId);
+  const [bid] = bidPda(program.programId, input.taskId, input.bidder);
+
+  return program.methods
+    .revealBid(
+      new BN(input.amount.toString()),
+      Array.from(input.nonce) as unknown as number[],
+    )
+    .accounts({
+      task: input.task,
+      bidBook,
+      bid,
+      bidder: input.bidder,
+    } as never)
+    .instruction();
+}
+
+export interface CloseBiddingInput {
+  cranker: PublicKey;
+  task: PublicKey;
+  taskId: Uint8Array;
+}
+
+export async function buildCloseBiddingIx(
+  program: Program<TaskMarket>,
+  input: CloseBiddingInput,
+): Promise<TransactionInstruction> {
+  const [global] = marketGlobalPda(program.programId);
+  const [bidBook] = bidBookPda(program.programId, input.taskId);
+
+  return program.methods
+    .closeBidding()
+    .accounts({
+      global,
+      task: input.task,
+      bidBook,
+      cranker: input.cranker,
+    } as never)
+    .instruction();
+}
+
+export interface ClaimBondInput {
+  bidder: PublicKey;
+  task: PublicKey;
+  taskId: Uint8Array;
+  paymentMint: PublicKey;
+  bidderTokenAccount: PublicKey;
+  feeCollectorTokenAccount: PublicKey;
+}
+
+export async function buildClaimBondIx(
+  program: Program<TaskMarket>,
+  input: ClaimBondInput,
+): Promise<TransactionInstruction> {
+  const [global] = marketGlobalPda(program.programId);
+  const [bidBook] = bidBookPda(program.programId, input.taskId);
+  const [bid] = bidPda(program.programId, input.taskId, input.bidder);
+  const [bondEscrow] = bondEscrowPda(program.programId, input.taskId);
+
+  return program.methods
+    .claimBond()
+    .accounts({
+      global,
+      task: input.task,
+      bidBook,
+      bid,
+      paymentMint: input.paymentMint,
+      bondEscrow,
+      bidderTokenAccount: input.bidderTokenAccount,
+      feeCollectorTokenAccount: input.feeCollectorTokenAccount,
+      bidder: input.bidder,
+      tokenProgram: TOKEN_2022_PROGRAM_ID,
+    } as never)
+    .instruction();
+}
+
+export interface CancelBiddingInput {
+  client: PublicKey;
+  task: PublicKey;
+  taskId: Uint8Array;
+  paymentMint: PublicKey;
+}
+
+export async function buildCancelBiddingIx(
+  program: Program<TaskMarket>,
+  input: CancelBiddingInput,
+): Promise<TransactionInstruction> {
+  const [bidBook] = bidBookPda(program.programId, input.taskId);
+  const [bondEscrow] = bondEscrowPda(program.programId, input.taskId);
+
+  return program.methods
+    .cancelBidding()
+    .accounts({
+      task: input.task,
+      bidBook,
+      paymentMint: input.paymentMint,
+      bondEscrow,
+      client: input.client,
+      tokenProgram: TOKEN_2022_PROGRAM_ID,
     } as never)
     .instruction();
 }

@@ -22,6 +22,25 @@ export function agentStakePda(programId: PublicKey, agent: PublicKey): [PublicKe
   return PublicKey.findProgramAddressSync([enc('stake'), agent.toBuffer()], programId);
 }
 
+export function categoryReputationPda(
+  programId: PublicKey,
+  agentDid: Uint8Array,
+  capabilityBit: number,
+): [PublicKey, number] {
+  if (agentDid.length !== 32) throw new Error('agentDid must be 32 bytes');
+  if (!Number.isInteger(capabilityBit) || capabilityBit < 0 || capabilityBit > 127) {
+    throw new Error('capabilityBit must be an integer in 0..=127');
+  }
+  const bitBytes = new Uint8Array(2);
+  bitBytes[0] = capabilityBit & 0xff;
+  bitBytes[1] = (capabilityBit >> 8) & 0xff;
+  return PublicKey.findProgramAddressSync([enc('rep'), agentDid, bitBytes], programId);
+}
+
+export function proofVerifierRepAuthorityPda(programId: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([enc('rep_authority')], programId);
+}
+
 export function treasuryGlobalPda(programId: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([enc('treasury_global')], programId);
 }
@@ -66,6 +85,28 @@ export function taskPda(
 
 export function taskEscrowPda(programId: PublicKey, task: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([enc('task_escrow'), task.toBuffer()], programId);
+}
+
+export function bidBookPda(programId: PublicKey, taskId: Uint8Array): [PublicKey, number] {
+  if (taskId.length !== 32) throw new Error('taskId must be 32 bytes');
+  return PublicKey.findProgramAddressSync([enc('bid_book'), taskId], programId);
+}
+
+export function bondEscrowPda(programId: PublicKey, taskId: Uint8Array): [PublicKey, number] {
+  if (taskId.length !== 32) throw new Error('taskId must be 32 bytes');
+  return PublicKey.findProgramAddressSync([enc('bond_escrow'), taskId], programId);
+}
+
+export function bidPda(
+  programId: PublicKey,
+  taskId: Uint8Array,
+  bidder: PublicKey,
+): [PublicKey, number] {
+  if (taskId.length !== 32) throw new Error('taskId must be 32 bytes');
+  return PublicKey.findProgramAddressSync(
+    [enc('bid'), taskId, bidder.toBuffer()],
+    programId,
+  );
 }
 
 // proof_verifier PDAs

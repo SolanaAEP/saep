@@ -8,5 +8,6 @@
     "moduleResolution": "Bundler",
     "noEmit": false
   },
-  "include": ["src/**/*", "src/**/*.json"]
+  "include": ["src/**/*", "src/**/*.json"],
+  "exclude": ["src/**/__tests__/**"]
 }
