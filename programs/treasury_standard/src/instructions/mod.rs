@@ -1,4 +1,5 @@
 pub mod allowed_mints;
+pub mod allowed_targets;
 pub mod authority;
 pub mod close_stream;
 pub mod fund_treasury;
@@ -12,6 +13,7 @@ pub mod withdraw;
 pub mod withdraw_earned;
 
 pub use allowed_mints::*;
+pub use allowed_targets::*;
 pub use authority::*;
 pub use close_stream::*;
 pub use fund_treasury::*;

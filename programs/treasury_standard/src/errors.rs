@@ -60,4 +60,10 @@ pub enum TreasuryError {
     AgentMismatch,
     #[msg("operator does not match AgentAccount operator")]
     OperatorMismatch,
+    #[msg("outbound CPI target is not on the allowed-call-targets list")]
+    TargetNotAllowed,
+    #[msg("allowed-call-targets list exceeds cap")]
+    TooManyCallTargets,
+    #[msg("call target must be a non-default pubkey")]
+    InvalidCallTarget,
 }

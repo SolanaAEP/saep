@@ -4,16 +4,28 @@ use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use crate::errors::TreasuryError;
 use crate::events::StreamClosed;
-use crate::state::{AgentTreasury, PaymentStream, StreamStatus};
+use crate::state::{
+    assert_call_target_allowed, AgentTreasury, AllowedTargets, PaymentStream, StreamStatus,
+    TreasuryGlobal,
+};
 
 #[derive(Accounts)]
 pub struct CloseStream<'info> {
+    #[account(seeds = [b"treasury_global"], bump = global.bump)]
+    pub global: Box<Account<'info, TreasuryGlobal>>,
+
     #[account(
         mut,
         seeds = [b"treasury", treasury.agent_did.as_ref()],
         bump = treasury.bump,
     )]
     pub treasury: Box<Account<'info, AgentTreasury>>,
+
+    #[account(
+        seeds = [b"allowed_targets", treasury.agent_did.as_ref()],
+        bump = allowed_targets.bump,
+    )]
+    pub allowed_targets: Option<Account<'info, AllowedTargets>>,
 
     #[account(
         mut,
@@ -94,6 +106,13 @@ pub fn handler(ctx: Context<CloseStream>) -> Result<()> {
     ];
     let signer = &[seeds];
     let decimals = ctx.accounts.payer_mint.decimals;
+
+    let token_program_key = ctx.accounts.token_program.key();
+    assert_call_target_allowed(
+        &ctx.accounts.global,
+        ctx.accounts.allowed_targets.as_deref(),
+        &token_program_key,
+    )?;
 
     if agent_receipts > 0 {
         let cpi_accounts = TransferChecked {

@@ -88,3 +88,47 @@ pub struct PausedSet {
     pub paused: bool,
     pub timestamp: i64,
 }
+
+#[event]
+pub struct BidBookOpened {
+    pub task_id: [u8; 32],
+    pub commit_end: i64,
+    pub reveal_end: i64,
+    pub bond_amount: u64,
+}
+
+#[event]
+pub struct BidCommitted {
+    pub task_id: [u8; 32],
+    pub bidder: Pubkey,
+    pub bond_paid: u64,
+}
+
+#[event]
+pub struct BidRevealed {
+    pub task_id: [u8; 32],
+    pub bidder: Pubkey,
+    pub amount: u64,
+}
+
+#[event]
+pub struct BidBookClosed {
+    pub task_id: [u8; 32],
+    pub winner_agent: Option<Pubkey>,
+    pub winner_amount: u64,
+    pub reveal_count: u16,
+}
+
+#[event]
+pub struct BidSlashed {
+    pub task_id: [u8; 32],
+    pub bidder: Pubkey,
+    pub bond_amount: u64,
+}
+
+#[event]
+pub struct TaskPayloadStored {
+    pub task_id: [u8; 32],
+    pub kind_discriminant: u8,
+    pub capability_bit: u16,
+}

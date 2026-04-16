@@ -119,6 +119,30 @@ pub mod treasury_standard {
         instructions::governance::set_paused_handler(ctx, paused)
     }
 
+    pub fn set_global_call_targets(
+        ctx: Context<GovernanceUpdate>,
+        add: Vec<Pubkey>,
+        remove: Vec<Pubkey>,
+    ) -> Result<()> {
+        instructions::governance::set_global_call_targets_handler(ctx, add, remove)
+    }
+
+    pub fn init_allowed_targets(
+        ctx: Context<InitAllowedTargets>,
+        agent_did: [u8; 32],
+        targets: Vec<Pubkey>,
+    ) -> Result<()> {
+        instructions::allowed_targets::init_handler(ctx, agent_did, targets)
+    }
+
+    pub fn update_allowed_targets(
+        ctx: Context<UpdateAllowedTargets>,
+        add: Vec<Pubkey>,
+        remove: Vec<Pubkey>,
+    ) -> Result<()> {
+        instructions::allowed_targets::update_handler(ctx, add, remove)
+    }
+
     pub fn transfer_authority(
         ctx: Context<TransferAuthority>,
         new_authority: Pubkey,

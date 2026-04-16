@@ -82,6 +82,21 @@ export const taskMarket = {
       [Buffer.from('task_escrow'), task.toBuffer()],
       PROGRAM_IDS.task_market,
     ),
+  bidBook: (taskId: Uint8Array): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync(
+      [Buffer.from('bid_book'), Buffer.from(taskId)],
+      PROGRAM_IDS.task_market,
+    ),
+  bid: (taskId: Uint8Array, bidder: PublicKey): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync(
+      [Buffer.from('bid'), Buffer.from(taskId), bidder.toBuffer()],
+      PROGRAM_IDS.task_market,
+    ),
+  bondEscrow: (taskId: Uint8Array): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync(
+      [Buffer.from('bond_escrow'), Buffer.from(taskId)],
+      PROGRAM_IDS.task_market,
+    ),
 };
 
 // proof_verifier PDAs
