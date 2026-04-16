@@ -84,7 +84,7 @@ pub fn handler(ctx: Context<ClaimBond>) -> Result<()> {
             if !bid.revealed || bid.slashed {
                 Outcome::Slash
             } else if book
-                .winner_agent
+                .winner_bidder
                 .map(|w| w == ctx.accounts.bidder.key())
                 .unwrap_or(false)
             {

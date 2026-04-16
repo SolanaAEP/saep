@@ -71,6 +71,7 @@ pub fn handler<'info>(ctx: Context<'info, CloseBidding<'info>>) -> Result<()> {
     );
 
     let mut winner_agent: Option<Pubkey> = None;
+    let mut winner_bidder: Option<Pubkey> = None;
     let mut winner_did: Option<[u8; 32]> = None;
     let mut winner_amount: u64 = 0;
     let mut winner_stake: u64 = 0;
@@ -144,6 +145,7 @@ pub fn handler<'info>(ctx: Context<'info, CloseBidding<'info>>) -> Result<()> {
 
         if take {
             winner_agent = Some(candidate_key);
+            winner_bidder = Some(bid.bidder);
             winner_did = Some(agent.did);
             winner_amount = candidate_amount;
             winner_stake = candidate_stake;
@@ -157,6 +159,7 @@ pub fn handler<'info>(ctx: Context<'info, CloseBidding<'info>>) -> Result<()> {
     if let Some(w) = winner_agent {
         book.phase = BidPhase::Settled;
         book.winner_agent = Some(w);
+        book.winner_bidder = winner_bidder;
         book.winner_amount = winner_amount;
         ctx.accounts.task.assigned_agent = Some(w);
         // F-2026-05: rewrite task.agent_did to the winning bidder's DID so
@@ -168,6 +171,7 @@ pub fn handler<'info>(ctx: Context<'info, CloseBidding<'info>>) -> Result<()> {
     } else {
         book.phase = BidPhase::Cancelled;
         book.winner_agent = None;
+        book.winner_bidder = None;
         book.winner_amount = 0;
         // F-2026-07: when no revealed bid survives, reset task.status to
         // Funded so the client can re-open bidding per spec §Invariant 5.

@@ -213,6 +213,7 @@ pub struct BidBook {
     pub commit_count: u16,
     pub reveal_count: u16,
     pub winner_agent: Option<Pubkey>,
+    pub winner_bidder: Option<Pubkey>,
     pub winner_amount: u64,
     pub phase: BidPhase,
     pub bump: u8,
