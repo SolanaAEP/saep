@@ -7,6 +7,9 @@ pub mod instructions;
 pub mod personhood;
 pub mod state;
 
+#[cfg(test)]
+mod fuzz;
+
 use instructions::*;
 use state::{TaskPayload, ALLOWED_MINTS_LEN};
 

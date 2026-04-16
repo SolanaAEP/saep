@@ -1,5 +1,8 @@
 use anchor_lang::prelude::*;
 
+#[cfg(test)]
+mod fuzz;
+
 declare_id!("9uczLDZaN9EWqW76be75ji4vCsz3cydefbChqvBS6qw1");
 
 #[program]

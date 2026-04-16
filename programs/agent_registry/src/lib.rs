@@ -7,6 +7,9 @@ pub mod guard;
 pub mod instructions;
 pub mod state;
 
+#[cfg(test)]
+mod fuzz;
+
 use instructions::*;
 use state::{AgentStatus, PersonhoodTier, ReputationSample, MANIFEST_URI_LEN};
 
