@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use solana_instructions_sysvar::ID as IX_SYSVAR_ID;
 
 use proof_verifier::cpi::accounts::VerifyProof;
 use proof_verifier::cpi::verify_proof;
@@ -6,7 +7,8 @@ use proof_verifier::program::ProofVerifier;
 use proof_verifier::state::{GlobalMode, VerifierConfig, VerifierKey};
 
 use crate::errors::TaskMarketError;
-use crate::events::{TaskVerified, VerificationFailed};
+use crate::events::{GuardEntered, TaskVerified, VerificationFailed};
+use crate::guard::{exit as guard_exit, try_enter, ReentrancyGuard, SEED_GUARD};
 use crate::state::{MarketGlobal, TaskContract, TaskStatus};
 
 #[derive(Accounts)]
@@ -47,6 +49,22 @@ pub struct VerifyTask<'info> {
     )]
     pub verifier_mode: Box<Account<'info, GlobalMode>>,
 
+    /// task_market's own reentrancy guard — asserted + held across the CPI.
+    #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
+    pub guard: Box<Account<'info, ReentrancyGuard>>,
+
+    /// proof_verifier's self_guard PDA. Threaded into the CPI.
+    /// CHECK: validated by proof_verifier via seeds + ownership.
+    pub verifier_self_guard: UncheckedAccount<'info>,
+
+    /// proof_verifier's allowed_callers PDA. Threaded into the CPI.
+    /// CHECK: validated by proof_verifier via seeds + ownership.
+    pub verifier_allowed_callers: UncheckedAccount<'info>,
+
+    /// CHECK: instructions sysvar, threaded into the CPI.
+    #[account(address = IX_SYSVAR_ID)]
+    pub instructions: UncheckedAccount<'info>,
+
     pub cranker: Signer<'info>,
 }
 
@@ -62,13 +80,22 @@ pub fn handler(
     proof_b: [u8; 128],
     proof_c: [u8; 64],
 ) -> Result<()> {
+    let clock = Clock::get()?;
+    try_enter(&mut ctx.accounts.guard, crate::ID, clock.slot)?;
+    emit!(GuardEntered {
+        program: crate::ID,
+        caller: crate::ID,
+        slot: clock.slot,
+        stack_height: 1,
+    });
+
     let t = &mut ctx.accounts.task;
     require!(
         t.status == TaskStatus::ProofSubmitted,
         TaskMarketError::WrongStatus
     );
 
-    let now = Clock::get()?.unix_timestamp;
+    let now = clock.unix_timestamp;
 
     let public_inputs = vec![
         t.task_hash,
@@ -84,6 +111,10 @@ pub fn handler(
             config: ctx.accounts.verifier_config.to_account_info(),
             vk: ctx.accounts.verifier_key.to_account_info(),
             mode: ctx.accounts.verifier_mode.to_account_info(),
+            self_guard: ctx.accounts.verifier_self_guard.to_account_info(),
+            allowed_callers: ctx.accounts.verifier_allowed_callers.to_account_info(),
+            caller_guard: ctx.accounts.guard.to_account_info(),
+            instructions: ctx.accounts.instructions.to_account_info(),
         },
     );
 
@@ -111,5 +142,7 @@ pub fn handler(
         dispute_window_end,
         timestamp: now,
     });
+
+    guard_exit(&mut ctx.accounts.guard);
     Ok(())
 }

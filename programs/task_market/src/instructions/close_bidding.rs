@@ -3,7 +3,8 @@ use anchor_lang::prelude::*;
 use agent_registry::state::AgentAccount;
 
 use crate::errors::TaskMarketError;
-use crate::events::BidBookClosed;
+use crate::events::{BidBookClosed, GuardEntered};
+use crate::guard::{exit as guard_exit, try_enter, ReentrancyGuard, SEED_GUARD};
 use crate::state::{
     bid_beats, Bid, BidBook, BidPhase, MarketGlobal, TaskContract, SEED_BID, SEED_BID_BOOK,
 };
@@ -28,17 +29,29 @@ pub struct CloseBidding<'info> {
     )]
     pub bid_book: Box<Account<'info, BidBook>>,
 
+    #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
+    pub guard: Box<Account<'info, ReentrancyGuard>>,
+
     pub cranker: Signer<'info>,
 }
 
 pub fn handler<'info>(ctx: Context<'info, CloseBidding<'info>>) -> Result<()> {
+    let clock = Clock::get()?;
+    try_enter(&mut ctx.accounts.guard, crate::ID, clock.slot)?;
+    emit!(GuardEntered {
+        program: crate::ID,
+        caller: crate::ID,
+        slot: clock.slot,
+        stack_height: 1,
+    });
+
     let book = &mut ctx.accounts.bid_book;
     require!(
         book.phase == BidPhase::Commit || book.phase == BidPhase::Reveal,
         TaskMarketError::PhaseClosed
     );
 
-    let now = Clock::get()?.unix_timestamp;
+    let now = clock.unix_timestamp;
     require!(now >= book.reveal_end, TaskMarketError::PhaseClosed);
 
     let task_id = ctx.accounts.task.task_id;
@@ -134,5 +147,7 @@ pub fn handler<'info>(ctx: Context<'info, CloseBidding<'info>>) -> Result<()> {
         winner_amount: book.winner_amount,
         reveal_count,
     });
+
+    guard_exit(&mut ctx.accounts.guard);
     Ok(())
 }

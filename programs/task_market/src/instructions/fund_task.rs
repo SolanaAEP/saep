@@ -5,7 +5,8 @@ use anchor_spl::token_interface::{Mint, TokenAccount};
 use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_FUND_TASK};
 
 use crate::errors::TaskMarketError;
-use crate::events::TaskFunded;
+use crate::events::{GuardEntered, TaskFunded};
+use crate::guard::{exit as guard_exit, try_enter, ReentrancyGuard, SEED_GUARD};
 use crate::state::{resolve_hook_allowlist, MarketGlobal, TaskContract, TaskStatus};
 
 #[derive(Accounts)]
@@ -39,6 +40,9 @@ pub struct FundTask<'info> {
 
     pub hook_allowlist: Option<Account<'info, HookAllowlist>>,
 
+    #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
+    pub guard: Box<Account<'info, ReentrancyGuard>>,
+
     #[account(mut)]
     pub client: Signer<'info>,
 
@@ -47,6 +51,15 @@ pub struct FundTask<'info> {
 }
 
 pub fn handler(ctx: Context<FundTask>) -> Result<()> {
+    let clock = Clock::get()?;
+    try_enter(&mut ctx.accounts.guard, crate::ID, clock.slot)?;
+    emit!(GuardEntered {
+        program: crate::ID,
+        caller: crate::ID,
+        slot: clock.slot,
+        stack_height: 1,
+    });
+
     require!(!ctx.accounts.global.paused, TaskMarketError::Paused);
     require!(
         ctx.accounts.task.status == TaskStatus::Created,
@@ -78,7 +91,7 @@ pub fn handler(ctx: Context<FundTask>) -> Result<()> {
     let cpi_ctx = CpiContext::new(ctx.accounts.token_program.key(), cpi_accounts);
     transfer_checked(cpi_ctx, amount, decimals)?;
 
-    let now = Clock::get()?.unix_timestamp;
+    let now = clock.unix_timestamp;
     let t = &mut ctx.accounts.task;
     t.status = TaskStatus::Funded;
     t.funded_at = now;
@@ -89,5 +102,7 @@ pub fn handler(ctx: Context<FundTask>) -> Result<()> {
         amount,
         timestamp: now,
     });
+
+    guard_exit(&mut ctx.accounts.guard);
     Ok(())
 }

@@ -11,20 +11,20 @@ use crate::state::{
 #[derive(Accounts)]
 pub struct FundTreasury<'info> {
     #[account(seeds = [b"treasury_global"], bump = global.bump)]
-    pub global: Account<'info, TreasuryGlobal>,
+    pub global: Box<Account<'info, TreasuryGlobal>>,
 
     #[account(
         seeds = [b"allowed_mints"],
         bump = allowed_mints.bump,
         address = global.allowed_mints,
     )]
-    pub allowed_mints: Account<'info, AllowedMints>,
+    pub allowed_mints: Box<Account<'info, AllowedMints>>,
 
     #[account(
         seeds = [b"treasury", treasury.agent_did.as_ref()],
         bump = treasury.bump,
     )]
-    pub treasury: Account<'info, AgentTreasury>,
+    pub treasury: Box<Account<'info, AgentTreasury>>,
 
     #[account(
         seeds = [b"allowed_targets", treasury.agent_did.as_ref()],
@@ -32,7 +32,7 @@ pub struct FundTreasury<'info> {
     )]
     pub allowed_targets: Option<Account<'info, AllowedTargets>>,
 
-    pub mint: InterfaceAccount<'info, Mint>,
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         init_if_needed,
@@ -43,10 +43,10 @@ pub struct FundTreasury<'info> {
         seeds = [b"vault", treasury.agent_did.as_ref(), mint.key().as_ref()],
         bump,
     )]
-    pub vault: InterfaceAccount<'info, TokenAccount>,
+    pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut, token::mint = mint, token::authority = funder, token::token_program = token_program)]
-    pub funder_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub funder_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut)]
     pub funder: Signer<'info>,

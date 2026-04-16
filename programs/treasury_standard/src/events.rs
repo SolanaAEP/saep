@@ -109,3 +109,18 @@ pub struct AllowedTargetsUpdated {
     pub removed_count: u16,
     pub timestamp: i64,
 }
+
+#[event]
+pub struct GuardEntered {
+    pub program: Pubkey,
+    pub caller: Pubkey,
+    pub slot: u64,
+    pub stack_height: u16,
+}
+
+#[event]
+pub struct ReentrancyRejected {
+    pub program: Pubkey,
+    pub offending_caller: Pubkey,
+    pub slot: u64,
+}

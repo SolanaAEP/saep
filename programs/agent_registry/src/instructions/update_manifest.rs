@@ -11,14 +11,14 @@ use crate::state::{
 #[derive(Accounts)]
 pub struct UpdateManifest<'info> {
     #[account(seeds = [b"global"], bump = global.bump)]
-    pub global: Account<'info, RegistryGlobal>,
+    pub global: Box<Account<'info, RegistryGlobal>>,
 
     #[account(
         seeds = [b"config"],
         seeds::program = global.capability_registry,
         bump = capability_config.bump,
     )]
-    pub capability_config: Account<'info, CapabilityConfig>,
+    pub capability_config: Box<Account<'info, CapabilityConfig>>,
 
     #[account(
         mut,
@@ -26,7 +26,7 @@ pub struct UpdateManifest<'info> {
         bump = agent.bump,
         has_one = operator @ AgentRegistryError::Unauthorized,
     )]
-    pub agent: Account<'info, AgentAccount>,
+    pub agent: Box<Account<'info, AgentAccount>>,
 
     pub operator: Signer<'info>,
 }

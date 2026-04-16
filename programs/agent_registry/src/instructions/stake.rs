@@ -3,7 +3,8 @@ use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use crate::errors::AgentRegistryError;
-use crate::events::{StakeIncreased, WithdrawalExecuted, WithdrawalRequested};
+use crate::events::{GuardEntered, StakeIncreased, WithdrawalExecuted, WithdrawalRequested};
+use crate::guard::{exit as guard_exit, try_enter, ReentrancyGuard, SEED_GUARD};
 use crate::state::{AgentAccount, AgentStatus, PendingWithdrawal, RegistryGlobal};
 
 #[derive(Accounts)]
@@ -33,11 +34,23 @@ pub struct StakeIncrease<'info> {
     #[account(mut, token::mint = stake_mint, token::authority = operator)]
     pub operator_token_account: InterfaceAccount<'info, TokenAccount>,
 
+    #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
+    pub guard: Box<Account<'info, ReentrancyGuard>>,
+
     pub operator: Signer<'info>,
     pub token_program: Program<'info, Token2022>,
 }
 
 pub fn stake_increase_handler(ctx: Context<StakeIncrease>, amount: u64) -> Result<()> {
+    let clock = Clock::get()?;
+    try_enter(&mut ctx.accounts.guard, crate::ID, clock.slot)?;
+    emit!(GuardEntered {
+        program: crate::ID,
+        caller: crate::ID,
+        slot: clock.slot,
+        stack_height: 1,
+    });
+
     require!(!ctx.accounts.global.paused, AgentRegistryError::Paused);
     require!(amount > 0, AgentRegistryError::ArithmeticOverflow);
 
@@ -61,8 +74,10 @@ pub fn stake_increase_handler(ctx: Context<StakeIncrease>, amount: u64) -> Resul
         agent_did: agent.did,
         amount,
         new_total: agent.stake_amount,
-        timestamp: Clock::get()?.unix_timestamp,
+        timestamp: clock.unix_timestamp,
     });
+
+    guard_exit(&mut ctx.accounts.guard);
     Ok(())
 }
 
@@ -140,14 +155,26 @@ pub struct StakeWithdrawExecute<'info> {
     #[account(mut, token::mint = stake_mint, token::authority = operator)]
     pub operator_token_account: InterfaceAccount<'info, TokenAccount>,
 
+    #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
+    pub guard: Box<Account<'info, ReentrancyGuard>>,
+
     pub operator: Signer<'info>,
     pub token_program: Program<'info, Token2022>,
 }
 
 pub fn stake_withdraw_execute_handler(ctx: Context<StakeWithdrawExecute>) -> Result<()> {
+    let clock = Clock::get()?;
+    try_enter(&mut ctx.accounts.guard, crate::ID, clock.slot)?;
+    emit!(GuardEntered {
+        program: crate::ID,
+        caller: crate::ID,
+        slot: clock.slot,
+        stack_height: 1,
+    });
+
     require!(!ctx.accounts.global.paused, AgentRegistryError::Paused);
 
-    let now = Clock::get()?.unix_timestamp;
+    let now = clock.unix_timestamp;
     let agent_key = ctx.accounts.agent.key();
     let agent = &mut ctx.accounts.agent;
     require!(agent.pending_slash.is_none(), AgentRegistryError::SlashPending);
@@ -189,5 +216,7 @@ pub fn stake_withdraw_execute_handler(ctx: Context<StakeWithdrawExecute>) -> Res
         amount: w.amount,
         timestamp: now,
     });
+
+    guard_exit(&mut ctx.accounts.guard);
     Ok(())
 }

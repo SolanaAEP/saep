@@ -19,4 +19,5 @@ idl-build = ["anchor-lang/idl-build", "agent_registry/idl-build"]
 [dependencies]
 anchor-lang = "1.0.0"
 agent_registry = { path = "../agent_registry", features = ["cpi"] }
+solana-instructions-sysvar = "3.0.0"
 solana-keccak-hasher = "2.2.1"

@@ -1,6 +1,13 @@
 use anchor_lang::prelude::*;
+use solana_instructions_sysvar::{
+    load_current_index_checked, load_instruction_at_checked, ID as IX_SYSVAR_ID,
+};
 
 use crate::errors::ProofVerifierError;
+use crate::events::ReentrancyRejected;
+use crate::guard::{
+    check_callee_preconditions, AllowedCallers, ReentrancyGuard, SEED_ALLOWED_CALLERS, SEED_GUARD,
+};
 use crate::pairing::verify_groth16;
 use crate::state::{scalar_in_field, GlobalMode, VerifierConfig, VerifierKey};
 
@@ -17,6 +24,18 @@ pub struct VerifyProof<'info> {
 
     #[account(seeds = [b"mode"], bump = mode.bump)]
     pub mode: Account<'info, GlobalMode>,
+
+    #[account(seeds = [SEED_GUARD], bump = self_guard.bump)]
+    pub self_guard: Box<Account<'info, ReentrancyGuard>>,
+
+    #[account(seeds = [SEED_ALLOWED_CALLERS], bump = allowed_callers.bump)]
+    pub allowed_callers: Box<Account<'info, AllowedCallers>>,
+
+    pub caller_guard: Box<Account<'info, ReentrancyGuard>>,
+
+    /// CHECK: Solana instructions sysvar (address check enforced by Anchor).
+    #[account(address = IX_SYSVAR_ID)]
+    pub instructions: UncheckedAccount<'info>,
 }
 
 pub fn handler(
@@ -26,6 +45,44 @@ pub fn handler(
     proof_c: [u8; 64],
     public_inputs: Vec<[u8; 32]>,
 ) -> Result<()> {
+    let ix_ai = &ctx.accounts.instructions.to_account_info();
+    let current_index = load_current_index_checked(ix_ai)?;
+    let current_ix = load_instruction_at_checked(current_index as usize, ix_ai)?;
+    let stack_height = anchor_lang::solana_program::instruction::get_stack_height();
+    let caller_program = if stack_height > 1 && current_index > 0 {
+        load_instruction_at_checked((current_index - 1) as usize, ix_ai)?.program_id
+    } else {
+        current_ix.program_id
+    };
+
+    let (expected_caller_guard, _) =
+        Pubkey::find_program_address(&[SEED_GUARD], &caller_program);
+    if ctx.accounts.caller_guard.key() != expected_caller_guard {
+        let clock = Clock::get()?;
+        emit!(ReentrancyRejected {
+            program: crate::ID,
+            offending_caller: caller_program,
+            slot: clock.slot,
+        });
+        return err!(ProofVerifierError::UnauthorizedCaller);
+    }
+
+    if let Err(e) = check_callee_preconditions(
+        &ctx.accounts.self_guard,
+        ctx.accounts.caller_guard.active,
+        &caller_program,
+        &ctx.accounts.allowed_callers,
+        stack_height,
+    ) {
+        let clock = Clock::get()?;
+        emit!(ReentrancyRejected {
+            program: crate::ID,
+            offending_caller: caller_program,
+            slot: clock.slot,
+        });
+        return Err(e);
+    }
+
     let config = &ctx.accounts.config;
     let vk = &ctx.accounts.vk;
     let mode = &ctx.accounts.mode;
