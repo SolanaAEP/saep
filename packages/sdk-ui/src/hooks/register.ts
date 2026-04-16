@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Transaction } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { buildRegisterAgentIx, type RegisterAgentInput } from '@saep/sdk';
-import { useAgentRegistryProgram } from './programs.js';
+import { useAgentRegistryProgram } from './program.js';
 
 export function useRegisterAgent() {
   const program = useAgentRegistryProgram();

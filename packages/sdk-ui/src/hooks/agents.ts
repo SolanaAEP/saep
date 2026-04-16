@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { PublicKey } from '@solana/web3.js';
 import { fetchAgentsByOperator, fetchTreasury } from '@saep/sdk';
-import { useAgentRegistryProgram, useTreasuryProgram } from './programs.js';
+import { useAgentRegistryProgram, useTreasuryProgram } from './program.js';
 
 export function useAgentsByOperator(operator: PublicKey | null) {
   const program = useAgentRegistryProgram();
