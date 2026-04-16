@@ -58,4 +58,9 @@ export {
   type PriorityFeeConfig,
   type UseSendTransactionOptions,
 } from './hooks/mutation.js';
+export {
+  useSettlementBundle,
+  type SettlementBundleResult,
+  type UseSettlementBundleOptions,
+} from './hooks/settlement.js';
 export { useSession, useSiwsSignIn, useSignOut, type Session } from './auth/session.js';

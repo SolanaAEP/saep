@@ -14,6 +14,15 @@ path = "src/lib.rs"
 name = "saep-indexer"
 path = "src/main.rs"
 
+[[bin]]
+name = "saep-settlement-worker"
+path = "src/bin/settlement_worker.rs"
+required-features = ["settlement-worker"]
+
+[features]
+default = []
+settlement-worker = []
+
 [dependencies]
 tokio = { version = "1.43", features = ["full"] }
 anyhow = "1.0"
@@ -35,7 +44,8 @@ borsh = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "gzip"] }
 prometheus = { version = "0.14", default-features = false }
 once_cell = "1.19"
-redis = { version = "0.27", default-features = false, features = ["tokio-comp", "connection-manager"] }
+redis = { version = "0.27", default-features = false, features = ["tokio-comp", "connection-manager", "streams"] }
+async-trait = "0.1"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
