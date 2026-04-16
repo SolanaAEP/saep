@@ -6,3 +6,4 @@ packages:
   - services/mcp-bridge
   - services/x402-gateway
   - services/compute-broker
+  - examples/*
