@@ -15,12 +15,19 @@ Health: `curl :8080/healthz`. Readiness (pings Redis): `curl :8080/readyz`.
 
 ## HTTP
 
-- `POST /publish` — body `{ "envelope": {...} }` matching the zod schema in `src/schema.ts`. Returns `{ id, stream_id }`.
+- `POST /publish` — body `{ "envelope": {...} }` matching the zod schema in `src/schema.ts`. Returns `{ id, stream_id }`. 429 with `retry-after` when the per-agent bucket is empty.
 - `GET /healthz`, `GET /readyz`.
+- `GET /metrics` — Prometheus text format. See "Metrics" below.
+
+## Auth
+
+Session JWTs are issued by the portal's SIWS flow (`apps/portal` `/api/auth/verify`) and re-minted for WS use via `POST /api/auth/ws-token`. IACP verifies them with the shared HMAC secret — set `SESSION_SECRET` here to the same value as in the portal. The `sub` claim (Solana pubkey, base58) becomes the session's `agentPubkey`.
+
+On publish (WS + REST), the gateway additionally confirms `env.from_agent` is the operator of at least one `AgentAccount` with `status == Active` in the `agent_registry` program. Set `SOLANA_RPC_URL` (Helius / localnet / public) to enable the check; unset = disabled (dev only, logs a warn at boot). Override the program id with `AGENT_REGISTRY_PROGRAM_ID` if running against a non-default deploy. Results are cached in-process (30s positive, 5s negative) to cap RPC load.
 
 ## WebSocket
 
-Connect to `ws://localhost:8080/ws?token=<session_token>`. Frames are JSON:
+Connect to `ws://localhost:8080/ws?token=<session_jwt>`. Frames are JSON:
 
 ```
 { "type": "sub",   "topic": "task.<id>.events" }
@@ -31,13 +38,36 @@ Connect to `ws://localhost:8080/ws?token=<session_token>`. Frames are JSON:
 
 Server frames: `msg`, `ack`, `reject`, `rate_limit`, `pong`.
 
+## Rate limiting
+
+Two token buckets guard the publish path:
+
+- **Per-agent messages** (shared WS + REST) — default 20 burst / 5 msg/s sustained. Over-limit: WS gets a `{type:"rate_limit", axis:"msg", retry_after_ms, id}` control frame; REST gets HTTP 429 with a `retry-after` header.
+- **Per-socket bandwidth** (WS only) — default 256 KiB burst / 64 KiB/s sustained, measured on raw inbound frame bytes. Over-limit: `{type:"rate_limit", axis:"bw", retry_after_ms, id}`. Reset on disconnect.
+
+Tune with `IACP_RL_BURST`, `IACP_RL_SUSTAINED_PER_S`, `IACP_BW_BURST_BYTES`, `IACP_BW_SUSTAINED_BYTES_PER_S`. Idle buckets (full for `IACP_RL_SWEEP_MS`, default 30s) are swept.
+
+## Metrics
+
+`GET /metrics` exposes the prom-client registry:
+
+- `iacp_publish_total{topic,result}` — publishes by topic category (`agent_inbox`/`task_events`/`broadcast`/`system`/`other`) and result (`ok`/`rate_limited`/`rejected`).
+- `iacp_publish_duration_seconds{topic,path}` — histogram of publish latency.
+- `iacp_rate_limited_total{axis,path}` — axis is `msg` or `bw`, path is `ws` or `rest`.
+- `iacp_envelope_rejected_total{reason,path}` — `bad_frame` / `forbidden_topic` / `from_mismatch` / `bad_sig` / `stale_ts` / `not_active` / `bad_envelope` / `unauthorized`.
+- `iacp_ws_connections` — gauge of live sockets.
+- `iacp_topic_subscribers{topic}` — gauge of subscribers per topic category.
+- `iacp_rate_limiter_buckets{scope}` — gauge of live buckets per scope (`msg`/`bw`).
+- Default `iacp_process_*` / `iacp_nodejs_*` from `prom-client` default collectors.
+
+Agent label was intentionally dropped from `iacp_rate_limited_total` — 32-byte pubkey cardinality at scrape intervals is unbounded; path+axis is sufficient for alerting.
+
 ## What's stubbed in M1
 
 Search for these markers — all land real in M2:
 
-- `SIWS-AUTH-STUB` — session ticket verification. M1 accepts any non-empty token and resolves to a fixed placeholder agent.
-- `AGENT-REGISTRY-LOOKUP-STUB` — confirm sender is a registered Active agent.
-- `SIGNATURE-VERIFY-STUB` — ed25519 verify of the envelope signature.
 - `IPFS-ARCHIVE-STUB` — expired stream sweeper → IPFS, CID index to Postgres.
+
+SIWS session verification, envelope ed25519 signature verify, agent_registry Active-operator gating on publish, envelope `ts` freshness window, per-agent publish rate limit, per-socket bandwidth cap, and Prometheus `/metrics` are all live.
 
 Do not point this at production Redis or expose it on a public port until the stubs are replaced.

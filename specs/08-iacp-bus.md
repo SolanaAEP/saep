@@ -87,7 +87,7 @@ Authorization checks on every publish:
 - If `topic == broadcast.<cap>`, publisher must be registered with that capability in CapabilityRegistry.
 - `system.*` is server-only (service role token).
 
-Stubs in M1: `SIWS-AUTH-STUB`, `AGENT-REGISTRY-LOOKUP-STUB`, `SIGNATURE-VERIFY-STUB`.
+Stubs in M1: none in the auth path. SIWS session auth, envelope ed25519 verify, agent_registry Active-operator gating, and envelope `ts` freshness window (default 5min age, 30s clock-skew) are all live.
 
 ## Delivery semantics
 
@@ -101,6 +101,21 @@ Stubs in M1: `SIWS-AUTH-STUB`, `AGENT-REGISTRY-LOOKUP-STUB`, `SIGNATURE-VERIFY-S
 - Streams are trimmed with `XADD ... MAXLEN ~ <N>` where `N` is sized for 7 days at p95 topic throughput. Per-topic override via config.
 - A background sweeper scans streams older than 7 days and pushes to IPFS via `IPFS-ARCHIVE-STUB`, then `XTRIM MINID`.
 - Archive CID index is written to Postgres (`iacp_archives(topic, first_id, last_id, cid, archived_at)`) so historical replay is possible without hot-storage cost.
+
+## On-chain anchoring (memo worker pool)
+
+Every successfully published envelope whose topic starts with `task.` is fanned out to an in-process worker pool that emits an SPL-Memo v2 transaction (`MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`). The memo payload is `saep/iacp/v1/<sha256(id|payload_digest|ts)>` — deterministic on envelope identity, not on opaque payload bytes. Indexers can prove inclusion by recomputing the hash from the envelope fields.
+
+Design points:
+
+- **Best-effort, decoupled.** The anchor enqueue is a synchronous no-op fire-and-forget after `bus.publish` returns. Anchoring failure never rejects a publish; envelopes remain in the Redis stream regardless of on-chain outcome.
+- **Filter.** Only `task.*` topics are anchored. Agent inboxes (`agent.*`) and broadcasts are intentionally skipped — they don't correspond to protocol state transitions. `skipped` is counted separately from `dropped` so ops can tell filtering from backpressure.
+- **Backpressure.** The pool runs `IACP_ANCHOR_WORKERS` concurrent submissions (default 2) behind a bounded FIFO queue of `IACP_ANCHOR_QUEUE_CAP` entries (default 1024). Over-cap enqueues return `dropped_full` and increment `iacp_anchor_dropped_total{reason="queue_full"}`. No unbounded growth under RPC incident.
+- **Retry.** Each submission gets up to `IACP_ANCHOR_MAX_RETRIES` attempts (default 3) with exponential backoff starting at `IACP_ANCHOR_BASE_RETRY_MS` (default 500ms). On exhaustion, the envelope is dropped from the anchor pipeline (still archived in Redis); `iacp_anchor_failed_total{reason="max_retries"}` increments.
+- **Priority fees.** Optional `IACP_ANCHOR_PRIORITY_FEE_MICROLAMPORTS` prepends a `ComputeBudgetProgram.setComputeUnitPrice` ix; default 0 keeps base fee. Memo is ~5k CU; priority is off unless the mempool is hot.
+- **Disabled by default.** Requires `IACP_ANCHOR_ENABLED=true` plus `IACP_ANCHOR_RPC_URL` (or `SOLANA_RPC_URL`) plus `IACP_ANCHOR_WALLET_PATH` pointing at a 64-byte secret-key JSON. Missing or invalid inputs log a warning and disable anchoring; service still starts.
+
+Metrics exported: `iacp_anchor_enqueued_total`, `iacp_anchor_submitted_total`, `iacp_anchor_retried_total`, `iacp_anchor_failed_total{reason}`, `iacp_anchor_skipped_total{topic}`, `iacp_anchor_dropped_total{reason}`, `iacp_anchor_queue_depth`, `iacp_anchor_submit_duration_seconds`.
 
 ## Backpressure
 
@@ -126,7 +141,7 @@ None. Fully off-chain. IACP never CPIs or consumes Solana compute. The only on-c
 ## Observability
 
 - Pino JSON logs with request-id correlation across HTTP and WS.
-- Prometheus metrics: `iacp_publish_total{topic,result}`, `iacp_ws_connections`, `iacp_stream_lag_seconds{topic}`, `iacp_rate_limited_total{agent}`.
+- Prometheus metrics on `/metrics` (live): `iacp_publish_total{topic,result}`, `iacp_publish_duration_seconds{topic,path}`, `iacp_rate_limited_total{axis,path}`, `iacp_envelope_rejected_total{reason,path}`, `iacp_ws_connections`, `iacp_topic_subscribers{topic}`, `iacp_rate_limiter_buckets{scope}`, `iacp_anchor_enqueued_total`, `iacp_anchor_submitted_total`, `iacp_anchor_retried_total`, `iacp_anchor_failed_total{reason}`, `iacp_anchor_skipped_total{topic}`, `iacp_anchor_dropped_total{reason}`, `iacp_anchor_queue_depth`, `iacp_anchor_submit_duration_seconds`, plus `iacp_process_*` / `iacp_nodejs_*` from the prom-client default collector. Agent label was dropped from `iacp_rate_limited_total` — 32-byte pubkey cardinality is unbounded; path+axis is the alerting surface. `iacp_stream_lag_seconds{topic}` remains TODO (requires `XPENDING`/`XINFO GROUPS` sampling; next IACP cycle).
 - Sentry for uncaught errors (tag: `service=iacp`).
 
 ## Open questions for reviewer

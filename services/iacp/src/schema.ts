@@ -32,7 +32,7 @@ export type ServerFrame =
   | { type: 'msg'; topic: string; envelope: Envelope; stream_id: string }
   | { type: 'ack'; id: string }
   | { type: 'reject'; id?: string; reason: string }
-  | { type: 'rate_limit'; retry_after_ms: number }
+  | { type: 'rate_limit'; id?: string; axis: 'msg' | 'bw'; retry_after_ms: number }
   | { type: 'pong' };
 
 export const PublishBodySchema = z.object({
