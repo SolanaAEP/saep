@@ -12,4 +12,5 @@ pub mod programs;
 pub mod pubsub;
 pub mod reorg;
 pub mod schema;
+pub mod settlement_worker;
 pub mod stats;
