@@ -16,6 +16,13 @@ import {
   type TransactionSignature,
 } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import {
+  StakedRpcSubmitter,
+  clampPriorityFee,
+  getHeliusPriorityFeeEstimate,
+  withPriorityFee,
+  type PriorityLevel,
+} from '@saep/sdk';
 
 export interface SimulationResult {
   slot: number;
@@ -33,12 +40,23 @@ export interface OptimisticUpdate<TInput> {
   updater: (old: unknown, input: TInput) => unknown;
 }
 
+export interface PriorityFeeConfig {
+  microLamports?: number;
+  cuLimit?: number;
+  level?: PriorityLevel;
+  cap?: number;
+  floor?: number;
+  estimateUrl?: string;
+}
+
 export interface UseSendTransactionOptions<TInput> {
   buildInstruction: (input: TInput) => Promise<TransactionInstruction | TransactionInstruction[]>;
   invalidateKeys?: QueryKey[];
   optimisticUpdates?: OptimisticUpdate<TInput>[];
   onSimulated?: (sim: SimulationResult, input: TInput) => void;
   commitment?: 'processed' | 'confirmed' | 'finalized';
+  submitter?: StakedRpcSubmitter;
+  priorityFee?: PriorityFeeConfig | 'auto';
 }
 
 function parseSimulation(response: SimulatedTransactionResponse): SimulationResult {
@@ -53,6 +71,8 @@ async function simulateAndSend(
   connection: Connection,
   tx: Transaction,
   sendTransaction: (tx: Transaction, connection: Connection) => Promise<TransactionSignature>,
+  signTransaction: ((tx: Transaction) => Promise<Transaction>) | undefined,
+  submitter?: StakedRpcSubmitter,
 ): Promise<{ signature: TransactionSignature; simulation: SimulationResult }> {
   const simResult = await connection.simulateTransaction(tx);
   if (simResult.value.err) {
@@ -61,8 +81,42 @@ async function simulateAndSend(
   }
   const simulation = parseSimulation(simResult.value);
 
-  const signature = await sendTransaction(tx, connection);
+  let signature: TransactionSignature;
+  if (submitter && signTransaction) {
+    const signed = await signTransaction(tx);
+    signature = await submitter.submit(signed);
+  } else {
+    signature = await sendTransaction(tx, connection);
+  }
   return { signature, simulation };
+}
+
+async function applyPriorityFee(
+  connection: Connection,
+  tx: Transaction,
+  config: PriorityFeeConfig | 'auto' | undefined,
+): Promise<void> {
+  if (!config) return;
+  const cfg: PriorityFeeConfig = config === 'auto' ? {} : config;
+  let microLamports = cfg.microLamports;
+  if (microLamports == null) {
+    const url = cfg.estimateUrl ?? (connection as { _rpcEndpoint?: string })._rpcEndpoint;
+    if (!url) return;
+    try {
+      const est = await getHeliusPriorityFeeEstimate(
+        url,
+        tx.serialize({ verifySignatures: false, requireAllSignatures: false }),
+        cfg.level ?? 'Medium',
+      );
+      microLamports = est.microLamports;
+    } catch {
+      microLamports = 0;
+    }
+  }
+  microLamports = clampPriorityFee(microLamports, { cap: cfg.cap, floor: cfg.floor });
+  if (microLamports > 0 || cfg.cuLimit != null) {
+    withPriorityFee(tx, microLamports, cfg.cuLimit);
+  }
 }
 
 export class SimulationError extends Error {
@@ -86,7 +140,7 @@ export function useSendTransaction<TInput>(
   mutationOpts?: Omit<UseMutationOptions<MutationResult, Error, TInput>, 'mutationFn'>,
 ) {
   const { connection } = useConnection();
-  const { sendTransaction, publicKey } = useWallet();
+  const { sendTransaction, signTransaction, publicKey } = useWallet();
   const qc = useQueryClient();
   const snapshotsRef = useRef<Map<string, unknown>>(new Map());
 
@@ -104,7 +158,15 @@ export function useSendTransaction<TInput>(
       tx.recentBlockhash = blockhash;
       tx.feePayer = publicKey;
 
-      const { signature, simulation } = await simulateAndSend(connection, tx, sendTransaction);
+      await applyPriorityFee(connection, tx, opts.priorityFee);
+
+      const { signature, simulation } = await simulateAndSend(
+        connection,
+        tx,
+        sendTransaction,
+        signTransaction,
+        opts.submitter,
+      );
 
       opts.onSimulated?.(simulation, input);
 
@@ -115,7 +177,7 @@ export function useSendTransaction<TInput>(
 
       return { signature, simulation };
     },
-    [connection, publicKey, sendTransaction, opts],
+    [connection, publicKey, sendTransaction, signTransaction, opts],
   );
 
   return useMutation<MutationResult, Error, TInput>({

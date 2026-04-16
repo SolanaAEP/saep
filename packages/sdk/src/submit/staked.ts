@@ -116,7 +116,7 @@ export function withPriorityFee(
 function bufToBase64(buf: Uint8Array): string {
   if (typeof Buffer !== 'undefined') return Buffer.from(buf).toString('base64');
   let bin = '';
-  for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+  for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]!);
   return btoa(bin);
 }
 
