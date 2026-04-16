@@ -15,13 +15,31 @@ use axum::{
 };
 use diesel::prelude::*;
 use diesel::sql_query;
-use diesel::sql_types::{BigInt, Bytea, Int2, Int4, Integer, Nullable, Text, Timestamptz};
+use diesel::sql_types::{BigInt, Bytea, Int2, Int4, Integer, Jsonb, Nullable, Text, Timestamptz};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 use crate::db::PgPool;
+use crate::programs::SAEP_PROGRAMS;
 
 const DEFAULT_LIMIT: u32 = 50;
 const MAX_LIMIT: u32 = 500;
+
+fn task_market_program_id() -> &'static str {
+    SAEP_PROGRAMS
+        .iter()
+        .find(|p| p.name == "task_market")
+        .map(|p| p.id)
+        .expect("task_market program registered")
+}
+
+fn task_id_jsonb(hex_str: &str) -> Result<String, ApiError> {
+    let bytes = hex::decode(hex_str).map_err(|_| ApiError::bad_request("task_id must be hex"))?;
+    if bytes.len() != 32 {
+        return Err(ApiError::bad_request("task_id must be 32 bytes"));
+    }
+    Ok(serde_json::to_string(&bytes).expect("serialize u8 slice"))
+}
 
 #[derive(Clone)]
 pub struct ApiState {
@@ -33,6 +51,8 @@ pub fn router(pool: PgPool) -> Router {
         .route("/leaderboard", get(leaderboard))
         .route("/agents/:did/reputation", get(agent_reputation))
         .route("/retro/eligibility/:operator", get(retro_eligibility))
+        .route("/tasks/:task_id_hex/bidding", get(task_bidding_state))
+        .route("/tasks/:task_id_hex/bids", get(task_bids))
         .with_state(ApiState { pool })
 }
 
@@ -250,6 +270,152 @@ pub async fn retro_eligibility(
     }))
 }
 
+#[derive(QueryableByName, Debug)]
+struct RawBidEvent {
+    #[diesel(sql_type = Text)]
+    event_name: String,
+    #[diesel(sql_type = Jsonb)]
+    data: serde_json::Value,
+}
+
+fn load_bid_events(
+    pool: &PgPool,
+    task_jsonb: String,
+) -> Result<Vec<RawBidEvent>, ApiError> {
+    let mut conn = pool.get().map_err(ApiError::internal)?;
+    sql_query(
+        "SELECT event_name, data
+         FROM program_events
+         WHERE program_id = $1
+           AND event_name IN ('BidBookOpened','BidCommitted','BidRevealed','BidBookClosed','BidSlashed')
+           AND data->'task_id' = $2::jsonb
+         ORDER BY slot ASC, id ASC",
+    )
+    .bind::<Text, _>(task_market_program_id())
+    .bind::<Text, _>(task_jsonb)
+    .load::<RawBidEvent>(&mut conn)
+    .map_err(ApiError::internal)
+}
+
+fn str_field(v: &serde_json::Value, key: &str) -> Option<String> {
+    v.get(key).and_then(|x| x.as_str()).map(String::from)
+}
+
+fn i64_str_field(v: &serde_json::Value, key: &str) -> Option<i64> {
+    v.get(key)
+        .and_then(|x| x.as_str())
+        .and_then(|s| s.parse::<i64>().ok())
+}
+
+#[derive(Debug, Serialize)]
+pub struct BiddingStateRow {
+    pub task_id_hex: String,
+    pub phase: &'static str,
+    pub commit_count: u32,
+    pub reveal_count: u32,
+    pub slashed_count: u32,
+    pub bond_amount: Option<String>,
+    pub commit_end_unix: Option<i64>,
+    pub reveal_end_unix: Option<i64>,
+    pub winner_agent: Option<String>,
+    pub winner_amount: Option<String>,
+}
+
+pub async fn task_bidding_state(
+    State(state): State<ApiState>,
+    Path(task_id_hex): Path<String>,
+) -> Result<Json<BiddingStateRow>, ApiError> {
+    let task_jsonb = task_id_jsonb(&task_id_hex)?;
+    let events = tokio::task::spawn_blocking(move || load_bid_events(&state.pool, task_jsonb))
+        .await
+        .map_err(ApiError::internal)??;
+
+    let mut commit_count = 0u32;
+    let mut reveal_count = 0u32;
+    let mut slashed_count = 0u32;
+    let mut opened: Option<serde_json::Value> = None;
+    let mut closed: Option<serde_json::Value> = None;
+    for e in events {
+        match e.event_name.as_str() {
+            "BidBookOpened" => opened = Some(e.data),
+            "BidCommitted" => commit_count += 1,
+            "BidRevealed" => reveal_count += 1,
+            "BidBookClosed" => closed = Some(e.data),
+            "BidSlashed" => slashed_count += 1,
+            _ => {}
+        }
+    }
+
+    let phase: &'static str = if closed.is_some() {
+        "settled"
+    } else if opened.is_some() {
+        if reveal_count > 0 { "reveal" } else { "commit" }
+    } else if slashed_count > 0 {
+        "slashed"
+    } else {
+        "unknown"
+    };
+
+    let winner_agent = closed
+        .as_ref()
+        .and_then(|d| d.get("winner_agent"))
+        .and_then(|v| if v.is_null() { None } else { v.as_str().map(String::from) });
+    let winner_amount = closed.as_ref().and_then(|d| str_field(d, "winner_amount"));
+
+    Ok(Json(BiddingStateRow {
+        task_id_hex,
+        phase,
+        commit_count,
+        reveal_count,
+        slashed_count,
+        bond_amount: opened.as_ref().and_then(|d| str_field(d, "bond_amount")),
+        commit_end_unix: opened.as_ref().and_then(|d| i64_str_field(d, "commit_end")),
+        reveal_end_unix: opened.as_ref().and_then(|d| i64_str_field(d, "reveal_end")),
+        winner_agent,
+        winner_amount,
+    }))
+}
+
+#[derive(Debug, Serialize)]
+pub struct TaskBidRow {
+    pub bidder: String,
+    pub bond_paid: Option<String>,
+    pub revealed_amount: Option<String>,
+    pub slashed: bool,
+}
+
+pub async fn task_bids(
+    State(state): State<ApiState>,
+    Path(task_id_hex): Path<String>,
+) -> Result<Json<Vec<TaskBidRow>>, ApiError> {
+    let task_jsonb = task_id_jsonb(&task_id_hex)?;
+    let events = tokio::task::spawn_blocking(move || load_bid_events(&state.pool, task_jsonb))
+        .await
+        .map_err(ApiError::internal)??;
+
+    let mut by_bidder: BTreeMap<String, TaskBidRow> = BTreeMap::new();
+    for e in events {
+        let bidder = match str_field(&e.data, "bidder") {
+            Some(b) => b,
+            None => continue,
+        };
+        let row = by_bidder.entry(bidder.clone()).or_insert_with(|| TaskBidRow {
+            bidder: bidder.clone(),
+            bond_paid: None,
+            revealed_amount: None,
+            slashed: false,
+        });
+        match e.event_name.as_str() {
+            "BidCommitted" => row.bond_paid = str_field(&e.data, "bond_paid"),
+            "BidRevealed" => row.revealed_amount = str_field(&e.data, "amount"),
+            "BidSlashed" => row.slashed = true,
+            _ => {}
+        }
+    }
+
+    Ok(Json(by_bidder.into_values().collect()))
+}
+
 #[derive(Debug)]
 pub struct ApiError {
     status: StatusCode,
@@ -257,20 +423,20 @@ pub struct ApiError {
 }
 
 impl ApiError {
-    fn internal<E: std::fmt::Display>(e: E) -> Self {
+    pub(crate) fn internal<E: std::fmt::Display>(e: E) -> Self {
         tracing::error!(error = %e, "indexer api internal error");
         Self {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             message: "internal error".into(),
         }
     }
-    fn bad_request(msg: impl Into<String>) -> Self {
+    pub(crate) fn bad_request(msg: impl Into<String>) -> Self {
         Self {
             status: StatusCode::BAD_REQUEST,
             message: msg.into(),
         }
     }
-    fn not_found(msg: impl Into<String>) -> Self {
+    pub(crate) fn not_found(msg: impl Into<String>) -> Self {
         Self {
             status: StatusCode::NOT_FOUND,
             message: msg.into(),

@@ -40,6 +40,7 @@ Health: `curl localhost:8080/healthz` · Metrics: `curl localhost:8080/metrics`.
 | `POLL_INTERVAL_MS` | `2000` | Per-cycle sleep between program scans |
 | `RPC_PAGE_LIMIT` | `200` | Signatures fetched per call (Helius caps at 1000) |
 | `HEALTHCHECK_PORT` | `8080` | `/healthz` + `/metrics` |
+| `REDIS_URL` | unset | When set, decoded events fan out on `saep:events:<program>` + `saep:events:all`. Unset = fanout disabled, ingest unaffected. |
 
 ## IDL regeneration
 
@@ -55,14 +56,13 @@ Writes `target/idl/<program>.json` for every M1 program. Default lookup path is 
 
 - RPC poller with per-program Postgres cursor
 - Inner-instruction walk → Anchor discriminator match → Borsh decode against IDL type tree
-- Prometheus `/metrics`: `saep_indexer_events_total{program,event}`, `saep_indexer_rpc_errors_total{method}`, `saep_indexer_last_slot{program}`
+- Prometheus `/metrics`: `saep_indexer_events_total{program,event}`, `saep_indexer_rpc_errors_total{method}`, `saep_indexer_last_slot{program}`, `saep_indexer_pubsub_publishes_total{program,status}`
 - Diesel schema: `blocks`, `program_events`, `reorg_log`, `sync_cursor`
 - Axum health + metrics endpoints
+- Redis Pub/Sub fanout (opt-in via `REDIS_URL`) — decoded events broadcast to `saep:events:<program>` and `saep:events:all`
 
 ## What's deferred
 
-- Reorg detection — not meaningful without a live slot stream. Table kept for when Yellowstone lands.
-- Redis pub-sub fan-out for the IACP bus (M2).
 - Historical backfill beyond RPC pagination window (M2).
 
 ## Deploy

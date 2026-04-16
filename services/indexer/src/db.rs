@@ -7,9 +7,11 @@ pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
+pub const POOL_MAX_SIZE: u32 = 8;
+
 pub fn pool(url: &str) -> Result<PgPool> {
     let manager = ConnectionManager::<PgConnection>::new(url);
-    Ok(Pool::builder().max_size(8).build(manager)?)
+    Ok(Pool::builder().max_size(POOL_MAX_SIZE).build(manager)?)
 }
 
 pub fn run_migrations(pool: &PgPool) -> Result<()> {
