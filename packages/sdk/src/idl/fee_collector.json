@@ -55,6 +55,73 @@
       "args": []
     },
     {
+      "name": "admin_reset_guard",
+      "discriminator": [
+        191,
+        217,
+        54,
+        48,
+        119,
+        178,
+        160,
+        238
+      ],
+      "accounts": [
+        {
+          "name": "allowlist",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  111,
+                  107,
+                  95,
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "allowlist"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "init_agent_hook_allowlist",
       "discriminator": [
         3,
@@ -151,6 +218,113 @@
       ]
     },
     {
+      "name": "init_guard",
+      "discriminator": [
+        80,
+        108,
+        68,
+        230,
+        253,
+        134,
+        39,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "allowlist",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  111,
+                  107,
+                  95,
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowed_callers",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  99,
+                  97,
+                  108,
+                  108,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "allowlist"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "initial_callers",
+          "type": {
+            "vec": "pubkey"
+          }
+        }
+      ]
+    },
+    {
       "name": "init_hook_allowlist",
       "discriminator": [
         203,
@@ -210,6 +384,157 @@
         {
           "name": "default_deny",
           "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "propose_guard_reset",
+      "discriminator": [
+        123,
+        148,
+        24,
+        9,
+        217,
+        22,
+        91,
+        219
+      ],
+      "accounts": [
+        {
+          "name": "allowlist",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  111,
+                  107,
+                  95,
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "allowlist"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_allowed_callers",
+      "discriminator": [
+        206,
+        75,
+        219,
+        6,
+        147,
+        196,
+        67,
+        152
+      ],
+      "accounts": [
+        {
+          "name": "allowlist",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  111,
+                  107,
+                  95,
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowed_callers",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  99,
+                  97,
+                  108,
+                  108,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "allowlist"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "programs",
+          "type": {
+            "vec": "pubkey"
+          }
         }
       ]
     },
@@ -493,6 +818,19 @@
       ]
     },
     {
+      "name": "AllowedCallers",
+      "discriminator": [
+        91,
+        102,
+        165,
+        7,
+        58,
+        35,
+        153,
+        85
+      ]
+    },
+    {
       "name": "HookAllowlist",
       "discriminator": [
         252,
@@ -503,6 +841,19 @@
         215,
         101,
         245
+      ]
+    },
+    {
+      "name": "ReentrancyGuard",
+      "discriminator": [
+        207,
+        227,
+        141,
+        11,
+        194,
+        21,
+        193,
+        32
       ]
     }
   ],
@@ -518,6 +869,19 @@
         203,
         20,
         172
+      ]
+    },
+    {
+      "name": "GuardEntered",
+      "discriminator": [
+        168,
+        4,
+        164,
+        40,
+        174,
+        109,
+        201,
+        188
       ]
     },
     {
@@ -571,6 +935,19 @@
         222,
         50
       ]
+    },
+    {
+      "name": "ReentrancyRejected",
+      "discriminator": [
+        210,
+        169,
+        179,
+        180,
+        90,
+        49,
+        86,
+        89
+      ]
     }
   ],
   "errors": [
@@ -613,6 +990,41 @@
       "code": 6007,
       "name": "NoPendingAuthority",
       "msg": "no pending authority to accept"
+    },
+    {
+      "code": 6008,
+      "name": "ReentrancyDetected",
+      "msg": "reentrancy detected — guard is already active"
+    },
+    {
+      "code": 6009,
+      "name": "UnauthorizedCaller",
+      "msg": "caller program is not on the allowed callers list"
+    },
+    {
+      "code": 6010,
+      "name": "CallerGuardNotActive",
+      "msg": "caller program's reentrancy guard is not active"
+    },
+    {
+      "code": 6011,
+      "name": "CpiDepthExceeded",
+      "msg": "cpi stack height exceeds allowed bound"
+    },
+    {
+      "code": 6012,
+      "name": "GuardAlreadyActive",
+      "msg": "reentrancy guard is already active"
+    },
+    {
+      "code": 6013,
+      "name": "GuardNotInitialized",
+      "msg": "reentrancy guard has not been initialized"
+    },
+    {
+      "code": 6014,
+      "name": "AdminResetNotTimelocked",
+      "msg": "admin reset has not met the 24h timelock"
     }
   ],
   "types": [
@@ -672,6 +1084,48 @@
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AllowedCallers",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programs",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GuardEntered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "program",
+            "type": "pubkey"
+          },
+          {
+            "name": "caller",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "stack_height",
+            "type": "u16"
           }
         ]
       }
@@ -806,6 +1260,54 @@
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReentrancyGuard",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "active",
+            "type": "bool"
+          },
+          {
+            "name": "entered_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "entered_at_slot",
+            "type": "u64"
+          },
+          {
+            "name": "reset_proposed_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReentrancyRejected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "program",
+            "type": "pubkey"
+          },
+          {
+            "name": "offending_caller",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
           }
         ]
       }

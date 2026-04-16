@@ -54,6 +54,72 @@
       "args": []
     },
     {
+      "name": "admin_reset_guard",
+      "discriminator": [
+        191,
+        217,
+        54,
+        48,
+        119,
+        178,
+        160,
+        238
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "allow_payment_mint",
       "discriminator": [
         154,
@@ -567,6 +633,24 @@
                 "kind": "account",
                 "path": "task.task_id",
                 "account": "TaskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
               }
             ]
           }
@@ -1221,6 +1305,24 @@
           "optional": true
         },
         {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "cranker",
           "signer": true
         },
@@ -1334,6 +1436,24 @@
         {
           "name": "hook_allowlist",
           "optional": true
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "client",
@@ -1451,6 +1571,112 @@
               "pubkey",
               8
             ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "init_guard",
+      "discriminator": [
+        80,
+        108,
+        68,
+        230,
+        253,
+        134,
+        39,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowed_callers",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  99,
+                  97,
+                  108,
+                  108,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "initial_callers",
+          "type": {
+            "vec": "pubkey"
           }
         }
       ]
@@ -1609,6 +1835,72 @@
           "type": "u16"
         }
       ]
+    },
+    {
+      "name": "propose_guard_reset",
+      "discriminator": [
+        123,
+        148,
+        24,
+        9,
+        217,
+        22,
+        91,
+        219
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": []
     },
     {
       "name": "raise_dispute",
@@ -1835,6 +2127,24 @@
           "optional": true
         },
         {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "cranker",
           "signer": true
         },
@@ -1952,6 +2262,89 @@
               "u8",
               32
             ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_allowed_callers",
+      "discriminator": [
+        206,
+        75,
+        219,
+        6,
+        147,
+        196,
+        67,
+        152
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowed_callers",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  99,
+                  97,
+                  108,
+                  108,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "programs",
+          "type": {
+            "vec": "pubkey"
           }
         }
       ]
@@ -2283,6 +2676,24 @@
               "path": "agent_registry_program"
             }
           }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -2504,6 +2915,43 @@
           }
         },
         {
+          "name": "guard",
+          "docs": [
+            "task_market's own reentrancy guard — asserted + held across the CPI."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "verifier_self_guard",
+          "docs": [
+            "proof_verifier's self_guard PDA. Threaded into the CPI."
+          ]
+        },
+        {
+          "name": "verifier_allowed_callers",
+          "docs": [
+            "proof_verifier's allowed_callers PDA. Threaded into the CPI."
+          ]
+        },
+        {
+          "name": "instructions",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
           "name": "cranker",
           "signer": true
         }
@@ -2540,6 +2988,19 @@
     }
   ],
   "accounts": [
+    {
+      "name": "AllowedCallers",
+      "discriminator": [
+        91,
+        102,
+        165,
+        7,
+        58,
+        35,
+        153,
+        85
+      ]
+    },
     {
       "name": "Bid",
       "discriminator": [
@@ -2590,6 +3051,19 @@
         88,
         241,
         227
+      ]
+    },
+    {
+      "name": "ReentrancyGuard",
+      "discriminator": [
+        207,
+        227,
+        141,
+        11,
+        194,
+        21,
+        193,
+        32
       ]
     },
     {
@@ -2712,6 +3186,19 @@
       ]
     },
     {
+      "name": "GuardEntered",
+      "discriminator": [
+        168,
+        4,
+        164,
+        40,
+        174,
+        109,
+        201,
+        188
+      ]
+    },
+    {
       "name": "MintAccepted",
       "discriminator": [
         64,
@@ -2735,6 +3222,19 @@
         81,
         68,
         66
+      ]
+    },
+    {
+      "name": "ReentrancyRejected",
+      "discriminator": [
+        210,
+        169,
+        179,
+        180,
+        90,
+        49,
+        86,
+        89
       ]
     },
     {
@@ -3090,6 +3590,41 @@
       "code": 6046,
       "name": "MintAlreadyAccepted",
       "msg": "mint already has a MintAcceptRecord"
+    },
+    {
+      "code": 6047,
+      "name": "ReentrancyDetected",
+      "msg": "reentrancy detected — guard is already active"
+    },
+    {
+      "code": 6048,
+      "name": "UnauthorizedCaller",
+      "msg": "caller program is not on the allowed callers list"
+    },
+    {
+      "code": 6049,
+      "name": "CallerGuardNotActive",
+      "msg": "caller program's reentrancy guard is not active"
+    },
+    {
+      "code": 6050,
+      "name": "CpiDepthExceeded",
+      "msg": "cpi stack height exceeds allowed bound"
+    },
+    {
+      "code": 6051,
+      "name": "GuardAlreadyActive",
+      "msg": "reentrancy guard is already active"
+    },
+    {
+      "code": 6052,
+      "name": "GuardNotInitialized",
+      "msg": "reentrancy guard has not been initialized"
+    },
+    {
+      "code": 6053,
+      "name": "AdminResetNotTimelocked",
+      "msg": "admin reset has not met the 24h timelock"
     }
   ],
   "types": [
@@ -3234,6 +3769,24 @@
           },
           {
             "name": "Deregistered"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AllowedCallers",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programs",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -3663,6 +4216,30 @@
       }
     },
     {
+      "name": "GuardEntered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "program",
+            "type": "pubkey"
+          },
+          {
+            "name": "caller",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "stack_height",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
       "name": "HookAllowlist",
       "type": {
         "kind": "struct",
@@ -3985,6 +4562,54 @@
           },
           {
             "name": "SAS"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReentrancyGuard",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "active",
+            "type": "bool"
+          },
+          {
+            "name": "entered_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "entered_at_slot",
+            "type": "u64"
+          },
+          {
+            "name": "reset_proposed_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReentrancyRejected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "program",
+            "type": "pubkey"
+          },
+          {
+            "name": "offending_caller",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
           }
         ]
       }

@@ -62,6 +62,72 @@ export type TaskMarket = {
       "args": []
     },
     {
+      "name": "adminResetGuard",
+      "discriminator": [
+        191,
+        217,
+        54,
+        48,
+        119,
+        178,
+        160,
+        238
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "allowPaymentMint",
       "discriminator": [
         154,
@@ -575,6 +641,24 @@ export type TaskMarket = {
                 "kind": "account",
                 "path": "task.task_id",
                 "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
               }
             ]
           }
@@ -1229,6 +1313,24 @@ export type TaskMarket = {
           "optional": true
         },
         {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "cranker",
           "signer": true
         },
@@ -1342,6 +1444,24 @@ export type TaskMarket = {
         {
           "name": "hookAllowlist",
           "optional": true
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "client",
@@ -1459,6 +1579,112 @@ export type TaskMarket = {
               "pubkey",
               8
             ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "initGuard",
+      "discriminator": [
+        80,
+        108,
+        68,
+        230,
+        253,
+        134,
+        39,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedCallers",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  99,
+                  97,
+                  108,
+                  108,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "initialCallers",
+          "type": {
+            "vec": "pubkey"
           }
         }
       ]
@@ -1617,6 +1843,72 @@ export type TaskMarket = {
           "type": "u16"
         }
       ]
+    },
+    {
+      "name": "proposeGuardReset",
+      "discriminator": [
+        123,
+        148,
+        24,
+        9,
+        217,
+        22,
+        91,
+        219
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": []
     },
     {
       "name": "raiseDispute",
@@ -1843,6 +2135,24 @@ export type TaskMarket = {
           "optional": true
         },
         {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "cranker",
           "signer": true
         },
@@ -1960,6 +2270,89 @@ export type TaskMarket = {
               "u8",
               32
             ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "setAllowedCallers",
+      "discriminator": [
+        206,
+        75,
+        219,
+        6,
+        147,
+        196,
+        67,
+        152
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedCallers",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  99,
+                  97,
+                  108,
+                  108,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "programs",
+          "type": {
+            "vec": "pubkey"
           }
         }
       ]
@@ -2291,6 +2684,24 @@ export type TaskMarket = {
               "path": "agentRegistryProgram"
             }
           }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -2512,6 +2923,43 @@ export type TaskMarket = {
           }
         },
         {
+          "name": "guard",
+          "docs": [
+            "task_market's own reentrancy guard — asserted + held across the CPI."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "verifierSelfGuard",
+          "docs": [
+            "proof_verifier's self_guard PDA. Threaded into the CPI."
+          ]
+        },
+        {
+          "name": "verifierAllowedCallers",
+          "docs": [
+            "proof_verifier's allowed_callers PDA. Threaded into the CPI."
+          ]
+        },
+        {
+          "name": "instructions",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
           "name": "cranker",
           "signer": true
         }
@@ -2548,6 +2996,19 @@ export type TaskMarket = {
     }
   ],
   "accounts": [
+    {
+      "name": "allowedCallers",
+      "discriminator": [
+        91,
+        102,
+        165,
+        7,
+        58,
+        35,
+        153,
+        85
+      ]
+    },
     {
       "name": "bid",
       "discriminator": [
@@ -2598,6 +3059,19 @@ export type TaskMarket = {
         88,
         241,
         227
+      ]
+    },
+    {
+      "name": "reentrancyGuard",
+      "discriminator": [
+        207,
+        227,
+        141,
+        11,
+        194,
+        21,
+        193,
+        32
       ]
     },
     {
@@ -2720,6 +3194,19 @@ export type TaskMarket = {
       ]
     },
     {
+      "name": "guardEntered",
+      "discriminator": [
+        168,
+        4,
+        164,
+        40,
+        174,
+        109,
+        201,
+        188
+      ]
+    },
+    {
       "name": "mintAccepted",
       "discriminator": [
         64,
@@ -2743,6 +3230,19 @@ export type TaskMarket = {
         81,
         68,
         66
+      ]
+    },
+    {
+      "name": "reentrancyRejected",
+      "discriminator": [
+        210,
+        169,
+        179,
+        180,
+        90,
+        49,
+        86,
+        89
       ]
     },
     {
@@ -3098,6 +3598,41 @@ export type TaskMarket = {
       "code": 6046,
       "name": "mintAlreadyAccepted",
       "msg": "mint already has a MintAcceptRecord"
+    },
+    {
+      "code": 6047,
+      "name": "reentrancyDetected",
+      "msg": "reentrancy detected — guard is already active"
+    },
+    {
+      "code": 6048,
+      "name": "unauthorizedCaller",
+      "msg": "caller program is not on the allowed callers list"
+    },
+    {
+      "code": 6049,
+      "name": "callerGuardNotActive",
+      "msg": "caller program's reentrancy guard is not active"
+    },
+    {
+      "code": 6050,
+      "name": "cpiDepthExceeded",
+      "msg": "cpi stack height exceeds allowed bound"
+    },
+    {
+      "code": 6051,
+      "name": "guardAlreadyActive",
+      "msg": "reentrancy guard is already active"
+    },
+    {
+      "code": 6052,
+      "name": "guardNotInitialized",
+      "msg": "reentrancy guard has not been initialized"
+    },
+    {
+      "code": 6053,
+      "name": "adminResetNotTimelocked",
+      "msg": "admin reset has not met the 24h timelock"
     }
   ],
   "types": [
@@ -3242,6 +3777,24 @@ export type TaskMarket = {
           },
           {
             "name": "deregistered"
+          }
+        ]
+      }
+    },
+    {
+      "name": "allowedCallers",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programs",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -3671,6 +4224,30 @@ export type TaskMarket = {
       }
     },
     {
+      "name": "guardEntered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "program",
+            "type": "pubkey"
+          },
+          {
+            "name": "caller",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "stackHeight",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
       "name": "hookAllowlist",
       "type": {
         "kind": "struct",
@@ -3993,6 +4570,54 @@ export type TaskMarket = {
           },
           {
             "name": "sas"
+          }
+        ]
+      }
+    },
+    {
+      "name": "reentrancyGuard",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "active",
+            "type": "bool"
+          },
+          {
+            "name": "enteredBy",
+            "type": "pubkey"
+          },
+          {
+            "name": "enteredAtSlot",
+            "type": "u64"
+          },
+          {
+            "name": "resetProposedAt",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "reentrancyRejected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "program",
+            "type": "pubkey"
+          },
+          {
+            "name": "offendingCaller",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
           }
         ]
       }
