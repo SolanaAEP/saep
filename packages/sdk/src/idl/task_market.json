@@ -54,6 +54,104 @@
       "args": []
     },
     {
+      "name": "allow_payment_mint",
+      "discriminator": [
+        154,
+        99,
+        153,
+        168,
+        114,
+        129,
+        42,
+        116
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "mint_accept",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  99,
+                  99,
+                  101,
+                  112,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "hook_allowlist",
+          "optional": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "slot",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "cancel_bidding",
       "discriminator": [
         144,
@@ -641,6 +739,28 @@
           "address": "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
         },
         {
+          "name": "registry_global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "agent_registry_program"
+            }
+          }
+        },
+        {
           "name": "agent_account",
           "pda": {
             "seeds": [
@@ -670,6 +790,52 @@
               "path": "agent_registry_program"
             }
           }
+        },
+        {
+          "name": "personhood_attestation",
+          "docs": [
+            "Personhood attestation for the bidder's operator wallet. Required iff the",
+            "task payload declares a non-None `requires_personhood`, or if the tag",
+            "carries a non-zero `min_personhood_tier`. Left optional so tasks without",
+            "a personhood floor don't force the extra account."
+          ],
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  115,
+                  111,
+                  110,
+                  104,
+                  111,
+                  111,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "bidder"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "agent_registry_program"
+            }
+          }
+        },
+        {
+          "name": "capability_tag",
+          "docs": [
+            "CapabilityTag pinned to the bid's capability bit. Required iff the tag",
+            "has min_personhood_tier > 0. The tag's owning program is validated in",
+            "the handler against `registry_global.capability_registry`."
+          ],
+          "optional": true
         },
         {
           "name": "token_program",
@@ -1051,6 +1217,10 @@
           "address": "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w"
         },
         {
+          "name": "hook_allowlist",
+          "optional": true
+        },
+        {
           "name": "cranker",
           "signer": true
         },
@@ -1160,6 +1330,10 @@
         {
           "name": "client_token_account",
           "writable": true
+        },
+        {
+          "name": "hook_allowlist",
+          "optional": true
         },
         {
           "name": "client",
@@ -1657,6 +1831,10 @@
           "address": "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w"
         },
         {
+          "name": "hook_allowlist",
+          "optional": true
+        },
+        {
           "name": "cranker",
           "signer": true
         },
@@ -1891,6 +2069,60 @@
         {
           "name": "solrep_fee_bps",
           "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "set_hook_allowlist_ptr",
+      "discriminator": [
+        194,
+        79,
+        184,
+        147,
+        229,
+        169,
+        201,
+        31
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "hook_allowlist",
+          "type": "pubkey"
         }
       ]
     },
@@ -2348,6 +2580,19 @@
       ]
     },
     {
+      "name": "MintAcceptRecord",
+      "discriminator": [
+        122,
+        82,
+        110,
+        234,
+        225,
+        88,
+        241,
+        227
+      ]
+    },
+    {
       "name": "TaskContract",
       "discriminator": [
         71,
@@ -2464,6 +2709,19 @@
         242,
         177,
         48
+      ]
+    },
+    {
+      "name": "MintAccepted",
+      "discriminator": [
+        64,
+        209,
+        5,
+        8,
+        70,
+        172,
+        222,
+        50
       ]
     },
     {
@@ -2792,6 +3050,46 @@
       "code": 6038,
       "name": "UnknownCapability",
       "msg": "agent does not advertise the requested capability_bit"
+    },
+    {
+      "code": 6039,
+      "name": "PersonhoodRequired",
+      "msg": "personhood attestation required but missing"
+    },
+    {
+      "code": 6040,
+      "name": "PersonhoodExpired",
+      "msg": "personhood attestation has expired"
+    },
+    {
+      "code": 6041,
+      "name": "PersonhoodRevoked",
+      "msg": "personhood attestation has been revoked"
+    },
+    {
+      "code": 6042,
+      "name": "AttestationOperatorMismatch",
+      "msg": "attestation operator does not match bidder"
+    },
+    {
+      "code": 6043,
+      "name": "HookNotAllowed",
+      "msg": "transfer-hook program not on fee_collector allowlist"
+    },
+    {
+      "code": 6044,
+      "name": "MintExtensionRejected",
+      "msg": "mint extension configuration is not acceptable"
+    },
+    {
+      "code": 6045,
+      "name": "HookAllowlistMismatch",
+      "msg": "hook_allowlist account does not match MarketGlobal hook_allowlist"
+    },
+    {
+      "code": 6046,
+      "name": "MintAlreadyAccepted",
+      "msg": "mint already has a MintAcceptRecord"
     }
   ],
   "types": [
@@ -3230,6 +3528,56 @@
       }
     },
     {
+      "name": "CapabilityTag",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bit_index",
+            "type": "u8"
+          },
+          {
+            "name": "slug",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "manifest_uri",
+            "type": {
+              "array": [
+                "u8",
+                96
+              ]
+            }
+          },
+          {
+            "name": "added_at",
+            "type": "i64"
+          },
+          {
+            "name": "added_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "retired",
+            "type": "bool"
+          },
+          {
+            "name": "min_personhood_tier",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "DisputeRaised",
       "type": {
         "kind": "struct",
@@ -3315,6 +3663,38 @@
       }
     },
     {
+      "name": "HookAllowlist",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "programs",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "default_deny",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "MarketGlobal",
       "type": {
         "kind": "struct",
@@ -3381,6 +3761,74 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "hook_allowlist",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MintAcceptRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint_accept_flags",
+            "type": "u32"
+          },
+          {
+            "name": "hook_program",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "accepted_at_slot",
+            "type": "u64"
+          },
+          {
+            "name": "accepted_at_ts",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MintAccepted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "accept_flags",
+            "type": "u32"
+          },
+          {
+            "name": "hook_program",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -3454,6 +3902,94 @@
       }
     },
     {
+      "name": "PersonhoodAttestation",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "provider",
+            "type": {
+              "defined": {
+                "name": "ProviderKind"
+              }
+            }
+          },
+          {
+            "name": "tier",
+            "type": {
+              "defined": {
+                "name": "PersonhoodTier"
+              }
+            }
+          },
+          {
+            "name": "gatekeeper_network",
+            "type": "pubkey"
+          },
+          {
+            "name": "attestation_ref",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "attested_at",
+            "type": "i64"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "revoked",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PersonhoodTier",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "None"
+          },
+          {
+            "name": "Basic"
+          },
+          {
+            "name": "Verified"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProviderKind",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Civic"
+          },
+          {
+            "name": "SAS"
+          }
+        ]
+      }
+    },
+    {
       "name": "RegistryGlobal",
       "type": {
         "kind": "struct",
@@ -3506,6 +4042,44 @@
           },
           {
             "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "allowed_civic_networks",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "allowed_civic_networks_len",
+            "type": "u8"
+          },
+          {
+            "name": "allowed_sas_issuers",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "allowed_sas_issuers_len",
+            "type": "u8"
+          },
+          {
+            "name": "personhood_basic_min_tier",
+            "type": {
+              "defined": {
+                "name": "PersonhoodTier"
+              }
+            }
+          },
+          {
+            "name": "require_personhood_for_register",
             "type": "bool"
           },
           {
@@ -4013,6 +4587,14 @@
           {
             "name": "criteria",
             "type": "bytes"
+          },
+          {
+            "name": "requires_personhood",
+            "type": {
+              "defined": {
+                "name": "PersonhoodTier"
+              }
+            }
           }
         ]
       }

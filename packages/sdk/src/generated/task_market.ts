@@ -62,6 +62,104 @@ export type TaskMarket = {
       "args": []
     },
     {
+      "name": "allowPaymentMint",
+      "discriminator": [
+        154,
+        99,
+        153,
+        168,
+        114,
+        129,
+        42,
+        116
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "mintAccept",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  99,
+                  99,
+                  101,
+                  112,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "hookAllowlist",
+          "optional": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "slot",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "cancelBidding",
       "discriminator": [
         144,
@@ -649,6 +747,28 @@ export type TaskMarket = {
           "address": "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
         },
         {
+          "name": "registryGlobal",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "agentRegistryProgram"
+            }
+          }
+        },
+        {
           "name": "agentAccount",
           "pda": {
             "seeds": [
@@ -678,6 +798,52 @@ export type TaskMarket = {
               "path": "agentRegistryProgram"
             }
           }
+        },
+        {
+          "name": "personhoodAttestation",
+          "docs": [
+            "Personhood attestation for the bidder's operator wallet. Required iff the",
+            "task payload declares a non-None `requires_personhood`, or if the tag",
+            "carries a non-zero `min_personhood_tier`. Left optional so tasks without",
+            "a personhood floor don't force the extra account."
+          ],
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  115,
+                  111,
+                  110,
+                  104,
+                  111,
+                  111,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "bidder"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "agentRegistryProgram"
+            }
+          }
+        },
+        {
+          "name": "capabilityTag",
+          "docs": [
+            "CapabilityTag pinned to the bid's capability bit. Required iff the tag",
+            "has min_personhood_tier > 0. The tag's owning program is validated in",
+            "the handler against `registry_global.capability_registry`."
+          ],
+          "optional": true
         },
         {
           "name": "tokenProgram",
@@ -1059,6 +1225,10 @@ export type TaskMarket = {
           "address": "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w"
         },
         {
+          "name": "hookAllowlist",
+          "optional": true
+        },
+        {
           "name": "cranker",
           "signer": true
         },
@@ -1168,6 +1338,10 @@ export type TaskMarket = {
         {
           "name": "clientTokenAccount",
           "writable": true
+        },
+        {
+          "name": "hookAllowlist",
+          "optional": true
         },
         {
           "name": "client",
@@ -1665,6 +1839,10 @@ export type TaskMarket = {
           "address": "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w"
         },
         {
+          "name": "hookAllowlist",
+          "optional": true
+        },
+        {
           "name": "cranker",
           "signer": true
         },
@@ -1899,6 +2077,60 @@ export type TaskMarket = {
         {
           "name": "solrepFeeBps",
           "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "setHookAllowlistPtr",
+      "discriminator": [
+        194,
+        79,
+        184,
+        147,
+        229,
+        169,
+        201,
+        31
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "hookAllowlist",
+          "type": "pubkey"
         }
       ]
     },
@@ -2356,6 +2588,19 @@ export type TaskMarket = {
       ]
     },
     {
+      "name": "mintAcceptRecord",
+      "discriminator": [
+        122,
+        82,
+        110,
+        234,
+        225,
+        88,
+        241,
+        227
+      ]
+    },
+    {
       "name": "taskContract",
       "discriminator": [
         71,
@@ -2472,6 +2717,19 @@ export type TaskMarket = {
         242,
         177,
         48
+      ]
+    },
+    {
+      "name": "mintAccepted",
+      "discriminator": [
+        64,
+        209,
+        5,
+        8,
+        70,
+        172,
+        222,
+        50
       ]
     },
     {
@@ -2800,6 +3058,46 @@ export type TaskMarket = {
       "code": 6038,
       "name": "unknownCapability",
       "msg": "agent does not advertise the requested capability_bit"
+    },
+    {
+      "code": 6039,
+      "name": "personhoodRequired",
+      "msg": "personhood attestation required but missing"
+    },
+    {
+      "code": 6040,
+      "name": "personhoodExpired",
+      "msg": "personhood attestation has expired"
+    },
+    {
+      "code": 6041,
+      "name": "personhoodRevoked",
+      "msg": "personhood attestation has been revoked"
+    },
+    {
+      "code": 6042,
+      "name": "attestationOperatorMismatch",
+      "msg": "attestation operator does not match bidder"
+    },
+    {
+      "code": 6043,
+      "name": "hookNotAllowed",
+      "msg": "transfer-hook program not on fee_collector allowlist"
+    },
+    {
+      "code": 6044,
+      "name": "mintExtensionRejected",
+      "msg": "mint extension configuration is not acceptable"
+    },
+    {
+      "code": 6045,
+      "name": "hookAllowlistMismatch",
+      "msg": "hook_allowlist account does not match MarketGlobal hook_allowlist"
+    },
+    {
+      "code": 6046,
+      "name": "mintAlreadyAccepted",
+      "msg": "mint already has a MintAcceptRecord"
     }
   ],
   "types": [
@@ -3238,6 +3536,56 @@ export type TaskMarket = {
       }
     },
     {
+      "name": "capabilityTag",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bitIndex",
+            "type": "u8"
+          },
+          {
+            "name": "slug",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "manifestUri",
+            "type": {
+              "array": [
+                "u8",
+                96
+              ]
+            }
+          },
+          {
+            "name": "addedAt",
+            "type": "i64"
+          },
+          {
+            "name": "addedBy",
+            "type": "pubkey"
+          },
+          {
+            "name": "retired",
+            "type": "bool"
+          },
+          {
+            "name": "minPersonhoodTier",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "disputeRaised",
       "type": {
         "kind": "struct",
@@ -3323,6 +3671,38 @@ export type TaskMarket = {
       }
     },
     {
+      "name": "hookAllowlist",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pendingAuthority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "programs",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "defaultDeny",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "marketGlobal",
       "type": {
         "kind": "struct",
@@ -3389,6 +3769,74 @@ export type TaskMarket = {
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "hookAllowlist",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mintAcceptRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "mintAcceptFlags",
+            "type": "u32"
+          },
+          {
+            "name": "hookProgram",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "acceptedAtSlot",
+            "type": "u64"
+          },
+          {
+            "name": "acceptedAtTs",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mintAccepted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "acceptFlags",
+            "type": "u32"
+          },
+          {
+            "name": "hookProgram",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -3462,6 +3910,94 @@ export type TaskMarket = {
       }
     },
     {
+      "name": "personhoodAttestation",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "provider",
+            "type": {
+              "defined": {
+                "name": "providerKind"
+              }
+            }
+          },
+          {
+            "name": "tier",
+            "type": {
+              "defined": {
+                "name": "personhoodTier"
+              }
+            }
+          },
+          {
+            "name": "gatekeeperNetwork",
+            "type": "pubkey"
+          },
+          {
+            "name": "attestationRef",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "attestedAt",
+            "type": "i64"
+          },
+          {
+            "name": "expiresAt",
+            "type": "i64"
+          },
+          {
+            "name": "revoked",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "personhoodTier",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "none"
+          },
+          {
+            "name": "basic"
+          },
+          {
+            "name": "verified"
+          }
+        ]
+      }
+    },
+    {
+      "name": "providerKind",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "civic"
+          },
+          {
+            "name": "sas"
+          }
+        ]
+      }
+    },
+    {
       "name": "registryGlobal",
       "type": {
         "kind": "struct",
@@ -3514,6 +4050,44 @@ export type TaskMarket = {
           },
           {
             "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "allowedCivicNetworks",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "allowedCivicNetworksLen",
+            "type": "u8"
+          },
+          {
+            "name": "allowedSasIssuers",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "allowedSasIssuersLen",
+            "type": "u8"
+          },
+          {
+            "name": "personhoodBasicMinTier",
+            "type": {
+              "defined": {
+                "name": "personhoodTier"
+              }
+            }
+          },
+          {
+            "name": "requirePersonhoodForRegister",
             "type": "bool"
           },
           {
@@ -4021,6 +4595,14 @@ export type TaskMarket = {
           {
             "name": "criteria",
             "type": "bytes"
+          },
+          {
+            "name": "requiresPersonhood",
+            "type": {
+              "defined": {
+                "name": "personhoodTier"
+              }
+            }
           }
         ]
       }

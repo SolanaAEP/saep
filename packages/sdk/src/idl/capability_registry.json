@@ -272,6 +272,60 @@
       ]
     },
     {
+      "name": "set_tag_personhood",
+      "discriminator": [
+        175,
+        150,
+        246,
+        11,
+        176,
+        36,
+        59,
+        134
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tag",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "bit_index",
+          "type": "u8"
+        },
+        {
+          "name": "min_tier",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "transfer_authority",
       "discriminator": [
         48,
@@ -598,6 +652,11 @@
       "code": 6011,
       "name": "TagCountOverflow",
       "msg": "tag count overflow"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidPersonhoodTier",
+      "msg": "personhood tier value out of range"
     }
   ],
   "types": [
@@ -663,6 +722,10 @@
           {
             "name": "retired",
             "type": "bool"
+          },
+          {
+            "name": "min_personhood_tier",
+            "type": "u8"
           },
           {
             "name": "bump",
