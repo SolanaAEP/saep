@@ -1,18 +1,20 @@
-import dynamic from 'next/dynamic';
 import { Nav } from '@/components/nav';
 import { StatCard } from '@/components/stat-card';
-import { tasksPerDay, topCapabilities, totals } from '@/lib/mock-stats';
+import { FeesBurnedCounter } from '@/components/fees-burned-counter';
+import { NetworkHealthPanel } from '@/components/network-health-panel';
+import { TopAgentsLeaderboard } from '@/components/top-agents-leaderboard';
+import { AgentEconomyMap } from '@/components/agent-economy-map';
+import { TasksPerDayChart, TopCapabilitiesChart } from '@/components/charts';
+import { loadSnapshot } from '@/lib/indexer';
 
-const TasksPerDayChart = dynamic(() =>
-  import('@/components/charts').then((m) => m.TasksPerDayChart),
-);
-const TopCapabilitiesChart = dynamic(() =>
-  import('@/components/charts').then((m) => m.TopCapabilitiesChart),
-);
+export const revalidate = 30;
 
 const fmt = new Intl.NumberFormat('en-US');
 
-export default function Page() {
+export default async function Page() {
+  const snap = await loadSnapshot();
+  const live = snap.source === 'live';
+
   return (
     <>
       <Nav />
@@ -28,36 +30,54 @@ export default function Page() {
           </h1>
         </section>
 
-        {/* MOCK-DATA-STUB: totals from lib/mock-stats.ts */}
         <section className="mb-12 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <StatCard label="Agents Registered" value={fmt.format(totals.agents)} />
-          <StatCard label="Tasks Settled" value={fmt.format(totals.tasks)} />
-          <StatCard label="Volume" value={fmt.format(totals.volumeSol)} unit="SOL" />
+          <StatCard label="Agents Registered" value={fmt.format(snap.totals.agents)} />
+          <StatCard label="Tasks Settled" value={fmt.format(snap.totals.tasks)} />
+          <StatCard
+            label="Volume"
+            value={fmt.format(Math.round(snap.totals.volumeSol))}
+            unit="SOL"
+          />
           <StatCard
             label="Active Streams"
-            value={fmt.format(totals.activeStreams)}
+            value={fmt.format(snap.totals.activeStreams)}
           />
         </section>
 
-        <section className="grid gap-8 md:grid-cols-2">
+        <section className="mb-12 grid gap-8 md:grid-cols-2">
+          <FeesBurnedCounter data={snap.feesBurned} />
+          <NetworkHealthPanel data={snap.health} />
+        </section>
+
+        <section className="mb-12 grid gap-8 md:grid-cols-2">
           <div className="border border-ink p-5">
             <div className="mb-4 font-mono text-[11px] uppercase tracking-[0.08em] text-mute">
               Tasks per day · last 30
             </div>
-            {/* MOCK-DATA-STUB */}
-            <TasksPerDayChart data={tasksPerDay} />
+            <TasksPerDayChart data={snap.tasksPerDay} />
           </div>
           <div className="border border-ink p-5">
             <div className="mb-4 font-mono text-[11px] uppercase tracking-[0.08em] text-mute">
               Top capabilities by task count
             </div>
-            {/* MOCK-DATA-STUB */}
-            <TopCapabilitiesChart data={topCapabilities} />
+            <TopCapabilitiesChart data={snap.topCapabilities} />
           </div>
         </section>
 
-        <footer className="mt-16 border-t border-ink pt-6 font-mono text-[11px] uppercase tracking-[0.08em] text-mute">
-          Mock data · indexer wiring pending · M1 devnet
+        <section className="mb-12 grid gap-8 lg:grid-cols-[1fr_minmax(0,520px)]">
+          <TopAgentsLeaderboard data={snap.topAgents} />
+          <AgentEconomyMap data={snap.graph} />
+        </section>
+
+        <footer className="mt-16 flex items-center justify-between border-t border-ink pt-6 font-mono text-[11px] uppercase tracking-[0.08em] text-mute">
+          <span>
+            {live ? 'Live · indexer feed' : 'Mock data · indexer not configured'}
+            {' · '}
+            M1 devnet
+          </span>
+          <span className="text-mute-2">
+            {new Date(snap.fetchedAt).toISOString().slice(11, 19)} UTC
+          </span>
         </footer>
       </main>
     </>

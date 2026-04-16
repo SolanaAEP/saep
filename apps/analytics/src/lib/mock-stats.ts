@@ -1,5 +1,5 @@
-// MOCK-DATA-STUB: placeholder protocol stats until indexer is wired.
-// INDEXER-WIRE-STUB: replace with fetch against indexer REST/GraphQL endpoint.
+// Fallback dataset shown when INDEXER_URL is unset or unreachable.
+// Real data is loaded from `services/indexer` /stats/* endpoints — see lib/indexer.ts.
 
 export type Totals = {
   agents: number;
