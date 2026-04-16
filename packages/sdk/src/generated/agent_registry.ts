@@ -55,6 +55,65 @@ export type AgentRegistry = {
       "args": []
     },
     {
+      "name": "adminResetGuard",
+      "discriminator": [
+        191,
+        217,
+        54,
+        48,
+        119,
+        178,
+        160,
+        238
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "attestPersonhood",
       "discriminator": [
         56,
@@ -439,6 +498,164 @@ export type AgentRegistry = {
       ]
     },
     {
+      "name": "initGuard",
+      "discriminator": [
+        80,
+        108,
+        68,
+        230,
+        253,
+        134,
+        39,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedCallers",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  99,
+                  97,
+                  108,
+                  108,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "initialCallers",
+          "type": {
+            "vec": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "proposeGuardReset",
+      "discriminator": [
+        123,
+        148,
+        24,
+        9,
+        217,
+        22,
+        91,
+        219
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "proposeSlash",
       "discriminator": [
         198,
@@ -788,6 +1005,24 @@ export type AgentRegistry = {
           }
         },
         {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "tokenProgram",
           "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
@@ -908,6 +1143,82 @@ export type AgentRegistry = {
         {
           "name": "reasonCode",
           "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "setAllowedCallers",
+      "discriminator": [
+        206,
+        75,
+        219,
+        6,
+        147,
+        196,
+        67,
+        152
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedCallers",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  99,
+                  97,
+                  108,
+                  108,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "programs",
+          "type": {
+            "vec": "pubkey"
+          }
         }
       ]
     },
@@ -1377,6 +1688,24 @@ export type AgentRegistry = {
           "writable": true
         },
         {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "operator",
           "signer": true,
           "relations": [
@@ -1482,6 +1811,24 @@ export type AgentRegistry = {
         {
           "name": "operatorTokenAccount",
           "writable": true
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "operator",
@@ -1810,6 +2157,62 @@ export type AgentRegistry = {
           "signer": true
         },
         {
+          "name": "selfGuard",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedCallers",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  99,
+                  97,
+                  108,
+                  108,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "callerGuard",
+          "docs": [
+            "Caller program's reentrancy guard PDA. Must be `[b\"guard\"]` under one of",
+            "the programs listed in `allowed_callers`. Active flag is asserted in the",
+            "handler."
+          ]
+        },
+        {
+          "name": "instructions",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
@@ -1872,6 +2275,19 @@ export type AgentRegistry = {
       ]
     },
     {
+      "name": "allowedCallers",
+      "discriminator": [
+        91,
+        102,
+        165,
+        7,
+        58,
+        35,
+        153,
+        85
+      ]
+    },
+    {
       "name": "categoryReputation",
       "discriminator": [
         155,
@@ -1895,6 +2311,19 @@ export type AgentRegistry = {
         136,
         144,
         234
+      ]
+    },
+    {
+      "name": "reentrancyGuard",
+      "discriminator": [
+        207,
+        227,
+        141,
+        11,
+        194,
+        21,
+        193,
+        32
       ]
     },
     {
@@ -1923,6 +2352,19 @@ export type AgentRegistry = {
         100,
         189,
         85
+      ]
+    },
+    {
+      "name": "allowedCallersUpdated",
+      "discriminator": [
+        92,
+        1,
+        187,
+        172,
+        8,
+        117,
+        63,
+        122
       ]
     },
     {
@@ -1991,6 +2433,45 @@ export type AgentRegistry = {
       ]
     },
     {
+      "name": "guardAdminReset",
+      "discriminator": [
+        248,
+        63,
+        90,
+        37,
+        0,
+        46,
+        68,
+        81
+      ]
+    },
+    {
+      "name": "guardEntered",
+      "discriminator": [
+        168,
+        4,
+        164,
+        40,
+        174,
+        109,
+        201,
+        188
+      ]
+    },
+    {
+      "name": "guardInitialized",
+      "discriminator": [
+        96,
+        193,
+        193,
+        62,
+        210,
+        16,
+        25,
+        100
+      ]
+    },
+    {
       "name": "jobOutcomeRecorded",
       "discriminator": [
         69,
@@ -2053,6 +2534,19 @@ export type AgentRegistry = {
         47,
         241,
         219
+      ]
+    },
+    {
+      "name": "reentrancyRejected",
+      "discriminator": [
+        210,
+        169,
+        179,
+        180,
+        90,
+        49,
+        86,
+        89
       ]
     },
     {
@@ -2312,6 +2806,41 @@ export type AgentRegistry = {
       "code": 6032,
       "name": "attestationStillValid",
       "msg": "attestation is still valid; refresh not needed"
+    },
+    {
+      "code": 6033,
+      "name": "reentrancyDetected",
+      "msg": "reentrancy detected — guard is already active"
+    },
+    {
+      "code": 6034,
+      "name": "unauthorizedCaller",
+      "msg": "caller program is not on the allowed callers list"
+    },
+    {
+      "code": 6035,
+      "name": "callerGuardNotActive",
+      "msg": "caller program's reentrancy guard is not active"
+    },
+    {
+      "code": 6036,
+      "name": "cpiDepthExceeded",
+      "msg": "cpi stack height exceeds allowed bound"
+    },
+    {
+      "code": 6037,
+      "name": "guardAlreadyActive",
+      "msg": "reentrancy guard is already active"
+    },
+    {
+      "code": 6038,
+      "name": "guardNotInitialized",
+      "msg": "reentrancy guard has not been initialized"
+    },
+    {
+      "code": 6039,
+      "name": "adminResetNotTimelocked",
+      "msg": "admin reset has not met the 24h timelock"
     }
   ],
   "types": [
@@ -2489,6 +3018,44 @@ export type AgentRegistry = {
           },
           {
             "name": "deregistered"
+          }
+        ]
+      }
+    },
+    {
+      "name": "allowedCallers",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programs",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "allowedCallersUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "program",
+            "type": "pubkey"
+          },
+          {
+            "name": "count",
+            "type": "u16"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -2698,6 +3265,66 @@ export type AgentRegistry = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "guardAdminReset",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "program",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposedAt",
+            "type": "i64"
+          },
+          {
+            "name": "executedAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "guardEntered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "program",
+            "type": "pubkey"
+          },
+          {
+            "name": "caller",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "stackHeight",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "guardInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "program",
+            "type": "pubkey"
+          },
           {
             "name": "timestamp",
             "type": "i64"
@@ -2999,6 +3626,54 @@ export type AgentRegistry = {
           },
           {
             "name": "sas"
+          }
+        ]
+      }
+    },
+    {
+      "name": "reentrancyGuard",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "active",
+            "type": "bool"
+          },
+          {
+            "name": "enteredBy",
+            "type": "pubkey"
+          },
+          {
+            "name": "enteredAtSlot",
+            "type": "u64"
+          },
+          {
+            "name": "resetProposedAt",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "reentrancyRejected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "program",
+            "type": "pubkey"
+          },
+          {
+            "name": "offendingCaller",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
           }
         ]
       }
