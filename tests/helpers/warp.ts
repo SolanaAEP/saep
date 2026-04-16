@@ -1,11 +1,5 @@
-// Slot/timestamp warping helper.
-//
-// Long-term: replace with `solana-bankrun` so we can jump the clock without
-// sleeping. For now we provide a `sleep()` shim — suitable for localnet but
-// painfully slow for 7-day / 30-day timelocks. Those tests are marked pending
-// and will be migrated to bankrun when the harness gets upgraded.
-
-// CU-MEASURE-PENDING: bankrun adapter not yet wired.
+// Localnet wall-clock warping helpers. For clock jumps > 30s (timelock
+// coverage) use `warpClockBy` from `./bankrun.ts` instead.
 
 export async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
