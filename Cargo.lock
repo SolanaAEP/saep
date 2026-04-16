@@ -46,6 +46,7 @@ dependencies = [
  "anchor-spl",
  "capability_registry",
  "proptest",
+ "solana-instructions-sysvar",
  "solana-keccak-hasher",
 ]
 
@@ -1061,6 +1062,7 @@ version = "0.1.0"
 dependencies = [
  "agent_registry",
  "anchor-lang",
+ "solana-instructions-sysvar",
  "solana-keccak-hasher",
 ]
 
@@ -2309,6 +2311,7 @@ dependencies = [
  "fee_collector",
  "proof_verifier",
  "proptest",
+ "solana-instructions-sysvar",
  "solana-keccak-hasher",
 ]
 

@@ -4,7 +4,8 @@ use anchor_spl::token_interface::{Mint, TokenAccount};
 use capability_registry::state::RegistryConfig as CapabilityConfig;
 
 use crate::errors::AgentRegistryError;
-use crate::events::AgentRegistered;
+use crate::events::{AgentRegistered, GuardEntered};
+use crate::guard::{exit as guard_exit, try_enter, ReentrancyGuard, SEED_GUARD};
 use crate::instructions::personhood::{verify_attestation, SEED_PERSONHOOD};
 use crate::state::{
     capability_check, compute_did, validate_manifest_uri, AgentAccount, AgentStatus,
@@ -37,7 +38,7 @@ pub struct RegisterAgent<'info> {
     pub agent: Box<Account<'info, AgentAccount>>,
 
     #[account(address = global.stake_mint)]
-    pub stake_mint: InterfaceAccount<'info, Mint>,
+    pub stake_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         init,
@@ -48,7 +49,7 @@ pub struct RegisterAgent<'info> {
         seeds = [b"stake", agent.key().as_ref()],
         bump,
     )]
-    pub stake_vault: InterfaceAccount<'info, TokenAccount>,
+    pub stake_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -56,7 +57,7 @@ pub struct RegisterAgent<'info> {
         token::authority = operator,
         token::token_program = token_program,
     )]
-    pub operator_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub operator_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut)]
     pub operator: Signer<'info>,
@@ -68,6 +69,9 @@ pub struct RegisterAgent<'info> {
         bump = personhood_attestation.bump,
     )]
     pub personhood_attestation: Option<Account<'info, PersonhoodAttestation>>,
+
+    #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
+    pub guard: Box<Account<'info, ReentrancyGuard>>,
 
     pub token_program: Program<'info, Token2022>,
     pub system_program: Program<'info, System>,
@@ -83,13 +87,22 @@ pub fn handler(
     stream_rate: u64,
     stake_amount: u64,
 ) -> Result<()> {
+    let clock = Clock::get()?;
+    try_enter(&mut ctx.accounts.guard, crate::ID, clock.slot)?;
+    emit!(GuardEntered {
+        program: crate::ID,
+        caller: crate::ID,
+        slot: clock.slot,
+        stack_height: 1,
+    });
+
     let g = &ctx.accounts.global;
     require!(!g.paused, AgentRegistryError::Paused);
     require!(stake_amount >= g.min_stake, AgentRegistryError::StakeBelowMinimum);
     validate_manifest_uri(&manifest_uri)?;
     capability_check(ctx.accounts.capability_config.approved_mask, capability_mask)?;
 
-    let now = Clock::get()?.unix_timestamp;
+    let now = clock.unix_timestamp;
 
     if g.require_personhood_for_register {
         let required_tier = if g.personhood_basic_min_tier == PersonhoodTier::None {
@@ -153,5 +166,7 @@ pub fn handler(
         stake_amount,
         timestamp: now,
     });
+
+    guard_exit(&mut ctx.accounts.guard);
     Ok(())
 }

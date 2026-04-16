@@ -1,7 +1,13 @@
 use anchor_lang::prelude::*;
+use solana_instructions_sysvar::{
+    load_current_index_checked, load_instruction_at_checked, ID as IX_SYSVAR_ID,
+};
 
 use crate::errors::AgentRegistryError;
-use crate::events::CategoryReputationUpdated;
+use crate::events::{CategoryReputationUpdated, ReentrancyRejected};
+use crate::guard::{
+    check_callee_preconditions, AllowedCallers, ReentrancyGuard, SEED_ALLOWED_CALLERS, SEED_GUARD,
+};
 use crate::state::{
     ewma, AgentAccount, CategoryReputation, RegistryGlobal, ReputationSample, ReputationScore,
     CATEGORY_REP_VERSION, DEFAULT_CATEGORY_ALPHA_BPS, MAX_CAPABILITY_BIT,
@@ -13,14 +19,14 @@ pub const PROOF_VERIFIER_REP_AUTHORITY_SEED: &[u8] = b"rep_authority";
 #[instruction(agent_did: [u8; 32], capability_bit: u16)]
 pub struct UpdateReputation<'info> {
     #[account(seeds = [b"global"], bump = global.bump)]
-    pub global: Account<'info, RegistryGlobal>,
+    pub global: Box<Account<'info, RegistryGlobal>>,
 
     #[account(
         seeds = [b"agent", agent.operator.as_ref(), agent.agent_id.as_ref()],
         bump = agent.bump,
         constraint = agent.did == agent_did @ AgentRegistryError::AgentNotFound,
     )]
-    pub agent: Account<'info, AgentAccount>,
+    pub agent: Box<Account<'info, AgentAccount>>,
 
     #[account(
         init_if_needed,
@@ -29,7 +35,7 @@ pub struct UpdateReputation<'info> {
         seeds = [b"rep", agent_did.as_ref(), &capability_bit.to_le_bytes()],
         bump,
     )]
-    pub category: Account<'info, CategoryReputation>,
+    pub category: Box<Account<'info, CategoryReputation>>,
 
     /// PDA signer from the proof_verifier program. The pubkey is asserted
     /// against `global.proof_verifier` via the owner check on the signer's
@@ -40,6 +46,21 @@ pub struct UpdateReputation<'info> {
 
     #[account(mut)]
     pub payer: Signer<'info>,
+
+    #[account(seeds = [SEED_GUARD], bump = self_guard.bump)]
+    pub self_guard: Box<Account<'info, ReentrancyGuard>>,
+
+    #[account(seeds = [SEED_ALLOWED_CALLERS], bump = allowed_callers.bump)]
+    pub allowed_callers: Box<Account<'info, AllowedCallers>>,
+
+    /// Caller program's reentrancy guard PDA. Must be `[b"guard"]` under one of
+    /// the programs listed in `allowed_callers`. Active flag is asserted in the
+    /// handler.
+    pub caller_guard: Box<Account<'info, ReentrancyGuard>>,
+
+    /// CHECK: Solana instructions sysvar (address check enforced by Anchor).
+    #[account(address = IX_SYSVAR_ID)]
+    pub instructions: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -52,6 +73,44 @@ pub fn update_reputation_handler(
     task_id: [u8; 32],
     proof_key: [u8; 32],
 ) -> Result<()> {
+    let ix_ai = &ctx.accounts.instructions.to_account_info();
+    let current_index = load_current_index_checked(ix_ai)?;
+    let current_ix = load_instruction_at_checked(current_index as usize, ix_ai)?;
+    let stack_height = anchor_lang::solana_program::instruction::get_stack_height();
+    let caller_program = if stack_height > 1 && current_index > 0 {
+        load_instruction_at_checked((current_index - 1) as usize, ix_ai)?.program_id
+    } else {
+        current_ix.program_id
+    };
+
+    let (expected_caller_guard, _) =
+        Pubkey::find_program_address(&[SEED_GUARD], &caller_program);
+    if ctx.accounts.caller_guard.key() != expected_caller_guard {
+        let clock = Clock::get()?;
+        emit!(ReentrancyRejected {
+            program: crate::ID,
+            offending_caller: caller_program,
+            slot: clock.slot,
+        });
+        return err!(AgentRegistryError::UnauthorizedCaller);
+    }
+
+    if let Err(e) = check_callee_preconditions(
+        &ctx.accounts.self_guard,
+        ctx.accounts.caller_guard.active,
+        &caller_program,
+        &ctx.accounts.allowed_callers,
+        stack_height,
+    ) {
+        let clock = Clock::get()?;
+        emit!(ReentrancyRejected {
+            program: crate::ID,
+            offending_caller: caller_program,
+            slot: clock.slot,
+        });
+        return Err(e);
+    }
+
     let g = &ctx.accounts.global;
     require!(!g.paused, AgentRegistryError::Paused);
 

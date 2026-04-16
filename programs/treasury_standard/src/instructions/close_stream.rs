@@ -38,7 +38,7 @@ pub struct CloseStream<'info> {
     )]
     pub stream: Box<Account<'info, PaymentStream>>,
 
-    pub payer_mint: InterfaceAccount<'info, Mint>,
+    pub payer_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,
@@ -46,7 +46,7 @@ pub struct CloseStream<'info> {
         bump = stream.escrow_bump,
         token::mint = payer_mint,
     )]
-    pub escrow: InterfaceAccount<'info, TokenAccount>,
+    pub escrow: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -54,10 +54,10 @@ pub struct CloseStream<'info> {
         bump,
         token::mint = payer_mint,
     )]
-    pub agent_vault: InterfaceAccount<'info, TokenAccount>,
+    pub agent_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut, token::mint = payer_mint, token::token_program = token_program)]
-    pub client_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub client_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub hook_allowlist: Option<Account<'info, HookAllowlist>>,
 

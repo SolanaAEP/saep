@@ -4,7 +4,8 @@ use agent_registry::program::AgentRegistry;
 use agent_registry::state::{AgentAccount, AgentStatus};
 
 use crate::errors::TaskMarketError;
-use crate::events::ResultSubmitted;
+use crate::events::{GuardEntered, ResultSubmitted};
+use crate::guard::{exit as guard_exit, try_enter, ReentrancyGuard, SEED_GUARD};
 use crate::state::{MarketGlobal, TaskContract, TaskStatus};
 
 #[derive(Accounts)]
@@ -34,6 +35,9 @@ pub struct SubmitResult<'info> {
         constraint = agent_account.operator == operator.key() @ TaskMarketError::CallerNotOperator,
     )]
     pub agent_account: Box<Account<'info, AgentAccount>>,
+
+    #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
+    pub guard: Box<Account<'info, ReentrancyGuard>>,
 }
 
 pub fn handler(
@@ -41,11 +45,20 @@ pub fn handler(
     result_hash: [u8; 32],
     proof_key: [u8; 32],
 ) -> Result<()> {
+    let clock = Clock::get()?;
+    try_enter(&mut ctx.accounts.guard, crate::ID, clock.slot)?;
+    emit!(GuardEntered {
+        program: crate::ID,
+        caller: crate::ID,
+        slot: clock.slot,
+        stack_height: 1,
+    });
+
     let t = &mut ctx.accounts.task;
     require!(t.status == TaskStatus::Funded, TaskMarketError::WrongStatus);
     require!(result_hash != [0u8; 32], TaskMarketError::ZeroResultHash);
 
-    let now = Clock::get()?.unix_timestamp;
+    let now = clock.unix_timestamp;
     require!(now <= t.deadline, TaskMarketError::DeadlinePassed);
 
     require!(
@@ -72,5 +85,7 @@ pub fn handler(
         submitted_at: now,
         timestamp: now,
     });
+
+    guard_exit(&mut ctx.accounts.guard);
     Ok(())
 }

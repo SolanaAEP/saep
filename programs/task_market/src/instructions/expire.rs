@@ -9,7 +9,8 @@ use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_EXPIRE};
 
 use crate::cpi_stubs::{call_record_job_outcome, JobOutcome};
 use crate::errors::TaskMarketError;
-use crate::events::TaskExpired;
+use crate::events::{GuardEntered, TaskExpired};
+use crate::guard::{exit as guard_exit, try_enter, ReentrancyGuard, SEED_GUARD};
 use crate::state::{resolve_hook_allowlist, MarketGlobal, TaskContract, TaskStatus, EXPIRE_GRACE_SECS};
 
 #[derive(Accounts)]
@@ -69,11 +70,23 @@ pub struct Expire<'info> {
 
     pub hook_allowlist: Option<Account<'info, HookAllowlist>>,
 
+    #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
+    pub guard: Box<Account<'info, ReentrancyGuard>>,
+
     pub cranker: Signer<'info>,
     pub token_program: Program<'info, Token2022>,
 }
 
 pub fn handler(ctx: Context<Expire>) -> Result<()> {
+    let clock = Clock::get()?;
+    try_enter(&mut ctx.accounts.guard, crate::ID, clock.slot)?;
+    emit!(GuardEntered {
+        program: crate::ID,
+        caller: crate::ID,
+        slot: clock.slot,
+        stack_height: 1,
+    });
+
     let t_ref = &ctx.accounts.task;
     let status = t_ref.status;
     require!(
@@ -81,7 +94,7 @@ pub fn handler(ctx: Context<Expire>) -> Result<()> {
         TaskMarketError::WrongStatus
     );
 
-    let now = Clock::get()?.unix_timestamp;
+    let now = clock.unix_timestamp;
     let expire_at = t_ref
         .deadline
         .checked_add(EXPIRE_GRACE_SECS)
@@ -157,5 +170,7 @@ pub fn handler(ctx: Context<Expire>) -> Result<()> {
         refund_amount,
         timestamp: now,
     });
+
+    guard_exit(&mut ctx.accounts.guard);
     Ok(())
 }

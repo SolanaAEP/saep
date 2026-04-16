@@ -8,7 +8,8 @@ use fee_collector::{
 };
 
 use crate::errors::TreasuryError;
-use crate::events::{StreamWithdrawn, SwapExecuted};
+use crate::events::{GuardEntered, StreamWithdrawn, SwapExecuted};
+use crate::guard::{exit as guard_exit, try_enter, ReentrancyGuard, SEED_GUARD};
 use crate::jupiter;
 use crate::state::{
     assert_call_target_allowed, compute_swap_min_out, guard_oracle, read_oracle,
@@ -41,8 +42,8 @@ pub struct WithdrawEarned<'info> {
     )]
     pub stream: Box<Account<'info, PaymentStream>>,
 
-    pub payer_mint: InterfaceAccount<'info, Mint>,
-    pub payout_mint: InterfaceAccount<'info, Mint>,
+    pub payer_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub payout_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,
@@ -50,7 +51,7 @@ pub struct WithdrawEarned<'info> {
         bump = stream.escrow_bump,
         token::mint = payer_mint,
     )]
-    pub escrow: InterfaceAccount<'info, TokenAccount>,
+    pub escrow: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -58,7 +59,7 @@ pub struct WithdrawEarned<'info> {
         bump,
         token::mint = payout_mint,
     )]
-    pub agent_vault: InterfaceAccount<'info, TokenAccount>,
+    pub agent_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// CHECK: validated at runtime when swap path is taken
     pub jupiter_program: UncheckedAccount<'info>,
@@ -77,14 +78,25 @@ pub struct WithdrawEarned<'info> {
     )]
     pub agent_hooks: Option<Account<'info, AgentHookAllowlist>>,
 
+    #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
+    pub guard: Box<Account<'info, ReentrancyGuard>>,
+
     pub operator: Signer<'info>,
     pub token_program: Program<'info, Token2022>,
 }
 
 pub fn handler<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) -> Result<()> {
+    let clock = Clock::get()?;
+    try_enter(&mut ctx.accounts.guard, crate::ID, clock.slot)?;
+    emit!(GuardEntered {
+        program: crate::ID,
+        caller: crate::ID,
+        slot: clock.slot,
+        stack_height: 1,
+    });
+
     require!(!ctx.accounts.global.paused, TreasuryError::Paused);
 
-    let clock = Clock::get()?;
     let now = clock.unix_timestamp;
     let s = &mut ctx.accounts.stream;
     require!(s.status == StreamStatus::Active, TreasuryError::StreamNotActive);
@@ -258,5 +270,7 @@ pub fn handler<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) ->
         swapped,
         timestamp: now,
     });
+
+    guard_exit(&mut ctx.accounts.guard);
     Ok(())
 }

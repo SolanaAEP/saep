@@ -11,7 +11,7 @@ use crate::state::{iso_week, unix_day, validate_limits, AgentTreasury, TreasuryG
 #[instruction(agent_did: [u8; 32])]
 pub struct InitTreasury<'info> {
     #[account(seeds = [b"treasury_global"], bump = global.bump)]
-    pub global: Account<'info, TreasuryGlobal>,
+    pub global: Box<Account<'info, TreasuryGlobal>>,
 
     #[account(
         init,
@@ -20,7 +20,7 @@ pub struct InitTreasury<'info> {
         seeds = [b"treasury", agent_did.as_ref()],
         bump,
     )]
-    pub treasury: Account<'info, AgentTreasury>,
+    pub treasury: Box<Account<'info, AgentTreasury>>,
 
     #[account(mut)]
     pub operator: Signer<'info>,
@@ -35,14 +35,14 @@ pub struct InitTreasury<'info> {
         bump = registry_global.bump,
         seeds::program = agent_registry_program.key(),
     )]
-    pub registry_global: Account<'info, RegistryGlobal>,
+    pub registry_global: Box<Account<'info, RegistryGlobal>>,
 
     #[account(
         seeds = [b"agent", agent_account.operator.as_ref(), agent_account.agent_id.as_ref()],
         bump = agent_account.bump,
         seeds::program = agent_registry_program.key(),
     )]
-    pub agent_account: Account<'info, AgentAccount>,
+    pub agent_account: Box<Account<'info, AgentAccount>>,
 
     pub system_program: Program<'info, System>,
 }
