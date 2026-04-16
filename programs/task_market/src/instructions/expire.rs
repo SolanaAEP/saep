@@ -7,7 +7,6 @@ use agent_registry::state::{AgentAccount, RegistryGlobal};
 
 use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_EXPIRE};
 
-use crate::cpi_stubs::{call_record_job_outcome, JobOutcome};
 use crate::errors::TaskMarketError;
 use crate::events::{GuardEntered, TaskExpired};
 use crate::guard::{exit as guard_exit, try_enter, ReentrancyGuard, SEED_GUARD};
@@ -55,12 +54,14 @@ pub struct Expire<'info> {
     )]
     pub registry_global: Box<Account<'info, RegistryGlobal>>,
 
+    // F-2026-05: did-equality check moved into the handler so that a
+    // commit-reveal winner (whose DID differs from `task.agent_did`) is not
+    // rejected before the handler runs.
+    // F-2026-03: no longer `mut` — reputation mutation rail removed.
     #[account(
-        mut,
         seeds = [b"agent", agent_account.operator.as_ref(), agent_account.agent_id.as_ref()],
         bump = agent_account.bump,
         seeds::program = agent_registry_program.key(),
-        constraint = agent_account.did == task.agent_did @ TaskMarketError::AgentMismatch,
     )]
     pub agent_account: Box<Account<'info, AgentAccount>>,
 
@@ -94,6 +95,20 @@ pub fn handler(ctx: Context<Expire>) -> Result<()> {
         TaskMarketError::WrongStatus
     );
 
+    // F-2026-05: validate the agent account matches assigned_agent (bid book
+    // path) or task.agent_did (direct-assign path).
+    if t_ref.bid_book.is_some() {
+        require!(
+            t_ref.assigned_agent == Some(ctx.accounts.agent_account.key()),
+            TaskMarketError::AgentMismatch,
+        );
+    } else {
+        require!(
+            ctx.accounts.agent_account.did == t_ref.agent_did,
+            TaskMarketError::AgentMismatch,
+        );
+    }
+
     let now = clock.unix_timestamp;
     let expire_at = t_ref
         .deadline
@@ -105,7 +120,6 @@ pub fn handler(ctx: Context<Expire>) -> Result<()> {
     let task_id = t_ref.task_id;
     let refund_amount = t_ref.payment_amount;
     let escrow_bump = t_ref.escrow_bump;
-    let market_global_bump = ctx.accounts.global.bump;
 
     // State-before-CPI: set terminal status prior to moving funds or CPI.
     {
@@ -149,21 +163,10 @@ pub fn handler(ctx: Context<Expire>) -> Result<()> {
         transfer_checked(ctx_cpi, refund_amount, decimals)?;
     }
 
-    call_record_job_outcome(
-        &ctx.accounts.agent_registry_program.key(),
-        ctx.accounts.registry_global.to_account_info(),
-        ctx.accounts.agent_account.to_account_info(),
-        ctx.accounts.self_program.to_account_info(),
-        ctx.accounts.global.to_account_info(),
-        market_global_bump,
-        JobOutcome {
-            success: false,
-            quality_bps: 0,
-            timeliness_bps: 0,
-            cost_efficiency_bps: 0,
-            disputed: false,
-        },
-    )?;
+    // F-2026-03: reputation rail removed. Expirations used to stamp a
+    // zero-across-the-board outcome onto the global AgentAccount.reputation
+    // via `record_job_outcome`; that field is now a read-only summary and
+    // the indexer computes rollups from CategoryReputation PDAs.
 
     emit!(TaskExpired {
         task_id,

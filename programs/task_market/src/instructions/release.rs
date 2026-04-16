@@ -7,7 +7,6 @@ use agent_registry::state::{AgentAccount, RegistryGlobal};
 
 use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_RELEASE};
 
-use crate::cpi_stubs::{call_record_job_outcome, JobOutcome};
 use crate::errors::TaskMarketError;
 use crate::events::{GuardEntered, TaskReleased};
 use crate::guard::{exit as guard_exit, try_enter, ReentrancyGuard, SEED_GUARD};
@@ -57,12 +56,15 @@ pub struct Release<'info> {
     )]
     pub registry_global: Box<Account<'info, RegistryGlobal>>,
 
+    // F-2026-05: did-equality check moved into the handler so that a
+    // commit-reveal winner (whose DID can differ from `task.agent_did`) is not
+    // struct-rejected before the handler gets a chance to validate against
+    // `task.assigned_agent`.
+    // F-2026-03: no longer `mut` — reputation mutation rail removed.
     #[account(
-        mut,
         seeds = [b"agent", agent_account.operator.as_ref(), agent_account.agent_id.as_ref()],
         bump = agent_account.bump,
         seeds::program = agent_registry_program.key(),
-        constraint = agent_account.did == task.agent_did @ TaskMarketError::AgentMismatch,
     )]
     pub agent_account: Box<Account<'info, AgentAccount>>,
 
@@ -99,6 +101,21 @@ pub fn handler(ctx: Context<Release>) -> Result<()> {
         TaskMarketError::DisputeWindowOpen
     );
 
+    // F-2026-05: when a bid book is in play, the winning agent (possibly
+    // different from the client's originally-declared agent_did) must match
+    // `task.assigned_agent`. Otherwise fall back to the did constraint.
+    if t_ref.bid_book.is_some() {
+        require!(
+            t_ref.assigned_agent == Some(ctx.accounts.agent_account.key()),
+            TaskMarketError::AgentMismatch,
+        );
+    } else {
+        require!(
+            ctx.accounts.agent_account.did == t_ref.agent_did,
+            TaskMarketError::AgentMismatch,
+        );
+    }
+
     let payment_amount = t_ref.payment_amount;
     let protocol_fee = t_ref.protocol_fee;
     let solrep_fee = t_ref.solrep_fee;
@@ -110,7 +127,6 @@ pub fn handler(ctx: Context<Release>) -> Result<()> {
     let task_key = ctx.accounts.task.key();
     let task_id = ctx.accounts.task.task_id;
     let escrow_bump = ctx.accounts.task.escrow_bump;
-    let market_global_bump = ctx.accounts.global.bump;
 
     // State-before-CPI: write terminal status before any fund movement or CPI.
     {
@@ -184,21 +200,11 @@ pub fn handler(ctx: Context<Release>) -> Result<()> {
         transfer_checked(ctx_cpi, solrep_fee, decimals)?;
     }
 
-    call_record_job_outcome(
-        &ctx.accounts.agent_registry_program.key(),
-        ctx.accounts.registry_global.to_account_info(),
-        ctx.accounts.agent_account.to_account_info(),
-        ctx.accounts.self_program.to_account_info(),
-        ctx.accounts.global.to_account_info(),
-        market_global_bump,
-        JobOutcome {
-            success: true,
-            quality_bps: 10_000,
-            timeliness_bps: 10_000,
-            cost_efficiency_bps: 10_000,
-            disputed: false,
-        },
-    )?;
+    // F-2026-03: reputation is no longer mutated at release time. The new rail
+    // routes through proof_verifier → agent_registry::update_reputation with
+    // per-capability PDAs. `AgentAccount.reputation` is now a read-only
+    // historical summary; no writes happen here, and the
+    // `record_job_outcome` CPI rail has been retired from the success path.
 
     emit!(TaskReleased {
         task_id,

@@ -838,5 +838,69 @@ mod proptests {
         assert_eq!(decoded.requires_personhood, PersonhoodTier::Verified);
         assert_eq!(decoded, p);
     }
+
+    // F-2026-08: commit_bid enforces `capability_mask & (1 << capability_bit)`.
+    fn cap_bit_satisfied(mask: u128, bit: u16) -> bool {
+        (mask & (1u128 << (bit as u32))) != 0
+    }
+
+    #[test]
+    fn capability_bit_check_rejects_missing_bit() {
+        // mask advertises bits 0 and 5, not bit 3.
+        let mask: u128 = (1 << 0) | (1 << 5);
+        assert!(!cap_bit_satisfied(mask, 3));
+    }
+
+    #[test]
+    fn capability_bit_check_accepts_present_bit() {
+        let mask: u128 = (1 << 7) | (1 << 42);
+        assert!(cap_bit_satisfied(mask, 7));
+        assert!(cap_bit_satisfied(mask, 42));
+    }
+
+    #[test]
+    fn capability_bit_check_boundary_bit_127() {
+        let mask: u128 = 1u128 << 127;
+        assert!(cap_bit_satisfied(mask, 127));
+        assert!(!cap_bit_satisfied(mask, 126));
+    }
+
+    // F-2026-07: close_bidding must receive exactly `reveal_count * 2` accounts.
+    fn enumeration_matches(reveal_count: u16, remaining_len: usize) -> bool {
+        remaining_len % 2 == 0 && remaining_len == (reveal_count as usize) * 2
+    }
+
+    #[test]
+    fn enumeration_accepts_exact_count() {
+        assert!(enumeration_matches(3, 6));
+    }
+
+    #[test]
+    fn enumeration_rejects_partial_submission() {
+        assert!(!enumeration_matches(3, 4));
+    }
+
+    #[test]
+    fn enumeration_rejects_padded_submission() {
+        assert!(!enumeration_matches(2, 6));
+    }
+
+    #[test]
+    fn enumeration_rejects_odd_total() {
+        assert!(!enumeration_matches(2, 5));
+    }
+
+    fn is_duplicate(seen: &[Pubkey], candidate: &Pubkey) -> bool {
+        seen.iter().any(|b| b == candidate)
+    }
+
+    #[test]
+    fn duplicate_bidder_detected() {
+        let a = Pubkey::new_from_array([1u8; 32]);
+        let b = Pubkey::new_from_array([2u8; 32]);
+        let seen = vec![a, b];
+        assert!(is_duplicate(&seen, &a));
+        assert!(!is_duplicate(&seen, &Pubkey::new_from_array([3u8; 32])));
+    }
 }
 

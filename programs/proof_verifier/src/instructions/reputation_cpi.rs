@@ -1,19 +1,11 @@
-use agent_registry::cpi::accounts::UpdateReputation as UpdateReputationAccounts;
-use agent_registry::cpi::update_reputation;
 use agent_registry::program::AgentRegistry;
 use agent_registry::state::ReputationSample;
 use anchor_lang::prelude::*;
-use solana_instructions_sysvar::{
-    load_current_index_checked, load_instruction_at_checked, ID as IX_SYSVAR_ID,
-};
+use solana_instructions_sysvar::ID as IX_SYSVAR_ID;
 
 use crate::errors::ProofVerifierError;
-use crate::events::ReentrancyRejected;
-use crate::guard::{
-    check_callee_preconditions, AllowedCallers, ReentrancyGuard, SEED_ALLOWED_CALLERS, SEED_GUARD,
-};
-use crate::pairing::verify_groth16;
-use crate::state::{scalar_in_field, GlobalMode, VerifierConfig, VerifierKey};
+use crate::guard::{AllowedCallers, ReentrancyGuard, SEED_ALLOWED_CALLERS, SEED_GUARD};
+use crate::state::{GlobalMode, VerifierConfig, VerifierKey};
 
 pub const REP_AUTHORITY_SEED: &[u8] = b"rep_authority";
 
@@ -80,96 +72,32 @@ pub struct VerifyAndUpdateReputation<'info> {
 
 #[allow(clippy::too_many_arguments)]
 pub fn verify_and_update_reputation_handler(
-    ctx: Context<VerifyAndUpdateReputation>,
-    proof_a: [u8; 64],
-    proof_b: [u8; 128],
-    proof_c: [u8; 64],
-    public_inputs: Vec<[u8; 32]>,
-    agent_did: [u8; 32],
-    capability_bit: u16,
-    sample: ReputationSample,
-    task_id: [u8; 32],
+    _ctx: Context<VerifyAndUpdateReputation>,
+    _proof_a: [u8; 64],
+    _proof_b: [u8; 128],
+    _proof_c: [u8; 64],
+    _public_inputs: Vec<[u8; 32]>,
+    _agent_did: [u8; 32],
+    _capability_bit: u16,
+    _sample: ReputationSample,
+    _task_id: [u8; 32],
 ) -> Result<()> {
-    let ix_ai = &ctx.accounts.instructions.to_account_info();
-    let current_index = load_current_index_checked(ix_ai)?;
-    let current_ix = load_instruction_at_checked(current_index as usize, ix_ai)?;
-    let stack_height = anchor_lang::solana_program::instruction::get_stack_height();
-    let caller_program = if stack_height > 1 && current_index > 0 {
-        load_instruction_at_checked((current_index - 1) as usize, ix_ai)?.program_id
-    } else {
-        current_ix.program_id
-    };
-
-    let (expected_caller_guard, _) =
-        Pubkey::find_program_address(&[SEED_GUARD], &caller_program);
-    if ctx.accounts.caller_guard.key() != expected_caller_guard {
-        let clock = Clock::get()?;
-        emit!(ReentrancyRejected {
-            program: crate::ID,
-            offending_caller: caller_program,
-            slot: clock.slot,
-        });
-        return err!(ProofVerifierError::UnauthorizedCaller);
-    }
-
-    if let Err(e) = check_callee_preconditions(
-        &ctx.accounts.self_guard,
-        ctx.accounts.caller_guard.active,
-        &caller_program,
-        &ctx.accounts.allowed_callers,
-        stack_height,
-    ) {
-        let clock = Clock::get()?;
-        emit!(ReentrancyRejected {
-            program: crate::ID,
-            offending_caller: caller_program,
-            slot: clock.slot,
-        });
-        return Err(e);
-    }
-
-    let config = &ctx.accounts.config;
-    let vk = &ctx.accounts.vk;
-    let mode = &ctx.accounts.mode;
-
-    require!(!config.paused, ProofVerifierError::Paused);
-    require_keys_eq!(config.active_vk, vk.key(), ProofVerifierError::VkMismatch);
-    require!(
-        public_inputs.len() == vk.num_public_inputs as usize,
-        ProofVerifierError::PublicInputCountMismatch
-    );
-    if mode.is_mainnet {
-        require!(vk.is_production, ProofVerifierError::NotProductionVk);
-    }
-    for scalar in &public_inputs {
-        require!(scalar_in_field(scalar), ProofVerifierError::PublicInputOutOfField);
-    }
-
-    verify_groth16(vk, &proof_a, &proof_b, &proof_c, &public_inputs)?;
-
-    let proof_key = vk.vk_id;
-    let bump = ctx.bumps.rep_authority;
-    let seeds: &[&[u8]] = &[REP_AUTHORITY_SEED, &[bump]];
-    let signer_seeds = &[seeds];
-
-    let cpi_accounts = UpdateReputationAccounts {
-        global: ctx.accounts.registry_global.to_account_info(),
-        agent: ctx.accounts.registry_agent.to_account_info(),
-        category: ctx.accounts.category_reputation.to_account_info(),
-        proof_verifier_authority: ctx.accounts.rep_authority.to_account_info(),
-        payer: ctx.accounts.payer.to_account_info(),
-        self_guard: ctx.accounts.registry_self_guard.to_account_info(),
-        allowed_callers: ctx.accounts.registry_allowed_callers.to_account_info(),
-        caller_guard: ctx.accounts.self_guard.to_account_info(),
-        instructions: ctx.accounts.instructions.to_account_info(),
-        system_program: ctx.accounts.system_program.to_account_info(),
-    };
-    let cpi_ctx = CpiContext::new_with_signer(
-        ctx.accounts.agent_registry_program.key(),
-        cpi_accounts,
-        signer_seeds,
-    );
-    update_reputation(cpi_ctx, agent_did, capability_bit, sample, task_id, proof_key)
+    // F-2026-02: the current signature accepts caller-controlled
+    // `(agent_did, capability_bit, sample, task_id)` alongside a Groth16
+    // proof whose public inputs do not bind those args. Any caller holding
+    // any valid proof could write an arbitrary sample against any agent.
+    //
+    // The full fix requires reworking the Circom circuit to commit
+    // `(agent_did, capability_bit, sample_hash, task_id)` as public outputs,
+    // re-deriving the trusted-setup VK, and rebinding the handler to read
+    // those fields from `public_inputs[..]` rather than from untrusted args.
+    // That is out of scope for this audit-hardening pass and tracked in
+    // `reports/autonomous-blockers.md`.
+    //
+    // Interim: refuse to run. The release rail no longer CPIs here (see
+    // F-2026-03), so until the circuit rebinding lands there is no
+    // legitimate caller of this ix.
+    err!(ProofVerifierError::ReputationBindingNotReady)
 }
 
 #[cfg(test)]
@@ -197,5 +125,22 @@ mod tests {
         let (a, _) = Pk::find_program_address(&[REP_AUTHORITY_SEED], &p1);
         let (b, _) = Pk::find_program_address(&[REP_AUTHORITY_SEED], &p2);
         assert_ne!(a, b);
+    }
+
+    #[test]
+    fn reputation_binding_not_ready_error_exists() {
+        // F-2026-02 regression: the interim fail-close error must remain in
+        // the error enum until the circuit rebinding lands. Constructing it
+        // through `err!` is not possible in a pure unit test harness (no
+        // program id), but we can verify the variant is present by pattern
+        // match on a produced `Error`.
+        let e: anchor_lang::error::Error =
+            ProofVerifierError::ReputationBindingNotReady.into();
+        let rendered = format!("{:?}", e);
+        assert!(
+            rendered.contains("ReputationBindingNotReady"),
+            "expected ReputationBindingNotReady in error, got: {}",
+            rendered
+        );
     }
 }

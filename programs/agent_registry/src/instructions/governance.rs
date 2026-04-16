@@ -58,3 +58,14 @@ pub fn set_paused_handler(ctx: Context<GovernanceUpdate>, paused: bool) -> Resul
     });
     Ok(())
 }
+
+pub fn set_civic_gateway_program_handler(
+    ctx: Context<GovernanceUpdate>,
+    new_civic_gateway_program: Pubkey,
+) -> Result<()> {
+    ctx.accounts.global.civic_gateway_program = new_civic_gateway_program;
+    emit!(GlobalParamsUpdated {
+        timestamp: Clock::get()?.unix_timestamp,
+    });
+    Ok(())
+}

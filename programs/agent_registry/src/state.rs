@@ -48,6 +48,12 @@ pub struct RegistryGlobal {
     pub allowed_sas_issuers_len: u8,
     pub personhood_basic_min_tier: PersonhoodTier,
     pub require_personhood_for_register: bool,
+    // Civic Gateway program id. Every `attest_personhood` / `refresh_personhood`
+    // verifies `civic_gateway_token.owner == civic_gateway_program`. Starts as
+    // `Pubkey::default()` and is wired via `set_civic_gateway_program`; while
+    // unset, personhood attestation fails closed with
+    // `CivicGatewayProgramNotSet`. See F-2026-01.
+    pub civic_gateway_program: Pubkey,
     pub bump: u8,
 }
 

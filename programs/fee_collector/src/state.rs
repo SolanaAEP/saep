@@ -32,6 +32,13 @@ pub const SITE_EXPIRE: u8 = 3;
 pub const SITE_STREAM_WITHDRAW: u8 = 4;
 pub const SITE_STREAM_SWAP: u8 = 5;
 pub const SITE_STREAM_CLOSE: u8 = 6;
+// F-2026-06: new call-site ids for previously-unwrapped transfer_checked CPIs.
+pub const SITE_COMMIT_BID_BOND: u8 = 7;
+pub const SITE_CLAIM_BOND_REFUND: u8 = 8;
+pub const SITE_CLAIM_BOND_SLASH: u8 = 9;
+pub const SITE_FUND_TREASURY: u8 = 10;
+pub const SITE_WITHDRAW: u8 = 11;
+pub const SITE_INIT_STREAM: u8 = 12;
 
 pub const MINT_FLAG_NO_TRANSFER_FEE: u32 = 1 << 0;
 pub const MINT_FLAG_NO_FROZEN_DEFAULT: u32 = 1 << 1;

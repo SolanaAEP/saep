@@ -12,6 +12,33 @@ use crate::state::{
 
 pub const SEED_PERSONHOOD: &[u8] = b"personhood";
 
+// F-2026-01: fail-close owner check on the Civic Gateway token account.
+// `RegistryGlobal.civic_gateway_program` must be populated via
+// `set_civic_gateway_program` before any attestation can succeed; while it's
+// still `Pubkey::default()` the ix refuses to decode the token.
+pub fn assert_civic_token_owner(
+    civic_gateway_token: &AccountInfo,
+    civic_gateway_program: &Pubkey,
+) -> Result<()> {
+    assert_civic_token_owner_pure(civic_gateway_token.owner, civic_gateway_program)
+}
+
+pub fn assert_civic_token_owner_pure(
+    token_owner: &Pubkey,
+    civic_gateway_program: &Pubkey,
+) -> Result<()> {
+    require!(
+        *civic_gateway_program != Pubkey::default(),
+        AgentRegistryError::CivicGatewayProgramNotSet
+    );
+    require_keys_eq!(
+        *token_owner,
+        *civic_gateway_program,
+        AgentRegistryError::CivicGatewayProgramMismatch
+    );
+    Ok(())
+}
+
 pub fn derive_attestation_ref(token: &Pubkey, slot: u64) -> [u8; 32] {
     let mut buf = [0u8; 40];
     buf[..32].copy_from_slice(token.as_ref());
@@ -63,6 +90,11 @@ pub struct AttestPersonhood<'info> {
 pub fn attest_personhood_handler(ctx: Context<AttestPersonhood>) -> Result<()> {
     let global = &ctx.accounts.global;
     require!(!global.paused, AgentRegistryError::Paused);
+
+    assert_civic_token_owner(
+        &ctx.accounts.civic_gateway_token.to_account_info(),
+        &global.civic_gateway_program,
+    )?;
 
     let data = ctx.accounts.civic_gateway_token.data.borrow();
     let token = GatewayToken::decode(&data)?;
@@ -171,6 +203,11 @@ pub struct RefreshPersonhood<'info> {
 pub fn refresh_personhood_handler(ctx: Context<RefreshPersonhood>) -> Result<()> {
     let global = &ctx.accounts.global;
     require!(!global.paused, AgentRegistryError::Paused);
+
+    assert_civic_token_owner(
+        &ctx.accounts.civic_gateway_token.to_account_info(),
+        &global.civic_gateway_program,
+    )?;
 
     let data = ctx.accounts.civic_gateway_token.data.borrow();
     let token = GatewayToken::decode(&data)?;
@@ -340,6 +377,7 @@ mod tests {
             allowed_sas_issuers_len: 0,
             personhood_basic_min_tier: PersonhoodTier::Basic,
             require_personhood_for_register: false,
+            civic_gateway_program: Pubkey::default(),
             bump: 0,
         };
         for (i, k) in networks.iter().enumerate() {
@@ -477,5 +515,45 @@ mod tests {
         let (a, _) = Pubkey::find_program_address(&[SEED_PERSONHOOD, op1.as_ref()], &program_id);
         let (b, _) = Pubkey::find_program_address(&[SEED_PERSONHOOD, op2.as_ref()], &program_id);
         assert_ne!(a, b);
+    }
+
+    #[test]
+    fn civic_token_owner_fails_closed_when_program_unset() {
+        let owner = Pubkey::new_unique();
+        let res = assert_civic_token_owner_pure(&owner, &Pubkey::default());
+        let err = res.unwrap_err();
+        assert!(
+            format!("{:?}", err).contains("CivicGatewayProgramNotSet"),
+            "expected CivicGatewayProgramNotSet, got {:?}",
+            err
+        );
+    }
+
+    #[test]
+    fn civic_token_owner_rejects_foreign_owner() {
+        let civic = Pubkey::new_unique();
+        let forged = Pubkey::new_unique(); // e.g. System Program or any unrelated owner
+        let res = assert_civic_token_owner_pure(&forged, &civic);
+        let err = res.unwrap_err();
+        assert!(
+            format!("{:?}", err).contains("CivicGatewayProgramMismatch"),
+            "expected CivicGatewayProgramMismatch, got {:?}",
+            err
+        );
+    }
+
+    #[test]
+    fn civic_token_owner_accepts_matching_program() {
+        let civic = Pubkey::new_unique();
+        assert_civic_token_owner_pure(&civic, &civic).unwrap();
+    }
+
+    #[test]
+    fn civic_token_owner_rejects_system_program_forgery() {
+        // Attack sketch from F-2026-01: a System-owned account with a crafted
+        // 103-byte payload. The owner check must reject it regardless of payload.
+        let civic = Pubkey::new_unique();
+        let system_program = anchor_lang::system_program::ID;
+        assert!(assert_civic_token_owner_pure(&system_program, &civic).is_err());
     }
 }

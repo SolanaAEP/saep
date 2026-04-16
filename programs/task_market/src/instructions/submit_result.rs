@@ -27,11 +27,12 @@ pub struct SubmitResult<'info> {
     )]
     pub agent_registry_program: Program<'info, AgentRegistry>,
 
+    // F-2026-05: did-equality check is deferred to the handler so that a
+    // commit-reveal winner (DID ≠ task.agent_did) is not struct-rejected.
     #[account(
         seeds = [b"agent", agent_account.operator.as_ref(), agent_account.agent_id.as_ref()],
         bump = agent_account.bump,
         seeds::program = agent_registry_program.key(),
-        constraint = agent_account.did == task.agent_did @ TaskMarketError::AgentMismatch,
         constraint = agent_account.operator == operator.key() @ TaskMarketError::CallerNotOperator,
     )]
     pub agent_account: Box<Account<'info, AgentAccount>>,
@@ -69,6 +70,11 @@ pub fn handler(
     if t.bid_book.is_some() {
         require!(
             t.assigned_agent == Some(ctx.accounts.agent_account.key()),
+            TaskMarketError::AgentMismatch,
+        );
+    } else {
+        require!(
+            ctx.accounts.agent_account.did == t.agent_did,
             TaskMarketError::AgentMismatch,
         );
     }

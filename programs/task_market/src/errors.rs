@@ -110,4 +110,10 @@ pub enum TaskMarketError {
     GuardNotInitialized,
     #[msg("admin reset has not met the 24h timelock")]
     AdminResetNotTimelocked,
+    #[msg("close_bidding must receive every revealed bid in remaining_accounts")]
+    IncompleteBidEnumeration,
+    #[msg("duplicate bid detected in close_bidding enumeration")]
+    DuplicateBidEnumeration,
+    #[msg("agent has not declared the task's capability bit")]
+    CapabilityNotInAgentMask,
 }
