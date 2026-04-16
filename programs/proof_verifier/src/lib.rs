@@ -7,6 +7,9 @@ pub mod instructions;
 pub mod pairing;
 pub mod state;
 
+#[cfg(test)]
+mod fuzz;
+
 use instructions::*;
 
 declare_id!("DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe");

@@ -7,6 +7,9 @@ pub mod hook;
 pub mod instructions;
 pub mod state;
 
+#[cfg(test)]
+mod fuzz;
+
 pub use errors::FeeCollectorError;
 pub use hook::{
     assert_hook_allowed, assert_hook_allowed_at_site, get_transfer_hook_program_id,
