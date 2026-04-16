@@ -15,7 +15,6 @@ import {
   getAssociatedTokenAddressSync,
   getMintLen,
 } from '@solana/spl-token';
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect } from 'chai';
@@ -24,6 +23,7 @@ import type { CapabilityRegistry } from '../target/types/capability_registry';
 import type { AgentRegistry } from '../target/types/agent_registry';
 import type { TaskMarket } from '../target/types/task_market';
 import type { ProofVerifier } from '../target/types/proof_verifier';
+import { computeVkId, fieldElementToBytes, g1ToBytes, g2ToBytes } from './helpers/vk';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -64,32 +64,6 @@ function loadFixture() {
   const publicSignals = JSON.parse(readFileSync(resolve(base, 'build/public.json'), 'utf8'));
   const vk = JSON.parse(readFileSync(resolve(base, 'build/verification_key.json'), 'utf8'));
   return { proof, publicSignals, vk };
-}
-
-function fieldElementToBytes(decimal: string): Buffer {
-  let n = BigInt(decimal);
-  const buf = Buffer.alloc(32);
-  for (let i = 31; i >= 0; i--) {
-    buf[i] = Number(n & 0xffn);
-    n >>= 8n;
-  }
-  return buf;
-}
-
-function g1ToBytes(point: [string, string, string]): number[] {
-  return [...fieldElementToBytes(point[0]), ...fieldElementToBytes(point[1])];
-}
-
-function g2ToBytes(point: [[string, string], [string, string], [string, string]]): number[] {
-  const x_im = fieldElementToBytes(point[0][1]);
-  const x_re = fieldElementToBytes(point[0][0]);
-  const y_im = fieldElementToBytes(point[1][1]);
-  const y_re = fieldElementToBytes(point[1][0]);
-  return [...x_im, ...x_re, ...y_im, ...y_re];
-}
-
-function computeVkId(label: string): Buffer {
-  return createHash('sha256').update(label).digest();
 }
 
 function padBytes(s: string, len: number): number[] {
