@@ -31,6 +31,7 @@ export interface BiddingState {
   commitEndUnix: number | null;
   revealEndUnix: number | null;
   winnerAgent: string | null;
+  winnerBidder: string | null;
   winnerAmount: string | null;
 }
 
@@ -51,6 +52,7 @@ interface RawBiddingState {
   commit_end_unix: number | null;
   reveal_end_unix: number | null;
   winner_agent: string | null;
+  winner_bidder: string | null;
   winner_amount: string | null;
 }
 
@@ -90,6 +92,7 @@ export function useBiddingState(indexerUrl: string, taskIdHex: string | null) {
         commitEndUnix: raw.commit_end_unix,
         revealEndUnix: raw.reveal_end_unix,
         winnerAgent: raw.winner_agent,
+        winnerBidder: raw.winner_bidder,
         winnerAmount: raw.winner_amount,
       };
     },
