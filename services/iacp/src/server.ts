@@ -16,6 +16,7 @@ import {
 } from './auth.js';
 import { RpcAgentLookup, type AgentLookup } from './agents.js';
 import { buildAnchor } from './anchor.js';
+import { LagSampler, DEFAULT_LAG_INTERVAL_MS } from './lag.js';
 import {
   buildMsgLimiter,
   defaultLimiterConfig,
@@ -207,6 +208,16 @@ async function main(): Promise<void> {
   const sweepHandle = setInterval(() => gateway.sweepLimiters(), sweepMs);
   sweepHandle.unref?.();
 
+  const lagIntervalMs = parsePositiveInt(process.env.IACP_LAG_INTERVAL_MS, DEFAULT_LAG_INTERVAL_MS);
+  const lagSampler = new LagSampler(
+    redis,
+    'iacp',
+    () => gateway.topicSubscribers.keys(),
+    log,
+    { intervalMs: lagIntervalMs },
+  );
+  lagSampler.start();
+
   await app.listen({ port, host: '0.0.0.0' });
   log.info({ port }, 'iacp listening');
   void pump();
@@ -215,6 +226,7 @@ async function main(): Promise<void> {
     log.info({ signal }, 'shutting down');
     running = false;
     clearInterval(sweepHandle);
+    lagSampler.stop();
     await app.close();
     if (anchor) await anchor.stop();
     await redis.quit();

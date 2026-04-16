@@ -123,6 +123,23 @@ export const anchorSubmitDuration = new Histogram({
   registers: [registry],
 });
 
+// Max age (seconds) of the oldest pending entry across all topics in a category.
+// Sampled by LagSampler via XPENDING; reset to 0 each tick when no pending entries.
+export const streamLagSeconds = new Gauge({
+  name: 'iacp_stream_lag_seconds',
+  help: 'Oldest unacked entry age per topic category (max across topics)',
+  labelNames: ['topic'] as const,
+  registers: [registry],
+});
+
+export const TOPIC_CATEGORIES: readonly TopicCategory[] = [
+  'agent_inbox',
+  'task_events',
+  'broadcast',
+  'system',
+  'other',
+];
+
 export type PublishResult = 'ok' | 'rate_limited' | 'rejected';
 export type PublishPath = 'ws' | 'rest';
 
