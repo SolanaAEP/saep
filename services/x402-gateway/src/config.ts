@@ -10,6 +10,9 @@ const EnvSchema = z.object({
   RATE_PER_DAY: z.coerce.number().int().positive().default(10_000),
   CCTP_ATTESTATION_TIMEOUT_MS: z.coerce.number().int().positive().default(90_000),
   MAX_BUDGET_LAMPORTS: z.coerce.number().int().positive().default(1_000_000_000),
+  SOLANA_RPC_URL: z.string().default('http://127.0.0.1:8899'),
+  PROXY_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  MAX_402_RETRIES: z.coerce.number().int().min(0).max(3).default(1),
 });
 
 export type Config = {
@@ -22,6 +25,9 @@ export type Config = {
   ratePerDay: number;
   cctpTimeoutMs: number;
   maxBudgetLamports: number;
+  solanaRpcUrl: string;
+  proxyTimeoutMs: number;
+  max402Retries: number;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -36,5 +42,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     ratePerDay: parsed.RATE_PER_DAY,
     cctpTimeoutMs: parsed.CCTP_ATTESTATION_TIMEOUT_MS,
     maxBudgetLamports: parsed.MAX_BUDGET_LAMPORTS,
+    solanaRpcUrl: parsed.SOLANA_RPC_URL,
+    proxyTimeoutMs: parsed.PROXY_TIMEOUT_MS,
+    max402Retries: parsed.MAX_402_RETRIES,
   };
 }

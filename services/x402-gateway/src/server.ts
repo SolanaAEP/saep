@@ -11,6 +11,13 @@ import {
   proxyRequests,
   registry,
 } from './metrics.js';
+import {
+  parseXPaymentHeader,
+  requestHash,
+  settleViaTaskMarket,
+  verifySettlement,
+  type PaymentReceipt,
+} from './settlement.js';
 
 const ProxyBody = z.object({
   target_url: z.string().url(),
@@ -96,12 +103,82 @@ export function build(opts: BuildOpts) {
       return reply.code(429).send({ error: 'rate limit', ...rate });
     }
 
-    proxyRequests.inc({ status: 'accepted' });
-    end({ status: 'accepted' });
-    return reply.code(501).send({
-      error: 'NOT_YET_WIRED',
-      reason:
-        'proxy + 402 retry + task_market bundle settlement pending SDK program factories. tracked in backlog/P1_protocol_integrations_x402_mcp_sak.md.',
+    const paymentReceipts: PaymentReceipt[] = [];
+    let attempt = 0;
+    let lastUpstreamStatus = 0;
+    let lastUpstreamBody = '';
+    let lastUpstreamHeaders: Record<string, string> = {};
+
+    while (attempt <= cfg.max402Retries) {
+      attempt++;
+      let upstream: Response;
+      try {
+        upstream = await fetch(body.target_url, {
+          method: body.method,
+          headers: body.headers,
+          body: body.method !== 'GET' ? body.body : undefined,
+          signal: AbortSignal.timeout(cfg.proxyTimeoutMs),
+        });
+      } catch (e) {
+        proxyRequests.inc({ status: 'upstream_error' });
+        end({ status: 'upstream_error' });
+        return reply.code(502).send({
+          error: 'upstream_error',
+          detail: e instanceof Error ? e.message : String(e),
+        });
+      }
+
+      lastUpstreamStatus = upstream.status;
+      lastUpstreamBody = await upstream.text();
+      lastUpstreamHeaders = Object.fromEntries(upstream.headers.entries());
+
+      if (upstream.status !== 402) break;
+
+      const xPayment = upstream.headers.get('x-payment');
+      if (!xPayment) break;
+
+      const payment = parseXPaymentHeader(xPayment);
+      if (!payment) break;
+
+      const argsHash = requestHash(body.method, body.target_url, body.body);
+      try {
+        const receipt = await settleViaTaskMarket(
+          cfg.solanaRpcUrl,
+          payment,
+          body.agent_did,
+          argsHash,
+          body.budget_lamports,
+        );
+        paymentReceipts.push(receipt);
+      } catch (e) {
+        proxyRequests.inc({ status: 'settlement_failed' });
+        end({ status: 'settlement_failed' });
+        return reply.code(402).send({
+          error: 'settlement_failed',
+          detail: e instanceof Error ? e.message : String(e),
+          payment_details: payment,
+        });
+      }
+    }
+
+    if (lastUpstreamStatus === 402) {
+      proxyRequests.inc({ status: 'upstream_402' });
+      end({ status: 'upstream_402' });
+      return reply.code(402).send({
+        error: 'upstream returned 402 after retry',
+        status: lastUpstreamStatus,
+        body: lastUpstreamBody,
+        payment_receipts: paymentReceipts,
+      });
+    }
+
+    proxyRequests.inc({ status: 'ok' });
+    end({ status: 'ok' });
+    return reply.code(lastUpstreamStatus || 502).send({
+      status: lastUpstreamStatus,
+      headers: lastUpstreamHeaders,
+      body: lastUpstreamBody,
+      payment_receipts: paymentReceipts,
     });
   });
 
@@ -111,12 +188,35 @@ export function build(opts: BuildOpts) {
       facilitateVerifyTotal.inc({ result: 'bad_request' });
       return reply.code(400).send({ error: parsed.error.message });
     }
-    facilitateVerifyTotal.inc({ result: 'not_wired' });
-    return reply.code(501).send({
-      error: 'NOT_YET_WIRED',
-      reason:
-        'X-PAYMENT verify + on-chain settlement lookup pending indexer schema v3 (settled_tx table).',
-    });
+
+    const { x_payment } = parsed.data;
+    let txSig: string;
+    try {
+      const payload = JSON.parse(x_payment) as { tx_sig?: string };
+      if (!payload.tx_sig) {
+        facilitateVerifyTotal.inc({ result: 'invalid_payload' });
+        return reply.code(400).send({ error: 'x_payment missing tx_sig' });
+      }
+      txSig = payload.tx_sig;
+    } catch {
+      facilitateVerifyTotal.inc({ result: 'invalid_payload' });
+      return reply.code(400).send({ error: 'x_payment is not valid JSON' });
+    }
+
+    const result = await verifySettlement(cfg.solanaRpcUrl, txSig);
+
+    if (result.status === 'confirmed' || result.status === 'finalized') {
+      facilitateVerifyTotal.inc({ result: 'settled' });
+      return reply.send({ ok: true, settled_tx_sig: txSig, slot: result.slot });
+    }
+
+    if (result.status === 'failed') {
+      facilitateVerifyTotal.inc({ result: 'failed' });
+      return reply.code(409).send({ ok: false, error: 'transaction failed', detail: result.err });
+    }
+
+    facilitateVerifyTotal.inc({ result: 'not_found' });
+    return reply.code(404).send({ ok: false, error: 'transaction not found', detail: result.err });
   });
 
   app.addHook('onClose', async () => {
