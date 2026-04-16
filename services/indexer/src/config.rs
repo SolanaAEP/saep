@@ -7,6 +7,10 @@ pub struct Config {
     pub poll_interval_ms: u64,
     pub page_limit: u16,
     pub healthcheck_port: u16,
+    pub reorg_check_interval_s: u64,
+    pub reorg_window_slots: u64,
+    pub reorg_window_depth: u32,
+    pub redis_url: Option<String>,
 }
 
 impl Config {
@@ -39,6 +43,22 @@ impl Config {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(8080),
+            reorg_check_interval_s: std::env::var("REORG_CHECK_INTERVAL_S")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(15),
+            reorg_window_slots: std::env::var("REORG_WINDOW_SLOTS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(150),
+            reorg_window_depth: std::env::var("REORG_WINDOW_DEPTH")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(500),
+            redis_url: std::env::var("REDIS_URL")
+                .ok()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty()),
         })
     }
 }
@@ -51,6 +71,10 @@ impl std::fmt::Debug for Config {
             .field("poll_interval_ms", &self.poll_interval_ms)
             .field("page_limit", &self.page_limit)
             .field("healthcheck_port", &self.healthcheck_port)
+            .field("reorg_check_interval_s", &self.reorg_check_interval_s)
+            .field("reorg_window_slots", &self.reorg_window_slots)
+            .field("reorg_window_depth", &self.reorg_window_depth)
+            .field("redis_url", &self.redis_url.as_ref().map(|_| "***"))
             .finish()
     }
 }

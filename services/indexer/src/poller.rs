@@ -11,9 +11,10 @@ use crate::idl::{self, Registry};
 use crate::ingest::{self, NewEvent};
 use crate::metrics;
 use crate::programs::{self, SaepProgram};
+use crate::pubsub::Publisher;
 use crate::schema::sync_cursor;
 
-pub async fn run(cfg: Config, pool: PgPool) -> Result<()> {
+pub async fn run(cfg: Config, pool: PgPool, publisher: Publisher) -> Result<()> {
     let idl_dir = idl::default_idl_path();
     let registry = Registry::load_from_dir(&idl_dir)
         .with_context(|| format!("loading anchor IDLs from {}", idl_dir.display()))?;
@@ -38,10 +39,12 @@ pub async fn run(cfg: Config, pool: PgPool) -> Result<()> {
     loop {
         ticker.tick().await;
         for p in programs::SAEP_PROGRAMS {
-            if let Err(e) = poll_program(&cfg, &http, &pool, &registry, p).await {
+            let timer = metrics::time_poll(p.name);
+            if let Err(e) = poll_program(&cfg, &http, &pool, &registry, &publisher, p).await {
                 tracing::warn!(program = p.name, error = %e, "poll cycle failed");
                 metrics::RPC_ERRORS.with_label_values(&["poll_cycle"]).inc();
             }
+            timer.observe_duration();
             tokio::time::sleep(stagger).await;
         }
     }
@@ -52,6 +55,7 @@ async fn poll_program(
     http: &reqwest::Client,
     pool: &PgPool,
     registry: &Registry,
+    publisher: &Publisher,
     p: &SaepProgram,
 ) -> Result<()> {
     let until = read_cursor(pool, p.id)?;
@@ -81,7 +85,7 @@ async fn poll_program(
             }
         };
 
-        ingest_tx(pool, registry, p, signature, slot, &tx);
+        ingest_tx(pool, registry, publisher, p, signature, slot, &tx);
         write_cursor(pool, p.id, signature, slot)?;
         metrics::LAST_SLOT
             .with_label_values(&[p.name])
@@ -93,11 +97,13 @@ async fn poll_program(
 fn ingest_tx(
     pool: &PgPool,
     registry: &Registry,
+    publisher: &Publisher,
     p: &SaepProgram,
     signature: &str,
     slot: i64,
     tx: &Value,
 ) {
+    let block_time = tx.get("blockTime").and_then(|v| v.as_i64());
     let meta = match tx.get("meta") {
         Some(m) if !m.is_null() => m,
         _ => return,
@@ -168,7 +174,7 @@ fn ingest_tx(
                     slot,
                     program_id: p.id,
                     event_name: &event_name,
-                    data,
+                    data: data.clone(),
                     ingested_at: Utc::now(),
                 };
                 if let Err(e) = ingest::record_event(pool, ev) {
@@ -177,6 +183,15 @@ fn ingest_tx(
                     metrics::EVENTS_INGESTED
                         .with_label_values(&[p.name, &event_name])
                         .inc();
+                    if let Some(bt) = block_time {
+                        let lag = (Utc::now().timestamp() - bt).max(0) as f64;
+                        metrics::INGEST_LAG
+                            .with_label_values(&[p.name])
+                            .observe(lag);
+                    }
+                    publisher.spawn_publish(
+                        p.name, p.id, &event_name, signature, slot, &data,
+                    );
                 }
             }
         }
@@ -200,6 +215,7 @@ async fn get_signatures(
         "method": "getSignaturesForAddress",
         "params": [program_id, params],
     });
+    let timer = metrics::time_rpc("getSignaturesForAddress");
     let v: Value = http
         .post(&cfg.rpc_url)
         .json(&body)
@@ -207,6 +223,7 @@ async fn get_signatures(
         .await?
         .json()
         .await?;
+    timer.observe_duration();
     if let Some(err) = v.get("error") {
         metrics::RPC_ERRORS
             .with_label_values(&["getSignaturesForAddress"])
@@ -237,6 +254,7 @@ async fn get_transaction(
             }
         ],
     });
+    let timer = metrics::time_rpc("getTransaction");
     let v: Value = http
         .post(&cfg.rpc_url)
         .json(&body)
@@ -244,6 +262,7 @@ async fn get_transaction(
         .await?
         .json()
         .await?;
+    timer.observe_duration();
     if let Some(err) = v.get("error") {
         metrics::RPC_ERRORS
             .with_label_values(&["getTransaction"])

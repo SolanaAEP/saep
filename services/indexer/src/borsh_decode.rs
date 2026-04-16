@@ -20,6 +20,8 @@ impl<'a> Cursor<'a> {
         Ok(out)
     }
     fn u8(&mut self) -> Result<u8> { Ok(self.take(1)?[0]) }
+    pub fn pos(&self) -> usize { self.pos }
+    pub fn remaining(&self) -> usize { self.buf.len() - self.pos }
     fn u32_le(&mut self) -> Result<u32> {
         let b = self.take(4)?;
         Ok(u32::from_le_bytes([b[0], b[1], b[2], b[3]]))

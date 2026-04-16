@@ -9,4 +9,7 @@ pub mod jobs;
 pub mod metrics;
 pub mod poller;
 pub mod programs;
+pub mod pubsub;
+pub mod reorg;
 pub mod schema;
+pub mod stats;

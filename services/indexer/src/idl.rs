@@ -39,6 +39,7 @@ pub struct EventDef {
     pub program_name: String,
     pub program_id: String,
     pub event_name: String,
+    pub discriminator: [u8; 8],
     pub schema: serde_json::Value,
     pub type_registry: std::sync::Arc<HashMap<String, serde_json::Value>>,
 }
@@ -91,6 +92,7 @@ impl Registry {
                         program_name: idl.metadata.name.clone(),
                         program_id: idl.address.clone(),
                         event_name: ev.name.clone(),
+                        discriminator: disc,
                         schema,
                         type_registry: type_registry.clone(),
                     },
@@ -116,6 +118,10 @@ impl Registry {
 
     pub fn programs_loaded(&self) -> &[String] {
         &self.programs_loaded
+    }
+
+    pub fn iter_events(&self) -> impl Iterator<Item = &EventDef> {
+        self.by_discriminator.values()
     }
 }
 
