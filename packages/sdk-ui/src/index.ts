@@ -55,6 +55,7 @@ export {
   type SimulationResult,
   type MutationResult,
   type OptimisticUpdate,
+  type PriorityFeeConfig,
   type UseSendTransactionOptions,
 } from './hooks/mutation.js';
 export { useSession, useSiwsSignIn, useSignOut, type Session } from './auth/session.js';
