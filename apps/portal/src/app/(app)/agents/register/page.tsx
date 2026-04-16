@@ -1,11 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { encodeAgentId } from '@saep/sdk';
 import { useRegisterAgent, useCluster } from '@saep/sdk-ui';
+import { StepIdentity } from './step-identity';
+import { StepCapabilities } from './step-capabilities';
+import { StepPricing } from './step-pricing';
+import { StepStake } from './step-stake';
+import { StepReview } from './step-review';
+
+export type WizardData = {
+  seed: string;
+  manifestUri: string;
+  selectedBits: Set<number>;
+  priceSol: string;
+  streamRate: string;
+  stakeAmount: string;
+  stakeMint: string;
+  operatorAta: string;
+};
+
+const STEPS = ['Identity', 'Capabilities', 'Pricing', 'Stake', 'Review'] as const;
+
+const EMPTY: WizardData = {
+  seed: '',
+  manifestUri: '',
+  selectedBits: new Set(),
+  priceSol: '0.01',
+  streamRate: '0',
+  stakeAmount: '1000',
+  stakeMint: process.env.NEXT_PUBLIC_STAKE_MINT ?? '',
+  operatorAta: '',
+};
 
 export default function RegisterAgentPage() {
   const cluster = useCluster();
@@ -13,36 +42,48 @@ export default function RegisterAgentPage() {
   const register = useRegisterAgent();
   const router = useRouter();
 
-  const [seed, setSeed] = useState('');
-  const [manifestUri, setManifestUri] = useState('');
-  const [capabilityMask, setCapabilityMask] = useState('1');
-  const [priceSol, setPriceSol] = useState('0.01');
-  const [streamRate, setStreamRate] = useState('0');
-  const [stakeAmount, setStakeAmount] = useState('1000');
-  const [stakeMint, setStakeMint] = useState(process.env.NEXT_PUBLIC_STAKE_MINT ?? '');
-  const [operatorAta, setOperatorAta] = useState('');
+  const [step, setStep] = useState(0);
+  const [data, setData] = useState<WizardData>(EMPTY);
   const [error, setError] = useState<string | null>(null);
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const capabilityMask = useMemo(() => {
+    let mask = 0n;
+    for (const bit of data.selectedBits) mask |= 1n << BigInt(bit);
+    return mask;
+  }, [data.selectedBits]);
+
+  const patch = (partial: Partial<WizardData>) =>
+    setData((prev) => ({ ...prev, ...partial }));
+
+  const canAdvance = (): boolean => {
+    switch (step) {
+      case 0: return data.seed.length > 0 && data.manifestUri.length > 0;
+      case 1: return data.selectedBits.size > 0;
+      case 2: return Number(data.priceSol) > 0;
+      case 3: return data.stakeMint.length > 0 && data.operatorAta.length > 0 && Number(data.stakeAmount) > 0;
+      case 4: return true;
+      default: return false;
+    }
+  };
+
+  const onSubmit = async () => {
     setError(null);
     if (!publicKey) {
       setError('Connect wallet first');
       return;
     }
     try {
-      const sig = await register.mutateAsync({
-        agentId: encodeAgentId(seed),
-        manifestUri,
-        capabilityMask: BigInt(capabilityMask),
-        priceLamports: BigInt(Math.round(Number(priceSol) * 1e9)),
-        streamRate: BigInt(streamRate),
-        stakeAmount: BigInt(stakeAmount),
-        stakeMint: new PublicKey(stakeMint),
-        operatorTokenAccount: new PublicKey(operatorAta),
+      await register.mutateAsync({
+        agentId: encodeAgentId(data.seed),
+        manifestUri: data.manifestUri,
+        capabilityMask,
+        priceLamports: BigInt(Math.round(Number(data.priceSol) * 1e9)),
+        streamRate: BigInt(data.streamRate),
+        stakeAmount: BigInt(data.stakeAmount),
+        stakeMint: new PublicKey(data.stakeMint),
+        operatorTokenAccount: new PublicKey(data.operatorAta),
         capabilityRegistryProgramId: cluster.programIds.capabilityRegistry,
       });
-      console.log('registered', sig);
       router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
@@ -50,67 +91,80 @@ export default function RegisterAgentPage() {
   };
 
   return (
-    <section className="max-w-xl flex flex-col gap-6">
+    <section className="max-w-2xl flex flex-col gap-6">
       <header>
         <h1 className="text-2xl font-semibold">Register agent</h1>
-        <p className="text-sm text-ink/60">Create a new agent on {cluster.cluster}.</p>
+        <p className="text-sm text-ink/60">
+          {cluster.cluster} · step {step + 1} of {STEPS.length}
+        </p>
       </header>
 
-      <form onSubmit={onSubmit} className="flex flex-col gap-4 text-sm">
-        <Field label="Agent seed (≤32 bytes)">
-          <input required value={seed} onChange={(e) => setSeed(e.target.value)} className={input} />
-        </Field>
-        <Field label="Manifest URI">
-          <input
-            required
-            value={manifestUri}
-            onChange={(e) => setManifestUri(e.target.value)}
-            placeholder="ipfs://… or https://…"
-            className={input}
-          />
-        </Field>
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Capability mask (u128)">
-            <input value={capabilityMask} onChange={(e) => setCapabilityMask(e.target.value)} className={input} />
-          </Field>
-          <Field label="Price (SOL)">
-            <input value={priceSol} onChange={(e) => setPriceSol(e.target.value)} className={input} />
-          </Field>
-          <Field label="Stream rate (per sec, raw)">
-            <input value={streamRate} onChange={(e) => setStreamRate(e.target.value)} className={input} />
-          </Field>
-          <Field label="Stake amount (raw)">
-            <input value={stakeAmount} onChange={(e) => setStakeAmount(e.target.value)} className={input} />
-          </Field>
-        </div>
-        <Field label="Stake mint (Token-2022)">
-          <input required value={stakeMint} onChange={(e) => setStakeMint(e.target.value)} className={input} />
-        </Field>
-        <Field label="Operator stake ATA">
-          <input required value={operatorAta} onChange={(e) => setOperatorAta(e.target.value)} className={input} />
-        </Field>
+      <StepIndicator steps={STEPS} current={step} />
 
-        {error ? <p className="text-red-600">{error}</p> : null}
+      <div className="min-h-[280px]">
+        {step === 0 && <StepIdentity data={data} patch={patch} />}
+        {step === 1 && <StepCapabilities data={data} patch={patch} />}
+        {step === 2 && <StepPricing data={data} patch={patch} />}
+        {step === 3 && <StepStake data={data} patch={patch} />}
+        {step === 4 && <StepReview data={data} mask={capabilityMask} />}
+      </div>
 
-        <button
-          type="submit"
-          disabled={register.isPending}
-          className="h-10 rounded bg-ink text-paper text-sm font-medium disabled:opacity-50"
-        >
-          {register.isPending ? 'Submitting…' : 'Register'}
-        </button>
-      </form>
+      {error && <p className="text-sm text-danger">{error}</p>}
+
+      <div className="flex items-center gap-3">
+        {step > 0 && (
+          <button
+            type="button"
+            onClick={() => setStep((s) => s - 1)}
+            className="h-10 px-5 rounded border border-ink/15 text-sm font-medium hover:bg-ink/5"
+          >
+            Back
+          </button>
+        )}
+        <div className="flex-1" />
+        {step < STEPS.length - 1 ? (
+          <button
+            type="button"
+            disabled={!canAdvance()}
+            onClick={() => setStep((s) => s + 1)}
+            className="h-10 px-5 rounded bg-ink text-paper text-sm font-medium disabled:opacity-40"
+          >
+            Next
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={register.isPending || !publicKey}
+            onClick={onSubmit}
+            className="h-10 px-5 rounded bg-lime text-ink text-sm font-medium disabled:opacity-40"
+          >
+            {register.isPending ? 'Submitting…' : 'Register & sign'}
+          </button>
+        )}
+      </div>
     </section>
   );
 }
 
-const input = 'h-10 px-3 rounded border border-ink/15 bg-paper font-mono text-sm focus:outline-none focus:border-ink';
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function StepIndicator({ steps, current }: { steps: readonly string[]; current: number }) {
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-xs text-ink/60">{label}</span>
-      {children}
-    </label>
+    <div className="flex items-center gap-1 text-xs font-mono">
+      {steps.map((label, i) => (
+        <div key={label} className="flex items-center gap-1">
+          {i > 0 && <span className="text-ink/20 mx-1">›</span>}
+          <span
+            className={
+              i === current
+                ? 'text-lime font-medium'
+                : i < current
+                  ? 'text-ink/60'
+                  : 'text-ink/30'
+            }
+          >
+            {label}
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
