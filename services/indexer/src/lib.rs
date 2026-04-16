@@ -4,6 +4,7 @@ pub mod db;
 pub mod health;
 pub mod idl;
 pub mod ingest;
+pub mod jobs;
 pub mod metrics;
 pub mod poller;
 pub mod programs;
