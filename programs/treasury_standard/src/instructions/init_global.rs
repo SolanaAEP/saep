@@ -49,6 +49,7 @@ pub fn handler(
     g.paused = false;
     g.bump = ctx.bumps.global;
     g.global_call_targets = Vec::new();
+    g.hook_allowlist = Pubkey::default();
 
     let a = &mut ctx.accounts.allowed_mints;
     a.authority = authority;

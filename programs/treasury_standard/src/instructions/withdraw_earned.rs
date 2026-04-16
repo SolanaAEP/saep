@@ -2,12 +2,18 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
+use fee_collector::{
+    assert_hook_allowed_at_site, AgentHookAllowlist, HookAllowlist, SITE_STREAM_SWAP,
+    SITE_STREAM_WITHDRAW,
+};
+
 use crate::errors::TreasuryError;
 use crate::events::{StreamWithdrawn, SwapExecuted};
 use crate::jupiter;
 use crate::state::{
-    assert_call_target_allowed, compute_swap_min_out, guard_oracle, read_oracle, AgentTreasury,
-    AllowedTargets, PaymentStream, StreamStatus, TreasuryGlobal, DEFAULT_SLIPPAGE_BPS,
+    assert_call_target_allowed, compute_swap_min_out, guard_oracle, read_oracle,
+    resolve_hook_allowlist, AgentTreasury, AllowedTargets, PaymentStream, StreamStatus,
+    TreasuryGlobal, DEFAULT_SLIPPAGE_BPS,
 };
 
 #[derive(Accounts)]
@@ -62,6 +68,15 @@ pub struct WithdrawEarned<'info> {
     /// CHECK: Pyth PriceUpdateV2 for payout_mint/USD — deserialized + validated via read_oracle
     pub payout_price_feed: Option<UncheckedAccount<'info>>,
 
+    pub hook_allowlist: Option<Account<'info, HookAllowlist>>,
+
+    #[account(
+        seeds = [b"agent_hooks", treasury.agent_did.as_ref()],
+        bump = agent_hooks.bump,
+        seeds::program = fee_collector::ID,
+    )]
+    pub agent_hooks: Option<Account<'info, AgentHookAllowlist>>,
+
     pub operator: Signer<'info>,
     pub token_program: Program<'info, Token2022>,
 }
@@ -107,6 +122,12 @@ pub fn handler<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) ->
     ];
     let escrow_signer = &[escrow_seeds];
 
+    let hook_global = resolve_hook_allowlist(
+        &ctx.accounts.global,
+        ctx.accounts.hook_allowlist.as_ref(),
+    )?;
+    let hook_per_agent = ctx.accounts.agent_hooks.as_deref();
+
     let payout_amount = if swapped {
         require!(!route_data.is_empty(), TreasuryError::SwapRouteRequired);
 
@@ -147,6 +168,23 @@ pub fn handler<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) ->
             ctx.accounts.payout_mint.decimals,
             DEFAULT_SLIPPAGE_BPS,
         )?;
+
+        if let Some(g) = hook_global {
+            assert_hook_allowed_at_site(
+                &ctx.accounts.payer_mint.to_account_info(),
+                g,
+                hook_per_agent,
+                SITE_STREAM_SWAP,
+            )
+            .map_err(|_| error!(TreasuryError::HookNotAllowed))?;
+            assert_hook_allowed_at_site(
+                &ctx.accounts.payout_mint.to_account_info(),
+                g,
+                hook_per_agent,
+                SITE_STREAM_SWAP,
+            )
+            .map_err(|_| error!(TreasuryError::HookNotAllowed))?;
+        }
 
         let escrow_before = ctx.accounts.escrow.amount;
         let vault_before = ctx.accounts.agent_vault.amount;
@@ -194,6 +232,15 @@ pub fn handler<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) ->
             ctx.accounts.allowed_targets.as_deref(),
             &token_program_key,
         )?;
+        if let Some(g) = hook_global {
+            assert_hook_allowed_at_site(
+                &ctx.accounts.payer_mint.to_account_info(),
+                g,
+                hook_per_agent,
+                SITE_STREAM_WITHDRAW,
+            )
+            .map_err(|_| error!(TreasuryError::HookNotAllowed))?;
+        }
         let cpi_accounts = TransferChecked {
             from: ctx.accounts.escrow.to_account_info(),
             mint: ctx.accounts.payer_mint.to_account_info(),

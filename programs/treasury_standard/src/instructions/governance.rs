@@ -67,3 +67,20 @@ pub fn set_global_call_targets_handler(
     );
     Ok(())
 }
+
+pub fn set_hook_allowlist_ptr_handler(
+    ctx: Context<GovernanceUpdate>,
+    hook_allowlist: Pubkey,
+) -> Result<()> {
+    let g = &mut ctx.accounts.global;
+    require!(
+        g.hook_allowlist == Pubkey::default(),
+        TreasuryError::HookAllowlistAlreadySet
+    );
+    require!(
+        hook_allowlist != Pubkey::default(),
+        TreasuryError::InvalidCallTarget
+    );
+    g.hook_allowlist = hook_allowlist;
+    Ok(())
+}

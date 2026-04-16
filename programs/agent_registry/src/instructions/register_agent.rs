@@ -5,9 +5,10 @@ use capability_registry::state::RegistryConfig as CapabilityConfig;
 
 use crate::errors::AgentRegistryError;
 use crate::events::AgentRegistered;
+use crate::instructions::personhood::{verify_attestation, SEED_PERSONHOOD};
 use crate::state::{
     capability_check, compute_did, validate_manifest_uri, AgentAccount, AgentStatus,
-    RegistryGlobal, ReputationScore, MANIFEST_URI_LEN,
+    PersonhoodAttestation, PersonhoodTier, RegistryGlobal, ReputationScore, MANIFEST_URI_LEN,
 };
 
 #[derive(Accounts)]
@@ -60,6 +61,14 @@ pub struct RegisterAgent<'info> {
     #[account(mut)]
     pub operator: Signer<'info>,
 
+    /// Personhood attestation, required iff `global.require_personhood_for_register`.
+    /// Passed as optional so devnet flows without the flag don't need to supply it.
+    #[account(
+        seeds = [SEED_PERSONHOOD, operator.key().as_ref()],
+        bump = personhood_attestation.bump,
+    )]
+    pub personhood_attestation: Option<Account<'info, PersonhoodAttestation>>,
+
     pub token_program: Program<'info, Token2022>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
@@ -81,6 +90,25 @@ pub fn handler(
     capability_check(ctx.accounts.capability_config.approved_mask, capability_mask)?;
 
     let now = Clock::get()?.unix_timestamp;
+
+    if g.require_personhood_for_register {
+        let required_tier = if g.personhood_basic_min_tier == PersonhoodTier::None {
+            PersonhoodTier::Basic
+        } else {
+            g.personhood_basic_min_tier
+        };
+        let attestation = ctx
+            .accounts
+            .personhood_attestation
+            .as_ref()
+            .ok_or(error!(AgentRegistryError::PersonhoodRequired))?;
+        verify_attestation(
+            attestation,
+            &ctx.accounts.operator.key(),
+            required_tier,
+            now,
+        )?;
+    }
     let did = compute_did(&ctx.accounts.operator.key(), &agent_id, &manifest_uri);
 
     let agent = &mut ctx.accounts.agent;

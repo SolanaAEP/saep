@@ -5,10 +5,12 @@ use anchor_spl::token_interface::{Mint, TokenAccount};
 use agent_registry::program::AgentRegistry;
 use agent_registry::state::{AgentAccount, RegistryGlobal};
 
+use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_RELEASE};
+
 use crate::cpi_stubs::{call_record_job_outcome, JobOutcome};
 use crate::errors::TaskMarketError;
 use crate::events::TaskReleased;
-use crate::state::{MarketGlobal, TaskContract, TaskStatus};
+use crate::state::{resolve_hook_allowlist, MarketGlobal, TaskContract, TaskStatus};
 
 #[derive(Accounts)]
 pub struct Release<'info> {
@@ -67,6 +69,8 @@ pub struct Release<'info> {
     #[account(address = crate::ID)]
     pub self_program: UncheckedAccount<'info>,
 
+    pub hook_allowlist: Option<Account<'info, HookAllowlist>>,
+
     pub cranker: Signer<'info>,
     pub token_program: Program<'info, Token2022>,
 }
@@ -108,6 +112,19 @@ pub fn handler(ctx: Context<Release>) -> Result<()> {
         core::slice::from_ref(&escrow_bump),
     ];
     let signer = &[seeds];
+
+    if let Some(g) = resolve_hook_allowlist(
+        &ctx.accounts.global,
+        ctx.accounts.hook_allowlist.as_ref(),
+    )? {
+        assert_hook_allowed_at_site(
+            &ctx.accounts.payment_mint.to_account_info(),
+            g,
+            None,
+            SITE_RELEASE,
+        )
+        .map_err(|_| error!(TaskMarketError::HookNotAllowed))?;
+    }
 
     if agent_payout > 0 {
         let cpi = TransferChecked {

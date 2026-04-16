@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+use agent_registry::state::PersonhoodTier;
+
 use crate::errors::TaskMarketError;
 
 pub const ALLOWED_MINTS_LEN: usize = 8;
@@ -26,6 +28,18 @@ pub const MAX_CAPABILITY_BIT: u16 = 127;
 pub const SEED_BID_BOOK: &[u8] = b"bid_book";
 pub const SEED_BID: &[u8] = b"bid";
 pub const SEED_BOND_ESCROW: &[u8] = b"bond_escrow";
+pub const SEED_MINT_ACCEPT: &[u8] = b"mint_accept";
+
+#[account]
+#[derive(InitSpace)]
+pub struct MintAcceptRecord {
+    pub mint: Pubkey,
+    pub mint_accept_flags: u32,
+    pub hook_program: Option<Pubkey>,
+    pub accepted_at_slot: u64,
+    pub accepted_at_ts: i64,
+    pub bump: u8,
+}
 
 #[account]
 #[derive(InitSpace)]
@@ -44,6 +58,10 @@ pub struct MarketGlobal {
     pub allowed_payment_mints: [Pubkey; ALLOWED_MINTS_LEN],
     pub paused: bool,
     pub bump: u8,
+    // fee_collector::HookAllowlist PDA pointer. Starts Pubkey::default() and is
+    // wired once via governance::set_hook_allowlist_ptr; immutable once set.
+    // See specs/pre-audit-05-transferhook-whitelist.md.
+    pub hook_allowlist: Pubkey,
 }
 
 // Typed task payload. Variant set per specs/pre-audit-01-typed-task-schema.md §task_market.
@@ -83,9 +101,19 @@ pub struct TaskPayload {
     pub capability_bit: u16,
     #[max_len(MAX_CRITERIA_LEN)]
     pub criteria: Vec<u8>,
+    pub requires_personhood: PersonhoodTier,
 }
 
 impl TaskPayload {
+    pub fn new(kind: TaskKind, capability_bit: u16, criteria: Vec<u8>) -> Self {
+        Self {
+            kind,
+            capability_bit,
+            criteria,
+            requires_personhood: PersonhoodTier::None,
+        }
+    }
+
     pub fn kind_discriminant(&self) -> u8 {
         match self.kind {
             TaskKind::SwapExact { .. } => 0,
@@ -239,6 +267,41 @@ pub fn bid_beats(
 
 pub fn is_allowed_mint(list: &[Pubkey; ALLOWED_MINTS_LEN], mint: &Pubkey) -> bool {
     list.iter().any(|m| m == mint)
+}
+
+// Returns Some(&HookAllowlist) when MarketGlobal.hook_allowlist is wired and
+// the passed account matches; None when wiring hasn't been done yet (M1 devnet
+// warn-only). Errors if wired but the passed account doesn't match the pointer.
+pub fn resolve_hook_allowlist<'a, 'info>(
+    global: &MarketGlobal,
+    passed: Option<&'a Account<'info, fee_collector::HookAllowlist>>,
+) -> Result<Option<&'a fee_collector::HookAllowlist>> {
+    if global.hook_allowlist == Pubkey::default() {
+        return Ok(None);
+    }
+    let acct = passed.ok_or(TaskMarketError::HookAllowlistMismatch)?;
+    require_keys_eq!(
+        acct.key(),
+        global.hook_allowlist,
+        TaskMarketError::HookAllowlistMismatch
+    );
+    Ok(Some(acct.as_ref()))
+}
+
+// Pure-logic variant used by unit tests. Takes the pointer + passed key instead
+// of an `Account` handle so tests can exercise the decision tree without an
+// Anchor harness. Returns Ok(true) when the gate is active (check the hook),
+// Ok(false) when the gate is unwired (skip), Err on mismatch.
+pub fn hook_gate_active(
+    global_ptr: &Pubkey,
+    passed_key: Option<&Pubkey>,
+) -> Result<bool> {
+    if *global_ptr == Pubkey::default() {
+        return Ok(false);
+    }
+    let k = passed_key.ok_or(TaskMarketError::HookAllowlistMismatch)?;
+    require_keys_eq!(*k, *global_ptr, TaskMarketError::HookAllowlistMismatch);
+    Ok(true)
 }
 
 pub fn compute_task_id(client: &Pubkey, task_nonce: &[u8; 8], created_at: i64) -> [u8; 32] {
@@ -421,7 +484,17 @@ mod proptests {
     }
 
     fn payload_with_kind(kind: TaskKind, capability_bit: u16) -> TaskPayload {
-        TaskPayload { kind, capability_bit, criteria: vec![] }
+        TaskPayload::new(kind, capability_bit, vec![])
+    }
+
+    fn payload_with_personhood(
+        kind: TaskKind,
+        capability_bit: u16,
+        tier: PersonhoodTier,
+    ) -> TaskPayload {
+        let mut p = TaskPayload::new(kind, capability_bit, vec![]);
+        p.requires_personhood = tier;
+        p
     }
 
     fn serialize(p: &TaskPayload) -> Vec<u8> {
@@ -503,31 +576,31 @@ mod proptests {
 
     #[test]
     fn task_payload_validate_rejects_oversized_criteria() {
-        let p = TaskPayload {
-            kind: TaskKind::Generic { capability_bit: 0, args_hash: [0u8; 32] },
-            capability_bit: 0,
-            criteria: vec![0u8; MAX_CRITERIA_LEN + 1],
-        };
+        let p = TaskPayload::new(
+            TaskKind::Generic { capability_bit: 0, args_hash: [0u8; 32] },
+            0,
+            vec![0u8; MAX_CRITERIA_LEN + 1],
+        );
         assert!(p.validate().is_err());
     }
 
     #[test]
     fn task_payload_validate_rejects_out_of_range_capability() {
-        let p = TaskPayload {
-            kind: TaskKind::Generic { capability_bit: 0, args_hash: [0u8; 32] },
-            capability_bit: MAX_CAPABILITY_BIT + 1,
-            criteria: vec![],
-        };
+        let p = TaskPayload::new(
+            TaskKind::Generic { capability_bit: 0, args_hash: [0u8; 32] },
+            MAX_CAPABILITY_BIT + 1,
+            vec![],
+        );
         assert!(p.validate().is_err());
     }
 
     #[test]
     fn task_payload_validate_accepts_max_criteria() {
-        let p = TaskPayload {
-            kind: TaskKind::Generic { capability_bit: 0, args_hash: [0u8; 32] },
-            capability_bit: MAX_CAPABILITY_BIT,
-            criteria: vec![0u8; MAX_CRITERIA_LEN],
-        };
+        let p = TaskPayload::new(
+            TaskKind::Generic { capability_bit: 0, args_hash: [0u8; 32] },
+            MAX_CAPABILITY_BIT,
+            vec![0u8; MAX_CRITERIA_LEN],
+        );
         assert!(p.validate().is_ok());
     }
 
@@ -575,6 +648,147 @@ mod proptests {
     }
 
     #[test]
+    fn hook_gate_active_skips_when_pointer_zero() {
+        let ok = hook_gate_active(&Pubkey::default(), None).unwrap();
+        assert!(!ok);
+    }
+
+    #[test]
+    fn hook_gate_active_requires_account_when_wired() {
+        let ptr = Pubkey::new_from_array([7u8; 32]);
+        assert!(hook_gate_active(&ptr, None).is_err());
+    }
+
+    #[test]
+    fn hook_gate_active_rejects_mismatched_account() {
+        let ptr = Pubkey::new_from_array([7u8; 32]);
+        let wrong = Pubkey::new_from_array([8u8; 32]);
+        assert!(hook_gate_active(&ptr, Some(&wrong)).is_err());
+    }
+
+    #[test]
+    fn hook_gate_active_accepts_matched_account() {
+        let ptr = Pubkey::new_from_array([7u8; 32]);
+        assert!(hook_gate_active(&ptr, Some(&ptr)).unwrap());
+    }
+
+    #[test]
+    fn mint_accept_flags_all_set_when_clean() {
+        use fee_collector::{
+            MINT_FLAG_ALL, MINT_FLAG_HOOK_OK, MINT_FLAG_NO_FROZEN_DEFAULT,
+            MINT_FLAG_NO_PERMANENT_DELEGATE, MINT_FLAG_NO_TRANSFER_FEE,
+        };
+        let expected = MINT_FLAG_NO_TRANSFER_FEE
+            | MINT_FLAG_NO_FROZEN_DEFAULT
+            | MINT_FLAG_NO_PERMANENT_DELEGATE
+            | MINT_FLAG_HOOK_OK;
+        assert_eq!(expected, MINT_FLAG_ALL);
+    }
+
+    // Mirrors allow_payment_mint's flag-building decision tree. Kept here so
+    // the bitfield contract is exercised without spinning up a full Anchor harness.
+    fn build_flags(
+        has_transfer_fee_ext: bool,
+        fee_authority_is_governance: bool,
+        default_frozen: bool,
+        permanent_delegate: bool,
+        hook_program: Option<Pubkey>,
+        hook_on_allowlist: bool,
+    ) -> Option<u32> {
+        use fee_collector::{
+            MINT_FLAG_HOOK_OK, MINT_FLAG_NO_FROZEN_DEFAULT, MINT_FLAG_NO_PERMANENT_DELEGATE,
+            MINT_FLAG_NO_TRANSFER_FEE,
+        };
+        let mut f = 0u32;
+        if has_transfer_fee_ext && !fee_authority_is_governance {
+            return None;
+        }
+        f |= MINT_FLAG_NO_TRANSFER_FEE;
+
+        if default_frozen {
+            return None;
+        }
+        f |= MINT_FLAG_NO_FROZEN_DEFAULT;
+
+        if permanent_delegate {
+            return None;
+        }
+        f |= MINT_FLAG_NO_PERMANENT_DELEGATE;
+
+        if let Some(_pid) = hook_program {
+            if !hook_on_allowlist {
+                return None;
+            }
+        }
+        f |= MINT_FLAG_HOOK_OK;
+        Some(f)
+    }
+
+    #[test]
+    fn mint_accept_clean_mint_accepted() {
+        let f = build_flags(false, false, false, false, None, false);
+        assert_eq!(f, Some(fee_collector::MINT_FLAG_ALL));
+    }
+
+    #[test]
+    fn mint_accept_rejects_non_governance_transfer_fee() {
+        assert!(build_flags(true, false, false, false, None, false).is_none());
+    }
+
+    #[test]
+    fn mint_accept_accepts_governance_transfer_fee() {
+        assert_eq!(
+            build_flags(true, true, false, false, None, false),
+            Some(fee_collector::MINT_FLAG_ALL)
+        );
+    }
+
+    #[test]
+    fn mint_accept_rejects_default_frozen() {
+        assert!(build_flags(false, false, true, false, None, false).is_none());
+    }
+
+    #[test]
+    fn mint_accept_rejects_permanent_delegate() {
+        assert!(build_flags(false, false, false, true, None, false).is_none());
+    }
+
+    #[test]
+    fn mint_accept_rejects_unlisted_hook() {
+        let pid = Pubkey::new_from_array([9u8; 32]);
+        assert!(build_flags(false, false, false, false, Some(pid), false).is_none());
+    }
+
+    #[test]
+    fn mint_accept_accepts_listed_hook() {
+        let pid = Pubkey::new_from_array([9u8; 32]);
+        assert_eq!(
+            build_flags(false, false, false, false, Some(pid), true),
+            Some(fee_collector::MINT_FLAG_ALL)
+        );
+    }
+
+    #[test]
+    fn mint_accept_flags_individually_distinct() {
+        use fee_collector::{
+            MINT_FLAG_HOOK_OK, MINT_FLAG_NO_FROZEN_DEFAULT, MINT_FLAG_NO_PERMANENT_DELEGATE,
+            MINT_FLAG_NO_TRANSFER_FEE,
+        };
+        let bits = [
+            MINT_FLAG_NO_TRANSFER_FEE,
+            MINT_FLAG_NO_FROZEN_DEFAULT,
+            MINT_FLAG_NO_PERMANENT_DELEGATE,
+            MINT_FLAG_HOOK_OK,
+        ];
+        for i in 0..bits.len() {
+            for j in (i + 1)..bits.len() {
+                assert_ne!(bits[i], bits[j]);
+            }
+            assert_eq!(bits[i].count_ones(), 1);
+        }
+    }
+
+    #[test]
     fn derive_task_hash_differs_per_task_id() {
         let p = payload_with_kind(
             TaskKind::Generic { capability_bit: 2, args_hash: [1u8; 32] },
@@ -583,6 +797,46 @@ mod proptests {
         let h1 = derive_task_hash(&[1u8; 32], &p).unwrap();
         let h2 = derive_task_hash(&[2u8; 32], &p).unwrap();
         assert_ne!(h1, h2);
+    }
+
+    #[test]
+    fn task_payload_default_requires_personhood_is_none() {
+        let p = payload_with_kind(
+            TaskKind::Generic { capability_bit: 0, args_hash: [0u8; 32] },
+            0,
+        );
+        assert_eq!(p.requires_personhood, PersonhoodTier::None);
+    }
+
+    #[test]
+    fn task_payload_hash_binds_personhood_tier() {
+        let a = payload_with_kind(
+            TaskKind::Generic { capability_bit: 1, args_hash: [1u8; 32] },
+            1,
+        );
+        let b = payload_with_personhood(
+            TaskKind::Generic { capability_bit: 1, args_hash: [1u8; 32] },
+            1,
+            PersonhoodTier::Basic,
+        );
+        assert_ne!(a.hash().unwrap(), b.hash().unwrap());
+    }
+
+    #[test]
+    fn task_payload_roundtrip_preserves_personhood_tier() {
+        let p = payload_with_personhood(
+            TaskKind::Transfer {
+                mint: Pubkey::new_from_array([3u8; 32]),
+                to: Pubkey::new_from_array([4u8; 32]),
+                amount: 1,
+            },
+            1,
+            PersonhoodTier::Verified,
+        );
+        let bytes = serialize(&p);
+        let decoded = TaskPayload::try_from_slice(&bytes).unwrap();
+        assert_eq!(decoded.requires_personhood, PersonhoodTier::Verified);
+        assert_eq!(decoded, p);
     }
 }
 

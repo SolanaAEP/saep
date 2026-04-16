@@ -32,6 +32,10 @@ pub struct TreasuryGlobal {
     // See specs/pre-audit-01-typed-task-schema.md §treasury_standard.
     #[max_len(MAX_GLOBAL_CALL_TARGETS)]
     pub global_call_targets: Vec<Pubkey>,
+    // fee_collector::HookAllowlist PDA pointer. Starts as Pubkey::default() and
+    // is wired once via `set_hook_allowlist_ptr`; once set it is immutable.
+    // See specs/pre-audit-05-transferhook-whitelist.md.
+    pub hook_allowlist: Pubkey,
 }
 
 #[account]
@@ -92,6 +96,42 @@ pub struct AllowedMints {
     #[max_len(16)]
     pub mints: Vec<Pubkey>,
     pub bump: u8,
+}
+
+// Helper: resolve + bind the hook allowlist account passed into a transfer-CPI
+// instruction against the pointer stored on TreasuryGlobal. Returns None if the
+// pointer is unset (warn-only M1 devnet mode), otherwise Some(&HookAllowlist)
+// after asserting the passed account matches. The helper returns None without
+// error when the pointer is unset so the instruction still runs — hook
+// enforcement is gated behind `set_hook_allowlist_ptr`.
+pub fn resolve_hook_allowlist<'a, 'info>(
+    global: &TreasuryGlobal,
+    passed: Option<&'a Account<'info, fee_collector::HookAllowlist>>,
+) -> Result<Option<&'a fee_collector::HookAllowlist>> {
+    if global.hook_allowlist == Pubkey::default() {
+        return Ok(None);
+    }
+    let acct = passed.ok_or(TreasuryError::HookAllowlistMismatch)?;
+    require_keys_eq!(
+        acct.key(),
+        global.hook_allowlist,
+        TreasuryError::HookAllowlistMismatch
+    );
+    Ok(Some(acct.as_ref()))
+}
+
+// Pure-logic variant for unit tests; matches resolve_hook_allowlist's branches
+// without needing an Anchor account harness.
+pub fn hook_gate_active(
+    global_ptr: &Pubkey,
+    passed_key: Option<&Pubkey>,
+) -> Result<bool> {
+    if *global_ptr == Pubkey::default() {
+        return Ok(false);
+    }
+    let k = passed_key.ok_or(TreasuryError::HookAllowlistMismatch)?;
+    require_keys_eq!(*k, *global_ptr, TreasuryError::HookAllowlistMismatch);
+    Ok(true)
 }
 
 // Returns Ok if `target` is in the per-agent list (when present), otherwise falls
@@ -532,6 +572,7 @@ mod proptests {
             paused: false,
             bump: 0,
             global_call_targets: vec![],
+            hook_allowlist: Pubkey::default(),
         }
     }
 
@@ -582,6 +623,31 @@ mod proptests {
         g.global_call_targets = vec![pk(7), pk(8)];
         assert!(assert_call_target_allowed(&g, None, &pk(7)).is_ok());
         assert!(assert_call_target_allowed(&g, None, &pk(9)).is_err());
+    }
+
+    #[test]
+    fn hook_gate_active_skips_when_pointer_zero() {
+        let ok = hook_gate_active(&Pubkey::default(), None).unwrap();
+        assert!(!ok);
+    }
+
+    #[test]
+    fn hook_gate_active_requires_account_when_wired() {
+        let ptr = pk(11);
+        assert!(hook_gate_active(&ptr, None).is_err());
+    }
+
+    #[test]
+    fn hook_gate_active_rejects_mismatched_account() {
+        let ptr = pk(11);
+        let wrong = pk(22);
+        assert!(hook_gate_active(&ptr, Some(&wrong)).is_err());
+    }
+
+    #[test]
+    fn hook_gate_active_accepts_matched_account() {
+        let ptr = pk(11);
+        assert!(hook_gate_active(&ptr, Some(&ptr)).unwrap());
     }
 
     #[test]

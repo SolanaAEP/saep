@@ -61,3 +61,23 @@ pub fn set_paused_handler(ctx: Context<GovernanceUpdate>, paused: bool) -> Resul
     });
     Ok(())
 }
+
+pub fn set_hook_allowlist_ptr_handler(
+    ctx: Context<GovernanceUpdate>,
+    hook_allowlist: Pubkey,
+) -> Result<()> {
+    let g = &mut ctx.accounts.global;
+    require!(
+        g.hook_allowlist == Pubkey::default(),
+        TaskMarketError::HookAllowlistMismatch
+    );
+    require!(
+        hook_allowlist != Pubkey::default(),
+        TaskMarketError::Unauthorized
+    );
+    g.hook_allowlist = hook_allowlist;
+    emit!(GlobalParamsUpdated {
+        timestamp: Clock::get()?.unix_timestamp,
+    });
+    Ok(())
+}

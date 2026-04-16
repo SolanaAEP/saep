@@ -66,4 +66,10 @@ pub enum TreasuryError {
     TooManyCallTargets,
     #[msg("call target must be a non-default pubkey")]
     InvalidCallTarget,
+    #[msg("transfer-hook program not on fee_collector allowlist")]
+    HookNotAllowed,
+    #[msg("hook_allowlist pointer has already been set")]
+    HookAllowlistAlreadySet,
+    #[msg("hook_allowlist account does not match TreasuryGlobal.hook_allowlist")]
+    HookAllowlistMismatch,
 }

@@ -57,4 +57,12 @@ pub mod capability_registry {
     pub fn validate_mask(ctx: Context<ValidateMask>, mask: u128) -> Result<()> {
         instructions::validate_mask::validate_mask_handler(ctx, mask)
     }
+
+    pub fn set_tag_personhood(
+        ctx: Context<SetTagPersonhood>,
+        bit_index: u8,
+        min_tier: u8,
+    ) -> Result<()> {
+        instructions::set_tag_personhood::set_tag_personhood_handler(ctx, bit_index, min_tier)
+    }
 }

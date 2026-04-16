@@ -132,3 +132,12 @@ pub struct TaskPayloadStored {
     pub kind_discriminant: u8,
     pub capability_bit: u16,
 }
+
+#[event]
+pub struct MintAccepted {
+    pub mint: Pubkey,
+    pub accept_flags: u32,
+    pub hook_program: Option<Pubkey>,
+    pub slot: u64,
+    pub timestamp: i64,
+}

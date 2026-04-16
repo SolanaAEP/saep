@@ -2,9 +2,11 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
+use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_FUND_TASK};
+
 use crate::errors::TaskMarketError;
 use crate::events::TaskFunded;
-use crate::state::{MarketGlobal, TaskContract, TaskStatus};
+use crate::state::{resolve_hook_allowlist, MarketGlobal, TaskContract, TaskStatus};
 
 #[derive(Accounts)]
 pub struct FundTask<'info> {
@@ -35,6 +37,8 @@ pub struct FundTask<'info> {
     #[account(mut, token::mint = payment_mint, token::authority = client)]
     pub client_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    pub hook_allowlist: Option<Account<'info, HookAllowlist>>,
+
     #[account(mut)]
     pub client: Signer<'info>,
 
@@ -51,6 +55,19 @@ pub fn handler(ctx: Context<FundTask>) -> Result<()> {
 
     let amount = ctx.accounts.task.payment_amount;
     let decimals = ctx.accounts.payment_mint.decimals;
+
+    if let Some(g) = resolve_hook_allowlist(
+        &ctx.accounts.global,
+        ctx.accounts.hook_allowlist.as_ref(),
+    )? {
+        assert_hook_allowed_at_site(
+            &ctx.accounts.payment_mint.to_account_info(),
+            g,
+            None,
+            SITE_FUND_TASK,
+        )
+        .map_err(|_| error!(TaskMarketError::HookNotAllowed))?;
+    }
 
     let cpi_accounts = TransferChecked {
         from: ctx.accounts.client_token_account.to_account_info(),

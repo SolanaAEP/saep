@@ -64,6 +64,7 @@ pub fn handler(
     g.allowed_payment_mints = allowed_payment_mints;
     g.paused = false;
     g.bump = ctx.bumps.global;
+    g.hook_allowlist = Pubkey::default();
 
     emit!(GlobalInitialized {
         authority,

@@ -2,11 +2,15 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
+use fee_collector::{
+    assert_hook_allowed_at_site, AgentHookAllowlist, HookAllowlist, SITE_STREAM_CLOSE,
+};
+
 use crate::errors::TreasuryError;
 use crate::events::StreamClosed;
 use crate::state::{
-    assert_call_target_allowed, AgentTreasury, AllowedTargets, PaymentStream, StreamStatus,
-    TreasuryGlobal,
+    assert_call_target_allowed, resolve_hook_allowlist, AgentTreasury, AllowedTargets,
+    PaymentStream, StreamStatus, TreasuryGlobal,
 };
 
 #[derive(Accounts)]
@@ -54,6 +58,15 @@ pub struct CloseStream<'info> {
 
     #[account(mut, token::mint = payer_mint, token::token_program = token_program)]
     pub client_token_account: InterfaceAccount<'info, TokenAccount>,
+
+    pub hook_allowlist: Option<Account<'info, HookAllowlist>>,
+
+    #[account(
+        seeds = [b"agent_hooks", treasury.agent_did.as_ref()],
+        bump = agent_hooks.bump,
+        seeds::program = fee_collector::ID,
+    )]
+    pub agent_hooks: Option<Account<'info, AgentHookAllowlist>>,
 
     pub signer: Signer<'info>,
     pub token_program: Program<'info, Token2022>,
@@ -113,6 +126,20 @@ pub fn handler(ctx: Context<CloseStream>) -> Result<()> {
         ctx.accounts.allowed_targets.as_deref(),
         &token_program_key,
     )?;
+
+    let hook_global = resolve_hook_allowlist(
+        &ctx.accounts.global,
+        ctx.accounts.hook_allowlist.as_ref(),
+    )?;
+    if let Some(g) = hook_global {
+        assert_hook_allowed_at_site(
+            &ctx.accounts.payer_mint.to_account_info(),
+            g,
+            ctx.accounts.agent_hooks.as_deref(),
+            SITE_STREAM_CLOSE,
+        )
+        .map_err(|_| error!(TreasuryError::HookNotAllowed))?;
+    }
 
     if agent_receipts > 0 {
         let cpi_accounts = TransferChecked {

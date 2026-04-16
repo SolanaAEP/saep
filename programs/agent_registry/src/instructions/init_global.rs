@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::errors::AgentRegistryError;
 use crate::events::GlobalInitialized;
-use crate::state::{RegistryGlobal, MAX_SLASH_BPS_CAP};
+use crate::state::{PersonhoodTier, RegistryGlobal, MAX_GATEKEEPER_NETWORKS, MAX_SLASH_BPS_CAP};
 
 #[derive(Accounts)]
 pub struct InitGlobal<'info> {
@@ -51,6 +51,12 @@ pub fn handler(
     g.max_slash_bps = max_slash_bps;
     g.slash_timelock_secs = slash_timelock_secs;
     g.paused = false;
+    g.allowed_civic_networks = [Pubkey::default(); MAX_GATEKEEPER_NETWORKS];
+    g.allowed_civic_networks_len = 0;
+    g.allowed_sas_issuers = [Pubkey::default(); MAX_GATEKEEPER_NETWORKS];
+    g.allowed_sas_issuers_len = 0;
+    g.personhood_basic_min_tier = PersonhoodTier::Basic;
+    g.require_personhood_for_register = false;
     g.bump = ctx.bumps.global;
 
     emit!(GlobalInitialized {

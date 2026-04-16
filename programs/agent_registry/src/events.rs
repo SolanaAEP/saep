@@ -100,6 +100,36 @@ pub struct GlobalParamsUpdated {
 }
 
 #[event]
+pub struct PersonhoodAttested {
+    pub operator: Pubkey,
+    pub provider: u8,
+    pub tier: u8,
+    pub expires_at: i64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct PersonhoodRevoked {
+    pub operator: Pubkey,
+    pub reason_code: u16,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct PersonhoodRefreshed {
+    pub operator: Pubkey,
+    pub new_expires_at: i64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct GatekeeperAllowlistUpdated {
+    pub civic_len: u8,
+    pub sas_len: u8,
+    pub timestamp: i64,
+}
+
+#[event]
 pub struct CategoryReputationUpdated {
     pub agent_did: [u8; 32],
     pub capability_bit: u16,

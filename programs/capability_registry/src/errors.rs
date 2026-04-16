@@ -26,4 +26,6 @@ pub enum CapabilityRegistryError {
     NoPendingAuthority,
     #[msg("tag count overflow")]
     TagCountOverflow,
+    #[msg("personhood tier value out of range")]
+    InvalidPersonhoodTier,
 }

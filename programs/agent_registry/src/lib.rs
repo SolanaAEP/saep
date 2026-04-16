@@ -1,12 +1,13 @@
 use anchor_lang::prelude::*;
 
+pub mod civic;
 pub mod errors;
 pub mod events;
 pub mod instructions;
 pub mod state;
 
 use instructions::*;
-use state::{AgentStatus, ReputationSample, MANIFEST_URI_LEN};
+use state::{AgentStatus, PersonhoodTier, ReputationSample, MANIFEST_URI_LEN};
 
 declare_id!("EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu");
 
@@ -183,6 +184,37 @@ pub mod agent_registry {
             sample,
             task_id,
             proof_key,
+        )
+    }
+
+    pub fn attest_personhood(ctx: Context<AttestPersonhood>) -> Result<()> {
+        instructions::personhood::attest_personhood_handler(ctx)
+    }
+
+    pub fn revoke_personhood(
+        ctx: Context<RevokePersonhood>,
+        reason_code: u16,
+    ) -> Result<()> {
+        instructions::personhood::revoke_personhood_handler(ctx, reason_code)
+    }
+
+    pub fn refresh_personhood(ctx: Context<RefreshPersonhood>) -> Result<()> {
+        instructions::personhood::refresh_personhood_handler(ctx)
+    }
+
+    pub fn set_gatekeeper_allowlist(
+        ctx: Context<SetGatekeeperAllowlist>,
+        civic_networks: Vec<Pubkey>,
+        sas_issuers: Vec<Pubkey>,
+        basic_min_tier: PersonhoodTier,
+        require_for_register: bool,
+    ) -> Result<()> {
+        instructions::personhood::set_gatekeeper_allowlist_handler(
+            ctx,
+            civic_networks,
+            sas_issuers,
+            basic_min_tier,
+            require_for_register,
         )
     }
 }

@@ -4,6 +4,7 @@ pub mod cpi_stubs;
 pub mod errors;
 pub mod events;
 pub mod instructions;
+pub mod personhood;
 pub mod state;
 
 use instructions::*;
@@ -114,6 +115,17 @@ pub mod task_market {
         mint: Pubkey,
     ) -> Result<()> {
         instructions::governance::set_allowed_mint_handler(ctx, slot, mint)
+    }
+
+    pub fn allow_payment_mint(ctx: Context<AllowPaymentMint>, slot: u8) -> Result<()> {
+        instructions::allow_payment_mint::handler(ctx, slot)
+    }
+
+    pub fn set_hook_allowlist_ptr(
+        ctx: Context<GovernanceUpdate>,
+        hook_allowlist: Pubkey,
+    ) -> Result<()> {
+        instructions::governance::set_hook_allowlist_ptr_handler(ctx, hook_allowlist)
     }
 
     pub fn set_fees(

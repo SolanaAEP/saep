@@ -1,3 +1,4 @@
+pub mod allow_payment_mint;
 pub mod authority;
 pub mod cancel_bidding;
 pub mod cancel_unfunded_task;
@@ -16,6 +17,7 @@ pub mod reveal_bid;
 pub mod submit_result;
 pub mod verify_task;
 
+pub use allow_payment_mint::*;
 pub use authority::*;
 pub use cancel_bidding::*;
 pub use cancel_unfunded_task::*;

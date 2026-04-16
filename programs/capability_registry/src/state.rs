@@ -26,8 +26,16 @@ pub struct CapabilityTag {
     pub added_at: i64,
     pub added_by: Pubkey,
     pub retired: bool,
+    // Minimum personhood tier (mirrors agent_registry::state::PersonhoodTier)
+    // required to bid on tasks gated by this capability. 0 = None, 1 = Basic,
+    // 2 = Verified. Encoded as u8 to avoid a CPI-level type dep on agent_registry.
+    pub min_personhood_tier: u8,
     pub bump: u8,
 }
+
+pub const PERSONHOOD_TIER_NONE: u8 = 0;
+pub const PERSONHOOD_TIER_BASIC: u8 = 1;
+pub const PERSONHOOD_TIER_VERIFIED: u8 = 2;
 
 pub fn validate_slug(slug: &[u8; SLUG_LEN]) -> Result<()> {
     let end = slug.iter().position(|&b| b == 0).unwrap_or(SLUG_LEN);

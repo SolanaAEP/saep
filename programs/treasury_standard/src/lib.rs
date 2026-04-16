@@ -127,6 +127,13 @@ pub mod treasury_standard {
         instructions::governance::set_global_call_targets_handler(ctx, add, remove)
     }
 
+    pub fn set_hook_allowlist_ptr(
+        ctx: Context<GovernanceUpdate>,
+        hook_allowlist: Pubkey,
+    ) -> Result<()> {
+        instructions::governance::set_hook_allowlist_ptr_handler(ctx, hook_allowlist)
+    }
+
     pub fn init_allowed_targets(
         ctx: Context<InitAllowedTargets>,
         agent_did: [u8; 32],

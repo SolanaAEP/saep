@@ -623,6 +623,7 @@ name = "fee_collector"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "anchor-spl",
 ]
 
 [[package]]
@@ -2303,6 +2304,8 @@ dependencies = [
  "agent_registry",
  "anchor-lang",
  "anchor-spl",
+ "capability_registry",
+ "fee_collector",
  "proof_verifier",
  "proptest",
  "solana-keccak-hasher",
@@ -2454,6 +2457,7 @@ dependencies = [
  "agent_registry",
  "anchor-lang",
  "anchor-spl",
+ "fee_collector",
  "proptest",
 ]
 
