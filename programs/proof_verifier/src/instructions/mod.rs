@@ -1,5 +1,6 @@
 pub mod authority;
 pub mod batch_verify;
+pub mod guard;
 pub mod init_config;
 pub mod register_vk;
 pub mod reputation_cpi;
@@ -9,6 +10,7 @@ pub mod vk_activation;
 
 pub use authority::*;
 pub use batch_verify::*;
+pub use guard::*;
 pub use init_config::*;
 pub use register_vk::*;
 pub use reputation_cpi::*;

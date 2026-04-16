@@ -1,5 +1,6 @@
 pub mod authority;
 pub mod governance;
+pub mod guard;
 pub mod init_global;
 pub mod lifecycle;
 pub mod personhood;
@@ -11,6 +12,7 @@ pub mod update_manifest;
 
 pub use authority::*;
 pub use governance::*;
+pub use guard::*;
 pub use init_global::*;
 pub use lifecycle::*;
 pub use personhood::*;

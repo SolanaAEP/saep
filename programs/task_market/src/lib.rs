@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 pub mod cpi_stubs;
 pub mod errors;
 pub mod events;
+pub mod guard;
 pub mod instructions;
 pub mod personhood;
 pub mod state;
@@ -186,5 +187,27 @@ pub mod task_market {
 
     pub fn cancel_bidding(ctx: Context<CancelBidding>) -> Result<()> {
         instructions::cancel_bidding::handler(ctx)
+    }
+
+    pub fn init_guard(
+        ctx: Context<InitGuard>,
+        initial_callers: Vec<Pubkey>,
+    ) -> Result<()> {
+        instructions::guard::init_guard_handler(ctx, initial_callers)
+    }
+
+    pub fn set_allowed_callers(
+        ctx: Context<SetAllowedCallers>,
+        programs: Vec<Pubkey>,
+    ) -> Result<()> {
+        instructions::guard::set_allowed_callers_handler(ctx, programs)
+    }
+
+    pub fn propose_guard_reset(ctx: Context<ProposeGuardReset>) -> Result<()> {
+        instructions::guard::propose_guard_reset_handler(ctx)
+    }
+
+    pub fn admin_reset_guard(ctx: Context<AdminResetGuard>) -> Result<()> {
+        instructions::guard::admin_reset_guard_handler(ctx)
     }
 }
