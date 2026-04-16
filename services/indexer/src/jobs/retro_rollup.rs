@@ -9,11 +9,16 @@
 //!      frozen at M3).
 //!   6. Upsert `retro_eligibility`, append raw samples to `retro_fee_samples`.
 //!
-//! DB read/write steps are TODOs until `fee_collector` emits real events and
-//! the event-decode path lands. Pure classification + aggregation functions are
-//! exercised by unit tests so the filter logic is locked in pre-wiring.
+//! DB reads bypass the absent fee_collector accrual event by joining
+//! TaskReleased against TaskCreated + AgentRegistered in `program_events`.
+//! Pure classification + aggregation functions are exercised by unit tests.
 
 use std::collections::{HashMap, HashSet};
+
+use anyhow::Context;
+use diesel::prelude::*;
+use diesel::sql_query;
+use diesel::sql_types::{BigInt, Bytea, Int4, Text};
 
 /// Tasks under $0.10 USDC-equivalent excluded (spam-farming filter).
 pub const MIN_PAYMENT_MICRO_USDC: u64 = 100_000;
@@ -38,6 +43,15 @@ pub const MULT_BASIC: f64 = 0.75;
 pub const MULT_VERIFIED: f64 = 1.00;
 
 pub const COLD_START_MULT: f64 = 0.50;
+
+/// Trailing epochs to include in each snapshot window.
+pub const TRAILING_EPOCHS: i32 = 6;
+
+/// Illustrative fee multiplier until TGE (frozen at M3 per spec).
+pub const FEE_MULTIPLIER: f64 = 1.0;
+
+/// Illustrative retro pool size in tokens until TGE.
+pub const RETRO_POOL_TOKENS: f64 = 100_000_000.0;
 
 pub type Pubkey = [u8; 32];
 
@@ -348,31 +362,258 @@ pub fn estimate_allocations(
     }
 }
 
-/// Nightly orchestrator. `snapshot_epoch` is the epoch whose trailing-6 window
-/// the job scores. DB read/write is a TODO pending fee_collector event wiring;
-/// this function is the single extension point so the scheduler can call it
-/// straight through once events exist.
-pub async fn run(_pool: &crate::db::PgPool, snapshot_epoch: i32) -> anyhow::Result<RollupReport> {
-    // TODO(retro-airdrop): SELECT decoded FeeClaim events from program_events
-    //   where epoch BETWEEN snapshot_epoch-5 AND snapshot_epoch.
-    // TODO(retro-airdrop): join against agent_registry to attribute operator
-    //   + registered_epoch; join against personhood_attestation for tier.
-    // TODO(retro-airdrop): upsert retro_eligibility, append retro_fee_samples.
-    tracing::info!(
-        snapshot_epoch,
-        "retro-rollup: NOT_YET_WIRED — awaiting fee_collector event emission"
-    );
-    Ok(RollupReport {
-        snapshot_epoch,
-        operators_scored: 0,
-        samples_classified: 0,
-        status: RollupStatus::NotYetWired,
-    })
+/// Raw row returned by the fee-sample query. Joins TaskReleased against
+/// TaskCreated (for agent_did + client) and AgentRegistered (for operator).
+#[derive(Debug, QueryableByName)]
+struct RawFeeSample {
+    #[diesel(sql_type = Text)]
+    signature: String,
+    #[diesel(sql_type = BigInt)]
+    slot: i64,
+    #[diesel(sql_type = Bytea)]
+    operator: Vec<u8>,
+    #[diesel(sql_type = Bytea)]
+    agent_did: Vec<u8>,
+    #[diesel(sql_type = Bytea)]
+    task_id: Vec<u8>,
+    #[diesel(sql_type = Bytea)]
+    client: Vec<u8>,
+    #[diesel(sql_type = Int4)]
+    epoch: i32,
+    #[diesel(sql_type = BigInt)]
+    fee_micro_usdc: i64,
 }
+
+/// Personhood tier row for an operator.
+#[derive(Debug, QueryableByName)]
+struct RawPersonhood {
+    #[diesel(sql_type = Bytea)]
+    operator: Vec<u8>,
+    #[diesel(sql_type = Int4)]
+    tier: i32,
+}
+
+/// Registration epoch for an agent.
+#[derive(Debug, QueryableByName)]
+struct RawRegistration {
+    #[diesel(sql_type = Bytea)]
+    agent_did: Vec<u8>,
+    #[diesel(sql_type = Int4)]
+    reg_epoch: i32,
+}
+
+fn vec_to_pubkey(v: &[u8]) -> Pubkey {
+    let mut pk = [0u8; 32];
+    let len = v.len().min(32);
+    pk[..len].copy_from_slice(&v[..len]);
+    pk
+}
+
+/// Nightly orchestrator. `snapshot_epoch` is the epoch whose trailing-6 window
+/// the job scores. Joins TaskReleased events against TaskCreated (for
+/// agent_did + client attribution) and AgentRegistered (for operator mapping),
+/// bypassing the absent fee_collector accrual event.
+pub async fn run(pool: &crate::db::PgPool, snapshot_epoch: i32) -> anyhow::Result<RollupReport> {
+    let pool = pool.clone();
+    let report = tokio::task::spawn_blocking(move || -> anyhow::Result<RollupReport> {
+        let mut conn = pool.get().context("acquire pg conn for retro rollup")?;
+
+        let epoch_start = snapshot_epoch - (TRAILING_EPOCHS - 1);
+
+        // 1. Fetch fee samples by joining TaskReleased → TaskCreated → AgentRegistered.
+        //    Epoch is derived from slot: 1 epoch ≈ 30 days ≈ 5_184_000 slots at 400ms.
+        let raw_samples: Vec<RawFeeSample> = sql_query(
+            "SELECT
+                rel.signature,
+                rel.slot,
+                decode(reg.data->>'operator', 'hex') AS operator,
+                decode(tc.data->>'agent_did', 'hex') AS agent_did,
+                decode(rel.data->>'task_id', 'hex')  AS task_id,
+                decode(tc.data->>'client', 'hex')    AS client,
+                (rel.slot / 5184000)::int            AS epoch,
+                (rel.data->>'agent_payout')::bigint  AS fee_micro_usdc
+             FROM program_events rel
+             JOIN program_events tc
+               ON tc.event_name = 'TaskCreated'
+              AND tc.data->>'task_id' = rel.data->>'task_id'
+             JOIN program_events reg
+               ON reg.event_name = 'AgentRegistered'
+              AND reg.data->>'agent_did' = tc.data->>'agent_did'
+             WHERE rel.event_name = 'TaskReleased'
+               AND (rel.slot / 5184000)::int BETWEEN $1 AND $2
+             ORDER BY rel.slot",
+        )
+        .bind::<Int4, _>(epoch_start)
+        .bind::<Int4, _>(snapshot_epoch)
+        .load::<RawFeeSample>(&mut conn)
+        .context("fetch fee samples")?;
+
+        if raw_samples.is_empty() {
+            tracing::info!(snapshot_epoch, "retro-rollup: no fee samples in window");
+            return Ok(RollupReport {
+                snapshot_epoch,
+                operators_scored: 0,
+                samples_classified: 0,
+                status: RollupStatus::Scored,
+            });
+        }
+
+        // 2. Build OperatorGraph from AgentRegistered events.
+        let registrations: Vec<RawRegistration> = sql_query(
+            "SELECT
+                decode(data->>'agent_did', 'hex') AS agent_did,
+                (slot / 5184000)::int             AS reg_epoch
+             FROM program_events
+             WHERE event_name = 'AgentRegistered'",
+        )
+        .load::<RawRegistration>(&mut conn)
+        .context("fetch registrations")?;
+
+        let mut graph = OperatorGraph::default();
+        let mut ctx = OperatorContext::default();
+
+        for raw in &raw_samples {
+            let agent = vec_to_pubkey(&raw.agent_did);
+            let op = vec_to_pubkey(&raw.operator);
+            graph.insert_agent(agent, op);
+        }
+
+        for reg in &registrations {
+            let agent = vec_to_pubkey(&reg.agent_did);
+            ctx.agent_registered_epoch.insert(agent, reg.reg_epoch);
+        }
+
+        // 3. Fetch personhood tiers.
+        let personhood_rows: Vec<RawPersonhood> = sql_query(
+            "SELECT DISTINCT ON (decode(data->>'operator', 'hex'))
+                decode(data->>'operator', 'hex') AS operator,
+                (data->>'tier')::int             AS tier
+             FROM program_events
+             WHERE event_name = 'PersonhoodAttested'
+             ORDER BY decode(data->>'operator', 'hex'), slot DESC",
+        )
+        .load::<RawPersonhood>(&mut conn)
+        .context("fetch personhood")?;
+
+        for ph in &personhood_rows {
+            let op = vec_to_pubkey(&ph.operator);
+            let tier = match ph.tier {
+                2 => PersonhoodTier::Verified,
+                1 => PersonhoodTier::Basic,
+                _ => PersonhoodTier::None,
+            };
+            ctx.personhood.insert(op, tier);
+        }
+
+        // 4. Convert raw rows to FeeSample structs.
+        let samples: Vec<FeeSample> = raw_samples
+            .iter()
+            .map(|r| FeeSample {
+                signature: r.signature.clone(),
+                slot: r.slot,
+                operator: vec_to_pubkey(&r.operator),
+                agent_did: vec_to_pubkey(&r.agent_did),
+                task_id: vec_to_pubkey(&r.task_id),
+                client: vec_to_pubkey(&r.client),
+                epoch: r.epoch,
+                fee_micro_usdc: r.fee_micro_usdc as u64,
+            })
+            .collect();
+
+        // 5. classify → aggregate → estimate
+        let classified = classify(&samples, &graph, snapshot_epoch);
+        let samples_classified = classified.len();
+
+        let wash_count = classified.iter().filter(|c| c.wash_flag.is_some()).count();
+
+        // 6. Append all classified samples to retro_fee_samples.
+        for c in &classified {
+            let flag_str = c.wash_flag.as_ref().map(|f| f.as_str().to_string());
+            sql_query(
+                "INSERT INTO retro_fee_samples
+                    (signature, slot, operator, agent_did, task_id, client, epoch,
+                     fee_micro_usdc, wash_flag)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                 ON CONFLICT (signature, task_id) DO NOTHING",
+            )
+            .bind::<Text, _>(&c.inner.signature)
+            .bind::<BigInt, _>(c.inner.slot)
+            .bind::<Bytea, _>(c.inner.operator.as_slice())
+            .bind::<Bytea, _>(c.inner.agent_did.as_slice())
+            .bind::<Bytea, _>(c.inner.task_id.as_slice())
+            .bind::<Bytea, _>(c.inner.client.as_slice())
+            .bind::<Int4, _>(c.inner.epoch)
+            .bind::<BigInt, _>(c.inner.fee_micro_usdc as i64)
+            .bind::<diesel::sql_types::Nullable<Text>, _>(flag_str.as_deref())
+            .execute(&mut conn)
+            .context("insert retro_fee_sample")?;
+        }
+
+        let mut rollups = aggregate(classified, &ctx, &graph, snapshot_epoch);
+        estimate_allocations(&mut rollups, FEE_MULTIPLIER, RETRO_POOL_TOKENS);
+        let operators_scored = rollups.len();
+
+        // 7. Upsert retro_eligibility. Numeric fields bound as Text with
+        //    SQL-side ::numeric casts to avoid a bigdecimal dependency.
+        for r in &rollups {
+            let ph_mult = format!("{:.3}", r.personhood_multiplier);
+            let cs_mult = format!("{:.3}", r.cold_start_multiplier);
+            let alloc = r
+                .estimated_allocation
+                .map(|a| format!("{a:.6}"));
+
+            sql_query(
+                "INSERT INTO retro_eligibility
+                    (operator, net_fees_micro_usdc, wash_excluded_micro_usdc,
+                     personhood_tier, personhood_multiplier, cold_start_multiplier,
+                     estimated_allocation, epoch_first_seen, last_updated)
+                 VALUES ($1, $2, $3, $4, $5::numeric, $6::numeric, $7::numeric, $8, now())
+                 ON CONFLICT (operator) DO UPDATE SET
+                     net_fees_micro_usdc      = EXCLUDED.net_fees_micro_usdc,
+                     wash_excluded_micro_usdc = EXCLUDED.wash_excluded_micro_usdc,
+                     personhood_tier          = EXCLUDED.personhood_tier,
+                     personhood_multiplier    = EXCLUDED.personhood_multiplier,
+                     cold_start_multiplier    = EXCLUDED.cold_start_multiplier,
+                     estimated_allocation     = EXCLUDED.estimated_allocation,
+                     epoch_first_seen         = LEAST(retro_eligibility.epoch_first_seen, EXCLUDED.epoch_first_seen),
+                     last_updated             = now()",
+            )
+            .bind::<Bytea, _>(r.operator.as_slice())
+            .bind::<BigInt, _>(r.net_fees_micro_usdc as i64)
+            .bind::<BigInt, _>(r.wash_excluded_micro_usdc as i64)
+            .bind::<Text, _>(r.personhood_tier.as_str())
+            .bind::<Text, _>(&ph_mult)
+            .bind::<Text, _>(&cs_mult)
+            .bind::<diesel::sql_types::Nullable<Text>, _>(alloc.as_deref())
+            .bind::<Int4, _>(r.epoch_first_seen)
+            .execute(&mut conn)
+            .context("upsert retro_eligibility")?;
+        }
+
+        tracing::info!(
+            snapshot_epoch,
+            operators_scored,
+            samples_classified,
+            wash_flagged = wash_count,
+            "retro-rollup: scored"
+        );
+
+        Ok(RollupReport {
+            snapshot_epoch,
+            operators_scored,
+            samples_classified,
+            status: RollupStatus::Scored,
+        })
+    })
+    .await
+    .context("retro rollup join")??;
+
+    Ok(report)
+}
+
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RollupStatus {
-    NotYetWired,
     Scored,
 }
 

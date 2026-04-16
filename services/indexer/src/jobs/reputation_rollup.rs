@@ -18,6 +18,8 @@ use std::collections::HashMap;
 use anyhow::{Context, Result};
 use diesel::prelude::*;
 use diesel::sql_query;
+use diesel::sql_types::{BigInt, Bytea, Int2};
+use tracing::info;
 
 use crate::db::PgPool;
 
@@ -121,6 +123,152 @@ pub fn project_batch(
     out
 }
 
+/// Default EWMA alpha per spec: 20% weight to new sample.
+pub const DEFAULT_ALPHA_BPS: u16 = 2_000;
+
+/// Client-judged samples get reduced alpha (10%) per spec anti-gaming rule.
+pub const CLIENT_ALPHA_BPS: u16 = 1_000;
+
+/// Scale factor: correctness 0..100 maps to 0..65535.
+const CORRECTNESS_SCALE: u64 = 65535 / 100;
+
+#[derive(Debug, QueryableByName)]
+#[allow(dead_code)]
+struct PendingSample {
+    #[diesel(sql_type = Int2)]
+    quality_delta: i16,
+    #[diesel(sql_type = Int2)]
+    timeliness_delta: i16,
+    #[diesel(sql_type = Int2)]
+    correctness: i16,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    judge_kind: String,
+}
+
+#[derive(Debug, QueryableByName)]
+#[allow(dead_code)]
+struct AgentAxis {
+    #[diesel(sql_type = Bytea)]
+    agent_did: Vec<u8>,
+    #[diesel(sql_type = Int2)]
+    capability_bit: i16,
+    #[diesel(sql_type = Int2)]
+    quality: i16,
+    #[diesel(sql_type = Int2)]
+    timeliness: i16,
+    #[diesel(sql_type = Int2)]
+    cost_efficiency: i16,
+    #[diesel(sql_type = Int2)]
+    honesty: i16,
+    #[diesel(sql_type = BigInt)]
+    jobs_completed: i64,
+    #[diesel(sql_type = BigInt)]
+    jobs_disputed: i64,
+}
+
+/// Fold new `reputation_samples` into `category_reputation` EWMA axes, then
+/// update availability to max and refresh the materialized view.
+pub async fn fold_samples(pool: &PgPool) -> Result<u64> {
+    let pool = pool.clone();
+    tokio::task::spawn_blocking(move || -> Result<u64> {
+        let mut conn = pool.get().context("acquire pg conn for fold_samples")?;
+
+        let agents: Vec<AgentAxis> = sql_query(
+            "SELECT agent_did, capability_bit, quality, timeliness,
+                    cost_efficiency, honesty, jobs_completed, jobs_disputed
+               FROM category_reputation
+              WHERE status = 'active'",
+        )
+        .load::<AgentAxis>(&mut conn)
+        .context("load category_reputation")?;
+
+        let mut folded: u64 = 0;
+
+        for agent in &agents {
+            let samples: Vec<PendingSample> = sql_query(
+                "SELECT quality_delta, timeliness_delta, correctness, judge_kind
+                   FROM reputation_samples
+                  WHERE agent_did = $1
+                    AND capability_bit = $2
+                    AND completed = true
+                    AND ingested_at > (
+                      SELECT last_update FROM category_reputation
+                       WHERE agent_did = $1 AND capability_bit = $2
+                    )
+                  ORDER BY ingested_at ASC",
+            )
+            .bind::<Bytea, _>(&agent.agent_did)
+            .bind::<Int2, _>(agent.capability_bit)
+            .load::<PendingSample>(&mut conn)
+            .context("load pending samples")?;
+
+            if samples.is_empty() {
+                continue;
+            }
+
+            let mut quality = agent.quality as u16;
+            let mut timeliness = agent.timeliness as u16;
+            let cost_eff = agent.cost_efficiency as u16;
+            let honesty = agent.honesty as u16;
+
+            for s in &samples {
+                let alpha = if s.judge_kind == "Client" {
+                    CLIENT_ALPHA_BPS
+                } else {
+                    DEFAULT_ALPHA_BPS
+                };
+
+                // quality: correctness scaled 0..100 → 0..65535
+                let q_sample = ((s.correctness.max(0) as u64) * CORRECTNESS_SCALE).min(65535) as u16;
+                quality = ewma_u16(quality, q_sample, alpha);
+
+                // timeliness: delta is already 0..65535 range from the ingestion layer
+                let t_sample = s.timeliness_delta.max(0) as u16;
+                timeliness = ewma_u16(timeliness, t_sample, alpha);
+
+                // cost_efficiency: no per-sample data in reputation_samples yet;
+                // maintain current value until task payment ratios are ingested.
+                // TODO(M2): compute from TaskReleased payment ratio once ingested
+                let _ = cost_eff;
+
+                // honesty: slashed by disputes; no per-sample signal here.
+                // Dispute slashing handled by dispute_arbitration event ingestion.
+                // TODO(M2): fold DisputeResolved events into honesty decay
+                let _ = honesty;
+            }
+
+            // TODO(M2): wire IACP heartbeat for real availability decay
+            let availability: i16 = i16::MAX; // 32767 — max positive SMALLINT
+
+            let new_completed = agent.jobs_completed + samples.len() as i64;
+
+            sql_query(
+                "UPDATE category_reputation
+                    SET quality = $3, timeliness = $4, availability = $5,
+                        cost_efficiency = $6, honesty = $7,
+                        jobs_completed = $8, last_update = now()
+                  WHERE agent_did = $1 AND capability_bit = $2",
+            )
+            .bind::<Bytea, _>(&agent.agent_did)
+            .bind::<Int2, _>(agent.capability_bit)
+            .bind::<Int2, _>(quality as i16)
+            .bind::<Int2, _>(timeliness as i16)
+            .bind::<Int2, _>(availability)
+            .bind::<Int2, _>(cost_eff as i16)
+            .bind::<Int2, _>(honesty as i16)
+            .bind::<BigInt, _>(new_completed)
+            .execute(&mut conn)
+            .context("update category_reputation axes")?;
+
+            folded += samples.len() as u64;
+        }
+
+        Ok(folded)
+    })
+    .await
+    .context("fold_samples join")?
+}
+
 /// Drives the materialized-view refresh. Called from the rollup worker loop.
 /// CONCURRENTLY requires the unique index added in migration
 /// `2026-04-16-000003_reputation_rollup/up.sql:ix_reputation_rollup_pk`.
@@ -145,9 +293,13 @@ pub struct RefreshReport {
 
 /// Orchestrator entrypoint. The scheduler calls this every 60s per spec.
 pub async fn run(pool: &PgPool) -> Result<RefreshReport> {
-    // TODO(reputation-graph): stream heartbeat events from IACP → diesel insert
-    //   into heartbeat_presence. Once wired, this call chain will also invoke
-    //   project_batch + write preview rows the portal reads.
+    let folded = fold_samples(pool).await?;
+    if folded > 0 {
+        info!(folded, "reputation samples folded into category_reputation");
+    }
+    // TODO(M2): wire IACP heartbeat for real availability decay —
+    //   stream heartbeat events from IACP → diesel insert into heartbeat_presence,
+    //   then invoke project_batch + write preview rows the portal reads.
     refresh_rollup(pool).await
 }
 
