@@ -72,4 +72,18 @@ pub enum TreasuryError {
     HookAllowlistAlreadySet,
     #[msg("hook_allowlist account does not match TreasuryGlobal.hook_allowlist")]
     HookAllowlistMismatch,
+    #[msg("reentrancy detected — guard is already active")]
+    ReentrancyDetected,
+    #[msg("caller program is not on the allowed callers list")]
+    UnauthorizedCaller,
+    #[msg("caller program's reentrancy guard is not active")]
+    CallerGuardNotActive,
+    #[msg("cpi stack height exceeds allowed bound")]
+    CpiDepthExceeded,
+    #[msg("reentrancy guard is already active")]
+    GuardAlreadyActive,
+    #[msg("reentrancy guard has not been initialized")]
+    GuardNotInitialized,
+    #[msg("admin reset has not met the 24h timelock")]
+    AdminResetNotTimelocked,
 }

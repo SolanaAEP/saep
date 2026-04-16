@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 pub mod errors;
 pub mod events;
+pub mod guard;
 pub mod hook;
 pub mod instructions;
 pub mod state;
@@ -73,5 +74,27 @@ pub mod fee_collector {
         remove: Vec<Pubkey>,
     ) -> Result<()> {
         instructions::agent_hook_allowlist::update_agent_handler(ctx, add, remove)
+    }
+
+    pub fn init_guard(
+        ctx: Context<InitGuard>,
+        initial_callers: Vec<Pubkey>,
+    ) -> Result<()> {
+        instructions::guard::init_guard_handler(ctx, initial_callers)
+    }
+
+    pub fn set_allowed_callers(
+        ctx: Context<SetAllowedCallers>,
+        programs: Vec<Pubkey>,
+    ) -> Result<()> {
+        instructions::guard::set_allowed_callers_handler(ctx, programs)
+    }
+
+    pub fn propose_guard_reset(ctx: Context<ProposeGuardReset>) -> Result<()> {
+        instructions::guard::propose_guard_reset_handler(ctx)
+    }
+
+    pub fn admin_reset_guard(ctx: Context<AdminResetGuard>) -> Result<()> {
+        instructions::guard::admin_reset_guard_handler(ctx)
     }
 }
