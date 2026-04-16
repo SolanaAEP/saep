@@ -3,28 +3,74 @@ import type { IncomingMessage } from 'node:http';
 import type { Logger } from 'pino';
 import { ClientFrameSchema, canonicalizeForSigning, type Envelope, type ServerFrame } from './schema.js';
 import type { StreamBus } from './streams.js';
-import { verifyAuthToken, verifyEnvelopeSignature } from './auth.js';
+import {
+  verifySessionToken,
+  verifyEnvelopeSignature,
+  isEnvelopeTsFresh,
+  type FreshnessOptions,
+} from './auth.js';
 import type { TopicRing } from './ring.js';
+import type { AgentLookup } from './agents.js';
+import type { AnchorWorkerPool } from './anchor.js';
+import {
+  buildBandwidthLimiter,
+  buildMsgLimiter,
+  defaultLimiterConfig,
+  type KeyedRateLimiter,
+  type LimiterConfig,
+} from './rate_limit.js';
+import {
+  rateLimiterBucketCount,
+  recordPublish,
+  recordRateLimited,
+  recordRejection,
+  topicCategory,
+  wsConnections,
+  topicSubscribers,
+} from './metrics.js';
 
 interface Session {
   agentPubkey: string;
+  socketId: string;
   topics: Set<string>;
   sendQueue: number;
 }
 
 const MAX_QUEUE = 256;
 
+let socketCounter = 0;
+
+export interface WsGatewayOptions {
+  freshness?: FreshnessOptions;
+  limits?: LimiterConfig;
+  msgLimiter?: KeyedRateLimiter;
+  bwLimiter?: KeyedRateLimiter;
+  anchor?: AnchorWorkerPool | null;
+}
+
 export class WsGateway {
   private readonly wss: WebSocketServer;
   private readonly sessions = new Map<WebSocket, Session>();
   readonly topicSubscribers = new Map<string, Set<WebSocket>>();
+  private readonly msgLimiter: KeyedRateLimiter;
+  private readonly bwLimiter: KeyedRateLimiter;
+  private readonly freshness: FreshnessOptions;
+  private readonly anchor: AnchorWorkerPool | null;
 
   constructor(
     private readonly bus: StreamBus,
     private readonly log: Logger,
     private readonly ring: TopicRing,
+    private readonly sessionSecret: Uint8Array,
+    private readonly agents: AgentLookup | null = null,
+    options: WsGatewayOptions = {},
   ) {
     this.wss = new WebSocketServer({ noServer: true });
+    this.freshness = options.freshness ?? {};
+    const cfg = options.limits ?? defaultLimiterConfig;
+    this.msgLimiter = options.msgLimiter ?? buildMsgLimiter(cfg);
+    this.bwLimiter = options.bwLimiter ?? buildBandwidthLimiter(cfg);
+    this.anchor = options.anchor ?? null;
   }
 
   async handleUpgrade(
@@ -40,7 +86,7 @@ export class WsGateway {
       socket.destroy();
       return;
     }
-    const result = await verifyAuthToken(rawToken);
+    const result = await verifySessionToken(rawToken, this.sessionSecret);
     if (!result) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
@@ -55,19 +101,39 @@ export class WsGateway {
     return this.sessions.size;
   }
 
+  limiterSizes(): { msg: number; bw: number } {
+    return { msg: this.msgLimiter.size(), bw: this.bwLimiter.size() };
+  }
+
+  sweepLimiters(now: number = Date.now()): void {
+    this.msgLimiter.sweep(now);
+    this.bwLimiter.sweep(now);
+    rateLimiterBucketCount.set({ scope: 'msg' }, this.msgLimiter.size());
+    rateLimiterBucketCount.set({ scope: 'bw' }, this.bwLimiter.size());
+  }
+
   private onConnection(ws: WebSocket, agentPubkey: string): void {
-    const session: Session = { agentPubkey, topics: new Set(), sendQueue: 0 };
+    const socketId = `s${++socketCounter}`;
+    const session: Session = { agentPubkey, socketId, topics: new Set(), sendQueue: 0 };
     this.sessions.set(ws, session);
-    this.log.info({ agentPubkey }, 'ws connected');
+    wsConnections.set(this.sessions.size);
+    this.log.info({ agentPubkey, socketId }, 'ws connected');
 
     ws.on('message', (data) => {
-      void this.onMessage(ws, session, data.toString());
+      const raw = data.toString();
+      void this.onMessage(ws, session, raw);
     });
     ws.on('close', () => {
       for (const topic of session.topics) {
-        this.topicSubscribers.get(topic)?.delete(ws);
+        const subs = this.topicSubscribers.get(topic);
+        if (subs) {
+          subs.delete(ws);
+          topicSubscribers.set({ topic: topicCategory(topic) }, subs.size);
+        }
       }
       this.sessions.delete(ws);
+      this.bwLimiter.delete(session.socketId);
+      wsConnections.set(this.sessions.size);
     });
     ws.on('error', (err) => {
       this.log.warn({ err: err.message, agentPubkey }, 'ws error');
@@ -80,6 +146,7 @@ export class WsGateway {
       frame = ClientFrameSchema.parse(JSON.parse(raw));
     } catch {
       this.send(ws, session, { type: 'reject', reason: 'bad_frame' });
+      recordRejection('ws', 'bad_frame');
       return;
     }
 
@@ -90,6 +157,7 @@ export class WsGateway {
       case 'sub':
         if (!this.canSubscribe(session.agentPubkey, frame.topic)) {
           this.send(ws, session, { type: 'reject', reason: 'forbidden_topic' });
+          recordRejection('ws', 'forbidden_topic');
           return;
         }
         session.topics.add(frame.topic);
@@ -100,24 +168,63 @@ export class WsGateway {
           await this.bus.ensureGroup(frame.topic);
         }
         subs.add(ws);
+        topicSubscribers.set({ topic: topicCategory(frame.topic) }, subs.size);
         return;
-      case 'unsub':
+      case 'unsub': {
         session.topics.delete(frame.topic);
-        this.topicSubscribers.get(frame.topic)?.delete(ws);
+        const unsubs = this.topicSubscribers.get(frame.topic);
+        if (unsubs) {
+          unsubs.delete(ws);
+          topicSubscribers.set({ topic: topicCategory(frame.topic) }, unsubs.size);
+        }
         return;
+      }
       case 'publish': {
         const env = frame.envelope;
         if (env.from_agent !== session.agentPubkey) {
           this.send(ws, session, { type: 'reject', id: env.id, reason: 'from_mismatch' });
+          recordRejection('ws', 'from_mismatch');
+          recordPublish('ws', env.topic, 'rejected');
           return;
         }
-        if (!(await this.verifyEnvelope(env))) {
-          this.send(ws, session, { type: 'reject', id: env.id, reason: 'bad_sig' });
+        const byteLen = Buffer.byteLength(raw, 'utf8');
+        const bwCheck = this.bwLimiter.consume(session.socketId, byteLen);
+        if (!bwCheck.allowed) {
+          this.send(ws, session, {
+            type: 'rate_limit',
+            id: env.id,
+            axis: 'bw',
+            retry_after_ms: bwCheck.retryAfterMs,
+          });
+          recordRateLimited('ws', 'bw');
+          recordPublish('ws', env.topic, 'rate_limited');
           return;
         }
+        const msgCheck = this.msgLimiter.consume(session.agentPubkey);
+        if (!msgCheck.allowed) {
+          this.send(ws, session, {
+            type: 'rate_limit',
+            id: env.id,
+            axis: 'msg',
+            retry_after_ms: msgCheck.retryAfterMs,
+          });
+          recordRateLimited('ws', 'msg');
+          recordPublish('ws', env.topic, 'rate_limited');
+          return;
+        }
+        const verdict = await this.verifyEnvelope(env);
+        if (verdict !== 'ok') {
+          this.send(ws, session, { type: 'reject', id: env.id, reason: verdict });
+          recordRejection('ws', verdict);
+          recordPublish('ws', env.topic, 'rejected');
+          return;
+        }
+        const start = performance.now();
         await this.bus.ensureGroup(env.topic);
         await this.bus.publish(env);
+        this.anchor?.enqueue(env);
         this.send(ws, session, { type: 'ack', id: env.id });
+        recordPublish('ws', env.topic, 'ok', (performance.now() - start) / 1000);
         return;
       }
     }
@@ -130,12 +237,18 @@ export class WsGateway {
     return true;
   }
 
-  private async verifyEnvelope(env: Envelope): Promise<boolean> {
-    // AGENT-REGISTRY-LOOKUP-STUB: additionally confirm env.from_agent is
-    // an Active agent in agent_registry; for M1 we treat the bs58 pubkey
-    // itself as the ed25519 verification key.
+  private async verifyEnvelope(env: Envelope): Promise<'ok' | 'bad_sig' | 'stale_ts' | 'not_active'> {
+    if (!isEnvelopeTsFresh(env.ts, Date.now(), this.freshness)) {
+      return 'stale_ts';
+    }
     const canonical = canonicalizeForSigning(env);
-    return verifyEnvelopeSignature(canonical, env.signature, env.from_agent);
+    if (!(await verifyEnvelopeSignature(canonical, env.signature, env.from_agent))) {
+      return 'bad_sig';
+    }
+    if (this.agents && !(await this.agents.isActiveOperator(env.from_agent))) {
+      return 'not_active';
+    }
+    return 'ok';
   }
 
   dispatch(topic: string, envelope: Envelope, streamId: string): void {
