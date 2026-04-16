@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { buildTools, ListTasksArgs, GetTaskArgs, GetReputationArgs } from '../tools.js';
+import {
+  buildTools,
+  ListTasksArgs,
+  GetTaskArgs,
+  GetReputationArgs,
+  BidOnTaskArgs,
+  SubmitResultArgs,
+} from '../tools.js';
 import { loadConfig } from '../config.js';
 
 describe('mcp-bridge tools', () => {
@@ -13,6 +20,7 @@ describe('mcp-bridge tools', () => {
       'get_reputation',
       'get_task',
       'list_tasks',
+      'reveal_bid',
       'submit_result',
     ]);
   });
@@ -22,28 +30,96 @@ describe('mcp-bridge tools', () => {
     expect(ListTasksArgs.parse({})).toHaveProperty('limit', 20);
   });
 
-  it('rejects non-base58 task_id', () => {
-    expect(() => GetTaskArgs.parse({ task_id: 'not-base58!!!' })).toThrow();
+  it('list_tasks accepts allowed status enum, rejects others', () => {
+    expect(() => ListTasksArgs.parse({ status: 'nope' })).toThrow();
+    expect(ListTasksArgs.parse({ status: 'settled' }).status).toBe('settled');
   });
 
-  it('get_reputation parses valid base58', () => {
-    const pk = '11111111111111111111111111111111';
-    expect(GetReputationArgs.parse({ agent_did: pk }).agent_did).toBe(pk);
+  it('get_task rejects non-base58 task_address', () => {
+    expect(() => GetTaskArgs.parse({ task_address: 'not-base58!!!' })).toThrow();
   });
 
-  it('handlers return NOT_YET_WIRED sentinel', async () => {
-    const pk = '11111111111111111111111111111111';
-    const out = (await byName.get('get_task')!.handler({ task_id: pk }, cfg)) as {
+  it('get_reputation requires hex32 agent_did_hex', () => {
+    expect(() => GetReputationArgs.parse({ agent_did_hex: 'xx' })).toThrow();
+    const pk = 'a'.repeat(64);
+    expect(GetReputationArgs.parse({ agent_did_hex: pk }).agent_did_hex).toBe(pk);
+  });
+
+  it('submit_result requires hex32 fields', () => {
+    expect(() =>
+      SubmitResultArgs.parse({
+        task_address: '11111111111111111111111111111111',
+        result_hash: 'zz',
+        proof_key: '00'.repeat(32),
+      }),
+    ).toThrow();
+    expect(() =>
+      SubmitResultArgs.parse({
+        task_address: '11111111111111111111111111111111',
+        result_hash: '00'.repeat(32),
+        proof_key: '00'.repeat(32),
+      }),
+    ).not.toThrow();
+  });
+
+  it('bid_on_task rejects zero / negative amount', () => {
+    expect(() =>
+      BidOnTaskArgs.parse({
+        task_address: '11111111111111111111111111111111',
+        amount_usdc_micro: 0,
+        agent_did_hex: 'a'.repeat(64),
+        bidder_token_account: '9oRq6WnTcNP7UoLyAdDK3V4EEq8pswYnBsbT7FwXeJE3',
+      }),
+    ).toThrow();
+  });
+
+  it('bid_on_task requires agent_did_hex + bidder_token_account', () => {
+    expect(() =>
+      BidOnTaskArgs.parse({
+        task_address: '11111111111111111111111111111111',
+        amount_usdc_micro: 500_000,
+      }),
+    ).toThrow();
+    expect(() =>
+      BidOnTaskArgs.parse({
+        task_address: '11111111111111111111111111111111',
+        amount_usdc_micro: 500_000,
+        agent_did_hex: 'a'.repeat(64),
+        bidder_token_account: '9oRq6WnTcNP7UoLyAdDK3V4EEq8pswYnBsbT7FwXeJE3',
+      }),
+    ).not.toThrow();
+  });
+
+  it('reveal_bid validates nonce_hex shape', () => {
+    const reveal = byName.get('reveal_bid')!;
+    expect(reveal).toBeDefined();
+    expect(() =>
+      reveal.handler(
+        {
+          task_address: '11111111111111111111111111111111',
+          amount_usdc_micro: 500_000,
+          nonce_hex: 'xx',
+        },
+        cfg,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it('list_tasks handler short-circuits capability_bit with CAPABILITY_FILTER_NOT_SUPPORTED', async () => {
+    const out = (await byName.get('list_tasks')!.handler({ capability_bit: 2 }, cfg)) as {
       error: string;
-    };
-    expect(out.error).toBe('NOT_YET_WIRED');
-  });
-
-  it('list_tasks handler returns empty tasks array', async () => {
-    const out = (await byName.get('list_tasks')!.handler({}, cfg)) as {
       tasks: unknown[];
     };
+    expect(out.error).toBe('CAPABILITY_FILTER_NOT_SUPPORTED');
     expect(out.tasks).toEqual([]);
+  });
+
+  it('every tool has description + inputSchema', () => {
+    for (const t of tools) {
+      expect(t.description.length).toBeGreaterThan(10);
+      expect(t.inputSchema).toHaveProperty('type', 'object');
+      expect(t.inputSchema).toHaveProperty('properties');
+    }
   });
 });
 
@@ -53,9 +129,16 @@ describe('mcp-bridge config', () => {
     expect(cfg.cluster).toBe('devnet');
     expect(cfg.rpcUrl).toContain('devnet');
     expect(cfg.autoSign).toBe(false);
+    expect(cfg.keypair).toBeNull();
   });
 
   it('honors SAEP_AUTO_SIGN=true', () => {
     expect(loadConfig({ SAEP_AUTO_SIGN: 'true' }).autoSign).toBe(true);
+  });
+
+  it('exposes a provider even without a keypair (read-only mode)', () => {
+    const cfg = loadConfig({});
+    expect(cfg.provider).toBeDefined();
+    expect(cfg.connection).toBeDefined();
   });
 });

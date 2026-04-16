@@ -6,6 +6,7 @@ export type SakCluster = 'devnet' | 'mainnet-beta' | 'localnet';
 export type SakWallet = {
   publicKey: PublicKey;
   signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T>;
+  signAllTransactions?<T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]>;
 };
 
 export type SakAgentLike = {
