@@ -106,10 +106,15 @@ pub fn handler<'info>(ctx: Context<'info, CloseBidding<'info>>) -> Result<()> {
         );
         seen_bidders.push(bid.bidder);
 
-        if !bid.revealed || bid.slashed {
-            i += 2;
-            continue;
-        }
+        // F-2026-13: every enumerated pair must be a revealed, unslashed bid.
+        // Allowing `continue` on `!revealed || slashed` lets a cranker
+        // substitute a sacrificial committed-but-unrevealed bid for an
+        // honest revealed one while still satisfying `remaining.len() ==
+        // reveal_count * 2`, pushing a suboptimal winner.
+        require!(
+            bid.revealed && !bid.slashed,
+            TaskMarketError::InvalidBidInEnumeration
+        );
 
         require!(
             agent_ai.owner == &agent_registry,
