@@ -121,12 +121,8 @@ export function CreateProposalForm({ config, walletConnected }: Props) {
           snapshot,
         )
         .accounts({
-          config: configPda,
-          registry: registryPda,
-          proposal: proposalPda,
           proposer: publicKey,
-          systemProgram: PublicKey.default,
-        })
+        } as any)
         .instruction();
     },
     invalidateKeys: [['governance-proposals'], ['governance-config']],

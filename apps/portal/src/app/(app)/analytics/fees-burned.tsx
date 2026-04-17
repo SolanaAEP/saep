@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts';
+import dynamic from 'next/dynamic';
+
+const LazySparkline = dynamic(() => import('./sparkline'), { ssr: false });
 
 export interface BurnStats {
   cumulativeBurned: number;
@@ -30,33 +32,6 @@ function useAnimatedCount(target: number, durationMs = 1200) {
   return value;
 }
 
-function Sparkline({ data, color }: { data: { date: string; burned: number }[]; color: string }) {
-  return (
-    <ResponsiveContainer width="100%" height={48}>
-      <AreaChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-        <defs>
-          <linearGradient id={`burn-grad-${color}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-            <stop offset="100%" stopColor={color} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <Tooltip
-          contentStyle={{ background: 'var(--paper-2)', border: '1px solid var(--mute-2)', fontSize: 11 }}
-          labelStyle={{ color: 'var(--mute)', fontSize: 10 }}
-          formatter={(v) => [`${Number(v).toLocaleString()} SAEP`, 'Burned']}
-        />
-        <Area
-          type="monotone"
-          dataKey="burned"
-          stroke={color}
-          strokeWidth={1.5}
-          fill={`url(#burn-grad-${color})`}
-          isAnimationActive={false}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-}
 
 export function FeesBurnedCounter({ stats }: { stats: BurnStats }) {
   const animated = useAnimatedCount(stats.cumulativeBurned);
@@ -84,14 +59,14 @@ export function FeesBurnedCounter({ stats }: { stats: BurnStats }) {
             <span>7d burn rate</span>
             <span className="font-mono">{burn7d.toLocaleString()}</span>
           </div>
-          <Sparkline data={last7} color="var(--lime)" />
+          <LazySparkline data={last7} color="var(--lime)" />
         </div>
         <div className="flex flex-col gap-1">
           <div className="flex justify-between text-[10px] text-ink/50">
             <span>30d burn rate</span>
             <span className="font-mono">{burn30d.toLocaleString()}</span>
           </div>
-          <Sparkline data={last30} color="var(--lime-2)" />
+          <LazySparkline data={last30} color="var(--lime-2)" />
         </div>
       </div>
     </div>

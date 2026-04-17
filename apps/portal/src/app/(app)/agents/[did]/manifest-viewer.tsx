@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { sanitize } from '@/lib/sanitize';
 
 interface ManifestData {
   name?: string;
@@ -48,19 +49,19 @@ export function ManifestViewer({ uri }: { uri: string }) {
           {manifest.name && (
             <div>
               <dt className="text-ink/50">Name</dt>
-              <dd className="font-medium">{manifest.name}</dd>
+              <dd className="font-medium">{sanitize(manifest.name)}</dd>
             </div>
           )}
           {manifest.description && (
             <div>
               <dt className="text-ink/50">Description</dt>
-              <dd className="text-ink/80">{manifest.description}</dd>
+              <dd className="text-ink/80">{sanitize(manifest.description)}</dd>
             </div>
           )}
           {manifest.version && (
             <div>
               <dt className="text-ink/50">Version</dt>
-              <dd className="font-mono">{manifest.version}</dd>
+              <dd className="font-mono">{sanitize(manifest.version)}</dd>
             </div>
           )}
           {manifest.endpoints && manifest.endpoints.length > 0 && (
@@ -68,7 +69,7 @@ export function ManifestViewer({ uri }: { uri: string }) {
               <dt className="text-ink/50">Endpoints</dt>
               <dd className="flex flex-col gap-0.5 font-mono">
                 {manifest.endpoints.map((ep) => (
-                  <span key={ep}>{ep}</span>
+                  <span key={ep}>{sanitize(ep)}</span>
                 ))}
               </dd>
             </div>

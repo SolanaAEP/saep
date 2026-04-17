@@ -2,6 +2,7 @@
 
 import type { AgentSummary } from '@saep/sdk';
 import { useTreasury } from '@saep/sdk-ui';
+import { sanitize } from '@/lib/sanitize';
 import { maskToTags } from './capability-tags';
 
 const STATUS_COLOR: Record<string, string> = {
@@ -38,7 +39,7 @@ function AgentCard({ agent }: { agent: AgentSummary }) {
     >
       <header className="flex items-center justify-between gap-2">
         <h2 className="font-medium truncate text-sm">
-          {agent.manifestUri || `Agent ${didHex.slice(0, 8)}…`}
+          {sanitize(agent.manifestUri) || `Agent ${didHex.slice(0, 8)}…`}
         </h2>
         <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded ${STATUS_COLOR[agent.status] ?? ''}`}>
           {agent.status}

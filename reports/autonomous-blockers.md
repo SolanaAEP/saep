@@ -13,6 +13,15 @@
 
 ## Resolved
 
+### unique_execution circuit — 3 security findings (Critical/High)
+- **Fixed:** Added execution_root≠0 constraint, full hi_leaf merkle inclusion proof, adjacency check (hi_idx == lo_idx + 1). Circuit rebuilt: 6081 constraints, 38 private inputs.
+
+### SPL Token compat layer
+- **Verified:** All programs already use `Interface<'info, TokenInterface>`. hook.rs has SPL early-return guards. No changes needed.
+
+### reputation_cpi.rs security review
+- **Result:** No critical findings. 3 MEDIUM (Poseidon hash encoding — verified correct; proof_key replay — adequate via circuit binding; PDA governance risk — by design). EWMA arithmetic safe.
+
 ### DisputeArbitration stake_account validation (Critical)
 - **Fixed:** Added `#[account(owner = config.nxs_staking)]` constraint. Values still caller-supplied (M2 structural). Pre-audit TODO for NXSStaking CPI reads.
 

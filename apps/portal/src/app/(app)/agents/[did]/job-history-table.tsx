@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { TaskSummary } from '@saep/sdk';
+import type { SerializedTask } from '@/lib/agent-serializer';
 
 const PAGE_SIZE = 10;
 
@@ -25,15 +25,11 @@ function fmtDate(ts: number): string {
   });
 }
 
-function fmtSol(v: bigint): string {
-  return `${(Number(v) / 1e9).toFixed(2)}`;
+function fmtSol(lamports: string): string {
+  return `${(Number(lamports) / 1e9).toFixed(2)}`;
 }
 
-function hex(b: Uint8Array): string {
-  return Array.from(b).map((x) => x.toString(16).padStart(2, '0')).join('');
-}
-
-export function JobHistoryTable({ tasks }: { tasks: TaskSummary[] }) {
+export function JobHistoryTable({ tasks }: { tasks: SerializedTask[] }) {
   const [page, setPage] = useState(0);
   const sorted = [...tasks].sort((a, b) => b.createdAt - a.createdAt);
   const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
@@ -63,13 +59,13 @@ export function JobHistoryTable({ tasks }: { tasks: TaskSummary[] }) {
               </thead>
               <tbody>
                 {visible.map((task) => (
-                  <tr key={task.address.toBase58()} className="border-b border-ink/5">
+                  <tr key={task.address} className="border-b border-ink/5">
                     <td className="py-2 pr-3 font-mono">
                       <a
-                        href={`/tasks/${hex(task.taskId)}`}
+                        href={`/tasks/${task.taskId}`}
                         className="hover:text-lime transition-colors"
                       >
-                        {hex(task.taskId).slice(0, 8)}...
+                        {task.taskId.slice(0, 8)}...
                       </a>
                     </td>
                     <td className={`py-2 pr-3 ${STATUS_COLOR[task.status] ?? ''}`}>
