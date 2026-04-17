@@ -2,8 +2,9 @@ import { readFileSync, statSync } from 'node:fs';
 import { AnchorProvider, Wallet } from '@coral-xyz/anchor';
 import { Connection, Keypair } from '@solana/web3.js';
 import { z } from 'zod';
+import type { SaepCluster } from '@saep/sdk';
 
-const ClusterSchema = z.enum(['localnet', 'devnet', 'mainnet-beta']);
+const ClusterSchema = z.enum(['localnet', 'devnet', 'mainnet-beta'] as [SaepCluster, ...SaepCluster[]]);
 
 const EnvSchema = z.object({
   SAEP_CLUSTER: ClusterSchema.default('devnet'),
@@ -25,10 +26,10 @@ const EnvSchema = z.object({
     .transform((v) => Number(v)),
 });
 
-export type Cluster = z.infer<typeof ClusterSchema>;
+export type { SaepCluster };
 
 export type Config = {
-  cluster: Cluster;
+  cluster: SaepCluster;
   rpcUrl: string;
   operatorKeypairPath: string | undefined;
   autoSign: boolean;
@@ -39,7 +40,7 @@ export type Config = {
   provider: AnchorProvider;
 };
 
-const DEFAULT_RPC: Record<Cluster, string> = {
+const DEFAULT_RPC: Record<SaepCluster, string> = {
   localnet: 'http://127.0.0.1:8899',
   devnet: 'https://api.devnet.solana.com',
   'mainnet-beta': 'https://api.mainnet-beta.solana.com',
