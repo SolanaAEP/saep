@@ -11,12 +11,16 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "echo skip",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@saep/sdk": "workspace:*"
@@ -33,8 +37,13 @@
     "@solana/wallet-adapter-react": "0.15.35",
     "@solana/web3.js": "1.98.0",
     "@tanstack/react-query": "5.62.0",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "19.0.8",
+    "@types/react-dom": "19.0.3",
+    "jsdom": "^29.0.2",
     "react": "19.0.0",
-    "typescript": "5.7.3"
+    "react-dom": "19.0.0",
+    "typescript": "5.7.3",
+    "vitest": "^4.1.4"
   }
 }
