@@ -72,3 +72,5 @@ jobs:
             cargo-target-anchor-${{ runner.os }}-
 
       - run: anchor build
+      # anchor test requires solana-test-validator which adds ~3min+ to CI.
+      # Run `anchor test` locally before pushing program changes.

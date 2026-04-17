@@ -1,3 +1,4 @@
+export * from './errors/index.js';
 export * from './cluster/index.js';
 export * from './pda/index.js';
 export * from './programs/index.js';
@@ -7,6 +8,11 @@ export * from './programs/task_market.js';
 export * from './programs/capability_registry.js';
 export * from './programs/proof_verifier.js';
 export * from './programs/treasury_standard.js';
+export * from './programs/dispute_arbitration.js';
+export * from './programs/governance_program.js';
+export * from './programs/fee_collector.js';
+export * from './programs/nxs_staking.js';
+export * from './programs/template_registry.js';
 export * from './accounts/index.js';
 export * from './auth/siws.js';
 export * from './auth/session.js';

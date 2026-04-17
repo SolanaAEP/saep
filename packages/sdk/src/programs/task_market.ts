@@ -1,6 +1,7 @@
 import { BN, Program } from '@coral-xyz/anchor';
 import { PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import type { TaskMarket } from '../generated/task_market.js';
+import type { ClusterConfig } from '../cluster/index.js';
 import {
   marketGlobalPda,
   taskPda,
@@ -16,9 +17,6 @@ import {
 } from '../pda/index.js';
 
 const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
-const AGENT_REGISTRY_PROGRAM_ID = new PublicKey('EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu');
-const PROOF_VERIFIER_PROGRAM_ID = new PublicKey('DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe');
-const TASK_MARKET_PROGRAM_ID = new PublicKey('HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w');
 
 export interface CreateTaskInput {
   client: PublicKey;
@@ -36,12 +34,13 @@ export interface CreateTaskInput {
 
 export async function buildCreateTaskIx(
   program: Program<TaskMarket>,
+  config: ClusterConfig,
   input: CreateTaskInput,
 ): Promise<TransactionInstruction> {
   const [global] = marketGlobalPda(program.programId);
   const [task] = taskPda(program.programId, input.client, input.taskNonce);
-  const [registryGlobal] = agentRegistryGlobalPda(AGENT_REGISTRY_PROGRAM_ID);
-  const [agentAccount] = agentAccountPda(AGENT_REGISTRY_PROGRAM_ID, input.agentOperator, input.agentId);
+  const [registryGlobal] = agentRegistryGlobalPda(config.programIds.agentRegistry);
+  const [agentAccount] = agentAccountPda(config.programIds.agentRegistry, input.agentOperator, input.agentId);
 
   return program.methods
     .createTask(
@@ -58,7 +57,7 @@ export async function buildCreateTaskIx(
       global,
       task,
       client: input.client,
-      agentRegistryProgram: AGENT_REGISTRY_PROGRAM_ID,
+      agentRegistryProgram: config.programIds.agentRegistry,
       registryGlobal,
       agentAccount,
       systemProgram: SystemProgram.programId,
@@ -71,6 +70,7 @@ export interface FundTaskInput {
   task: PublicKey;
   paymentMint: PublicKey;
   clientTokenAccount: PublicKey;
+  tokenProgramId?: PublicKey;
 }
 
 export async function buildFundTaskIx(
@@ -89,7 +89,7 @@ export async function buildFundTaskIx(
       escrow,
       clientTokenAccount: input.clientTokenAccount,
       client: input.client,
-      tokenProgram: TOKEN_2022_PROGRAM_ID,
+      tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     } as never)
     .instruction();
@@ -105,6 +105,7 @@ export interface SubmitResultInput {
 
 export async function buildSubmitResultIx(
   program: Program<TaskMarket>,
+  config: ClusterConfig,
   input: SubmitResultInput,
 ): Promise<TransactionInstruction> {
   const [global] = marketGlobalPda(program.programId);
@@ -118,7 +119,7 @@ export async function buildSubmitResultIx(
       global,
       task: input.task,
       operator: input.operator,
-      agentRegistryProgram: AGENT_REGISTRY_PROGRAM_ID,
+      agentRegistryProgram: config.programIds.agentRegistry,
       agentAccount: input.agentAccount,
     } as never)
     .instruction();
@@ -136,12 +137,13 @@ export interface VerifyTaskInput {
 
 export async function buildVerifyTaskIx(
   program: Program<TaskMarket>,
+  config: ClusterConfig,
   input: VerifyTaskInput,
 ): Promise<TransactionInstruction> {
   const [global] = marketGlobalPda(program.programId);
-  const [verConfig] = verifierConfigPda(PROOF_VERIFIER_PROGRAM_ID);
-  const [vk] = verifierKeyPda(PROOF_VERIFIER_PROGRAM_ID, input.vkId);
-  const [mode] = verifierModePda(PROOF_VERIFIER_PROGRAM_ID);
+  const [verConfig] = verifierConfigPda(config.programIds.proofVerifier);
+  const [vk] = verifierKeyPda(config.programIds.proofVerifier, input.vkId);
+  const [mode] = verifierModePda(config.programIds.proofVerifier);
 
   return program.methods
     .verifyTask(
@@ -152,7 +154,7 @@ export async function buildVerifyTaskIx(
     .accounts({
       global,
       task: input.task,
-      proofVerifierProgram: PROOF_VERIFIER_PROGRAM_ID,
+      proofVerifierProgram: config.programIds.proofVerifier,
       verifierConfig: verConfig,
       verifierKey: vk,
       verifierMode: mode,
@@ -170,15 +172,17 @@ export interface ReleaseInput {
   solrepPoolTokenAccount: PublicKey;
   agentAccount: PublicKey;
   client: PublicKey;
+  tokenProgramId?: PublicKey;
 }
 
 export async function buildReleaseIx(
   program: Program<TaskMarket>,
+  config: ClusterConfig,
   input: ReleaseInput,
 ): Promise<TransactionInstruction> {
   const [global] = marketGlobalPda(program.programId);
   const [escrow] = taskEscrowPda(program.programId, input.task);
-  const [registryGlobal] = agentRegistryGlobalPda(AGENT_REGISTRY_PROGRAM_ID);
+  const [registryGlobal] = agentRegistryGlobalPda(config.programIds.agentRegistry);
 
   return program.methods
     .release()
@@ -190,12 +194,12 @@ export async function buildReleaseIx(
       agentTokenAccount: input.agentTokenAccount,
       feeCollectorTokenAccount: input.feeCollectorTokenAccount,
       solrepPoolTokenAccount: input.solrepPoolTokenAccount,
-      agentRegistryProgram: AGENT_REGISTRY_PROGRAM_ID,
+      agentRegistryProgram: config.programIds.agentRegistry,
       registryGlobal,
       agentAccount: input.agentAccount,
-      selfProgram: TASK_MARKET_PROGRAM_ID,
+      selfProgram: config.programIds.taskMarket,
       cranker: input.cranker,
-      tokenProgram: TOKEN_2022_PROGRAM_ID,
+      tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
     } as never)
     .instruction();
 }
@@ -207,15 +211,17 @@ export interface ExpireInput {
   clientTokenAccount: PublicKey;
   client: PublicKey;
   agentAccount: PublicKey;
+  tokenProgramId?: PublicKey;
 }
 
 export async function buildExpireIx(
   program: Program<TaskMarket>,
+  config: ClusterConfig,
   input: ExpireInput,
 ): Promise<TransactionInstruction> {
   const [global] = marketGlobalPda(program.programId);
   const [escrow] = taskEscrowPda(program.programId, input.task);
-  const [registryGlobal] = agentRegistryGlobalPda(AGENT_REGISTRY_PROGRAM_ID);
+  const [registryGlobal] = agentRegistryGlobalPda(config.programIds.agentRegistry);
 
   return program.methods
     .expire()
@@ -226,12 +232,12 @@ export async function buildExpireIx(
       escrow,
       clientTokenAccount: input.clientTokenAccount,
       client: input.client,
-      agentRegistryProgram: AGENT_REGISTRY_PROGRAM_ID,
+      agentRegistryProgram: config.programIds.agentRegistry,
       registryGlobal,
       agentAccount: input.agentAccount,
-      selfProgram: TASK_MARKET_PROGRAM_ID,
+      selfProgram: config.programIds.taskMarket,
       cranker: input.cranker,
-      tokenProgram: TOKEN_2022_PROGRAM_ID,
+      tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
     } as never)
     .instruction();
 }
@@ -262,6 +268,7 @@ export interface OpenBiddingInput {
   commitSecs: bigint;
   revealSecs: bigint;
   bondBps: number;
+  tokenProgramId?: PublicKey;
 }
 
 export async function buildOpenBiddingIx(
@@ -285,7 +292,7 @@ export async function buildOpenBiddingIx(
       paymentMint: input.paymentMint,
       bondEscrow,
       client: input.client,
-      tokenProgram: TOKEN_2022_PROGRAM_ID,
+      tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     } as never)
     .instruction();
@@ -301,10 +308,12 @@ export interface CommitBidInput {
   agentId: Uint8Array;
   agentDid: Uint8Array;
   commitHash: Uint8Array;
+  tokenProgramId?: PublicKey;
 }
 
 export async function buildCommitBidIx(
   program: Program<TaskMarket>,
+  config: ClusterConfig,
   input: CommitBidInput,
 ): Promise<TransactionInstruction> {
   const [global] = marketGlobalPda(program.programId);
@@ -312,7 +321,7 @@ export async function buildCommitBidIx(
   const [bid] = bidPda(program.programId, input.taskId, input.bidder);
   const [bondEscrow] = bondEscrowPda(program.programId, input.taskId);
   const [agentAccount] = agentAccountPda(
-    AGENT_REGISTRY_PROGRAM_ID,
+    config.programIds.agentRegistry,
     input.agentOperator,
     input.agentId,
   );
@@ -331,9 +340,9 @@ export async function buildCommitBidIx(
       bondEscrow,
       bidderTokenAccount: input.bidderTokenAccount,
       bidder: input.bidder,
-      agentRegistryProgram: AGENT_REGISTRY_PROGRAM_ID,
+      agentRegistryProgram: config.programIds.agentRegistry,
       agentAccount,
-      tokenProgram: TOKEN_2022_PROGRAM_ID,
+      tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     } as never)
     .instruction();
@@ -399,6 +408,7 @@ export interface ClaimBondInput {
   paymentMint: PublicKey;
   bidderTokenAccount: PublicKey;
   feeCollectorTokenAccount: PublicKey;
+  tokenProgramId?: PublicKey;
 }
 
 export async function buildClaimBondIx(
@@ -422,7 +432,7 @@ export async function buildClaimBondIx(
       bidderTokenAccount: input.bidderTokenAccount,
       feeCollectorTokenAccount: input.feeCollectorTokenAccount,
       bidder: input.bidder,
-      tokenProgram: TOKEN_2022_PROGRAM_ID,
+      tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
     } as never)
     .instruction();
 }
@@ -432,6 +442,7 @@ export interface CancelBiddingInput {
   task: PublicKey;
   taskId: Uint8Array;
   paymentMint: PublicKey;
+  tokenProgramId?: PublicKey;
 }
 
 export async function buildCancelBiddingIx(
@@ -449,7 +460,7 @@ export async function buildCancelBiddingIx(
       paymentMint: input.paymentMint,
       bondEscrow,
       client: input.client,
-      tokenProgram: TOKEN_2022_PROGRAM_ID,
+      tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
     } as never)
     .instruction();
 }
