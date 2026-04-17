@@ -12,6 +12,7 @@ const NAV = [
   { href: '/agents/register', label: 'Register agent' },
   { href: '/governance', label: 'Governance' },
   { href: '/retro/check', label: 'Retro eligibility' },
+  { href: '/analytics', label: 'Analytics' },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
