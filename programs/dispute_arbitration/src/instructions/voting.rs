@@ -4,8 +4,6 @@ use crate::errors::DisputeArbitrationError;
 use crate::events::{RoundTallied, VoteCommitted, VoteRevealed};
 use crate::state::*;
 
-// --- Commit Vote ---
-
 #[derive(Accounts)]
 pub struct CommitVote<'info> {
     #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump)]
@@ -93,8 +91,6 @@ pub fn commit_vote_handler(
     Ok(())
 }
 
-// --- Reveal Vote ---
-
 #[derive(Accounts)]
 pub struct RevealVote<'info> {
     #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump)]
@@ -163,7 +159,6 @@ pub fn reveal_vote_handler(
         DisputeArbitrationError::CommitHashMismatch
     );
 
-    // weight locked at commit time = arbitrator's effective_stake
     let weight = ctx.accounts.arbitrator.effective_stake as u128;
 
     vr.revealed_verdict = verdict;
@@ -173,7 +168,6 @@ pub fn reveal_vote_handler(
 
     let case_id = dc.case_id;
 
-    // update tallies on dispute case
     let dc = &mut ctx.accounts.dispute_case;
     if dc.status == DisputeStatus::Committing {
         dc.status = DisputeStatus::Revealing;
@@ -210,8 +204,6 @@ pub fn reveal_vote_handler(
     });
     Ok(())
 }
-
-// --- Tally Round ---
 
 #[derive(Accounts)]
 pub struct TallyRound<'info> {
@@ -258,11 +250,11 @@ pub fn tally_round_handler(ctx: Context<TallyRound>) -> Result<()> {
         dc.verdict = winner;
         dc.status = DisputeStatus::Tallied;
     } else if dc.round == 1 {
-        // no majority in round 1 → auto-appeal for round 2
+        // no majority in round 1 → auto-escalate to round 2
         dc.round = 2;
         dc.status = DisputeStatus::Appealed;
     } else {
-        // round 2 no majority → tallied with None verdict (fallback to reviewer)
+        // round 2 no majority → None verdict, fallback to authority review
         dc.verdict = DisputeVerdict::None;
         dc.status = DisputeStatus::Tallied;
     }

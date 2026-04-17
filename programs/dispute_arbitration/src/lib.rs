@@ -18,8 +18,6 @@ declare_id!("GM8xiT17USBpCW24XXBmUR8YVCxxrJPMEcsddwfUokMa");
 pub mod dispute_arbitration {
     use super::*;
 
-    // --- Guard Admin ---
-
     pub fn initialize(
         ctx: Context<Initialize>,
         params: guard_admin::InitConfigParams,
@@ -45,8 +43,6 @@ pub mod dispute_arbitration {
     pub fn admin_reset_guard(ctx: Context<AdminResetGuard>) -> Result<()> {
         guard_admin::admin_reset_guard_handler(ctx)
     }
-
-    // --- Arbitrator ---
 
     pub fn register_arbitrator(
         ctx: Context<RegisterArbitrator>,
@@ -80,8 +76,6 @@ pub mod dispute_arbitration {
         arbitrator::complete_withdraw_handler(ctx)
     }
 
-    // --- Dispute Lifecycle ---
-
     pub fn raise_dispute(
         ctx: Context<RaiseDispute>,
         task_id: u64,
@@ -101,8 +95,6 @@ pub mod dispute_arbitration {
         dispute::cancel_stale_vrf_handler(ctx)
     }
 
-    // --- Voting ---
-
     pub fn commit_vote(ctx: Context<CommitVote>, commit_hash: [u8; 32]) -> Result<()> {
         voting::commit_vote_handler(ctx, commit_hash)
     }
@@ -119,8 +111,6 @@ pub mod dispute_arbitration {
         voting::tally_round_handler(ctx)
     }
 
-    // --- Resolution ---
-
     pub fn escalate_appeal(ctx: Context<EscalateAppeal>) -> Result<()> {
         resolution::escalate_appeal_handler(ctx)
     }
@@ -128,8 +118,6 @@ pub mod dispute_arbitration {
     pub fn resolve_dispute(ctx: Context<ResolveDispute>) -> Result<()> {
         resolution::resolve_dispute_handler(ctx)
     }
-
-    // --- Slashing ---
 
     pub fn slash_arbitrator(ctx: Context<SlashArbitrator>, reason_code: u8) -> Result<()> {
         slashing::slash_arbitrator_handler(ctx, reason_code)
@@ -142,8 +130,6 @@ pub mod dispute_arbitration {
     pub fn cancel_slash(ctx: Context<CancelSlash>) -> Result<()> {
         slashing::cancel_slash_handler(ctx)
     }
-
-    // --- Params ---
 
     pub fn set_params(ctx: Context<SetParams>, input: UpdateParamsInput) -> Result<()> {
         params::set_params_handler(ctx, input)

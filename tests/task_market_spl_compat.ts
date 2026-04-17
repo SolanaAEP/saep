@@ -26,10 +26,7 @@ import type { CapabilityRegistry } from '../target/types/capability_registry';
 import type { AgentRegistry } from '../target/types/agent_registry';
 import type { TaskMarket } from '../target/types/task_market';
 
-// ---------------------------------------------------------------------------
 // Constants
-// ---------------------------------------------------------------------------
-
 const PROGRAM_IDS = {
   capability_registry: new PublicKey('GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F'),
   agent_registry: new PublicKey('EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu'),
@@ -52,10 +49,7 @@ const REVEAL_SECS = 180;
 
 const T0 = 1_700_000_000n;
 
-// ---------------------------------------------------------------------------
 // Helpers — parameterised by token program
-// ---------------------------------------------------------------------------
-
 function padBytes(s: string, len: number): number[] {
   const buf = Buffer.alloc(len, 0);
   Buffer.from(s, 'utf8').copy(buf);
@@ -162,10 +156,7 @@ function computeCommitHash(amount: bigint, nonce: Uint8Array, agentDid: Uint8Arr
   return Array.from(new Uint8Array(hash));
 }
 
-// ---------------------------------------------------------------------------
 // PDA helpers
-// ---------------------------------------------------------------------------
-
 const capRegPdas = {
   config: () => PublicKey.findProgramAddressSync(
     [Buffer.from('config')], PROGRAM_IDS.capability_registry,
@@ -213,10 +204,7 @@ const taskMarketPdas = {
   ),
 };
 
-// ---------------------------------------------------------------------------
 // SPL Token compat test — full commit-reveal lifecycle with TOKEN_PROGRAM_ID
-// ---------------------------------------------------------------------------
-
 describe('task_market SPL Token compat (bankrun)', function () {
   this.timeout(120_000);
 
@@ -293,7 +281,6 @@ describe('task_market SPL Token compat (bankrun)', function () {
     // Stake mint: still Token-2022 (agent_registry uses it independently)
     stakeMint = await createMint(context, authority, mintAuthority.publicKey, 6, STAKE_TOKEN_PROGRAM);
 
-    // Init capability_registry + tag at bit 0
     await capRegProgram.methods
       .initialize(authority.publicKey)
       .accountsPartial({ payer: authority.publicKey })
@@ -313,7 +300,6 @@ describe('task_market SPL Token compat (bankrun)', function () {
       })
       .rpc();
 
-    // Init agent_registry
     await agentRegProgram.methods
       .initGlobal(
         authority.publicKey,
@@ -383,7 +369,6 @@ describe('task_market SPL Token compat (bankrun)', function () {
       agentDids.push(new Uint8Array(agentAccount.did as unknown as Uint8Array));
     }
 
-    // Init task_market global with SPL payment mint
     const allowedMints: PublicKey[] = Array(8).fill(PublicKey.default);
     allowedMints[0] = paymentMint;
 
@@ -428,7 +413,6 @@ describe('task_market SPL Token compat (bankrun)', function () {
 
     await setClock(context, 1_798_000_000n);
 
-    // Create task
     const [marketGlobalPda] = taskMarketPdas.global();
     const [regGlobal] = agentRegPdas.global();
     const [taskPdaLocal] = taskMarketPdas.task(client.publicKey, taskNonce);

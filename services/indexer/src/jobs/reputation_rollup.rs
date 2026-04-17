@@ -227,27 +227,17 @@ pub async fn fold_samples(pool: &PgPool) -> Result<u64> {
                     DEFAULT_ALPHA_BPS
                 };
 
-                // quality: correctness scaled 0..100 → 0..65535
                 let q_sample = ((s.correctness.max(0) as u64) * CORRECTNESS_SCALE).min(65535) as u16;
                 quality = ewma_u16(quality, q_sample, alpha);
 
-                // timeliness: delta is already 0..65535 range from the ingestion layer
                 let t_sample = s.timeliness_delta.max(0) as u16;
                 timeliness = ewma_u16(timeliness, t_sample, alpha);
 
-                // cost_efficiency: no per-sample data in reputation_samples yet;
-                // maintain current value until task payment ratios are ingested.
-                // TODO(M2): compute from TaskReleased payment ratio once ingested
+                // M2: cost_efficiency from TaskReleased payment ratio; honesty from DisputeResolved decay
                 let _ = cost_eff;
-
-                // honesty: slashed by disputes; no per-sample signal here.
-                // Dispute slashing handled by dispute_arbitration event ingestion.
-                // TODO(M2): fold DisputeResolved events into honesty decay
                 let _ = honesty;
             }
 
-            // Query heartbeat_presence for this agent+capability to compute
-            // availability decay. If no heartbeat row exists, decay to zero.
             let heartbeat_row: Option<HeartbeatRow> = sql_query(
                 "SELECT last_seen_unix, miss_count
                    FROM heartbeat_presence

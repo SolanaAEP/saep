@@ -723,8 +723,6 @@ fn bytes_to_jsonb_array(bytes: &[u8]) -> String {
     serde_json::to_string(bytes).expect("serialize u8 slice")
 }
 
-// ---------- agent detail ----------
-
 #[derive(Debug, Serialize)]
 pub struct AgentDetail {
     pub did_hex: String,
@@ -868,8 +866,6 @@ pub async fn agent_detail(
         reputation,
     }))
 }
-
-// ---------- task detail + timeline ----------
 
 #[derive(Debug, Serialize)]
 pub struct TaskDetail {
@@ -1046,8 +1042,6 @@ struct CountRow {
     n: i64,
 }
 
-// ---------- capabilities ----------
-
 #[derive(Debug, Deserialize)]
 pub struct CapabilitiesQuery {
     pub include_retired: Option<bool>,
@@ -1198,8 +1192,6 @@ fn slug_from_jsonb(v: &serde_json::Value) -> String {
     let end = bytes.iter().rposition(|b| *b != 0).map(|p| p + 1).unwrap_or(0);
     String::from_utf8_lossy(&bytes[..end]).into_owned()
 }
-
-// ---------- treasury ----------
 
 #[derive(Debug, Serialize)]
 pub struct TreasuryDetail {

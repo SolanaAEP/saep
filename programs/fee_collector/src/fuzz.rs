@@ -14,7 +14,7 @@ use anchor_lang::{AccountDeserialize, AccountSerialize, Discriminator};
 use proptest::prelude::*;
 
 use crate::state::{
-    compute_bps_split, compute_claim_leaf, verify_merkle_proof, AgentHookAllowlist,
+    compute_bps_split, compute_claim_leaf, AgentHookAllowlist,
     EpochAccount, FeeCollectorConfig, HookAllowlist, StakerClaim,
 };
 

@@ -23,7 +23,7 @@ Devnet deploy is blocked on SOL airdrop. Localnet (`solana-test-validator` via `
 
 ## Verify
 ```
-cd /Users/0xlinnet/Projects/SAEP
+cd ~/Projects/SAEP
 anchor build
 anchor test -- --features localnet
 ```

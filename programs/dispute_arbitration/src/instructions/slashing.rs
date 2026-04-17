@@ -4,8 +4,6 @@ use crate::errors::DisputeArbitrationError;
 use crate::events::{SlashCancelled, SlashExecuted, SlashProposed};
 use crate::state::*;
 
-// --- Slash Arbitrator ---
-
 #[derive(Accounts)]
 pub struct SlashArbitrator<'info> {
     #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump)]
@@ -51,7 +49,6 @@ pub fn slash_arbitrator_handler(
     let config = &ctx.accounts.config;
     let arb = &ctx.accounts.arbitrator;
 
-    // slash amount = min(effective_stake * max_slash_bps / 10000, effective_stake)
     let slash_amount = (arb.effective_stake as u128)
         .checked_mul(config.max_slash_bps as u128)
         .ok_or(DisputeArbitrationError::ArithmeticOverflow)?
@@ -85,8 +82,6 @@ pub fn slash_arbitrator_handler(
     });
     Ok(())
 }
-
-// --- Execute Slash ---
 
 #[derive(Accounts)]
 pub struct ExecuteSlash<'info> {
@@ -124,8 +119,7 @@ pub fn execute_slash_handler(ctx: Context<ExecuteSlash>) -> Result<()> {
     let case_id = ps.case_id;
     let operator = ps.arbitrator;
 
-    // M2 structural: CPI into NXSStaking to transfer slashed amount to fee_collector
-
+    // M2 structural: CPI into NXSStaking → fee_collector for slashed amount
     let arb = &mut ctx.accounts.arbitrator;
     if arb.bad_faith_strikes >= ctx.accounts.config.bad_faith_threshold {
         arb.status = ArbitratorStatus::Slashed;
@@ -141,8 +135,6 @@ pub fn execute_slash_handler(ctx: Context<ExecuteSlash>) -> Result<()> {
     });
     Ok(())
 }
-
-// --- Cancel Slash ---
 
 #[derive(Accounts)]
 pub struct CancelSlash<'info> {

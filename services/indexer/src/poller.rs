@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Context, Result};
-use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use chrono::Utc;
 use diesel::prelude::*;
 use serde_json::{json, Value};
@@ -270,13 +269,6 @@ async fn get_transaction(
         return Err(anyhow!("rpc error: {err}"));
     }
     Ok(v.get("result").filter(|r| !r.is_null()).cloned())
-}
-
-// base64 tx encoding path kept in tree for future use; json encoding keeps
-// decode simple for MVP.
-#[allow(dead_code)]
-fn decode_b64_tx(s: &str) -> Option<Vec<u8>> {
-    B64.decode(s).ok()
 }
 
 fn read_cursor(pool: &PgPool, program_id: &str) -> Result<Option<String>> {

@@ -4,8 +4,6 @@ use crate::errors::DisputeArbitrationError;
 use crate::events::{AppealEscalated, DisputeResolved};
 use crate::state::*;
 
-// --- Escalate Appeal ---
-
 #[derive(Accounts)]
 pub struct EscalateAppeal<'info> {
     #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump)]
@@ -45,8 +43,7 @@ pub fn escalate_appeal_handler(ctx: Context<EscalateAppeal>) -> Result<()> {
 
     let now = Clock::get()?.unix_timestamp;
 
-    // appeal must be filed within appeal_window_secs of tally
-    // (we don't store tallied_at separately; use reveal_deadline as proxy)
+    // appeal_window_secs measured from reveal_deadline (no separate tallied_at field)
     let appeal_deadline = dc.reveal_deadline
         .checked_add(config.appeal_window_secs)
         .ok_or(DisputeArbitrationError::ArithmeticOverflow)?;
@@ -55,7 +52,6 @@ pub fn escalate_appeal_handler(ctx: Context<EscalateAppeal>) -> Result<()> {
         DisputeArbitrationError::AppealWindowClosed
     );
 
-    // validate appellant is the losing party
     let appellant_key = ctx.accounts.appellant.key();
     let is_losing_party = match dc.verdict {
         DisputeVerdict::AgentWins => appellant_key == dc.client,
@@ -64,7 +60,6 @@ pub fn escalate_appeal_handler(ctx: Context<EscalateAppeal>) -> Result<()> {
     };
     require!(is_losing_party, DisputeArbitrationError::Unauthorized);
 
-    // collateral = appeal_collateral_bps * escrow / 10000
     let collateral = (dc.escrow_amount as u128)
         .checked_mul(config.appeal_collateral_bps as u128)
         .ok_or(DisputeArbitrationError::ArithmeticOverflow)?
@@ -84,7 +79,6 @@ pub fn escalate_appeal_handler(ctx: Context<EscalateAppeal>) -> Result<()> {
     ar.filed_at = now;
     ar.bump = ctx.bumps.appeal_record;
 
-    // transition to Appealed → next crank calls consume_vrf for round 2
     let dc = &mut ctx.accounts.dispute_case;
     dc.status = DisputeStatus::Appealed;
     dc.round = 2;
@@ -98,9 +92,7 @@ pub fn escalate_appeal_handler(ctx: Context<EscalateAppeal>) -> Result<()> {
     Ok(())
 }
 
-// --- Resolve Dispute ---
-// State-before-CPI: set Resolved before CPI into TaskMarket.
-
+// State-before-CPI: Resolved is set before any outbound CPI.
 #[derive(Accounts)]
 pub struct ResolveDispute<'info> {
     #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump)]
@@ -140,12 +132,10 @@ pub fn resolve_dispute_handler(ctx: Context<ResolveDispute>) -> Result<()> {
     let task_id = dc.task_id;
     let verdict = dc.verdict;
 
-    // state-before-CPI: set resolved before any outbound CPI
     dc.status = DisputeStatus::Resolved;
     dc.resolved_at = now;
 
-    // M2 structural: CPI into TaskMarket::execute_dispute_verdict(task_id, verdict)
-    // M2 structural: release/slash appeal collateral based on outcome
+    // M2 structural: CPI into TaskMarket::execute_dispute_verdict + collateral settlement
 
     emit!(DisputeResolved {
         case_id,

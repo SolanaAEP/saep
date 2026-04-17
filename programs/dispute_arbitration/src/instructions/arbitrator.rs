@@ -4,8 +4,6 @@ use crate::errors::DisputeArbitrationError;
 use crate::events::{ArbitratorRegistered, PoolSnapshotted};
 use crate::state::*;
 
-// --- Register Arbitrator ---
-
 #[derive(Accounts)]
 pub struct RegisterArbitrator<'info> {
     #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump)]
@@ -20,10 +18,8 @@ pub struct RegisterArbitrator<'info> {
     )]
     pub arbitrator: Box<Account<'info, ArbitratorAccount>>,
 
-    /// The NXSStaking StakeAccount for this operator.
-    /// CHECK: owner validated against config.nxs_staking. M2 structural:
-    /// effective_stake/lock_end passed as args until NXSStaking CPI reads are wired.
-    /// Pre-audit TODO: deserialize StakeAccount and read values on-chain.
+    /// CHECK: owner validated against config.nxs_staking.
+    /// M2 structural: effective_stake/lock_end passed as args until NXSStaking CPI reads land.
     #[account(owner = config.nxs_staking @ DisputeArbitrationError::StakeInsufficient)]
     pub stake_account: AccountInfo<'info>,
 
@@ -69,8 +65,6 @@ pub fn register_handler(
     Ok(())
 }
 
-// --- Refresh Stake ---
-
 #[derive(Accounts)]
 pub struct RefreshStake<'info> {
     #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump)]
@@ -84,8 +78,8 @@ pub struct RefreshStake<'info> {
     )]
     pub arbitrator: Box<Account<'info, ArbitratorAccount>>,
 
-    /// CHECK: owner validated against config.nxs_staking. M2 structural:
-    /// values passed as args until NXSStaking CPI reads are wired.
+    /// CHECK: owner validated against config.nxs_staking.
+    /// M2 structural: values passed as args until NXSStaking CPI reads land.
     #[account(owner = config.nxs_staking @ DisputeArbitrationError::StakeInsufficient)]
     pub stake_account: AccountInfo<'info>,
 
@@ -97,8 +91,7 @@ pub fn refresh_stake_handler(
     new_stake: u64,
     new_lock_end: i64,
 ) -> Result<()> {
-    // M2 structural: values are caller-supplied. Pre-audit TODO: deserialize
-    // the stake_account and read effective_stake + lock_end on-chain.
+    // M2 structural: caller-supplied until NXSStaking CPI reads are wired.
     let a = &mut ctx.accounts.arbitrator;
     a.effective_stake = new_stake;
     a.effective_lock_end = new_lock_end;
@@ -108,8 +101,6 @@ pub fn refresh_stake_handler(
     }
     Ok(())
 }
-
-// --- Snapshot Pool ---
 
 #[derive(Accounts)]
 pub struct SnapshotPool<'info> {
@@ -176,8 +167,6 @@ pub fn snapshot_pool_handler(
     Ok(())
 }
 
-// --- Begin Withdraw ---
-
 #[derive(Accounts)]
 pub struct BeginWithdraw<'info> {
     #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump)]
@@ -207,8 +196,6 @@ pub fn begin_withdraw_handler(ctx: Context<BeginWithdraw>) -> Result<()> {
     Ok(())
 }
 
-// --- Complete Withdraw ---
-
 #[derive(Accounts)]
 pub struct CompleteWithdraw<'info> {
     #[account(
@@ -235,6 +222,5 @@ pub fn complete_withdraw_handler(ctx: Context<CompleteWithdraw>) -> Result<()> {
         now >= a.withdraw_unlock_time,
         DisputeArbitrationError::WithdrawNotReady
     );
-    // account closed by Anchor `close = operator`
-    Ok(())
+    Ok(()) // account closed by Anchor `close = operator`
 }

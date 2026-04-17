@@ -25,10 +25,7 @@ import type { TaskMarket } from '../target/types/task_market';
 import type { ProofVerifier } from '../target/types/proof_verifier';
 import { computeVkId, fieldElementToBytes, g1ToBytes, g2ToBytes } from './helpers/vk';
 
-// ---------------------------------------------------------------------------
 // Constants
-// ---------------------------------------------------------------------------
-
 const PROGRAM_IDS = {
   capability_registry: new PublicKey('GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F'),
   agent_registry: new PublicKey('EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu'),
@@ -54,10 +51,7 @@ const T_CREATE = 1_798_000_000n;
 const T_SUBMIT = 1_799_000_000n;
 const T_RELEASE = BigInt(DEADLINE + DISPUTE_WINDOW_SECS + 1);
 
-// ---------------------------------------------------------------------------
 // ZK fixtures
-// ---------------------------------------------------------------------------
-
 function loadFixture() {
   const base = resolve(process.cwd(), 'circuits/task_completion');
   const proof = JSON.parse(readFileSync(resolve(base, 'build/proof.json'), 'utf8'));
@@ -72,10 +66,7 @@ function padBytes(s: string, len: number): number[] {
   return Array.from(buf);
 }
 
-// ---------------------------------------------------------------------------
 // PDA helpers
-// ---------------------------------------------------------------------------
-
 const capRegPdas = {
   config: () => PublicKey.findProgramAddressSync(
     [Buffer.from('config')], PROGRAM_IDS.capability_registry,
@@ -130,10 +121,7 @@ const proofVerifierPdas = {
   ),
 };
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
-
 async function setClock(ctx: ProgramTestContext, unixTimestamp: bigint) {
   const current = await ctx.banksClient.getClock();
   ctx.setClock(new Clock(
@@ -230,10 +218,7 @@ function patchTaskVerified(
   return patched;
 }
 
-// ---------------------------------------------------------------------------
 // Test Suite
-// ---------------------------------------------------------------------------
-
 describe('e2e: task_market → proof-gen → proof_verifier happy path', function () {
   this.timeout(120_000);
 
@@ -263,14 +248,12 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
   let agentPda: PublicKey;
   let taskPda: PublicKey;
 
-  // Proof fixture
   const { proof, publicSignals, vk } = loadFixture();
   const taskHashBytes = Array.from(fieldElementToBytes(publicSignals[0]));
   const resultHashBytes = Array.from(fieldElementToBytes(publicSignals[1]));
   const criteriaRootBytes = Array.from(fieldElementToBytes(publicSignals[4]));
   const vkId = computeVkId(CIRCUIT_LABEL);
 
-  // Proof in on-chain encoding
   const proofA = g1ToBytes(proof.pi_a) as unknown as number[];
   const proofB = g2ToBytes(proof.pi_b) as unknown as number[];
   const proofC = g1ToBytes(proof.pi_c) as unknown as number[];
@@ -281,7 +264,6 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
     anchor.setProvider(provider);
     authority = context.payer;
 
-    // Load programs
     const capRegIdl = JSON.parse(readFileSync(resolve(process.cwd(), 'target/idl/capability_registry.json'), 'utf8'));
     const agentRegIdl = JSON.parse(readFileSync(resolve(process.cwd(), 'target/idl/agent_registry.json'), 'utf8'));
     const taskMarketIdl = JSON.parse(readFileSync(resolve(process.cwd(), 'target/idl/task_market.json'), 'utf8'));
@@ -302,18 +284,11 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
       });
     }
 
-    // Set clock to T0
     await setClock(context, T0);
 
-    // -----------------------------------------------------------------------
-    // Create Token-2022 mints
-    // -----------------------------------------------------------------------
     paymentMint = await createToken2022Mint(context, authority, mintAuthority.publicKey, 6);
     stakeMint = await createToken2022Mint(context, authority, mintAuthority.publicKey, 6);
 
-    // -----------------------------------------------------------------------
-    // Init capability_registry + propose one tag
-    // -----------------------------------------------------------------------
     await capRegProgram.methods
       .initialize(authority.publicKey)
       .accountsPartial({ payer: authority.publicKey })
@@ -333,9 +308,6 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
       })
       .rpc();
 
-    // -----------------------------------------------------------------------
-    // Init agent_registry global
-    // -----------------------------------------------------------------------
     await agentRegProgram.methods
       .initGlobal(
         authority.publicKey,
@@ -362,9 +334,6 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
       })
       .rpc();
 
-    // -----------------------------------------------------------------------
-    // Init proof_verifier + register VK + propose activation
-    // -----------------------------------------------------------------------
     await proofVerifierProgram.methods
       .initConfig(authority.publicKey, false)
       .accountsPartial({ payer: authority.publicKey })
@@ -407,7 +376,6 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
       })
       .rpc();
 
-    // Warp clock past 7-day timelock
     await setClock(context, T_VK_ACTIVE);
 
     await proofVerifierProgram.methods
@@ -415,9 +383,6 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
       .accountsPartial({ vk: vkPda })
       .rpc();
 
-    // -----------------------------------------------------------------------
-    // Init task_market global
-    // -----------------------------------------------------------------------
     const allowedMints: PublicKey[] = Array(8).fill(PublicKey.default);
     allowedMints[0] = paymentMint;
 
@@ -438,7 +403,6 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
       .accountsPartial({ payer: authority.publicKey })
       .rpc();
 
-    // Init task_market reentrancy guard (required by fund_task / submit_result / release)
     const [marketGlobalForGuard] = taskMarketPdas.global();
     await taskMarketProgram.methods
       .initGuard([PROGRAM_IDS.task_market])
@@ -448,13 +412,9 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
       })
       .rpc();
 
-    // -----------------------------------------------------------------------
-    // Register agent
-    // -----------------------------------------------------------------------
     const manifestUri = padBytes('ipfs://QmTest/manifest.json', 128);
     const capabilityMask = new BN(1); // bit 0
 
-    // Create operator stake token account + fund it
     const operatorStakeAta = await createATA(context, authority, stakeMint, operator.publicKey);
     await mintTokens(context, authority, stakeMint, operatorStakeAta, mintAuthority, MIN_STAKE);
 
@@ -487,24 +447,18 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
       .signers([operator])
       .rpc();
 
-    // Read agent DID for task creation
     const agentAccount = await agentRegProgram.account.agentAccount.fetch(agentPda);
     agentDid = Array.from(agentAccount.did as unknown as Uint8Array);
 
-    // -----------------------------------------------------------------------
-    // Set up client token accounts
-    // -----------------------------------------------------------------------
     const clientPaymentAta = await createATA(context, authority, paymentMint, client.publicKey);
     await mintTokens(
       context, authority, paymentMint, clientPaymentAta, mintAuthority, PAYMENT_AMOUNT * 10,
     );
 
-    // Agent + fee collector + solrep pool ATAs (needed for release)
     await createATA(context, authority, paymentMint, operator.publicKey);
     await createATA(context, authority, paymentMint, feeCollector.publicKey);
     await createATA(context, authority, paymentMint, solrepPool.publicKey);
 
-    // Compute task PDA
     const [taskPdaLocal] = taskMarketPdas.task(client.publicKey, taskNonce);
     taskPda = taskPdaLocal;
   });

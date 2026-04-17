@@ -15,8 +15,6 @@ fn bytes<T: AccountSerialize>(v: &T) -> Vec<u8> {
     buf
 }
 
-// --- Discriminator collision check ---
-
 #[test]
 fn discriminators_pairwise_distinct() {
     let discs = [
@@ -46,8 +44,6 @@ fn empty_buffers_rejected() {
     let mut s: &[u8] = &[];
     assert!(ExecutionRecord::try_deserialize(&mut s).is_err());
 }
-
-// --- Commit hash tests ---
 
 #[test]
 fn vote_leaf_none_voter_produces_leaf() {

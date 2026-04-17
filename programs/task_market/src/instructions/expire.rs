@@ -163,11 +163,6 @@ pub fn handler(ctx: Context<Expire>) -> Result<()> {
         transfer_checked(ctx_cpi, refund_amount, decimals)?;
     }
 
-    // F-2026-03: reputation rail removed. Expirations used to stamp a
-    // zero-across-the-board outcome onto the global AgentAccount.reputation
-    // via `record_job_outcome`; that field is now a read-only summary and
-    // the indexer computes rollups from CategoryReputation PDAs.
-
     emit!(TaskExpired {
         task_id,
         refund_amount,

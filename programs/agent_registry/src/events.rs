@@ -41,15 +41,6 @@ pub struct StatusChanged {
 }
 
 #[event]
-pub struct JobOutcomeRecorded {
-    pub agent_did: [u8; 32],
-    pub success: bool,
-    pub disputed: bool,
-    pub jobs_completed: u64,
-    pub timestamp: i64,
-}
-
-#[event]
 pub struct StakeIncreased {
     pub agent_did: [u8; 32],
     pub amount: u64,
