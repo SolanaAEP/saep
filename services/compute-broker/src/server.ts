@@ -1,6 +1,8 @@
 import Fastify from 'fastify';
 import { z } from 'zod';
 import { loadConfig, type Config } from './config.js';
+import { verifyAsync } from '@noble/ed25519';
+import bs58 from 'bs58';
 import {
   hexToKey,
   sign,
@@ -134,9 +136,74 @@ export function build(opts: BuildOpts) {
   app.post('/bonds/cancel', async (req, reply) => {
     const parsed = BondCancelBody.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.message });
-    return reply.code(501).send({
-      error: 'NOT_YET_WIRED',
-      reason: 'cancel path requires signed_request verify + provider refund call',
+    const { lease_id, agent_did, signed_request } = parsed.data;
+
+    if (cfg.signingKeyHex === undefined) {
+      return reply.code(503).send({ error: 'broker key not loaded' });
+    }
+
+    const cancelMsg = new TextEncoder().encode(
+      JSON.stringify({ action: 'cancel', lease_id, agent_did }),
+    );
+
+    let sigBytes: Uint8Array;
+    try {
+      sigBytes = bs58.decode(signed_request);
+    } catch {
+      return reply.code(400).send({ error: 'invalid signed_request encoding' });
+    }
+
+    let agentPk: Uint8Array;
+    try {
+      agentPk = bs58.decode(agent_did);
+    } catch {
+      return reply.code(400).send({ error: 'invalid agent_did encoding' });
+    }
+
+    let valid = false;
+    try {
+      if (sigBytes.length === 64 && agentPk.length === 32) {
+        valid = await verifyAsync(sigBytes, cancelMsg, agentPk);
+      }
+    } catch {
+      valid = false;
+    }
+    if (!valid) {
+      bondRequests.inc({ provider: 'unknown', status: 'bad_signature' });
+      return reply.code(403).send({ error: 'signed_request verification failed' });
+    }
+
+    let leaseStatus: string;
+    try {
+      leaseStatus = await providers.ionet.status(lease_id);
+    } catch {
+      try {
+        leaseStatus = await providers.akash.status(lease_id);
+      } catch {
+        return reply.code(404).send({ error: 'lease not found on any provider' });
+      }
+    }
+
+    if (leaseStatus === 'cancelled' || leaseStatus === 'reclaimed') {
+      return reply.code(409).send({ error: `lease already ${leaseStatus}` });
+    }
+
+    let refund: { refundUsdMicro: number };
+    try {
+      refund = await providers.ionet.cancel(lease_id);
+    } catch {
+      try {
+        refund = await providers.akash.cancel(lease_id);
+      } catch (err) {
+        return reply.code(502).send({ error: asMessage(err) });
+      }
+    }
+
+    bondRequests.inc({ provider: 'unknown', status: 'cancelled' });
+    return reply.send({
+      lease_id,
+      status: 'cancelled',
+      refund_usd_micro: refund.refundUsdMicro,
     });
   });
 
