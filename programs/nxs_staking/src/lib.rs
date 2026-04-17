@@ -9,8 +9,8 @@ pub mod state;
 
 use errors::NxsStakingError;
 use guard::{
-    assert_reset_timelock, AllowedCallers, ReentrancyGuard, StakingConfig, MAX_ALLOWED_CALLERS,
-    SEED_ALLOWED_CALLERS, SEED_GUARD, SEED_STAKING_CONFIG,
+    assert_reset_timelock, reset_guard, AllowedCallers, ReentrancyGuard, StakingConfig,
+    MAX_ALLOWED_CALLERS, SEED_ALLOWED_CALLERS, SEED_GUARD, SEED_STAKING_CONFIG,
 };
 use state::*;
 
@@ -38,10 +38,7 @@ pub mod nxs_staking {
             require!(*p != Pubkey::default(), NxsStakingError::UnauthorizedCaller);
         }
         let g = &mut ctx.accounts.guard;
-        g.active = false;
-        g.entered_by = Pubkey::default();
-        g.entered_at_slot = 0;
-        g.reset_proposed_at = 0;
+        reset_guard(g);
         g.bump = ctx.bumps.guard;
 
         let a = &mut ctx.accounts.allowed_callers;
@@ -73,11 +70,7 @@ pub mod nxs_staking {
     pub fn admin_reset_guard(ctx: Context<AdminResetGuard>) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         assert_reset_timelock(&ctx.accounts.guard, now)?;
-        let g = &mut ctx.accounts.guard;
-        g.active = false;
-        g.entered_by = Pubkey::default();
-        g.entered_at_slot = 0;
-        g.reset_proposed_at = 0;
+        reset_guard(&mut ctx.accounts.guard);
         Ok(())
     }
 

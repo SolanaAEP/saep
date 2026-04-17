@@ -109,7 +109,8 @@ async function applyPriorityFee(
         cfg.level ?? 'Medium',
       );
       microLamports = est.microLamports;
-    } catch {
+    } catch (err) {
+      console.warn('[sdk-ui] priority fee estimate failed, sending without fee boost:', err);
       microLamports = 0;
     }
   }

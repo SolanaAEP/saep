@@ -55,17 +55,13 @@ export function SpendingLimitsEditor({ agent }: { agent: AgentSummary }) {
 
   async function submit() {
     setStatus(null);
-    try {
-      const sig = await mutateAsync({
-        agentDid: agent.did,
-        daily: dailyLamports,
-        perTx: perTxLamports,
-        weekly: weeklyLamports,
-      });
-      setStatus(`Updated: ${sig.slice(0, 16)}…`);
-    } catch {
-      setStatus(null);
-    }
+    const sig = await mutateAsync({
+      agentDid: agent.did,
+      daily: dailyLamports,
+      perTx: perTxLamports,
+      weekly: weeklyLamports,
+    });
+    setStatus(`Updated: ${sig.slice(0, 16)}…`);
   }
 
   return (
