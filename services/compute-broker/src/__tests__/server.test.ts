@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { getPublicKeyAsync, signAsync } from '@noble/ed25519';
+import bs58 from 'bs58';
 import { build } from '../server.js';
 import { loadConfig } from '../config.js';
-import { verify } from '../attestation.js';
+import { hexToKey, verify } from '../attestation.js';
 import type { ComputeProvider, LeaseRequest, LeaseReservation } from '../providers.js';
 
 class FakeProvider implements ComputeProvider {
@@ -129,16 +131,38 @@ describe('compute-broker server', () => {
     await nokey.close();
   });
 
-  it('bonds/cancel returns 501 NOT_YET_WIRED', async () => {
+  it('bonds/cancel rejects invalid signature', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/bonds/cancel',
       payload: {
         lease_id: 'lease-1',
         agent_did: '11111111111111111111111111111111',
-        signed_request: 'sig',
+        signed_request: 'badsig',
       },
     });
-    expect(res.statusCode).toBe(501);
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('bonds/cancel succeeds with valid agent signature', async () => {
+    const agentKey = hexToKey('cd'.repeat(32));
+    const agentPk = await getPublicKeyAsync(agentKey);
+    const agentDid = bs58.encode(agentPk);
+    const leaseId = 'ionet-lease-4';
+    const cancelMsg = new TextEncoder().encode(
+      JSON.stringify({ action: 'cancel', lease_id: leaseId, agent_did: agentDid }),
+    );
+    const sig = await signAsync(cancelMsg, agentKey);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/bonds/cancel',
+      payload: {
+        lease_id: leaseId,
+        agent_did: agentDid,
+        signed_request: bs58.encode(sig),
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ lease_id: leaseId, status: 'cancelled' });
   });
 });
