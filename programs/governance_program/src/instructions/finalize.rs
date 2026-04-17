@@ -42,8 +42,12 @@ pub fn handler(ctx: Context<FinalizeVote>) -> Result<()> {
         .ok_or(GovernanceError::ArithmeticOverflow)?;
 
     // quorum check: total_voted >= total_eligible * quorum_bps / 10_000
-    let quorum_threshold =
-        (proposal.snapshot.total_eligible_weight * config.quorum_bps as u128) / 10_000;
+    let quorum_threshold = proposal
+        .snapshot
+        .total_eligible_weight
+        .checked_mul(config.quorum_bps as u128)
+        .ok_or(GovernanceError::ArithmeticOverflow)?
+        / 10_000;
     let quorum_met = total_voted >= quorum_threshold;
 
     // pass check: for_weight > (for_weight + against_weight) * threshold / 10_000
@@ -52,7 +56,10 @@ pub fn handler(ctx: Context<FinalizeVote>) -> Result<()> {
         .checked_add(proposal.against_weight)
         .ok_or(GovernanceError::ArithmeticOverflow)?;
     let threshold = config.threshold_for(&proposal.category);
-    let pass_threshold = (decisive_weight * threshold as u128) / 10_000;
+    let pass_threshold = decisive_weight
+        .checked_mul(threshold as u128)
+        .ok_or(GovernanceError::ArithmeticOverflow)?
+        / 10_000;
     let passed = quorum_met && proposal.for_weight > pass_threshold;
 
     let is_critical = ctx

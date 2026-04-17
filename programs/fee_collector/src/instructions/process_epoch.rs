@@ -115,9 +115,7 @@ pub fn handler(ctx: Context<ProcessEpoch>, snapshot_id: u64) -> Result<()> {
     epoch.grant_amount = grant_amt;
     epoch.treasury_amount = treasury_amt;
 
-    // find intake vault PDA bump for signing
-    let (_, intake_bump) =
-        Pubkey::find_program_address(&[SEED_INTAKE_VAULT], ctx.program_id);
+    let intake_bump = ctx.bumps.intake_vault;
     let intake_seeds: &[&[u8]] = &[SEED_INTAKE_VAULT, &[intake_bump]];
     let signer = &[intake_seeds];
 

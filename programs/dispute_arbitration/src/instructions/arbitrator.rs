@@ -21,8 +21,10 @@ pub struct RegisterArbitrator<'info> {
     pub arbitrator: Box<Account<'info, ArbitratorAccount>>,
 
     /// The NXSStaking StakeAccount for this operator.
-    /// CHECK: validated by seed derivation against nxs_staking program.
-    /// In production, read effective_stake and lock_end from this account.
+    /// CHECK: owner validated against config.nxs_staking. M2 structural:
+    /// effective_stake/lock_end passed as args until NXSStaking CPI reads are wired.
+    /// Pre-audit TODO: deserialize StakeAccount and read values on-chain.
+    #[account(owner = config.nxs_staking @ DisputeArbitrationError::StakeInsufficient)]
     pub stake_account: AccountInfo<'info>,
 
     #[account(mut)]
@@ -82,7 +84,9 @@ pub struct RefreshStake<'info> {
     )]
     pub arbitrator: Box<Account<'info, ArbitratorAccount>>,
 
-    /// CHECK: validated via config.nxs_staking ownership
+    /// CHECK: owner validated against config.nxs_staking. M2 structural:
+    /// values passed as args until NXSStaking CPI reads are wired.
+    #[account(owner = config.nxs_staking @ DisputeArbitrationError::StakeInsufficient)]
     pub stake_account: AccountInfo<'info>,
 
     pub operator: Signer<'info>,
@@ -93,6 +97,8 @@ pub fn refresh_stake_handler(
     new_stake: u64,
     new_lock_end: i64,
 ) -> Result<()> {
+    // M2 structural: values are caller-supplied. Pre-audit TODO: deserialize
+    // the stake_account and read effective_stake + lock_end on-chain.
     let a = &mut ctx.accounts.arbitrator;
     a.effective_stake = new_stake;
     a.effective_lock_end = new_lock_end;
