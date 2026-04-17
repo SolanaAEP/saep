@@ -10,6 +10,7 @@ members = [
     "programs/fee_collector",
     "programs/nxs_staking",
     "programs/proof_verifier",
+    "programs/template_registry",
 ]
 
 [profile.release]
