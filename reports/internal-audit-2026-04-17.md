@@ -126,6 +126,8 @@ While the authority must sign, an accidental call with a zeroed argument or a go
 
 **Recommendation:** Add `require!(new_civic_gateway_program != Pubkey::default(), RegistryError::InvalidCivicGateway)`. If intentional disabling is needed, use a separate `disable_personhood` instruction with explicit naming and a distinct event.
 
+**Status:** CLOSED — reject `Pubkey::default()` with `InvalidCivicGateway` error.
+
 ---
 
 ### F-2026-19 — O(n^2) duplicate detection in close_bidding
