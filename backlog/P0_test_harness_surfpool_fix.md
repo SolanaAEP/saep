@@ -24,7 +24,7 @@ anchor 1.0 swapped `solana-test-validator` for `surfpool`. Current state (2026-0
 
 ## Verify
 ```
-cd /Users/dennisgoslar/Projects/SAEP
+cd ~/Projects/SAEP
 anchor build
 anchor test --skip-build
 ```

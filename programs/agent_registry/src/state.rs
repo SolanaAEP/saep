@@ -175,9 +175,9 @@ pub struct AgentAccount {
     pub capability_mask: u128,
     pub price_lamports: u64,
     pub stream_rate: u64,
-    // DEPRECATED: global rolled-up reputation — superseded by per-capability
-    // `CategoryReputation` PDAs updated only via `proof_verifier` CPI. Retained
-    // for account-layout compatibility; readers should prefer category PDAs.
+    // Read-only historical summary. Per-capability reputation lives in
+    // CategoryReputation PDAs, updated via proof_verifier CPI. This field is
+    // retained for account-layout compatibility only.
     pub reputation: ReputationScore,
     pub jobs_completed: u64,
     pub jobs_disputed: u32,

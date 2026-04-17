@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 
-// --- Seeds ---
 pub const SEED_DISPUTE_CONFIG: &[u8] = b"dispute_config";
 pub const SEED_GUARD: &[u8] = b"guard";
 pub const SEED_ALLOWED_CALLERS: &[u8] = b"allowed_callers";
@@ -11,7 +10,6 @@ pub const SEED_DISPUTE_VOTE: &[u8] = b"dispute_vote";
 pub const SEED_APPEAL: &[u8] = b"appeal";
 pub const SEED_PENDING_SLASH: &[u8] = b"pending_slash";
 
-// --- Constants ---
 pub const MAX_ALLOWED_CALLERS: usize = 8;
 pub const MAX_CPI_STACK_HEIGHT: usize = 3;
 pub const ADMIN_RESET_TIMELOCK_SECS: i64 = 24 * 60 * 60;
@@ -28,8 +26,6 @@ pub const DEFAULT_VRF_STALE_SLOTS: u64 = 150;
 pub const DEFAULT_BAD_FAITH_THRESHOLD: u8 = 3;
 pub const DEFAULT_BAD_FAITH_LOOKBACK: u8 = 10;
 pub const BPS_DENOMINATOR: u64 = 10_000;
-
-// --- Enums ---
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace, Debug)]
 pub enum ArbitratorStatus {
@@ -59,8 +55,6 @@ pub enum DisputeVerdict {
     Split,
 }
 
-// --- Guard Accounts ---
-
 #[account]
 #[derive(InitSpace)]
 pub struct ReentrancyGuard {
@@ -78,8 +72,6 @@ pub struct AllowedCallers {
     pub programs: Vec<Pubkey>,
     pub bump: u8,
 }
-
-// --- Config ---
 
 #[account]
 #[derive(InitSpace)]
@@ -111,8 +103,6 @@ pub struct DisputeConfig {
     pub bump: u8,
 }
 
-// --- Arbitrator ---
-
 #[account]
 #[derive(InitSpace)]
 pub struct ArbitratorAccount {
@@ -128,8 +118,6 @@ pub struct ArbitratorAccount {
     pub bump: u8,
 }
 
-// --- Pool ---
-
 #[account]
 #[derive(InitSpace)]
 pub struct DisputePool {
@@ -143,8 +131,6 @@ pub struct DisputePool {
     pub cumulative_stakes: Vec<u64>,
     pub bump: u8,
 }
-
-// --- Dispute Case ---
 
 #[account]
 #[derive(InitSpace)]
@@ -175,8 +161,6 @@ pub struct DisputeCase {
     pub bump: u8,
 }
 
-// --- Vote Record ---
-
 #[account]
 #[derive(InitSpace)]
 pub struct DisputeVoteRecord {
@@ -192,8 +176,6 @@ pub struct DisputeVoteRecord {
     pub bump: u8,
 }
 
-// --- Appeal ---
-
 #[account]
 #[derive(InitSpace)]
 pub struct AppealRecord {
@@ -206,8 +188,6 @@ pub struct AppealRecord {
     pub bump: u8,
 }
 
-// --- Pending Slash ---
-
 #[account]
 #[derive(InitSpace)]
 pub struct PendingSlash {
@@ -218,8 +198,6 @@ pub struct PendingSlash {
     pub executable_at: i64,
     pub bump: u8,
 }
-
-// --- Helpers ---
 
 pub fn compute_commit_hash(verdict: &DisputeVerdict, salt: &[u8; 32]) -> [u8; 32] {
     let verdict_byte = match verdict {
@@ -263,7 +241,6 @@ pub fn weighted_select(
             Err(i) => i,
         };
 
-        // skip already-selected or excluded
         let mut attempts = 0;
         while (selected.contains(&idx) || excluded.contains(&idx))
             && attempts < cumulative_stakes.len()

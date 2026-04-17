@@ -4,8 +4,6 @@ use crate::errors::DisputeArbitrationError;
 use crate::events::{ParamsUpdated, PausedSet};
 use crate::state::*;
 
-// --- Set Params ---
-
 #[derive(Accounts)]
 pub struct SetParams<'info> {
     #[account(
@@ -83,8 +81,6 @@ pub fn set_params_handler(
     });
     Ok(())
 }
-
-// --- Set Paused ---
 
 #[derive(Accounts)]
 pub struct SetDisputePaused<'info> {

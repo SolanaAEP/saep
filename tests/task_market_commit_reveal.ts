@@ -25,10 +25,7 @@ import type { CapabilityRegistry } from '../target/types/capability_registry';
 import type { AgentRegistry } from '../target/types/agent_registry';
 import type { TaskMarket } from '../target/types/task_market';
 
-// ---------------------------------------------------------------------------
 // Constants
-// ---------------------------------------------------------------------------
-
 const PROGRAM_IDS = {
   capability_registry: new PublicKey('GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F'),
   agent_registry: new PublicKey('EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu'),
@@ -51,10 +48,7 @@ const REVEAL_SECS = 180;
 
 const T0 = 1_700_000_000n;
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
-
 function padBytes(s: string, len: number): number[] {
   const buf = Buffer.alloc(len, 0);
   Buffer.from(s, 'utf8').copy(buf);
@@ -158,10 +152,7 @@ function computeCommitHash(amount: bigint, nonce: Uint8Array, agentDid: Uint8Arr
   return Array.from(new Uint8Array(hash));
 }
 
-// ---------------------------------------------------------------------------
 // PDA helpers
-// ---------------------------------------------------------------------------
-
 const capRegPdas = {
   config: () => PublicKey.findProgramAddressSync(
     [Buffer.from('config')], PROGRAM_IDS.capability_registry,
@@ -209,10 +200,7 @@ const taskMarketPdas = {
   ),
 };
 
-// ---------------------------------------------------------------------------
 // Test suite
-// ---------------------------------------------------------------------------
-
 describe('task_market commit-reveal bidding (bankrun)', function () {
   this.timeout(120_000);
 
@@ -272,7 +260,6 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
     agentRegProgram = new anchor.Program<AgentRegistry>(agentRegIdl, provider);
     taskMarketProgram = new anchor.Program<TaskMarket>(taskMarketIdl, provider);
 
-    // Fund actors
     for (const kp of [client, feeCollector, solrepPool, mintAuthority, ...operators]) {
       context.setAccount(kp.publicKey, {
         lamports: 100 * LAMPORTS_PER_SOL,
@@ -284,11 +271,9 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
 
     await setClock(context, T0);
 
-    // Create Token-2022 mints
     paymentMint = await createToken2022Mint(context, authority, mintAuthority.publicKey, 6);
     stakeMint = await createToken2022Mint(context, authority, mintAuthority.publicKey, 6);
 
-    // Init capability_registry + tag at bit 0
     await capRegProgram.methods
       .initialize(authority.publicKey)
       .accountsPartial({ payer: authority.publicKey })
@@ -308,7 +293,6 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
       })
       .rpc();
 
-    // Init agent_registry
     await agentRegProgram.methods
       .initGlobal(
         authority.publicKey,
@@ -325,7 +309,6 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
       .accountsPartial({ payer: authority.publicKey, stakeMintInfo: stakeMint })
       .rpc();
 
-    // Init agent_registry reentrancy guard
     const [regGlobalPda] = agentRegPdas.global();
 
     await agentRegProgram.methods
@@ -336,7 +319,6 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
       })
       .rpc();
 
-    // Register 3 agents
     const [capConfigPda] = capRegPdas.config();
     const agentRegGuardPda = PublicKey.findProgramAddressSync(
       [Buffer.from('guard')], PROGRAM_IDS.agent_registry,
@@ -379,7 +361,6 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
       agentDids.push(new Uint8Array(agentAccount.did as unknown as Uint8Array));
     }
 
-    // Init task_market global
     const allowedMints: PublicKey[] = Array(8).fill(PublicKey.default);
     allowedMints[0] = paymentMint;
 
@@ -400,7 +381,6 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
       .accountsPartial({ payer: authority.publicKey })
       .rpc();
 
-    // Init reentrancy guard (required by fund_task and close_bidding)
     const [marketGlobal] = taskMarketPdas.global();
     await taskMarketProgram.methods
       .initGuard([PROGRAM_IDS.task_market])
@@ -410,25 +390,20 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
       })
       .rpc();
 
-    // Create client payment ATA and fund it
     const clientPaymentAta = await createATA(context, authority, paymentMint, client.publicKey);
     await mintTokens(
       context, authority, paymentMint, clientPaymentAta, mintAuthority, PAYMENT_AMOUNT * 10,
     );
 
-    // Create operator payment ATAs and fund them (for bond deposits)
     for (const op of operators) {
       const ata = await createATA(context, authority, paymentMint, op.publicKey);
       await mintTokens(context, authority, paymentMint, ata, mintAuthority, expectedBond * 10);
     }
 
-    // Fee collector ATA (needed for claim_bond slash path)
     await createATA(context, authority, paymentMint, feeCollector.publicKey);
 
-    // Warp clock to task creation time
     await setClock(context, 1_798_000_000n);
 
-    // Create task (using agent 0 as the initial agent_did target)
     const [marketGlobalPda] = taskMarketPdas.global();
     const [regGlobal] = agentRegPdas.global();
     const [taskPdaLocal] = taskMarketPdas.task(client.publicKey, taskNonce);
@@ -485,7 +460,6 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
       .signers([client])
       .rpc();
 
-    // Read task_id from the created task
     const taskAccount = await taskMarketProgram.account.taskContract.fetch(taskPda);
     taskId = new Uint8Array(taskAccount.taskId as unknown as Uint8Array);
   });
@@ -602,14 +576,13 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
   });
 
   it('close_bidding picks lowest bid as winner', async () => {
-    // Warp past reveal_end
     await setClock(context, 1_798_000_000n + BigInt(COMMIT_SECS) + BigInt(REVEAL_SECS) + 1n);
 
     const [marketGlobal] = taskMarketPdas.global();
     const [bidBookPda] = taskMarketPdas.bidBook(taskId);
     const [guardPda] = taskMarketPdas.guard();
 
-    // Build remaining_accounts: [Bid, AgentAccount] pairs for all revealed bids
+    // remaining_accounts: [Bid, AgentAccount] pairs for all revealed bids
     const remainingAccounts: anchor.web3.AccountMeta[] = [];
     for (let i = 0; i < 3; i++) {
       const [bidPda] = taskMarketPdas.bid(taskId, operators[i]!.publicKey);
@@ -648,8 +621,7 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
   });
 
   it('non-winner claims bond refund', async () => {
-    // Agent 0 (bid 500_000) is not the winner — should get full refund
-    const op = operators[0]!;
+    const op = operators[0]!; // bid 500_000, not winner
     const [bidPda] = taskMarketPdas.bid(taskId, op.publicKey);
     const [bidBookPda] = taskMarketPdas.bidBook(taskId);
     const [bondEscrowPda] = taskMarketPdas.bondEscrow(taskId);
@@ -723,8 +695,7 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
       .rpc();
 
     const balanceAfter = await getTokenBalance(context, bidderAta);
-    // Winner's bond stays in escrow — no transfer back
-    expect(Number(balanceAfter - balanceBefore)).to.equal(0);
+    expect(Number(balanceAfter - balanceBefore)).to.equal(0); // winner's bond stays in escrow
 
     const bid = await taskMarketProgram.account.bid.fetch(bidPda);
     expect(bid.refunded).to.equal(true);

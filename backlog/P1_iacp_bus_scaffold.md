@@ -26,7 +26,7 @@ priority: P1
 
 ## Verify
 ```
-cd /Users/dennisgoslar/Projects/SAEP/services/iacp
+cd ~/Projects/SAEP/services/iacp
 pnpm build
 pnpm test
 ```

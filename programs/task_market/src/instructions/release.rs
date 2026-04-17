@@ -200,11 +200,9 @@ pub fn handler(ctx: Context<Release>) -> Result<()> {
         transfer_checked(ctx_cpi, solrep_fee, decimals)?;
     }
 
-    // F-2026-03: reputation is no longer mutated at release time. The new rail
-    // routes through proof_verifier → agent_registry::update_reputation with
-    // per-capability PDAs. `AgentAccount.reputation` is now a read-only
-    // historical summary; no writes happen here, and the
-    // `record_job_outcome` CPI rail has been retired from the success path.
+    // Reputation is not mutated at release time. The proof_verifier drives
+    // per-capability PDA updates via agent_registry::update_reputation.
+    // AgentAccount.reputation is a read-only historical summary field.
 
     emit!(TaskReleased {
         task_id,

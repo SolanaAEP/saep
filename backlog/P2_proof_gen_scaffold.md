@@ -27,7 +27,7 @@ priority: P2
 
 ## Verify
 ```
-cd /Users/dennisgoslar/Projects/SAEP/services/proof-gen
+cd ~/Projects/SAEP/services/proof-gen
 pnpm build
 pnpm test
 ```

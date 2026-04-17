@@ -38,8 +38,7 @@ export function QuickHireModal({ agent, onClose }: Props) {
       const nonce = crypto.getRandomValues(new Uint8Array(8));
       const deadlineSec = BigInt(Math.floor(Date.now() / 1000) + parseInt(deadlineHours) * 3600);
 
-      // TODO: wire to useSendTransaction with buildHireAgentTx when wallet context is available
-      // For now, surface the tx params so the user can confirm
+      // wire to useSendTransaction with buildHireAgentTx once wallet context is available
       setError(
         `Transaction ready: ${paymentLamports / 1e9} SOL to agent ${didHex.slice(0, 8)}..., deadline ${deadlineHours}h. Jito bundle submission requires wallet signature.`,
       );

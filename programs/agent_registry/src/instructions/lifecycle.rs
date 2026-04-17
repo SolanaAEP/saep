@@ -1,8 +1,8 @@
 use anchor_lang::prelude::*;
 
 use crate::errors::AgentRegistryError;
-use crate::events::{DelegateSet, JobOutcomeRecorded, StatusChanged};
-use crate::state::{ewma, AgentAccount, AgentStatus, RegistryGlobal};
+use crate::events::{DelegateSet, StatusChanged};
+use crate::state::{AgentAccount, AgentStatus, RegistryGlobal};
 
 #[derive(Accounts)]
 pub struct DelegateControl<'info> {
@@ -69,88 +69,6 @@ pub fn set_status_handler(ctx: Context<SetStatus>, new_status: AgentStatus) -> R
         agent_did: agent.did,
         new_status: new_status as u8,
         timestamp: Clock::get()?.unix_timestamp,
-    });
-    Ok(())
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug)]
-pub struct JobOutcome {
-    pub success: bool,
-    pub quality_bps: u16,
-    pub timeliness_bps: u16,
-    pub cost_efficiency_bps: u16,
-    pub disputed: bool,
-}
-
-#[derive(Accounts)]
-pub struct RecordJobOutcome<'info> {
-    #[account(seeds = [b"global"], bump = global.bump)]
-    pub global: Account<'info, RegistryGlobal>,
-    #[account(
-        mut,
-        seeds = [b"agent", agent.operator.as_ref(), agent.agent_id.as_ref()],
-        bump = agent.bump,
-    )]
-    pub agent: Account<'info, AgentAccount>,
-    /// CHECK: program id equality checked against global.task_market
-    pub task_market_program: UncheckedAccount<'info>,
-    pub task_market_authority: Signer<'info>,
-}
-
-pub fn record_job_outcome_handler(
-    ctx: Context<RecordJobOutcome>,
-    outcome: JobOutcome,
-) -> Result<()> {
-    let g = &ctx.accounts.global;
-    require_keys_eq!(
-        ctx.accounts.task_market_program.key(),
-        g.task_market,
-        AgentRegistryError::CallerNotTaskMarket
-    );
-    require!(
-        ctx.accounts.task_market_program.executable,
-        AgentRegistryError::CallerNotTaskMarket
-    );
-
-    let agent = &mut ctx.accounts.agent;
-    agent.jobs_completed = agent
-        .jobs_completed
-        .checked_add(1)
-        .ok_or(AgentRegistryError::ArithmeticOverflow)?;
-    if outcome.disputed {
-        agent.jobs_disputed = agent
-            .jobs_disputed
-            .checked_add(1)
-            .ok_or(AgentRegistryError::ArithmeticOverflow)?;
-    }
-
-    let alpha = agent.reputation.ewma_alpha_bps;
-    let rep = &mut agent.reputation;
-    rep.quality = ewma(rep.quality, outcome.quality_bps, alpha)?;
-    rep.timeliness = ewma(rep.timeliness, outcome.timeliness_bps, alpha)?;
-    rep.cost_efficiency = ewma(rep.cost_efficiency, outcome.cost_efficiency_bps, alpha)?;
-    let honesty_sample: u16 = if outcome.disputed { 0 } else { 10_000 };
-    rep.honesty = ewma(rep.honesty, honesty_sample, alpha)?;
-    let success_sample: u16 = if outcome.success { 10_000 } else { 0 };
-    rep.availability = ewma(rep.availability, success_sample, alpha)?;
-    rep.volume = rep
-        .volume
-        .saturating_add(1)
-        .min(10_000);
-    rep.sample_count = rep
-        .sample_count
-        .checked_add(1)
-        .ok_or(AgentRegistryError::ArithmeticOverflow)?;
-    let now = Clock::get()?.unix_timestamp;
-    rep.last_update = now;
-    agent.last_active = now;
-
-    emit!(JobOutcomeRecorded {
-        agent_did: agent.did,
-        success: outcome.success,
-        disputed: outcome.disputed,
-        jobs_completed: agent.jobs_completed,
-        timestamp: now,
     });
     Ok(())
 }

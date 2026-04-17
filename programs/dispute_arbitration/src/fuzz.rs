@@ -66,8 +66,6 @@ fn sample_allowed() -> AllowedCallers {
     }
 }
 
-// --- Guard round-trip tests ---
-
 #[test]
 fn config_round_trip() {
     let v = sample_config();
@@ -147,8 +145,6 @@ fn discriminators_pairwise_distinct() {
         }
     }
 }
-
-// --- Commit-reveal tests ---
 
 #[test]
 fn commit_hash_deterministic() {

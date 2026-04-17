@@ -27,7 +27,7 @@ priority: P1
 
 ## Verify
 ```
-cd /Users/dennisgoslar/Projects/SAEP
+cd ~/Projects/SAEP
 pnpm --filter @saep/sdk generate
 pnpm --filter @saep/sdk build
 pnpm -w typecheck

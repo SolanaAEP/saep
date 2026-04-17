@@ -14,8 +14,6 @@ fn bytes<T: AccountSerialize>(v: &T) -> Vec<u8> {
     buf
 }
 
-// --- Discriminator tests ---
-
 #[test]
 fn discriminators_pairwise_distinct() {
     let discs = [

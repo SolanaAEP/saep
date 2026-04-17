@@ -2,8 +2,6 @@ use anchor_lang::prelude::*;
 
 use crate::state::DisputeVerdict;
 
-// --- Guard events (preserved) ---
-
 #[event]
 pub struct GuardEntered {
     pub program: Pubkey,
@@ -38,8 +36,6 @@ pub struct AllowedCallersUpdated {
     pub count: u16,
     pub timestamp: i64,
 }
-
-// --- Dispute events ---
 
 #[event]
 pub struct ArbitratorRegistered {

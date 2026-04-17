@@ -4,9 +4,7 @@ use crate::errors::DisputeArbitrationError;
 use crate::events::{ArbitratorsSelected, DisputeCancelled, DisputeRaised};
 use crate::state::*;
 
-// --- Raise Dispute ---
-// Called via CPI from TaskMarket. In M2, caller identity validated structurally.
-
+// CPI entry from TaskMarket. Caller identity validated structurally in M2.
 #[derive(Accounts)]
 pub struct RaiseDispute<'info> {
     #[account(
@@ -93,10 +91,7 @@ pub fn raise_dispute_handler(
     Ok(())
 }
 
-// --- Consume VRF ---
-// Reads VRF result and selects arbitrators via weighted draw.
-// M2: VRF result passed as argument (Switchboard CPI integration deferred).
-
+// M2: VRF result passed as arg; Switchboard CPI deferred.
 #[derive(Accounts)]
 pub struct ConsumeVrf<'info> {
     #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump)]
@@ -183,9 +178,6 @@ pub fn consume_vrf_handler(
     });
     Ok(())
 }
-
-// --- Cancel Stale VRF ---
-// If VRF is never fulfilled, cancel the dispute and refund.
 
 #[derive(Accounts)]
 pub struct CancelStaleVrf<'info> {

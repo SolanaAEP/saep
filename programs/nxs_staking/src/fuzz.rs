@@ -5,8 +5,8 @@ use proptest::prelude::*;
 
 use crate::guard::{AllowedCallers, ReentrancyGuard, StakingConfig, MAX_ALLOWED_CALLERS};
 use crate::state::{
-    compute_multiplier, compute_voting_power, StakeAccount, StakeStatus, StakingPool,
-    VotingPowerSnapshot, MAX_LOCKUP_SECS, MAX_VOTING_POWER_MULTIPLIER, MIN_LOCKUP_SECS,
+    compute_multiplier, compute_voting_power, StakeAccount, StakingPool,
+    VotingPowerSnapshot, MAX_LOCKUP_SECS, MAX_VOTING_POWER_MULTIPLIER,
 };
 
 fn valid_staking_config() -> impl Strategy<Value = Vec<u8>> {
