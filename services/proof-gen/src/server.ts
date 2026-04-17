@@ -197,7 +197,7 @@ export async function buildServer() {
 
     const data: ProveJobData = {
       circuit_id,
-      public_inputs: public_inputs as unknown as Record<string, string>,
+      public_inputs,
       witness_ciphertext: enc.ciphertext,
       witness_iv: enc.iv,
       witness_tag: enc.tag,

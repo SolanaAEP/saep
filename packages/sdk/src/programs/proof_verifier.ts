@@ -26,14 +26,14 @@ export async function buildRegisterVkIx(
 
   return program.methods
     .registerVk(
-      Array.from(input.vkId) as unknown as number[],
-      Array.from(input.alphaG1) as unknown as number[],
-      Array.from(input.betaG2) as unknown as number[],
-      Array.from(input.gammaG2) as unknown as number[],
-      Array.from(input.deltaG2) as unknown as number[],
-      input.ic.map((x) => Array.from(x) as unknown as number[]),
+      Array.from(input.vkId),
+      Array.from(input.alphaG1),
+      Array.from(input.betaG2),
+      Array.from(input.gammaG2),
+      Array.from(input.deltaG2),
+      input.ic.map((x) => Array.from(x)),
       input.numPublicInputs,
-      Array.from(input.circuitLabel) as unknown as number[],
+      Array.from(input.circuitLabel),
       input.isProduction,
     )
     .accounts({
@@ -105,10 +105,10 @@ export async function buildVerifyProofIx(
 
   return program.methods
     .verifyProof(
-      Array.from(input.proofA) as unknown as number[],
-      Array.from(input.proofB) as unknown as number[],
-      Array.from(input.proofC) as unknown as number[],
-      input.publicInputs.map((x) => Array.from(x) as unknown as number[]),
+      Array.from(input.proofA),
+      Array.from(input.proofB),
+      Array.from(input.proofC),
+      input.publicInputs.map((x) => Array.from(x)),
     )
     .accounts({
       config,

@@ -1,5 +1,6 @@
 import { Queue, QueueEvents, type ConnectionOptions } from 'bullmq';
 import IORedis from 'ioredis';
+import type { PublicInputs } from './schema.js';
 
 export const QUEUE_NAME = 'proof-gen';
 export const DLQ_NAME = 'proof-gen-dlq';
@@ -17,7 +18,7 @@ export function buildDlq(connection: ConnectionOptions): Queue<ProveJobData & { 
 
 export type ProveJobData = {
   circuit_id: string;
-  public_inputs: Record<string, string>;
+  public_inputs: PublicInputs;
   witness_ciphertext: string;
   witness_iv: string;
   witness_tag: string;

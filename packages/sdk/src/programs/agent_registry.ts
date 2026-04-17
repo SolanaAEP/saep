@@ -24,7 +24,7 @@ export async function buildUpdateManifestIx(
 
   return program.methods
     .updateManifest(
-      Array.from(manifestBytes) as unknown as number[],
+      Array.from(manifestBytes),
       new BN(input.capabilityMask.toString()),
       new BN(input.priceLamports.toString()),
       new BN(input.streamRate.toString()),

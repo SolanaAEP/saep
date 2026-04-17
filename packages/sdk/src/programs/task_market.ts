@@ -45,12 +45,12 @@ export async function buildCreateTaskIx(
 
   return program.methods
     .createTask(
-      Array.from(input.taskNonce) as unknown as number[],
-      Array.from(input.agentDid) as unknown as number[],
+      Array.from(input.taskNonce),
+      Array.from(input.agentDid),
       input.paymentMint,
       new BN(input.paymentAmount.toString()),
-      Array.from(input.taskHash) as unknown as number[],
-      Array.from(input.criteriaRoot) as unknown as number[],
+      Array.from(input.taskHash),
+      Array.from(input.criteriaRoot),
       new BN(input.deadline.toString()),
       input.milestoneCount,
     )
@@ -111,8 +111,8 @@ export async function buildSubmitResultIx(
 
   return program.methods
     .submitResult(
-      Array.from(input.resultHash) as unknown as number[],
-      Array.from(input.proofKey) as unknown as number[],
+      Array.from(input.resultHash),
+      Array.from(input.proofKey),
     )
     .accounts({
       global,
@@ -145,9 +145,9 @@ export async function buildVerifyTaskIx(
 
   return program.methods
     .verifyTask(
-      Array.from(input.proofA) as unknown as number[],
-      Array.from(input.proofB) as unknown as number[],
-      Array.from(input.proofC) as unknown as number[],
+      Array.from(input.proofA),
+      Array.from(input.proofB),
+      Array.from(input.proofC),
     )
     .accounts({
       global,
@@ -319,8 +319,8 @@ export async function buildCommitBidIx(
 
   return program.methods
     .commitBid(
-      Array.from(input.commitHash) as unknown as number[],
-      Array.from(input.agentDid) as unknown as number[],
+      Array.from(input.commitHash),
+      Array.from(input.agentDid),
     )
     .accounts({
       global,
@@ -357,7 +357,7 @@ export async function buildRevealBidIx(
   return program.methods
     .revealBid(
       new BN(input.amount.toString()),
-      Array.from(input.nonce) as unknown as number[],
+      Array.from(input.nonce),
     )
     .accounts({
       task: input.task,

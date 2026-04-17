@@ -21,8 +21,8 @@ export async function buildProposeTagIx(
   return program.methods
     .proposeTag(
       input.bitIndex,
-      Array.from(input.slug) as unknown as number[],
-      Array.from(input.manifestUri) as unknown as number[],
+      Array.from(input.slug),
+      Array.from(input.manifestUri),
     )
     .accounts({
       config,
