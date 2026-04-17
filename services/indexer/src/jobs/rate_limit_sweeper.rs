@@ -10,7 +10,10 @@
 //!
 //! Also publishes `saep_discovery_rate_limiter_buckets{scope}` as an
 //! operational gauge so Grafana can chart active bucket count over time
-//! without scraping limiter internals.
+//! without scraping limiter internals, and
+//! `saep_discovery_rate_limiter_sweeps_total{scope}` as a cumulative counter
+//! of reclaimed buckets so long-horizon churn (bucket-drops per hour, e.g.)
+//! is queryable via `rate()` without relying on gauge deltas.
 //!
 //! Cross-replica coordination is out of scope at M1 (Render runs the
 //! discovery surface single-instance).
@@ -44,6 +47,9 @@ fn sweep_and_report(limiter: &mut KeyedRateLimiter, now: Instant, scope: &'stati
         .with_label_values(&[scope])
         .set(limiter.len() as i64);
     if dropped > 0 {
+        metrics::DISCOVERY_RATE_LIMITER_SWEEPS_TOTAL
+            .with_label_values(&[scope])
+            .inc_by(dropped as u64);
         tracing::debug!(dropped, scope, "rate-limit sweep");
     }
     dropped
@@ -81,6 +87,47 @@ mod tests {
         let dropped = sweep_and_report(&mut limiter, later, "test_sweep_idle");
         assert_eq!(dropped, 2, "both idle buckets should be swept");
         assert_eq!(limiter.len(), 1, "hot bucket remains");
+    }
+
+    #[test]
+    fn sweep_and_report_increments_sweeps_total_by_dropped_count() {
+        let scope = "test_sweep_counter";
+        let before = metrics::DISCOVERY_RATE_LIMITER_SWEEPS_TOTAL
+            .with_label_values(&[scope])
+            .get();
+        let cfg = TokenBucketConfig {
+            capacity: 1.0,
+            refill_per_ms: 1.0,
+        };
+        let mut limiter = KeyedRateLimiter::new(cfg, Duration::from_millis(20), 16);
+        let t0 = Instant::now();
+        limiter.consume("a", 0.0, t0);
+        limiter.consume("b", 0.0, t0);
+        limiter.consume("c", 0.0, t0);
+        let dropped = sweep_and_report(
+            &mut limiter,
+            t0 + Duration::from_millis(30),
+            // `&'static str` requirement — pass the same literal used for
+            // the `before` snapshot.
+            "test_sweep_counter",
+        );
+        assert_eq!(dropped, 3);
+        let after = metrics::DISCOVERY_RATE_LIMITER_SWEEPS_TOTAL
+            .with_label_values(&[scope])
+            .get();
+        assert_eq!(after - before, 3);
+
+        // Second sweep with nothing to drop must not increment further.
+        let noop = sweep_and_report(
+            &mut limiter,
+            t0 + Duration::from_millis(40),
+            "test_sweep_counter",
+        );
+        assert_eq!(noop, 0);
+        let still = metrics::DISCOVERY_RATE_LIMITER_SWEEPS_TOTAL
+            .with_label_values(&[scope])
+            .get();
+        assert_eq!(still, after);
     }
 
     #[test]

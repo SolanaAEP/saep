@@ -230,6 +230,15 @@ pub static DISCOVERY_RATE_LIMITER_BUCKETS: Lazy<IntGaugeVec> = Lazy::new(|| {
     .unwrap()
 });
 
+pub static DISCOVERY_RATE_LIMITER_SWEEPS_TOTAL: Lazy<IntCounterVec> = Lazy::new(|| {
+    register_int_counter_vec!(
+        "saep_discovery_rate_limiter_sweeps_total",
+        "Buckets reclaimed cumulatively by the discovery rate-limit sweeper",
+        &["scope"]
+    )
+    .unwrap()
+});
+
 pub static DISCOVERY_DB_QUERY_DURATION: Lazy<HistogramVec> = Lazy::new(|| {
     register_histogram_vec!(
         "saep_discovery_db_query_duration_seconds",
