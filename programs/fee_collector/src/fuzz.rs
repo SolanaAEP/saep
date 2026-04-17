@@ -13,7 +13,10 @@ use anchor_lang::prelude::*;
 use anchor_lang::{AccountDeserialize, AccountSerialize, Discriminator};
 use proptest::prelude::*;
 
-use crate::state::{AgentHookAllowlist, HookAllowlist};
+use crate::state::{
+    compute_bps_split, compute_claim_leaf, verify_merkle_proof, AgentHookAllowlist,
+    EpochAccount, FeeCollectorConfig, HookAllowlist, StakerClaim,
+};
 
 fn bytes<T: AccountSerialize>(v: &T) -> Vec<u8> {
     let mut buf = Vec::new();
@@ -178,6 +181,63 @@ proptest! {
         let parsed = HookAllowlist::try_deserialize(&mut slice);
         prop_assert!(parsed.is_ok());
         prop_assert!(!slice.is_empty());
+    }
+
+    #[test]
+    fn bps_split_conserves_total(
+        total in any::<u64>(),
+        burn_bps in 0u16..=2000,
+        staker_bps in 0u16..=7500,
+        grant_bps in 0u16..=3000,
+    ) {
+        let treasury_bps = 10_000u16.saturating_sub(burn_bps).saturating_sub(staker_bps).saturating_sub(grant_bps);
+        if burn_bps as u32 + staker_bps as u32 + grant_bps as u32 + treasury_bps as u32 != 10_000 {
+            return Ok(());
+        }
+        let (b, s, g, t) = compute_bps_split(total, burn_bps, staker_bps, grant_bps, treasury_bps);
+        prop_assert_eq!(b + s + g + t, total, "bps split must conserve total");
+    }
+
+    #[test]
+    fn merkle_claim_leaf_deterministic(
+        staker_bytes in any::<[u8; 32]>(),
+        amount in any::<u64>(),
+        epoch_id in any::<u64>(),
+    ) {
+        let staker = Pubkey::new_from_array(staker_bytes);
+        let leaf1 = compute_claim_leaf(&staker, amount, epoch_id);
+        let leaf2 = compute_claim_leaf(&staker, amount, epoch_id);
+        prop_assert_eq!(leaf1, leaf2);
+    }
+
+    #[test]
+    fn merkle_different_inputs_different_leaves(
+        s1 in any::<[u8; 32]>(),
+        s2 in any::<[u8; 32]>(),
+        amount in any::<u64>(),
+    ) {
+        prop_assume!(s1 != s2);
+        let leaf1 = compute_claim_leaf(&Pubkey::new_from_array(s1), amount, 0);
+        let leaf2 = compute_claim_leaf(&Pubkey::new_from_array(s2), amount, 0);
+        prop_assert_ne!(leaf1, leaf2);
+    }
+
+    #[test]
+    fn arbitrary_bytes_fee_config(data in proptest::collection::vec(any::<u8>(), 0..1024)) {
+        let mut slice = data.as_slice();
+        let _ = FeeCollectorConfig::deserialize(&mut slice);
+    }
+
+    #[test]
+    fn arbitrary_bytes_epoch_account(data in proptest::collection::vec(any::<u8>(), 0..512)) {
+        let mut slice = data.as_slice();
+        let _ = EpochAccount::deserialize(&mut slice);
+    }
+
+    #[test]
+    fn arbitrary_bytes_staker_claim(data in proptest::collection::vec(any::<u8>(), 0..256)) {
+        let mut slice = data.as_slice();
+        let _ = StakerClaim::deserialize(&mut slice);
     }
 
     #[test]
