@@ -48,6 +48,19 @@
 //! with an injected `agent_did` filter, so its SQL is already attributed to
 //! `discovery.list_tasks`. The `{query}` label reflects SQL pathway, not HTTP
 //! endpoint.
+//!
+//! Cycle-106 scope: anonymous per-IP rate limiter wired in front of the
+//! discovery router via `rate_limit_mw`. Token bucket lives in
+//! `rate_limit::ANONYMOUS_LIMITER` (singleton, env-tunable). Key shape =
+//! `format!("{ip}:{class}")`; client IP read from the first `X-Forwarded-For`
+//! hop (Render terminates TLS), falling back to a shared `unknown` key when
+//! absent (local dev / direct connections). Rejected requests return 429
+//! with `Retry-After`; counter `saep_discovery_rate_limited_total{scope=ip,
+//! endpoint=class}` increments on each rejection. Layer ordering: rate-limit
+//! is added first → innermost; metrics added last → outermost so that 429
+//! short-circuits still record on the request counter / duration histogram.
+//! Authenticated per-`sub` + per-socket WS limiting deferred (spec §Rate-limits
+//! L226 — needs Rust SIWS + WS scaffold respectively).
 
 use axum::{
     extract::{Path, Query, State},
@@ -56,16 +69,18 @@ use axum::{
     routing::get,
     Router,
 };
-use axum::http::Request;
 use axum::body::Body;
+use axum::http::{HeaderMap, Request, StatusCode};
+use axum::response::IntoResponse;
 use base64::Engine;
 use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sql_types::{BigInt, Bytea, Int2, Int4, Jsonb, Text, Timestamptz};
 use serde::{Deserialize, Serialize};
+use std::time::Instant;
 
 use crate::api::{ApiError, ApiState};
-use crate::metrics;
+use crate::{metrics, rate_limit};
 
 const DEFAULT_LIMIT: i64 = 50;
 const MAX_LIMIT: i64 = 200;
@@ -90,6 +105,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/v1/discovery/capabilities/:bit", get(capability_detail))
         .route("/v1/discovery/treasury/:did", get(treasury_detail))
         .route("/v1/discovery/treasury/:did/vaults", get(treasury_vaults))
+        .layer(middleware::from_fn(rate_limit_mw))
         .layer(middleware::from_fn(metrics_mw))
         .with_state(state)
 }
@@ -120,6 +136,49 @@ async fn metrics_mw(req: Request<Body>, next: Next) -> axum::response::Response 
     let status = resp.status().as_u16();
     metrics::inc_discovery_request(class, &status.to_string());
     resp
+}
+
+/// Reads the first hop in `X-Forwarded-For`. Render terminates TLS and sets
+/// the header; direct connections (local dev) leave it absent — those keys
+/// collapse onto a shared `unknown` bucket. Spoof resistance is the limiter's
+/// job (per-key bucket, max-keys eviction); we do not validate the trust
+/// chain here.
+pub(crate) fn client_ip(headers: &HeaderMap) -> Option<String> {
+    let raw = headers.get("x-forwarded-for")?.to_str().ok()?;
+    let first = raw.split(',').next()?.trim();
+    if first.is_empty() {
+        return None;
+    }
+    Some(first.to_string())
+}
+
+async fn rate_limit_mw(req: Request<Body>, next: Next) -> axum::response::Response {
+    let class = endpoint_class(req.uri().path());
+    let ip = client_ip(req.headers()).unwrap_or_else(|| "unknown".to_string());
+    let key = format!("{ip}:{class}");
+    let result = {
+        let mut limiter = rate_limit::ANONYMOUS_LIMITER
+            .lock()
+            .expect("ANONYMOUS_LIMITER mutex poisoned");
+        limiter.consume(&key, 1.0, Instant::now())
+    };
+    if !result.allowed {
+        metrics::DISCOVERY_RATE_LIMITED
+            .with_label_values(&["ip", class])
+            .inc();
+        let secs = result.retry_after_ms.div_ceil(1000).max(1);
+        let body = serde_json::json!({
+            "error": "rate_limit",
+            "retry_after_ms": result.retry_after_ms,
+        });
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            [("retry-after", secs.to_string())],
+            Json(body),
+        )
+            .into_response();
+    }
+    next.run(req).await
 }
 
 const CAPABILITY_REGISTRY_PROGRAM_ID: &str = "GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F";
@@ -1698,5 +1757,68 @@ mod tests {
         ] {
             assert!(names.contains(expected), "missing metric {expected}");
         }
+    }
+
+    #[test]
+    fn client_ip_extracts_first_xff_hop() {
+        let mut h = axum::http::HeaderMap::new();
+        h.insert(
+            "x-forwarded-for",
+            "203.0.113.7, 10.0.0.1, 10.0.0.2".parse().unwrap(),
+        );
+        assert_eq!(client_ip(&h), Some("203.0.113.7".into()));
+    }
+
+    #[test]
+    fn client_ip_returns_none_when_header_missing_or_empty() {
+        let empty = axum::http::HeaderMap::new();
+        assert!(client_ip(&empty).is_none());
+        let mut blank = axum::http::HeaderMap::new();
+        blank.insert("x-forwarded-for", "".parse().unwrap());
+        assert!(client_ip(&blank).is_none());
+        let mut comma = axum::http::HeaderMap::new();
+        comma.insert("x-forwarded-for", "  , 10.0.0.1".parse().unwrap());
+        assert!(client_ip(&comma).is_none());
+    }
+
+    #[tokio::test]
+    async fn rate_limit_mw_returns_429_after_burst() {
+        use axum::body::to_bytes;
+        use axum::routing::get;
+        use tower::ServiceExt;
+
+        // Drain the singleton bucket for this test's key by consuming up to
+        // capacity — the default is 100 burst, so 100 hits then expect 429.
+        let app: Router = Router::new()
+            .route("/v1/discovery/agents", get(|| async { "ok" }))
+            .layer(middleware::from_fn(rate_limit_mw))
+            .layer(middleware::from_fn(metrics_mw));
+
+        let mut last_status = StatusCode::OK;
+        for _ in 0..200 {
+            let req = Request::builder()
+                .uri("/v1/discovery/agents")
+                .header("x-forwarded-for", "198.51.100.42")
+                .body(Body::empty())
+                .unwrap();
+            let resp = app.clone().oneshot(req).await.unwrap();
+            last_status = resp.status();
+            if last_status == StatusCode::TOO_MANY_REQUESTS {
+                let headers = resp.headers().clone();
+                assert!(
+                    headers.contains_key("retry-after"),
+                    "expected Retry-After header on 429"
+                );
+                let body = to_bytes(resp.into_body(), 1024).await.unwrap();
+                let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
+                assert_eq!(v["error"], "rate_limit");
+                assert!(v["retry_after_ms"].as_u64().unwrap_or(0) > 0);
+                return;
+            }
+        }
+        panic!(
+            "expected a 429 within 200 requests, last status was {}",
+            last_status
+        );
     }
 }
