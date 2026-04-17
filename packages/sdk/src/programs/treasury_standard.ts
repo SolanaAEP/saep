@@ -1,6 +1,7 @@
 import { BN, Program } from '@coral-xyz/anchor';
 import { PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import type { TreasuryStandard } from '../generated/treasury_standard.js';
+import type { ClusterConfig } from '../cluster/index.js';
 import {
   treasuryGlobalPda,
   treasuryAllowedMintsPda,
@@ -14,7 +15,6 @@ import {
 
 const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
 const SYSVAR_RENT = new PublicKey('SysvarRent111111111111111111111111111111111');
-const AGENT_REGISTRY_PROGRAM_ID = new PublicKey('EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu');
 
 export interface InitTreasuryInput {
   operator: PublicKey;
@@ -28,12 +28,13 @@ export interface InitTreasuryInput {
 
 export async function buildInitTreasuryIx(
   program: Program<TreasuryStandard>,
+  config: ClusterConfig,
   input: InitTreasuryInput,
 ): Promise<TransactionInstruction> {
   const [global] = treasuryGlobalPda(program.programId);
   const [treasury] = treasuryPda(program.programId, input.agentDid);
-  const [registryGlobal] = agentRegistryGlobalPda(AGENT_REGISTRY_PROGRAM_ID);
-  const [agentAccount] = agentAccountPda(AGENT_REGISTRY_PROGRAM_ID, input.agentOperator, input.agentId);
+  const [registryGlobal] = agentRegistryGlobalPda(config.programIds.agentRegistry);
+  const [agentAccount] = agentAccountPda(config.programIds.agentRegistry, input.agentOperator, input.agentId);
 
   return program.methods
     .initTreasury(
@@ -46,7 +47,7 @@ export async function buildInitTreasuryIx(
       global,
       treasury,
       operator: input.operator,
-      agentRegistryProgram: AGENT_REGISTRY_PROGRAM_ID,
+      agentRegistryProgram: config.programIds.agentRegistry,
       registryGlobal,
       agentAccount,
       systemProgram: SystemProgram.programId,

@@ -7,6 +7,7 @@ import {
 } from '@solana/web3.js';
 import type { Program } from '@coral-xyz/anchor';
 import type { TaskMarket } from '../generated/task_market.js';
+import type { ClusterConfig } from '../cluster/index.js';
 import {
   buildCreateTaskIx,
   buildFundTaskIx,
@@ -33,9 +34,10 @@ export interface HireAgentResult {
 
 export async function buildHireAgentTx(
   program: Program<TaskMarket>,
+  config: ClusterConfig,
   input: HireAgentInput,
 ): Promise<{ tx: Transaction; taskAddress: PublicKey }> {
-  const createIx = await buildCreateTaskIx(program, input.createTask);
+  const createIx = await buildCreateTaskIx(program, config, input.createTask);
   const [task] = taskPda(program.programId, input.createTask.client, input.createTask.taskNonce);
 
   const fundIx = await buildFundTaskIx(program, {
@@ -61,11 +63,12 @@ export async function buildHireAgentTx(
 
 export async function sendHireAgentBundle(
   program: Program<TaskMarket>,
+  config: ClusterConfig,
   connection: Connection,
   input: HireAgentInput & { jitoConfig: JitoConfig; allowFallback?: boolean },
   sign: (tx: Transaction) => Promise<Transaction>,
 ): Promise<HireAgentResult> {
-  const { tx, taskAddress } = await buildHireAgentTx(program, input);
+  const { tx, taskAddress } = await buildHireAgentTx(program, config, input);
 
   const { blockhash, lastValidBlockHeight } =
     await connection.getLatestBlockhash('confirmed');
