@@ -1,4 +1,4 @@
-import { Connection, Keypair, PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
+import { Connection, Keypair, Transaction, VersionedTransaction } from '@solana/web3.js';
 import { AnchorProvider, type Wallet } from '@coral-xyz/anchor';
 import {
   agentRegistryProgram,
