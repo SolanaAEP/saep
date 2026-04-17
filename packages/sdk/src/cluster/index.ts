@@ -43,3 +43,22 @@ export function resolveCluster(input?: {
 export function connectionFor(config: ClusterConfig): Connection {
   return new Connection(config.endpoint, 'confirmed');
 }
+
+export interface PaymentMintMeta {
+  address: PublicKey;
+  symbol: string;
+  decimals: number;
+  tokenProgram: 'spl-token' | 'token-2022';
+  coingeckoId?: string;
+}
+
+export const KNOWN_PAYMENT_MINTS: Record<string, PaymentMintMeta> = {
+  wXRP: {
+    address: new PublicKey('6UpQcMAb5xMzxc7ZfPaVMgx3KqsvKZdT5U718BzD5We2'),
+    symbol: 'wXRP',
+    decimals: 6,
+    tokenProgram: 'spl-token',
+    coingeckoId: 'ripple',
+  },
+  // RLUSD: address TBD — Ripple has not deployed an SPL mint on Solana yet
+};
