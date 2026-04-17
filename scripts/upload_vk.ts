@@ -107,26 +107,38 @@ async function main() {
 
   const [vkPubkey] = vkPda(vkId);
   const existing = await program.account.verifierKey.fetch(vkPubkey).catch(() => null);
-  if (existing) {
-    console.log(`VK already registered at ${vkPubkey.toBase58()}, skipping registration.`);
+
+  if (existing && existing.registeredAt.toNumber() > 0) {
+    console.log(`VK already finalized at ${vkPubkey.toBase58()}, skipping.`);
   } else {
-    console.log('registering VK on-chain...');
+    if (!existing) {
+      console.log('init_vk (header)...');
+      await program.methods
+        .initVk(
+          Array.from(vkId) as unknown as number[],
+          alphaG1 as unknown as number[],
+          betaG2 as unknown as number[],
+          gammaG2 as unknown as number[],
+          deltaG2 as unknown as number[],
+          numPublicInputs,
+          circuitLabel as unknown as number[],
+          false, // is_production = false (dev ceremony)
+        )
+        .accountsPartial({
+          authority: authority.publicKey,
+          payer: authority.publicKey,
+        })
+        .rpc({ commitment: 'confirmed' });
+    } else {
+      console.log(`resuming append from existing ic.length=${existing.ic.length}`);
+    }
+
+    const startIdx = existing ? existing.ic.length : 0;
+    const remaining = ic.slice(startIdx);
+    console.log(`append_vk_ic (${remaining.length} points, finalize=true)...`);
     await program.methods
-      .registerVk(
-        Array.from(vkId) as unknown as number[],
-        alphaG1 as unknown as number[],
-        betaG2 as unknown as number[],
-        gammaG2 as unknown as number[],
-        deltaG2 as unknown as number[],
-        ic as unknown as number[][],
-        numPublicInputs,
-        circuitLabel as unknown as number[],
-        false, // is_production = false (dev ceremony)
-      )
-      .accountsPartial({
-        authority: authority.publicKey,
-        payer: authority.publicKey,
-      })
+      .appendVkIc(remaining as unknown as number[][], true)
+      .accountsPartial({ authority: authority.publicKey, vk: vkPubkey })
       .rpc({ commitment: 'confirmed' });
     console.log(`VK registered at ${vkPubkey.toBase58()}`);
   }
