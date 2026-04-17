@@ -63,8 +63,8 @@ export async function buildRegisterAgentIx(
 
   return program.methods
     .registerAgent(
-      Array.from(input.agentId) as unknown as number[],
-      Array.from(manifestBytes) as unknown as number[],
+      Array.from(input.agentId),
+      Array.from(manifestBytes),
       new BN(input.capabilityMask.toString()),
       new BN(input.priceLamports.toString()),
       new BN(input.streamRate.toString()),

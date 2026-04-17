@@ -37,7 +37,7 @@ export async function buildInitTreasuryIx(
 
   return program.methods
     .initTreasury(
-      Array.from(input.agentDid) as unknown as number[],
+      Array.from(input.agentDid),
       new BN(input.dailySpendLimit.toString()),
       new BN(input.perTxLimit.toString()),
       new BN(input.weeklyLimit.toString()),
@@ -138,7 +138,7 @@ export async function buildInitStreamIx(
 
   return program.methods
     .initStream(
-      Array.from(input.streamNonce) as unknown as number[],
+      Array.from(input.streamNonce),
       new BN(input.ratePerSec.toString()),
       new BN(input.maxDuration.toString()),
     )
