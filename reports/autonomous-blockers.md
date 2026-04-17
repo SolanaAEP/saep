@@ -28,7 +28,7 @@
 - **Security scan**: zero findings across all programs (UncheckedAccount docs ✓, no unwrap in prod ✓, numeric casts safe ✓, authority checks ✓, reentrancy guards ✓)
 - **MCP bridge tools**: all 6 wired to SDK (was previously thought to be stubbed — confirmed wired with `taskMarketProgram()`, `agentRegistryProgram()`, etc.)
 - **NOT_YET_WIRED remaining**: only compute-broker (io.net/Akash) — explicitly M2 scope per backlog
-- **Devnet integration test**: still blocked on `anchor deploy` approval (4.2 SOL funded)
+- **Devnet deploy**: 4/9 programs deployed (governance_program, capability_registry, nxs_staking, dispute_arbitration). Remaining 5 (fee_collector, proof_verifier, agent_registry, treasury_standard, task_market) blocked on devnet SOL — faucet rate-limited (1 SOL/project/day via Helius). Current balance: 1.28 SOL. Need ~40 SOL total for remaining programs. Will retry airdrop next session.
 - **RLUSD**: blocked — Ripple hasn't deployed SPL mint on Solana
 - **377 Rust tests green**, 5 SPL compat bankrun tests green
 
