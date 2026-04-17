@@ -14,6 +14,8 @@ pub struct Config {
     pub api_port: Option<u16>,
     pub cors_origins: Vec<String>,
     pub matview_refresh_interval_s: u64,
+    pub yellowstone_endpoint: Option<String>,
+    pub yellowstone_token: Option<String>,
 }
 
 impl Config {
@@ -73,6 +75,14 @@ impl Config {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(60),
+            yellowstone_endpoint: std::env::var("YELLOWSTONE_ENDPOINT")
+                .ok()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty()),
+            yellowstone_token: std::env::var("YELLOWSTONE_TOKEN")
+                .ok()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty()),
         })
     }
 }
@@ -92,6 +102,8 @@ impl std::fmt::Debug for Config {
             .field("api_port", &self.api_port)
             .field("cors_origins", &self.cors_origins)
             .field("matview_refresh_interval_s", &self.matview_refresh_interval_s)
+            .field("yellowstone_endpoint", &self.yellowstone_endpoint.as_ref().map(|_| "***"))
+            .field("yellowstone_token", &self.yellowstone_token.as_ref().map(|_| "***"))
             .finish()
     }
 }

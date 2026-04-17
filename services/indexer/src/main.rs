@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::net::TcpListener;
 
-use saep_indexer::{config, db, health, jobs, poller, pubsub, reorg};
+use saep_indexer::{config, db, grpc_stream, health, jobs, poller, pubsub, reorg};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -67,5 +67,11 @@ async fn main() -> Result<()> {
         tracing::info!("redis pubsub fanout active");
     }
 
-    poller::run(cfg, pool, publisher).await
+    if cfg.yellowstone_endpoint.is_some() {
+        tracing::info!("yellowstone gRPC endpoint configured — using streaming mode");
+        grpc_stream::run(cfg, pool, publisher).await
+    } else {
+        tracing::info!("no YELLOWSTONE_ENDPOINT — falling back to JSON-RPC polling");
+        poller::run(cfg, pool, publisher).await
+    }
 }
