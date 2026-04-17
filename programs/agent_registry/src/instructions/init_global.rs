@@ -1,4 +1,6 @@
 use anchor_lang::prelude::*;
+use spl_token_2022::extension::{BaseStateWithExtensions, StateWithExtensions, transfer_hook::TransferHook};
+use spl_token_2022::state::Mint as RawMint;
 
 use crate::errors::AgentRegistryError;
 use crate::events::GlobalInitialized;
@@ -14,6 +16,10 @@ pub struct InitGlobal<'info> {
         bump,
     )]
     pub global: Account<'info, RegistryGlobal>,
+
+    /// The stake mint account — validated to have no TransferHook extension.
+    /// CHECK: owner validated manually; only read for extension inspection.
+    pub stake_mint_info: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -37,6 +43,22 @@ pub fn handler(
 ) -> Result<()> {
     require!(max_slash_bps <= MAX_SLASH_BPS_CAP, AgentRegistryError::SlashCapTooHigh);
     require!(slash_timelock_secs > 0, AgentRegistryError::TimelockNotElapsed);
+
+    // F-2026-17: reject stake mints with TransferHook extension at init time.
+    // Stake transfers don't go through hook allowlist checks, so the mint must
+    // be hook-free. SPL Token (legacy) mints have no extensions — always safe.
+    let mint_info = &ctx.accounts.stake_mint_info;
+    require!(mint_info.key() == stake_mint, AgentRegistryError::Unauthorized);
+    if mint_info.owner == &anchor_spl::token_2022::ID {
+        let data = mint_info.try_borrow_data()
+            .map_err(|_| error!(AgentRegistryError::Unauthorized))?;
+        let parsed = StateWithExtensions::<RawMint>::unpack(&data)
+            .map_err(|_| error!(AgentRegistryError::Unauthorized))?;
+        require!(
+            parsed.get_extension::<TransferHook>().is_err(),
+            AgentRegistryError::Unauthorized
+        );
+    }
 
     let g = &mut ctx.accounts.global;
     g.authority = authority;

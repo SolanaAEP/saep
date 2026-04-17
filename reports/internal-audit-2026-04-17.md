@@ -111,6 +111,8 @@ If `stake_mint` is a Token-2022 mint with a TransferHook, the hook program gains
 
 **Recommendation:** Add `HookAllowlist` as an optional account to stake-related instruction contexts. Define `SITE_STAKE_*` constants in fee_collector and enforce them before CPI. Alternatively, if stake_mint is guaranteed to be a basic SPL mint without hooks, assert this at `init_global` time by inspecting extensions (the `inspect_mint_extensions` function in fee_collector already does this).
 
+**Status:** CLOSED — `init_global` now requires `stake_mint_info` account and rejects Token-2022 mints with TransferHook extension. SPL Token mints pass unconditionally (no extensions possible).
+
 ---
 
 ### F-2026-18 — set_civic_gateway_program allows reset to default
