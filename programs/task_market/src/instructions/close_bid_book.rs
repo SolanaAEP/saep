@@ -6,7 +6,7 @@ use crate::errors::TaskMarketError;
 use crate::state::{BidBook, BidPhase, TaskContract, SEED_BID_BOOK, SEED_BOND_ESCROW};
 
 #[derive(Accounts)]
-pub struct CancelBidding<'info> {
+pub struct CloseBidBook<'info> {
     #[account(
         mut,
         seeds = [b"task", task.client.as_ref(), task.task_nonce.as_ref()],
@@ -41,13 +41,17 @@ pub struct CancelBidding<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-pub fn handler(ctx: Context<CancelBidding>) -> Result<()> {
+pub fn handler(ctx: Context<CloseBidBook>) -> Result<()> {
     let book = &ctx.accounts.bid_book;
-    require!(book.phase == BidPhase::Commit, TaskMarketError::PhaseClosed);
-    require!(book.commit_count == 0, TaskMarketError::CommitsPresent);
+    require!(
+        book.phase == BidPhase::Settled || book.phase == BidPhase::Cancelled,
+        TaskMarketError::BidBookNotSettled
+    );
 
-    let now = Clock::get()?.unix_timestamp;
-    require!(now < book.commit_end, TaskMarketError::PhaseClosed);
+    require!(
+        ctx.accounts.bond_escrow.amount == 0,
+        TaskMarketError::EscrowNotEmpty
+    );
 
     let task_id = ctx.accounts.task.task_id;
     let escrow_bump = book.escrow_bump;

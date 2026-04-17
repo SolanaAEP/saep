@@ -9,6 +9,10 @@ use crate::events::HookRejected;
 use crate::state::{AgentHookAllowlist, HookAllowlist};
 
 pub fn get_transfer_hook_program_id(mint_info: &AccountInfo) -> Result<Option<Pubkey>> {
+    // SPL Token mints (legacy program) have no extension support — skip parsing.
+    if mint_info.owner != &anchor_spl::token_2022::ID {
+        return Ok(None);
+    }
     let data = mint_info
         .try_borrow_data()
         .map_err(|_| error!(FeeCollectorError::MintParseFailed))?;
@@ -89,6 +93,17 @@ pub fn assert_hook_allowed_at_site(
 }
 
 pub fn inspect_mint_extensions(mint_info: &AccountInfo) -> Result<MintExtensionReport> {
+    // SPL Token mints have no extensions — return clean report.
+    if mint_info.owner != &anchor_spl::token_2022::ID {
+        return Ok(MintExtensionReport {
+            hook_program: None,
+            has_transfer_fee_ext: false,
+            transfer_fee_authority: None,
+            default_state_frozen: false,
+            permanent_delegate: None,
+        });
+    }
+
     use anchor_spl::token_2022::spl_token_2022::extension::{
         default_account_state::DefaultAccountState, permanent_delegate::PermanentDelegate,
         transfer_fee::TransferFeeConfig,

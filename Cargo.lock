@@ -626,6 +626,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "proptest",
 ]
 
 [[package]]
@@ -738,6 +739,7 @@ name = "governance_program"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "proptest",
 ]
 
 [[package]]
@@ -1062,6 +1064,7 @@ version = "0.1.0"
 dependencies = [
  "agent_registry",
  "anchor-lang",
+ "proptest",
  "solana-instructions-sysvar",
  "solana-keccak-hasher",
 ]

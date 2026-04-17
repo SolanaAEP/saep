@@ -1,11 +1,12 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
+use anchor_spl::token_interface::{transfer_checked, TokenInterface, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_INIT_STREAM};
 
 use crate::errors::TreasuryError;
-use crate::events::StreamInitialized;
+use crate::events::{GuardEntered, StreamInitialized};
+use crate::guard::{exit as guard_exit, try_enter, ReentrancyGuard, SEED_GUARD};
 use crate::state::{
     assert_call_target_allowed, resolve_hook_allowlist, AgentTreasury, AllowedMints,
     AllowedTargets, PaymentStream, StreamStatus, TreasuryGlobal,
@@ -75,10 +76,13 @@ pub struct InitStream<'info> {
 
     pub hook_allowlist: Option<Account<'info, HookAllowlist>>,
 
+    #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
+    pub guard: Box<Account<'info, ReentrancyGuard>>,
+
     #[account(mut)]
     pub client: Signer<'info>,
 
-    pub token_program: Program<'info, Token2022>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }
@@ -89,6 +93,15 @@ pub fn handler(
     rate_per_sec: u64,
     max_duration: i64,
 ) -> Result<()> {
+    let clock = Clock::get()?;
+    try_enter(&mut ctx.accounts.guard, crate::ID, clock.slot)?;
+    emit!(GuardEntered {
+        program: crate::ID,
+        caller: crate::ID,
+        slot: clock.slot,
+        stack_height: 1,
+    });
+
     let g = &ctx.accounts.global;
     require!(!g.paused, TreasuryError::Paused);
     require!(rate_per_sec > 0, TreasuryError::InvalidRate);
@@ -110,7 +123,7 @@ pub fn handler(
         .checked_mul(max_duration as u64)
         .ok_or(TreasuryError::ArithmeticOverflow)?;
 
-    let now = Clock::get()?.unix_timestamp;
+    let now = clock.unix_timestamp;
 
     let s = &mut ctx.accounts.stream;
     s.agent_did = t.agent_did;
@@ -169,5 +182,7 @@ pub fn handler(
         deposit_total,
         timestamp: now,
     });
+
+    guard_exit(&mut ctx.accounts.guard);
     Ok(())
 }

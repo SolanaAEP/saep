@@ -118,6 +118,7 @@ export function build(opts: BuildOpts) {
           headers: body.headers,
           body: body.method !== 'GET' ? body.body : undefined,
           signal: AbortSignal.timeout(cfg.proxyTimeoutMs),
+          redirect: 'error',
         });
       } catch (e) {
         proxyRequests.inc({ status: 'upstream_error' });

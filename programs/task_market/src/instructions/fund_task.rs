@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
+use anchor_spl::token_interface::{transfer_checked, TokenInterface, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_FUND_TASK};
@@ -46,7 +46,7 @@ pub struct FundTask<'info> {
     #[account(mut)]
     pub client: Signer<'info>,
 
-    pub token_program: Program<'info, Token2022>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
 

@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_2022::Token2022;
+use anchor_spl::token_interface::TokenInterface;
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use crate::errors::TaskMarketError;
@@ -47,7 +47,7 @@ pub struct OpenBidding<'info> {
     #[account(mut)]
     pub client: Signer<'info>,
 
-    pub token_program: Program<'info, Token2022>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
 

@@ -50,6 +50,8 @@ pub enum TreasuryError {
     InvalidJupiterProgram,
     #[msg("swap route data required for cross-mint withdrawal")]
     SwapRouteRequired,
+    #[msg("route_data exceeds MAX_ROUTE_DATA_LEN")]
+    RouteDataTooLong,
     #[msg("swap consumed more tokens than earned")]
     SwapAmountExceeded,
     #[msg("oracle price feed required for cross-mint withdrawal")]

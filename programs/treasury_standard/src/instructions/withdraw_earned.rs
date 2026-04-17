@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
+use anchor_spl::token_interface::{transfer_checked, TokenInterface, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use fee_collector::{
@@ -14,7 +14,7 @@ use crate::jupiter;
 use crate::state::{
     assert_call_target_allowed, compute_swap_min_out, guard_oracle, read_oracle,
     resolve_hook_allowlist, AgentTreasury, AllowedTargets, PaymentStream, StreamStatus,
-    TreasuryGlobal, DEFAULT_SLIPPAGE_BPS,
+    TreasuryGlobal, DEFAULT_SLIPPAGE_BPS, MAX_ROUTE_DATA_LEN,
 };
 
 #[derive(Accounts)]
@@ -82,7 +82,7 @@ pub struct WithdrawEarned<'info> {
     pub guard: Box<Account<'info, ReentrancyGuard>>,
 
     pub operator: Signer<'info>,
-    pub token_program: Program<'info, Token2022>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 pub fn handler<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) -> Result<()> {
@@ -94,6 +94,11 @@ pub fn handler<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) ->
         slot: clock.slot,
         stack_height: 1,
     });
+
+    require!(
+        route_data.len() <= MAX_ROUTE_DATA_LEN,
+        TreasuryError::RouteDataTooLong
+    );
 
     require!(!ctx.accounts.global.paused, TreasuryError::Paused);
 

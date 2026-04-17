@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
+use anchor_spl::token_interface::{transfer_checked, TokenInterface, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use crate::errors::AgentRegistryError;
@@ -38,7 +38,7 @@ pub struct StakeIncrease<'info> {
     pub guard: Box<Account<'info, ReentrancyGuard>>,
 
     pub operator: Signer<'info>,
-    pub token_program: Program<'info, Token2022>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 pub fn stake_increase_handler(ctx: Context<StakeIncrease>, amount: u64) -> Result<()> {
@@ -159,7 +159,7 @@ pub struct StakeWithdrawExecute<'info> {
     pub guard: Box<Account<'info, ReentrancyGuard>>,
 
     pub operator: Signer<'info>,
-    pub token_program: Program<'info, Token2022>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 pub fn stake_withdraw_execute_handler(ctx: Context<StakeWithdrawExecute>) -> Result<()> {

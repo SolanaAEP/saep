@@ -1,11 +1,12 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
+use anchor_spl::token_interface::{transfer_checked, TokenInterface, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_WITHDRAW};
 
 use crate::errors::TreasuryError;
-use crate::events::TreasuryWithdraw;
+use crate::events::{GuardEntered, TreasuryWithdraw};
+use crate::guard::{exit as guard_exit, try_enter, ReentrancyGuard, SEED_GUARD};
 use crate::state::{
     apply_rollover, assert_call_target_allowed, guard_oracle, normalize_to_base_units,
     read_oracle, resolve_hook_allowlist, AgentTreasury, AllowedTargets, TreasuryGlobal,
@@ -49,11 +50,23 @@ pub struct Withdraw<'info> {
 
     pub hook_allowlist: Option<Account<'info, HookAllowlist>>,
 
+    #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
+    pub guard: Box<Account<'info, ReentrancyGuard>>,
+
     pub operator: Signer<'info>,
-    pub token_program: Program<'info, Token2022>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 pub fn handler(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
+    let clock = Clock::get()?;
+    try_enter(&mut ctx.accounts.guard, crate::ID, clock.slot)?;
+    emit!(GuardEntered {
+        program: crate::ID,
+        caller: crate::ID,
+        slot: clock.slot,
+        stack_height: 1,
+    });
+
     require!(!ctx.accounts.global.paused, TreasuryError::Paused);
     require!(amount > 0, TreasuryError::ZeroAmount);
     require!(
@@ -138,5 +151,7 @@ pub fn handler(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
         destination: ctx.accounts.destination.key(),
         timestamp: now,
     });
+
+    guard_exit(&mut ctx.accounts.guard);
     Ok(())
 }

@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
+use anchor_spl::token_interface::{transfer_checked, TokenInterface, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 use capability_registry::state::RegistryConfig as CapabilityConfig;
 
@@ -73,7 +73,7 @@ pub struct RegisterAgent<'info> {
     #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
     pub guard: Box<Account<'info, ReentrancyGuard>>,
 
-    pub token_program: Program<'info, Token2022>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }
