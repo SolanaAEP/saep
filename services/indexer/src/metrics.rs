@@ -133,6 +133,122 @@ pub static MATVIEW_REFRESH_DURATION: Lazy<HistogramVec> = Lazy::new(|| {
     .unwrap()
 });
 
+// Discovery API surface — per `specs/discovery-api.md` §Metrics. Registered
+// unconditionally so `/metrics` exposes the full series set from boot; WS +
+// cache + rate-limit families stay zero until those layers land in subsequent
+// cycles. Request + duration families are populated by the per-router
+// middleware in `discovery::metrics_mw`; `time_discovery_query` wraps
+// individual SQL calls inside handlers.
+
+pub static DISCOVERY_REQUEST_TOTAL: Lazy<IntCounterVec> = Lazy::new(|| {
+    register_int_counter_vec!(
+        "saep_discovery_request_total",
+        "Discovery REST request count by endpoint class and HTTP status",
+        &["endpoint", "status"]
+    )
+    .unwrap()
+});
+
+pub static DISCOVERY_REQUEST_DURATION: Lazy<HistogramVec> = Lazy::new(|| {
+    register_histogram_vec!(
+        "saep_discovery_request_duration_seconds",
+        "Discovery REST request latency by endpoint class",
+        &["endpoint"],
+        vec![0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
+    )
+    .unwrap()
+});
+
+pub static DISCOVERY_CACHE_HITS: Lazy<IntCounterVec> = Lazy::new(|| {
+    register_int_counter_vec!(
+        "saep_discovery_cache_hits_total",
+        "Discovery cache-layer hits by endpoint class",
+        &["endpoint"]
+    )
+    .unwrap()
+});
+
+pub static DISCOVERY_CACHE_MISSES: Lazy<IntCounterVec> = Lazy::new(|| {
+    register_int_counter_vec!(
+        "saep_discovery_cache_misses_total",
+        "Discovery cache-layer misses by endpoint class",
+        &["endpoint"]
+    )
+    .unwrap()
+});
+
+pub static DISCOVERY_WS_CONNECTIONS: Lazy<IntGauge> = Lazy::new(|| {
+    register_int_gauge!(
+        "saep_discovery_ws_connections",
+        "Open Discovery WS connections"
+    )
+    .unwrap()
+});
+
+pub static DISCOVERY_WS_SUBSCRIPTIONS: Lazy<IntGaugeVec> = Lazy::new(|| {
+    register_int_gauge_vec!(
+        "saep_discovery_ws_subscriptions",
+        "Active Discovery WS subscriptions by channel",
+        &["channel"]
+    )
+    .unwrap()
+});
+
+pub static DISCOVERY_WS_EVENTS_SENT: Lazy<IntCounterVec> = Lazy::new(|| {
+    register_int_counter_vec!(
+        "saep_discovery_ws_events_sent_total",
+        "Discovery WS events delivered to subscribers by channel",
+        &["channel"]
+    )
+    .unwrap()
+});
+
+pub static DISCOVERY_WS_EVENTS_DROPPED: Lazy<IntCounterVec> = Lazy::new(|| {
+    register_int_counter_vec!(
+        "saep_discovery_ws_events_dropped_total",
+        "Discovery WS events dropped (reason: rate_limit|queue_full|auth_downgrade)",
+        &["channel", "reason"]
+    )
+    .unwrap()
+});
+
+pub static DISCOVERY_RATE_LIMITED: Lazy<IntCounterVec> = Lazy::new(|| {
+    register_int_counter_vec!(
+        "saep_discovery_rate_limited_total",
+        "Discovery requests rejected by rate-limit layer (scope: ip|sub|ws)",
+        &["scope", "endpoint"]
+    )
+    .unwrap()
+});
+
+pub static DISCOVERY_DB_QUERY_DURATION: Lazy<HistogramVec> = Lazy::new(|| {
+    register_histogram_vec!(
+        "saep_discovery_db_query_duration_seconds",
+        "Discovery backing query latency by named query",
+        &["query"],
+        vec![0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 5.0]
+    )
+    .unwrap()
+});
+
+pub fn time_discovery_request(endpoint: &'static str) -> HistogramTimer {
+    DISCOVERY_REQUEST_DURATION
+        .with_label_values(&[endpoint])
+        .start_timer()
+}
+
+pub fn inc_discovery_request(endpoint: &'static str, status: &str) {
+    DISCOVERY_REQUEST_TOTAL
+        .with_label_values(&[endpoint, status])
+        .inc();
+}
+
+pub fn time_discovery_query(query: &'static str) -> HistogramTimer {
+    DISCOVERY_DB_QUERY_DURATION
+        .with_label_values(&[query])
+        .start_timer()
+}
+
 pub fn time_rpc(method: &'static str) -> HistogramTimer {
     RPC_CALL_DURATION.with_label_values(&[method]).start_timer()
 }
