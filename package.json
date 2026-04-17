@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "packageManager": "pnpm@10.31.0",
   "engines": {
-    "node": ">=24.0.0",
+    "node": ">=22.0.0",
     "pnpm": ">=10.0.0"
   },
   "scripts": {
@@ -13,7 +13,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean && rm -rf node_modules",
-    "size": "node scripts/check-bundle-size.mjs apps/portal --build && node scripts/check-bundle-size.mjs apps/analytics --build"
+    "size": "node scripts/check-bundle-size.mjs apps/portal --build && node scripts/check-bundle-size.mjs apps/analytics --build",
+    "test": "turbo run test"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -24,12 +25,12 @@
     ]
   },
   "devDependencies": {
-    "@coral-xyz/anchor": "0.31.1",
+    "@coral-xyz/anchor": "0.30.1",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "1.98.0",
     "@types/chai": "4.3.20",
     "@types/mocha": "10.0.10",
-    "@types/node": "24.0.0",
+    "@types/node": "22.15.3",
     "anchor-bankrun": "^0.5.0",
     "chai": "4.5.0",
     "js-sha3": "^0.9.3",

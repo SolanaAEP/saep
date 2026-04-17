@@ -14,7 +14,7 @@ governance_program = "9uczLDZaN9EWqW76be75ji4vCsz3cydefbChqvBS6qw1"
 nxs_staking = "GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z"
 proof_verifier = "DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe"
 task_market = "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w"
-template_registry = "Gkgrk9fUsVN7ssS99jQFLfoRr23PkqJ7h4mdkGArqXyU"
+template_registry = "3QE649JDQbbudJX5j3VkmRSiRvfcu3mHCymPxZn9KC3e"
 treasury_standard = "6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ"
 
 [programs.localnet]
