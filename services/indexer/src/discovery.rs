@@ -4,12 +4,15 @@
 //! list views per `specs/discovery-api.md`.
 //!
 //! Cycle-98 scope: 2 GET endpoints (`/v1/discovery/agents`, `/v1/discovery/tasks`)
-//! with default sort + opaque base64-JSON cursor pagination. Spec's full surface
-//! (per-agent detail, timeline, capabilities, treasury, WS, rate-limiter, cache)
-//! lands in subsequent cycles.
+//! with default sort + opaque base64-JSON cursor pagination.
+//!
+//! Cycle-99 scope: 3 detail GETs (`/v1/discovery/agents/:did`,
+//! `/v1/discovery/tasks/:task_id_hex`, `/v1/discovery/tasks/:task_id_hex/timeline`).
+//! Remaining (capabilities, treasury, WS, rate-limiter, cache) land in subsequent
+//! cycles.
 
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     response::Json,
     routing::get,
     Router,
@@ -17,18 +20,25 @@ use axum::{
 use base64::Engine;
 use diesel::prelude::*;
 use diesel::sql_query;
-use diesel::sql_types::{BigInt, Bytea, Int4, Text};
+use diesel::sql_types::{BigInt, Bytea, Int2, Int4, Jsonb, Text, Timestamptz};
 use serde::{Deserialize, Serialize};
 
 use crate::api::{ApiError, ApiState};
 
 const DEFAULT_LIMIT: i64 = 50;
 const MAX_LIMIT: i64 = 200;
+const TIMELINE_MAX: i64 = 500;
 
 pub fn router(state: ApiState) -> Router {
     Router::new()
         .route("/v1/discovery/agents", get(list_agents))
+        .route("/v1/discovery/agents/:did", get(agent_detail))
         .route("/v1/discovery/tasks", get(list_tasks))
+        .route("/v1/discovery/tasks/:task_id_hex", get(task_detail))
+        .route(
+            "/v1/discovery/tasks/:task_id_hex/timeline",
+            get(task_timeline),
+        )
         .with_state(state)
 }
 
@@ -458,6 +468,329 @@ fn decimal_to_hex(s: &str) -> String {
         .unwrap_or_else(|_| s.to_string())
 }
 
+/// JSONB encoding of a 32-byte id for filtering `program_events.data->'<field>'`.
+/// Matches `borsh_decode`'s `[u8;32] → JSON array-of-u8` convention.
+fn bytes_to_jsonb_array(bytes: &[u8]) -> String {
+    serde_json::to_string(bytes).expect("serialize u8 slice")
+}
+
+// ---------- agent detail ----------
+
+#[derive(Debug, Serialize)]
+pub struct AgentDetail {
+    pub did_hex: String,
+    pub operator: Option<String>,
+    pub capability_mask: Option<String>,
+    pub stake_lamports: Option<String>,
+    pub reputation_composite: i32,
+    pub status: String,
+    pub last_active_unix: i64,
+    pub jobs_completed_total: i64,
+    pub jobs_disputed_total: i64,
+    pub reputation: Vec<ReputationBit>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ReputationBit {
+    pub capability_bit: i16,
+    pub quality: i16,
+    pub timeliness: i16,
+    pub availability: i16,
+    pub cost_efficiency: i16,
+    pub honesty: i16,
+    pub jobs_completed: i64,
+    pub jobs_disputed: i64,
+    pub composite_score: i32,
+    pub last_update_unix: i64,
+}
+
+#[derive(QueryableByName)]
+struct RawAgentDetailRow {
+    #[diesel(sql_type = Bytea)]
+    agent_did: Vec<u8>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    operator: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    capability_mask_text: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    stake_amount_text: Option<String>,
+    #[diesel(sql_type = Int4)]
+    reputation_composite: i32,
+    #[diesel(sql_type = Text)]
+    status: String,
+    #[diesel(sql_type = BigInt)]
+    last_active_unix: i64,
+}
+
+#[derive(QueryableByName)]
+struct RawReputationBitRow {
+    #[diesel(sql_type = Int2)]
+    capability_bit: i16,
+    #[diesel(sql_type = Int2)]
+    quality: i16,
+    #[diesel(sql_type = Int2)]
+    timeliness: i16,
+    #[diesel(sql_type = Int2)]
+    availability: i16,
+    #[diesel(sql_type = Int2)]
+    cost_efficiency: i16,
+    #[diesel(sql_type = Int2)]
+    honesty: i16,
+    #[diesel(sql_type = BigInt)]
+    jobs_completed: i64,
+    #[diesel(sql_type = BigInt)]
+    jobs_disputed: i64,
+    #[diesel(sql_type = Int4)]
+    composite_score: i32,
+    #[diesel(sql_type = Timestamptz)]
+    last_update: chrono::DateTime<chrono::Utc>,
+}
+
+pub async fn agent_detail(
+    State(state): State<ApiState>,
+    Path(did_hex): Path<String>,
+) -> Result<Json<AgentDetail>, ApiError> {
+    let did_bytes = parse_hex_32(&did_hex).map_err(ApiError::bad_request)?;
+
+    let (base, bits) = tokio::task::spawn_blocking(
+        move || -> Result<(Option<RawAgentDetailRow>, Vec<RawReputationBitRow>), ApiError> {
+            let mut conn = state.pool.get().map_err(ApiError::internal)?;
+            let base: Option<RawAgentDetailRow> = sql_query(
+                "SELECT agent_did, operator, \
+                        capability_mask::text AS capability_mask_text, \
+                        stake_amount::text    AS stake_amount_text, \
+                        reputation_composite, status, last_active_unix \
+                 FROM agent_directory WHERE agent_did = $1",
+            )
+            .bind::<Bytea, _>(did_bytes.clone())
+            .load::<RawAgentDetailRow>(&mut conn)
+            .map_err(ApiError::internal)?
+            .into_iter()
+            .next();
+            let bits: Vec<RawReputationBitRow> = sql_query(
+                "SELECT capability_bit, quality, timeliness, availability, \
+                        cost_efficiency, honesty, jobs_completed, jobs_disputed, \
+                        composite_score, last_update \
+                 FROM reputation_rollup \
+                 WHERE agent_did = $1 \
+                 ORDER BY capability_bit ASC",
+            )
+            .bind::<Bytea, _>(did_bytes)
+            .load::<RawReputationBitRow>(&mut conn)
+            .map_err(ApiError::internal)?;
+            Ok((base, bits))
+        },
+    )
+    .await
+    .map_err(ApiError::internal)??;
+
+    let base = base.ok_or_else(|| ApiError::not_found("agent not found"))?;
+
+    let jobs_completed_total: i64 = bits.iter().map(|b| b.jobs_completed).sum();
+    let jobs_disputed_total: i64 = bits.iter().map(|b| b.jobs_disputed).sum();
+    let reputation = bits
+        .into_iter()
+        .map(|b| ReputationBit {
+            capability_bit: b.capability_bit,
+            quality: b.quality,
+            timeliness: b.timeliness,
+            availability: b.availability,
+            cost_efficiency: b.cost_efficiency,
+            honesty: b.honesty,
+            jobs_completed: b.jobs_completed,
+            jobs_disputed: b.jobs_disputed,
+            composite_score: b.composite_score,
+            last_update_unix: b.last_update.timestamp(),
+        })
+        .collect();
+
+    Ok(Json(AgentDetail {
+        did_hex: hex::encode(&base.agent_did),
+        operator: base.operator,
+        capability_mask: base.capability_mask_text.as_deref().map(decimal_to_hex),
+        stake_lamports: base.stake_amount_text,
+        reputation_composite: base.reputation_composite,
+        status: base.status,
+        last_active_unix: base.last_active_unix,
+        jobs_completed_total,
+        jobs_disputed_total,
+        reputation,
+    }))
+}
+
+// ---------- task detail + timeline ----------
+
+#[derive(Debug, Serialize)]
+pub struct TaskDetail {
+    pub task_id_hex: String,
+    pub creator: Option<String>,
+    pub agent_did_hex: Option<String>,
+    pub status: Option<String>,
+    pub reward_lamports: Option<String>,
+    pub created_at_unix: i64,
+    pub deadline_unix: i64,
+    pub updated_at_unix: i64,
+}
+
+#[derive(QueryableByName)]
+struct RawTaskDetailRow {
+    #[diesel(sql_type = Bytea)]
+    task_id: Vec<u8>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    creator: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Bytea>)]
+    agent_did: Option<Vec<u8>>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    status: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    reward_lamports_text: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    created_at_unix: i64,
+    #[diesel(sql_type = BigInt)]
+    deadline_unix: i64,
+    #[diesel(sql_type = BigInt)]
+    updated_at_unix: i64,
+}
+
+pub async fn task_detail(
+    State(state): State<ApiState>,
+    Path(task_id_hex): Path<String>,
+) -> Result<Json<TaskDetail>, ApiError> {
+    let task_id = parse_hex_32(&task_id_hex).map_err(ApiError::bad_request)?;
+
+    let row = tokio::task::spawn_blocking(move || -> Result<Option<RawTaskDetailRow>, ApiError> {
+        let mut conn = state.pool.get().map_err(ApiError::internal)?;
+        Ok(sql_query(
+            "SELECT task_id, creator, agent_did, status, \
+                    reward_lamports::text AS reward_lamports_text, \
+                    created_at_unix, deadline_unix, updated_at_unix \
+             FROM task_directory WHERE task_id = $1",
+        )
+        .bind::<Bytea, _>(task_id)
+        .load::<RawTaskDetailRow>(&mut conn)
+        .map_err(ApiError::internal)?
+        .into_iter()
+        .next())
+    })
+    .await
+    .map_err(ApiError::internal)??
+    .ok_or_else(|| ApiError::not_found("task not found"))?;
+
+    Ok(Json(TaskDetail {
+        task_id_hex: hex::encode(&row.task_id),
+        creator: row.creator,
+        agent_did_hex: row.agent_did.as_ref().map(hex::encode),
+        status: row.status,
+        reward_lamports: row.reward_lamports_text,
+        created_at_unix: row.created_at_unix,
+        deadline_unix: row.deadline_unix,
+        updated_at_unix: row.updated_at_unix,
+    }))
+}
+
+const TIMELINE_EVENTS: &[&str] = &[
+    "TaskCreated",
+    "TaskFunded",
+    "ResultSubmitted",
+    "TaskVerified",
+    "TaskReleased",
+    "DisputeRaised",
+    "TaskCancelled",
+    "TaskExpired",
+];
+
+#[derive(Debug, Serialize)]
+pub struct TimelineEntry {
+    pub event_name: String,
+    pub slot: i64,
+    pub signature: String,
+    pub timestamp_unix: Option<i64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TaskTimeline {
+    pub task_id_hex: String,
+    pub events: Vec<TimelineEntry>,
+}
+
+#[derive(QueryableByName)]
+struct RawTimelineRow {
+    #[diesel(sql_type = Text)]
+    event_name: String,
+    #[diesel(sql_type = BigInt)]
+    slot: i64,
+    #[diesel(sql_type = Text)]
+    signature: String,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    timestamp_text: Option<String>,
+}
+
+pub async fn task_timeline(
+    State(state): State<ApiState>,
+    Path(task_id_hex): Path<String>,
+) -> Result<Json<TaskTimeline>, ApiError> {
+    let task_id = parse_hex_32(&task_id_hex).map_err(ApiError::bad_request)?;
+    let jsonb_filter = bytes_to_jsonb_array(&task_id);
+    let task_id_for_lookup = task_id.clone();
+
+    let (exists, rows) = tokio::task::spawn_blocking(
+        move || -> Result<(bool, Vec<RawTimelineRow>), ApiError> {
+            let mut conn = state.pool.get().map_err(ApiError::internal)?;
+            let exists: i64 = sql_query(
+                "SELECT COUNT(*)::bigint AS n FROM task_directory WHERE task_id = $1",
+            )
+            .bind::<Bytea, _>(task_id_for_lookup)
+            .get_result::<CountRow>(&mut conn)
+            .map_err(ApiError::internal)?
+            .n;
+            let rows: Vec<RawTimelineRow> = sql_query(
+                "SELECT event_name, slot, signature, \
+                        (data->>'timestamp') AS timestamp_text \
+                 FROM program_events \
+                 WHERE event_name = ANY($1) \
+                   AND data->'task_id' = $2::jsonb \
+                 ORDER BY slot ASC, id ASC \
+                 LIMIT $3",
+            )
+            .bind::<diesel::sql_types::Array<Text>, _>(
+                TIMELINE_EVENTS.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+            )
+            .bind::<Jsonb, _>(serde_json::from_str::<serde_json::Value>(&jsonb_filter).expect("jsonb"))
+            .bind::<BigInt, _>(TIMELINE_MAX)
+            .load::<RawTimelineRow>(&mut conn)
+            .map_err(ApiError::internal)?;
+            Ok((exists > 0, rows))
+        },
+    )
+    .await
+    .map_err(ApiError::internal)??;
+
+    if !exists {
+        return Err(ApiError::not_found("task not found"));
+    }
+
+    let events = rows
+        .into_iter()
+        .map(|r| TimelineEntry {
+            event_name: r.event_name,
+            slot: r.slot,
+            signature: r.signature,
+            timestamp_unix: r.timestamp_text.and_then(|s| s.parse::<i64>().ok()),
+        })
+        .collect();
+
+    Ok(Json(TaskTimeline {
+        task_id_hex: hex::encode(&task_id),
+        events,
+    }))
+}
+
+#[derive(QueryableByName)]
+struct CountRow {
+    #[diesel(sql_type = BigInt)]
+    n: i64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -511,5 +844,40 @@ mod tests {
         // Out-of-u128 falls through unchanged (defensive).
         let huge = "1".repeat(50);
         assert_eq!(decimal_to_hex(&huge), huge);
+    }
+
+    #[test]
+    fn bytes_to_jsonb_array_shape() {
+        let got = bytes_to_jsonb_array(&[0u8, 1, 255]);
+        assert_eq!(got, "[0,1,255]");
+        let all_zero = bytes_to_jsonb_array(&[0u8; 32]);
+        assert!(all_zero.starts_with("[0,0,"));
+        assert_eq!(all_zero.matches(',').count(), 31);
+    }
+
+    #[test]
+    fn timeline_events_covers_task_status_whitelist() {
+        // Every status in TASK_STATUSES maps to exactly one TIMELINE_EVENTS entry.
+        // Guards against matview CASE drift (mirror of up.sql latest CTE).
+        let status_to_event = |s: &str| match s {
+            "created" => "TaskCreated",
+            "funded" => "TaskFunded",
+            "submitted" => "ResultSubmitted",
+            "verified" => "TaskVerified",
+            "released" => "TaskReleased",
+            "disputed" => "DisputeRaised",
+            "cancelled" => "TaskCancelled",
+            "expired" => "TaskExpired",
+            _ => "",
+        };
+        for s in TASK_STATUSES {
+            let ev = status_to_event(s);
+            assert!(!ev.is_empty(), "no event mapping for status {s}");
+            assert!(
+                TIMELINE_EVENTS.contains(&ev),
+                "TIMELINE_EVENTS missing {ev}"
+            );
+        }
+        assert_eq!(TIMELINE_EVENTS.len(), TASK_STATUSES.len());
     }
 }
