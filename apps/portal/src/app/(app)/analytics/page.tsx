@@ -8,11 +8,19 @@
 // All hooks should return data matching the prop types defined in each component.
 // Data currently uses realistic mock structures that mirror on-chain account shapes.
 
+import dynamic from 'next/dynamic';
 import { FeesBurnedCounter } from './fees-burned';
-import { AgentEconomyMap } from './economy-map';
-import { TaskVolumeChart } from './task-volume';
 import { TopAgentsLeaderboard } from './leaderboard';
 import { NetworkHealthPanel } from './network-health';
+
+const TaskVolumeChart = dynamic(
+  () => import('./task-volume').then((m) => m.TaskVolumeChart),
+  { ssr: false },
+);
+const AgentEconomyMap = dynamic(
+  () => import('./economy-map').then((m) => m.AgentEconomyMap),
+  { ssr: false },
+);
 
 import type { BurnStats } from './fees-burned';
 import type { EconomyGraphData } from './economy-map';

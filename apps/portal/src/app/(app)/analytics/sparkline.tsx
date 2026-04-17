@@ -1,36 +1,30 @@
 'use client';
 
-import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts';
-
 interface Props {
   data: { date: string; burned: number }[];
   color: string;
 }
 
 export default function Sparkline({ data, color }: Props) {
+  if (data.length < 2) return null;
+
+  const max = Math.max(...data.map((d) => d.burned));
+  const min = Math.min(...data.map((d) => d.burned));
+  const range = max - min || 1;
+  const w = 120;
+  const h = 32;
+
+  const points = data
+    .map((d, i) => {
+      const x = (i / (data.length - 1)) * w;
+      const y = h - ((d.burned - min) / range) * h;
+      return `${x},${y}`;
+    })
+    .join(' ');
+
   return (
-    <ResponsiveContainer width="100%" height={48}>
-      <AreaChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-        <defs>
-          <linearGradient id={`burn-grad-${color}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-            <stop offset="100%" stopColor={color} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <Tooltip
-          contentStyle={{ background: 'var(--paper-2)', border: '1px solid var(--mute-2)', fontSize: 11 }}
-          labelStyle={{ color: 'var(--mute)', fontSize: 10 }}
-          formatter={(v) => [`${Number(v).toLocaleString()} SAEP`, 'Burned']}
-        />
-        <Area
-          type="monotone"
-          dataKey="burned"
-          stroke={color}
-          strokeWidth={1.5}
-          fill={`url(#burn-grad-${color})`}
-          isAnimationActive={false}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-8" preserveAspectRatio="none">
+      <polyline fill="none" stroke={color} strokeWidth="1.5" points={points} />
+    </svg>
   );
 }
