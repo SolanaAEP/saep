@@ -86,4 +86,6 @@ pub enum AgentRegistryError {
     CivicGatewayProgramNotSet,
     #[msg("civic gateway token account owner does not match civic gateway program")]
     CivicGatewayProgramMismatch,
+    #[msg("civic gateway program cannot be set to Pubkey::default")]
+    InvalidCivicGateway,
 }

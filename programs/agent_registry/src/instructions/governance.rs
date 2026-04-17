@@ -63,6 +63,10 @@ pub fn set_civic_gateway_program_handler(
     ctx: Context<GovernanceUpdate>,
     new_civic_gateway_program: Pubkey,
 ) -> Result<()> {
+    require!(
+        new_civic_gateway_program != Pubkey::default(),
+        AgentRegistryError::InvalidCivicGateway
+    );
     ctx.accounts.global.civic_gateway_program = new_civic_gateway_program;
     emit!(GlobalParamsUpdated {
         timestamp: Clock::get()?.unix_timestamp,
