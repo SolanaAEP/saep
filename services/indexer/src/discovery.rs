@@ -11,8 +11,12 @@
 //!
 //! Cycle-100 scope: capabilities surface (`/v1/discovery/capabilities`,
 //! `/v1/discovery/capabilities/:bit`) folding over capability_registry
-//! TagApproved/TagRetired events. Remaining (treasury, agent sub-endpoints,
-//! WS, rate-limiter, cache) land in subsequent cycles.
+//! TagApproved/TagRetired events.
+//!
+//! Cycle-101 scope: `/v1/discovery/agents/:did/tasks` — thin wrapper over
+//! `list_tasks` with the `agent_did` filter pinned from the path. Remaining
+//! (treasury, agent streams + reputation sub-endpoints, WS, rate-limiter,
+//! cache) land in subsequent cycles.
 
 use axum::{
     extract::{Path, Query, State},
@@ -36,6 +40,7 @@ pub fn router(state: ApiState) -> Router {
     Router::new()
         .route("/v1/discovery/agents", get(list_agents))
         .route("/v1/discovery/agents/:did", get(agent_detail))
+        .route("/v1/discovery/agents/:did/tasks", get(agent_tasks))
         .route("/v1/discovery/tasks", get(list_tasks))
         .route("/v1/discovery/tasks/:task_id_hex", get(task_detail))
         .route(
@@ -431,6 +436,34 @@ pub async fn list_tasks(
     };
 
     Ok(Json(TasksPage { items, cursor }))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AgentTasksQuery {
+    pub status: Option<String>,
+    pub creator: Option<String>,
+    pub created_after: Option<i64>,
+    pub created_before: Option<i64>,
+    pub limit: Option<i64>,
+    pub cursor: Option<String>,
+}
+
+pub async fn agent_tasks(
+    State(state): State<ApiState>,
+    Path(did_hex): Path<String>,
+    Query(q): Query<AgentTasksQuery>,
+) -> Result<Json<TasksPage>, ApiError> {
+    parse_hex_32(&did_hex).map_err(ApiError::bad_request)?;
+    let merged = TasksQuery {
+        status: q.status,
+        creator: q.creator,
+        agent_did: Some(did_hex),
+        created_after: q.created_after,
+        created_before: q.created_before,
+        limit: q.limit,
+        cursor: q.cursor,
+    };
+    list_tasks(State(state), Query(merged)).await
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -1054,6 +1087,36 @@ mod tests {
         assert_eq!(slug_from_jsonb(&all_zero), "");
         assert_eq!(slug_from_jsonb(&serde_json::json!({})), "");
         assert_eq!(slug_from_jsonb(&serde_json::json!(null)), "");
+    }
+
+    #[test]
+    fn agent_tasks_query_parses_without_agent_did_field() {
+        // Contract: AgentTasksQuery is TasksQuery minus agent_did. A stray
+        // `?agent_did=...` query param must not override the path-bound did.
+        // serde(deny_unknown_fields) is NOT set (axum/serde_urlencoded is
+        // lenient by default), so we instead assert the post-merge TasksQuery
+        // honors the path string rather than any inbound query field.
+        let q = AgentTasksQuery {
+            status: Some("funded".into()),
+            creator: None,
+            created_after: None,
+            created_before: None,
+            limit: Some(10),
+            cursor: None,
+        };
+        let path_did = "cafecafe".to_string();
+        let merged = TasksQuery {
+            status: q.status,
+            creator: q.creator,
+            agent_did: Some(path_did.clone()),
+            created_after: q.created_after,
+            created_before: q.created_before,
+            limit: q.limit,
+            cursor: q.cursor,
+        };
+        assert_eq!(merged.agent_did, Some(path_did));
+        assert_eq!(merged.status.as_deref(), Some("funded"));
+        assert_eq!(merged.limit, Some(10));
     }
 
     #[test]
