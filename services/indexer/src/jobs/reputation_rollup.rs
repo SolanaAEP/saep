@@ -265,19 +265,26 @@ pub async fn fold_samples(pool: &PgPool) -> Result<u64> {
                 .unwrap_or_default()
                 .as_secs() as i64;
 
+            let did_bytes: [u8; 32] = match agent.agent_did.clone().try_into() {
+                Ok(b) => b,
+                Err(_) => {
+                    tracing::warn!(capability_bit = agent.capability_bit, "agent_did in DB is not 32 bytes; skipping availability projection");
+                    [0u8; 32]
+                }
+            };
             let availability: i16 = match heartbeat_row {
                 Some(hb) => {
                     let misses = count_misses(
                         &[Heartbeat {
-                            agent_did: agent.agent_did.clone().try_into().unwrap_or([0u8; 32]),
+                            agent_did: did_bytes,
                             capability_bit: agent.capability_bit as u16,
                             seen_at_unix: hb.last_seen_unix,
                         }],
-                        agent.agent_did.clone().try_into().unwrap_or([0u8; 32]),
+                        did_bytes,
                         agent.capability_bit as u16,
                         now_unix,
                     );
-                    let current_avail = agent.quality as u16; // fallback: use existing availability from DB
+                    let current_avail = agent.quality as u16;
                     project_availability(current_avail, misses, DEFAULT_ALPHA_BPS) as i16
                 }
                 None => 0, // no heartbeat → zero availability

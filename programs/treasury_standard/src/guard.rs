@@ -43,6 +43,13 @@ pub fn exit(guard: &mut ReentrancyGuard) {
     guard.entered_by = Pubkey::default();
 }
 
+pub fn reset_guard(g: &mut ReentrancyGuard) {
+    g.active = false;
+    g.entered_by = Pubkey::default();
+    g.entered_at_slot = 0;
+    g.reset_proposed_at = 0;
+}
+
 pub fn check_callee_preconditions(
     self_guard: &ReentrancyGuard,
     caller_guard_active: bool,

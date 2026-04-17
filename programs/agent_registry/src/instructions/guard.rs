@@ -5,8 +5,8 @@ use crate::events::{
     AllowedCallersUpdated, GuardAdminReset, GuardInitialized,
 };
 use crate::guard::{
-    assert_reset_timelock, AllowedCallers, ReentrancyGuard, MAX_ALLOWED_CALLERS, SEED_ALLOWED_CALLERS,
-    SEED_GUARD,
+    assert_reset_timelock, reset_guard, AllowedCallers, ReentrancyGuard, MAX_ALLOWED_CALLERS,
+    SEED_ALLOWED_CALLERS, SEED_GUARD,
 };
 use crate::state::RegistryGlobal;
 
@@ -48,10 +48,7 @@ pub fn init_guard_handler(ctx: Context<InitGuard>, initial_callers: Vec<Pubkey>)
         AgentRegistryError::UnauthorizedCaller
     );
     let g = &mut ctx.accounts.guard;
-    g.active = false;
-    g.entered_by = Pubkey::default();
-    g.entered_at_slot = 0;
-    g.reset_proposed_at = 0;
+    reset_guard(g);
     g.bump = ctx.bumps.guard;
 
     let a = &mut ctx.accounts.allowed_callers;
@@ -163,11 +160,7 @@ pub fn admin_reset_guard_handler(ctx: Context<AdminResetGuard>) -> Result<()> {
     let proposed_at = ctx.accounts.guard.reset_proposed_at;
     assert_reset_timelock(&ctx.accounts.guard, now)?;
 
-    let g = &mut ctx.accounts.guard;
-    g.active = false;
-    g.entered_by = Pubkey::default();
-    g.entered_at_slot = 0;
-    g.reset_proposed_at = 0;
+    reset_guard(&mut ctx.accounts.guard);
 
     emit!(GuardAdminReset {
         program: crate::ID,

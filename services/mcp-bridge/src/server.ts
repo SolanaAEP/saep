@@ -44,7 +44,6 @@ export async function main(): Promise<void> {
       const result = await tool.handler(req.params.arguments ?? {}, cfg);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
-      console.error(`[saep-mcp-bridge] tool=${req.params.name}`, err);
       const msg = err instanceof Error ? err.message : String(err);
       let category: string;
       if (/failed to fetch|rpc|send transaction|simulation/i.test(msg)) {
@@ -56,7 +55,7 @@ export async function main(): Promise<void> {
       } else {
         category = 'internal_error';
       }
-      return { isError: true, content: [{ type: 'text', text: category }] };
+      return { isError: true, content: [{ type: 'text', text: `${category}: ${msg}` }] };
     }
   });
 

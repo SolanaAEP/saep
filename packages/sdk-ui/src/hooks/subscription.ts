@@ -81,7 +81,9 @@ export function useYellowstoneSubscription(opts: UseYellowstoneSubscriptionOptio
         });
 
         onUpdateRef.current?.(pubkey, data, slot, lamports);
-      } catch { /* ignore malformed messages */ }
+      } catch (err) {
+        console.debug('[sdk-ui] yellowstone ws message parse failed:', err);
+      }
     };
 
     ws.onclose = () => setConnected(false);

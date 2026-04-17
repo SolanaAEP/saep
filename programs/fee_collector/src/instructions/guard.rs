@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::errors::FeeCollectorError;
 use crate::guard::{
-    assert_reset_timelock, AllowedCallers, ReentrancyGuard, MAX_ALLOWED_CALLERS,
+    assert_reset_timelock, reset_guard, AllowedCallers, ReentrancyGuard, MAX_ALLOWED_CALLERS,
     SEED_ALLOWED_CALLERS, SEED_GUARD,
 };
 use crate::state::{HookAllowlist, SEED_HOOK_ALLOWLIST};
@@ -48,10 +48,7 @@ pub fn init_guard_handler(ctx: Context<InitGuard>, initial_callers: Vec<Pubkey>)
         require!(*p != Pubkey::default(), FeeCollectorError::UnauthorizedCaller);
     }
     let g = &mut ctx.accounts.guard;
-    g.active = false;
-    g.entered_by = Pubkey::default();
-    g.entered_at_slot = 0;
-    g.reset_proposed_at = 0;
+    reset_guard(g);
     g.bump = ctx.bumps.guard;
 
     let a = &mut ctx.accounts.allowed_callers;
@@ -128,10 +125,6 @@ pub struct AdminResetGuard<'info> {
 pub fn admin_reset_guard_handler(ctx: Context<AdminResetGuard>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     assert_reset_timelock(&ctx.accounts.guard, now)?;
-    let g = &mut ctx.accounts.guard;
-    g.active = false;
-    g.entered_by = Pubkey::default();
-    g.entered_at_slot = 0;
-    g.reset_proposed_at = 0;
+    reset_guard(&mut ctx.accounts.guard);
     Ok(())
 }

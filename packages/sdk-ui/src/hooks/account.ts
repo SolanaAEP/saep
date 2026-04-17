@@ -61,7 +61,10 @@ export function useDecodedAccount<T>(
         const decoded = coder.decode(accountName, info.data);
         const value = transform ? transform(decoded) : decoded as T;
         qc.setQueryData(['account-decoded', accountName, key], value);
-      } catch { /* skip decode errors from partial updates */ }
+      } catch (err) {
+        // Subscription events can arrive mid-write; stale data catches up on next full fetch.
+        console.debug('[sdk-ui] account decode skipped during subscription update:', err);
+      }
     }, commitment);
     return () => { connection.removeAccountChangeListener(subId); };
   }, [connection, key, subscribe, commitment, qc, coder, accountName, transform]);
@@ -98,7 +101,9 @@ export function useAnchorAccount<T extends Idl>(
       try {
         const decoded = program.coder.accounts.decode(accountName, info.data);
         qc.setQueryData(['anchor-account', programId, accountName, key], decoded);
-      } catch { /* skip decode errors */ }
+      } catch (err) {
+        console.debug('[sdk-ui] anchor account decode skipped during subscription update:', err);
+      }
     }, commitment);
     return () => { connection.removeAccountChangeListener(subId); };
   }, [connection, key, subscribe, commitment, qc, program, programId, accountName]);
