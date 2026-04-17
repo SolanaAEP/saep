@@ -88,4 +88,6 @@ pub enum AgentRegistryError {
     CivicGatewayProgramMismatch,
     #[msg("civic gateway program cannot be set to Pubkey::default")]
     InvalidCivicGateway,
+    #[msg("availability decay cooldown has not elapsed (24h minimum)")]
+    DecayCooldownNotElapsed,
 }

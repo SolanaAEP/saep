@@ -200,6 +200,20 @@ pub mod agent_registry {
         )
     }
 
+    pub fn decay_availability(
+        ctx: Context<DecayAvailability>,
+        agent_did: [u8; 32],
+        capability_bit: u16,
+        miss_count: u8,
+    ) -> Result<()> {
+        instructions::reputation::decay_availability_handler(
+            ctx,
+            agent_did,
+            capability_bit,
+            miss_count,
+        )
+    }
+
     pub fn attest_personhood(ctx: Context<AttestPersonhood>) -> Result<()> {
         instructions::personhood::attest_personhood_handler(ctx)
     }

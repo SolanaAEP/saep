@@ -178,3 +178,13 @@ pub struct CategoryReputationUpdated {
     pub task_id: [u8; 32],
     pub timestamp: i64,
 }
+
+#[event]
+pub struct AvailabilityDecayed {
+    pub agent_did: [u8; 32],
+    pub capability_bit: u16,
+    pub old_availability: u16,
+    pub new_availability: u16,
+    pub miss_count: u8,
+    pub timestamp: i64,
+}

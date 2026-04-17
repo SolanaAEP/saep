@@ -21,6 +21,8 @@ anchor-lang = "1.0.0"
 agent_registry = { path = "../agent_registry", features = ["cpi"] }
 solana-instructions-sysvar = "3.0.0"
 solana-keccak-hasher = "2.2.1"
+light-poseidon = "0.4.0"
+ark-bn254 = "0.5.0"
 
 [dev-dependencies]
 proptest = "1"

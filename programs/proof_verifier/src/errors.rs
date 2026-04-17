@@ -60,4 +60,8 @@ pub enum ProofVerifierError {
     AdminResetNotTimelocked,
     #[msg("reputation args are not yet bound to the circuit's public outputs; rail disabled")]
     ReputationBindingNotReady,
+    #[msg("on-chain poseidon hash of sample does not match proof's sample_hash commitment")]
+    SampleHashMismatch,
+    #[msg("poseidon hash computation failed")]
+    PoseidonError,
 }
