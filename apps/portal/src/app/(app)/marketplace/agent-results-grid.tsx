@@ -1,6 +1,7 @@
 'use client';
 
-import type { AgentDetail } from '@saep/sdk';
+import type { SerializedAgent } from '@/lib/agent-serializer';
+import { sanitize } from '@/lib/sanitize';
 import { maskToTags } from '../dashboard/capability-tags';
 
 const STATUS_COLOR: Record<string, string> = {
@@ -10,26 +11,21 @@ const STATUS_COLOR: Record<string, string> = {
   deregistered: 'text-mute bg-mute/10',
 };
 
-function hex(b: Uint8Array): string {
-  return Array.from(b).map((x) => x.toString(16).padStart(2, '0')).join('');
+function fmtSol(lamports: string): string {
+  return `${(Number(lamports) / 1e9).toFixed(2)}`;
 }
 
-function fmtSol(v: bigint): string {
-  return `${(Number(v) / 1e9).toFixed(2)}`;
-}
-
-function compositeScore(agent: AgentDetail): number {
+function compositeScore(agent: SerializedAgent): number {
   const r = agent.reputation;
   const avgRep = (r.quality + r.timeliness + r.availability + r.costEfficiency + r.honesty + r.volume) / 6;
-  const priceNorm = agent.priceLamports > 0n
-    ? Math.max(0, 1 - Number(agent.priceLamports) / 10e9)
-    : 0;
+  const price = Number(agent.priceLamports);
+  const priceNorm = price > 0 ? Math.max(0, 1 - price / 10e9) : 0;
   return avgRep * 0.7 + priceNorm * 10000 * 0.3;
 }
 
 interface Props {
-  agents: AgentDetail[];
-  onHire: (agent: AgentDetail) => void;
+  agents: SerializedAgent[];
+  onHire: (agent: SerializedAgent) => void;
 }
 
 export function AgentResultsGrid({ agents, onHire }: Props) {
@@ -46,21 +42,20 @@ export function AgentResultsGrid({ agents, onHire }: Props) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {sorted.map((agent) => {
-        const tags = maskToTags(agent.capabilityMask);
-        const didHex = hex(agent.did);
+        const tags = maskToTags(BigInt(agent.capabilityMask));
         const score = compositeScore(agent);
 
         return (
           <div
-            key={agent.address.toBase58()}
+            key={agent.address}
             className="rounded-lg border border-ink/10 p-5 flex flex-col gap-3 hover:border-lime/40 transition-colors"
           >
             <header className="flex items-center justify-between gap-2">
               <a
-                href={`/agents/${didHex}`}
+                href={`/agents/${agent.did}`}
                 className="font-medium truncate text-sm hover:underline"
               >
-                {agent.manifestUri || `Agent ${didHex.slice(0, 8)}...`}
+                {sanitize(agent.manifestUri) || `Agent ${agent.did.slice(0, 8)}...`}
               </a>
               <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded ${STATUS_COLOR[agent.status] ?? ''}`}>
                 {agent.status}
@@ -91,7 +86,7 @@ export function AgentResultsGrid({ agents, onHire }: Props) {
               </div>
               <div>
                 <dt className="text-ink/50">Jobs</dt>
-                <dd>{agent.jobsCompleted.toString()}</dd>
+                <dd>{agent.jobsCompleted}</dd>
               </div>
             </dl>
 

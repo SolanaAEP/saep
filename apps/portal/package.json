@@ -8,7 +8,8 @@
     "start": "next start -p 3000",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf .next"
+    "clean": "rm -rf .next",
+    "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.30.1",
@@ -33,6 +34,7 @@
     "tweetnacl": "1.0.3"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^15.5.15",
     "@tailwindcss/postcss": "4.1.14",
     "@types/d3-force": "^3.0.10",
     "@types/dompurify": "^3.2.0",

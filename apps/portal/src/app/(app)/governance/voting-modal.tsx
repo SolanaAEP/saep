@@ -101,12 +101,9 @@ export function VotingModal({ proposal, config, onClose }: Props) {
       return await program.methods
         .vote(choiceArg, stakingWeight, merkleProof)
         .accounts({
-          config: configPda,
           proposal: proposalPda,
-          voteRecord: voteRecordPda,
           voter: publicKey,
-          systemProgram: PublicKey.default,
-        })
+        } as any)
         .instruction();
     },
     invalidateKeys: [['governance-proposals']],
