@@ -70,6 +70,11 @@ pub fn handler(
         return Ok(());
     }
 
+    require!(
+        amount > 0 && amount <= ctx.accounts.task.payment_amount,
+        TaskMarketError::InvalidAmount
+    );
+
     bid.revealed_amount = amount;
     bid.revealed = true;
     book.reveal_count = book
