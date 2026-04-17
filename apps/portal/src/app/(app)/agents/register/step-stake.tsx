@@ -1,6 +1,6 @@
 'use client';
 
-import type { WizardData } from './page';
+import type { WizardData } from './types';
 
 const input = 'h-10 px-3 rounded border border-ink/15 bg-paper font-mono text-sm focus:outline-none focus:border-ink';
 

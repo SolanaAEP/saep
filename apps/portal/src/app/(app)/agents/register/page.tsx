@@ -6,22 +6,12 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { encodeAgentId } from '@saep/sdk';
 import { useRegisterAgent, useCluster } from '@saep/sdk-ui';
+import type { WizardData } from './types';
 import { StepIdentity } from './step-identity';
 import { StepCapabilities } from './step-capabilities';
 import { StepPricing } from './step-pricing';
 import { StepStake } from './step-stake';
 import { StepReview } from './step-review';
-
-export type WizardData = {
-  seed: string;
-  manifestUri: string;
-  selectedBits: Set<number>;
-  priceSol: string;
-  streamRate: string;
-  stakeAmount: string;
-  stakeMint: string;
-  operatorAta: string;
-};
 
 const STEPS = ['Identity', 'Capabilities', 'Pricing', 'Stake', 'Review'] as const;
 

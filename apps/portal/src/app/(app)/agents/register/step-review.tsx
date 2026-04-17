@@ -1,7 +1,7 @@
 'use client';
 
 import { maskToTags } from '../../dashboard/capability-tags';
-import type { WizardData } from './page';
+import type { WizardData } from './types';
 
 export function StepReview({
   data,

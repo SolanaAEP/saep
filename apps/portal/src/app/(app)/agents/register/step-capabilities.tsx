@@ -1,7 +1,7 @@
 'use client';
 
 import { CAPABILITY_LABELS } from '../../dashboard/capability-tags';
-import type { WizardData } from './page';
+import type { WizardData } from './types';
 
 const BITS = Object.keys(CAPABILITY_LABELS).map(Number).sort((a, b) => a - b);
 
