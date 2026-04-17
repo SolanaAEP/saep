@@ -107,6 +107,39 @@ pub mod proof_verifier {
         instructions::batch_verify::abort_batch_handler(ctx)
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub fn init_vk(
+        ctx: Context<InitVk>,
+        vk_id: [u8; 32],
+        alpha_g1: [u8; 64],
+        beta_g2: [u8; 128],
+        gamma_g2: [u8; 128],
+        delta_g2: [u8; 128],
+        num_public_inputs: u8,
+        circuit_label: [u8; 32],
+        is_production: bool,
+    ) -> Result<()> {
+        instructions::init_vk::handler(
+            ctx,
+            vk_id,
+            alpha_g1,
+            beta_g2,
+            gamma_g2,
+            delta_g2,
+            num_public_inputs,
+            circuit_label,
+            is_production,
+        )
+    }
+
+    pub fn append_vk_ic(
+        ctx: Context<AppendVkIc>,
+        ic_points: Vec<[u8; 64]>,
+        finalize: bool,
+    ) -> Result<()> {
+        instructions::append_vk_ic::handler(ctx, ic_points, finalize)
+    }
+
     pub fn set_paused(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
         instructions::set_paused::handler(ctx, paused)
     }

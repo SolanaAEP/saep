@@ -1,17 +1,21 @@
+pub mod append_vk_ic;
 pub mod authority;
 pub mod batch_verify;
 pub mod guard;
 pub mod init_config;
+pub mod init_vk;
 pub mod register_vk;
 pub mod reputation_cpi;
 pub mod set_paused;
 pub mod verify_proof;
 pub mod vk_activation;
 
+pub use append_vk_ic::*;
 pub use authority::*;
 pub use batch_verify::*;
 pub use guard::*;
 pub use init_config::*;
+pub use init_vk::*;
 pub use register_vk::*;
 pub use reputation_cpi::*;
 pub use set_paused::*;

@@ -4,10 +4,8 @@ import { getProvider } from './helpers/setup';
 import { proofVerifier, PROGRAM_IDS } from './helpers/accounts';
 import {
   computeVkId,
-  g1ToBytes,
-  g2ToBytes,
   loadDevVk,
-  padLabel,
+  registerDevVk,
   DEFAULT_CIRCUIT_LABEL,
 } from './helpers/vk';
 import type { ProofVerifier } from '../target/types/proof_verifier';
@@ -46,41 +44,18 @@ describe('proof_verifier', () => {
 
   it('register_vk: registers real dev-ceremony VK on-chain', async () => {
     const vkJson = loadDevVk();
-    const alphaG1 = g1ToBytes(vkJson.vk_alpha_1);
-    const betaG2 = g2ToBytes(vkJson.vk_beta_2);
-    const gammaG2 = g2ToBytes(vkJson.vk_gamma_2);
-    const deltaG2 = g2ToBytes(vkJson.vk_delta_2);
-    const ic = vkJson.IC.map((p: [string, string, string]) => g1ToBytes(p));
-    const numPublicInputs = vkJson.nPublic;
-    const circuitLabel = padLabel(CIRCUIT_LABEL);
 
     try {
-      await program.methods
-        .registerVk(
-          Array.from(vkId) as unknown as number[],
-          alphaG1 as unknown as number[],
-          betaG2 as unknown as number[],
-          gammaG2 as unknown as number[],
-          deltaG2 as unknown as number[],
-          ic as unknown as number[][],
-          numPublicInputs,
-          circuitLabel as unknown as number[],
-          false,
-        )
-        .accountsPartial({
-          authority: authority.publicKey,
-          payer: authority.publicKey,
-        })
-        .rpc({ commitment: 'confirmed' });
+      await registerDevVk(program, authority.publicKey, vkId);
     } catch (e) {
       if (!String(e).includes('already in use')) throw e;
     }
 
     const vkAccount = await program.account.verifierKey.fetch(vkPda);
     expect(Buffer.from(vkAccount.vkId)).to.deep.equal(vkId);
-    expect(vkAccount.numPublicInputs).to.equal(numPublicInputs);
+    expect(vkAccount.numPublicInputs).to.equal(vkJson.nPublic);
     expect(vkAccount.isProduction).to.equal(false);
-    expect(vkAccount.ic.length).to.equal(numPublicInputs + 1);
+    expect(vkAccount.ic.length).to.equal(vkJson.nPublic + 1);
     expect(Buffer.from(vkAccount.circuitLabel).toString('utf-8').replace(/\0+$/, ''))
       .to.equal(CIRCUIT_LABEL);
   });
