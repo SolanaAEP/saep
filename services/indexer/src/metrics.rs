@@ -114,6 +114,25 @@ pub static INGEST_LAG: Lazy<HistogramVec> = Lazy::new(|| {
     .unwrap()
 });
 
+pub static MATVIEW_REFRESH_TOTAL: Lazy<IntCounterVec> = Lazy::new(|| {
+    register_int_counter_vec!(
+        "saep_indexer_matview_refresh_total",
+        "Materialized-view refresh attempts, labelled by view and outcome (ok|err)",
+        &["view", "status"]
+    )
+    .unwrap()
+});
+
+pub static MATVIEW_REFRESH_DURATION: Lazy<HistogramVec> = Lazy::new(|| {
+    register_histogram_vec!(
+        "saep_indexer_matview_refresh_duration_seconds",
+        "Duration of REFRESH MATERIALIZED VIEW CONCURRENTLY per view",
+        &["view"],
+        vec![0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0]
+    )
+    .unwrap()
+});
+
 pub fn time_rpc(method: &'static str) -> HistogramTimer {
     RPC_CALL_DURATION.with_label_values(&[method]).start_timer()
 }
