@@ -480,12 +480,29 @@ export type TreasuryStandard = {
           }
         },
         {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "signer",
           "signer": true
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         }
       ],
       "args": []
@@ -652,13 +669,30 @@ export type TreasuryStandard = {
           "optional": true
         },
         {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "funder",
           "writable": true,
           "signer": true
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         },
         {
           "name": "systemProgram",
@@ -1185,13 +1219,30 @@ export type TreasuryStandard = {
           "optional": true
         },
         {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "client",
           "writable": true,
           "signer": true
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         },
         {
           "name": "systemProgram",
@@ -2365,6 +2416,24 @@ export type TreasuryStandard = {
           "optional": true
         },
         {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "operator",
           "signer": true,
           "relations": [
@@ -2372,8 +2441,7 @@ export type TreasuryStandard = {
           ]
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         }
       ],
       "args": [
@@ -2685,8 +2753,7 @@ export type TreasuryStandard = {
           ]
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         }
       ],
       "args": [
@@ -3110,91 +3177,96 @@ export type TreasuryStandard = {
     },
     {
       "code": 6024,
+      "name": "routeDataTooLong",
+      "msg": "route_data exceeds MAX_ROUTE_DATA_LEN"
+    },
+    {
+      "code": 6025,
       "name": "swapAmountExceeded",
       "msg": "swap consumed more tokens than earned"
     },
     {
-      "code": 6025,
+      "code": 6026,
       "name": "oracleRequired",
       "msg": "oracle price feed required for cross-mint withdrawal"
     },
     {
-      "code": 6026,
+      "code": 6027,
       "name": "oracleNonPositivePrice",
       "msg": "oracle price is non-positive"
     },
     {
-      "code": 6027,
+      "code": 6028,
       "name": "agentMismatch",
       "msg": "agent DID does not match AgentAccount"
     },
     {
-      "code": 6028,
+      "code": 6029,
       "name": "operatorMismatch",
       "msg": "operator does not match AgentAccount operator"
     },
     {
-      "code": 6029,
+      "code": 6030,
       "name": "targetNotAllowed",
       "msg": "outbound CPI target is not on the allowed-call-targets list"
     },
     {
-      "code": 6030,
+      "code": 6031,
       "name": "tooManyCallTargets",
       "msg": "allowed-call-targets list exceeds cap"
     },
     {
-      "code": 6031,
+      "code": 6032,
       "name": "invalidCallTarget",
       "msg": "call target must be a non-default pubkey"
     },
     {
-      "code": 6032,
+      "code": 6033,
       "name": "hookNotAllowed",
       "msg": "transfer-hook program not on fee_collector allowlist"
     },
     {
-      "code": 6033,
+      "code": 6034,
       "name": "hookAllowlistAlreadySet",
       "msg": "hook_allowlist pointer has already been set"
     },
     {
-      "code": 6034,
+      "code": 6035,
       "name": "hookAllowlistMismatch",
       "msg": "hook_allowlist account does not match TreasuryGlobal.hook_allowlist"
     },
     {
-      "code": 6035,
+      "code": 6036,
       "name": "reentrancyDetected",
       "msg": "reentrancy detected — guard is already active"
     },
     {
-      "code": 6036,
+      "code": 6037,
       "name": "unauthorizedCaller",
       "msg": "caller program is not on the allowed callers list"
     },
     {
-      "code": 6037,
+      "code": 6038,
       "name": "callerGuardNotActive",
       "msg": "caller program's reentrancy guard is not active"
     },
     {
-      "code": 6038,
+      "code": 6039,
       "name": "cpiDepthExceeded",
       "msg": "cpi stack height exceeds allowed bound"
     },
     {
-      "code": 6039,
+      "code": 6040,
       "name": "guardAlreadyActive",
       "msg": "reentrancy guard is already active"
     },
     {
-      "code": 6040,
+      "code": 6041,
       "name": "guardNotInitialized",
       "msg": "reentrancy guard has not been initialized"
     },
     {
-      "code": 6041,
+      "code": 6042,
       "name": "adminResetNotTimelocked",
       "msg": "admin reset has not met the 24h timelock"
     }

@@ -472,12 +472,29 @@
           }
         },
         {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "signer",
           "signer": true
         },
         {
-          "name": "token_program",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "token_program"
         }
       ],
       "args": []
@@ -644,13 +661,30 @@
           "optional": true
         },
         {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "funder",
           "writable": true,
           "signer": true
         },
         {
-          "name": "token_program",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "token_program"
         },
         {
           "name": "system_program",
@@ -1177,13 +1211,30 @@
           "optional": true
         },
         {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "client",
           "writable": true,
           "signer": true
         },
         {
-          "name": "token_program",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "token_program"
         },
         {
           "name": "system_program",
@@ -2357,6 +2408,24 @@
           "optional": true
         },
         {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "operator",
           "signer": true,
           "relations": [
@@ -2364,8 +2433,7 @@
           ]
         },
         {
-          "name": "token_program",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "token_program"
         }
       ],
       "args": [
@@ -2677,8 +2745,7 @@
           ]
         },
         {
-          "name": "token_program",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "token_program"
         }
       ],
       "args": [
@@ -3102,91 +3169,96 @@
     },
     {
       "code": 6024,
+      "name": "RouteDataTooLong",
+      "msg": "route_data exceeds MAX_ROUTE_DATA_LEN"
+    },
+    {
+      "code": 6025,
       "name": "SwapAmountExceeded",
       "msg": "swap consumed more tokens than earned"
     },
     {
-      "code": 6025,
+      "code": 6026,
       "name": "OracleRequired",
       "msg": "oracle price feed required for cross-mint withdrawal"
     },
     {
-      "code": 6026,
+      "code": 6027,
       "name": "OracleNonPositivePrice",
       "msg": "oracle price is non-positive"
     },
     {
-      "code": 6027,
+      "code": 6028,
       "name": "AgentMismatch",
       "msg": "agent DID does not match AgentAccount"
     },
     {
-      "code": 6028,
+      "code": 6029,
       "name": "OperatorMismatch",
       "msg": "operator does not match AgentAccount operator"
     },
     {
-      "code": 6029,
+      "code": 6030,
       "name": "TargetNotAllowed",
       "msg": "outbound CPI target is not on the allowed-call-targets list"
     },
     {
-      "code": 6030,
+      "code": 6031,
       "name": "TooManyCallTargets",
       "msg": "allowed-call-targets list exceeds cap"
     },
     {
-      "code": 6031,
+      "code": 6032,
       "name": "InvalidCallTarget",
       "msg": "call target must be a non-default pubkey"
     },
     {
-      "code": 6032,
+      "code": 6033,
       "name": "HookNotAllowed",
       "msg": "transfer-hook program not on fee_collector allowlist"
     },
     {
-      "code": 6033,
+      "code": 6034,
       "name": "HookAllowlistAlreadySet",
       "msg": "hook_allowlist pointer has already been set"
     },
     {
-      "code": 6034,
+      "code": 6035,
       "name": "HookAllowlistMismatch",
       "msg": "hook_allowlist account does not match TreasuryGlobal.hook_allowlist"
     },
     {
-      "code": 6035,
+      "code": 6036,
       "name": "ReentrancyDetected",
       "msg": "reentrancy detected — guard is already active"
     },
     {
-      "code": 6036,
+      "code": 6037,
       "name": "UnauthorizedCaller",
       "msg": "caller program is not on the allowed callers list"
     },
     {
-      "code": 6037,
+      "code": 6038,
       "name": "CallerGuardNotActive",
       "msg": "caller program's reentrancy guard is not active"
     },
     {
-      "code": 6038,
+      "code": 6039,
       "name": "CpiDepthExceeded",
       "msg": "cpi stack height exceeds allowed bound"
     },
     {
-      "code": 6039,
+      "code": 6040,
       "name": "GuardAlreadyActive",
       "msg": "reentrancy guard is already active"
     },
     {
-      "code": 6040,
+      "code": 6041,
       "name": "GuardNotInitialized",
       "msg": "reentrancy guard has not been initialized"
     },
     {
-      "code": 6041,
+      "code": 6042,
       "name": "AdminResetNotTimelocked",
       "msg": "admin reset has not met the 24h timelock"
     }

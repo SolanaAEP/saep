@@ -398,8 +398,7 @@
           "signer": true
         },
         {
-          "name": "token_program",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "token_program"
         }
       ],
       "args": []
@@ -435,6 +434,12 @@
               }
             ]
           }
+        },
+        {
+          "name": "stake_mint_info",
+          "docs": [
+            "The stake mint account — validated to have no TransferHook extension."
+          ]
         },
         {
           "name": "payer",
@@ -937,8 +942,7 @@
           }
         },
         {
-          "name": "token_program",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "token_program"
         },
         {
           "name": "system_program",
@@ -1674,8 +1678,7 @@
           ]
         },
         {
-          "name": "token_program",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "token_program"
         }
       ],
       "args": [
@@ -1799,8 +1802,7 @@
           ]
         },
         {
-          "name": "token_program",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "token_program"
         }
       ],
       "args": []
@@ -2813,6 +2815,11 @@
       "code": 6041,
       "name": "CivicGatewayProgramMismatch",
       "msg": "civic gateway token account owner does not match civic gateway program"
+    },
+    {
+      "code": 6042,
+      "name": "InvalidCivicGateway",
+      "msg": "civic gateway program cannot be set to Pubkey::default"
     }
   ],
   "types": [

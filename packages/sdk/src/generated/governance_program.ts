@@ -12,23 +12,1920 @@ export type GovernanceProgram = {
     "name": "governanceProgram",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "SAEP governance_program program (stub)"
+    "description": "SAEP governance program"
   },
   "instructions": [
     {
-      "name": "initialize",
+      "name": "executeProposal",
       "discriminator": [
-        175,
-        175,
-        109,
-        31,
-        13,
-        152,
-        155,
-        237
+        186,
+        60,
+        116,
+        133,
+        108,
+        128,
+        111,
+        28
       ],
-      "accounts": [],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "proposal.proposal_id",
+                "account": "proposalAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "executionRecord",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  120,
+                  101,
+                  99,
+                  117,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "proposal"
+              }
+            ]
+          }
+        },
+        {
+          "name": "executor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
       "args": []
+    },
+    {
+      "name": "expireProposal",
+      "discriminator": [
+        21,
+        237,
+        43,
+        176,
+        1,
+        202,
+        146,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "proposal.proposal_id",
+                "account": "proposalAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "finalizeVote",
+      "discriminator": [
+        181,
+        176,
+        6,
+        248,
+        249,
+        134,
+        146,
+        56
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "proposal.proposal_id",
+                "account": "proposalAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initConfig",
+      "discriminator": [
+        23,
+        235,
+        115,
+        232,
+        168,
+        96,
+        1,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "deployer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "initConfigParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "propose",
+      "discriminator": [
+        93,
+        253,
+        82,
+        168,
+        118,
+        33,
+        102,
+        90
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.next_proposal_id",
+                "account": "governanceConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "category",
+          "type": {
+            "defined": {
+              "name": "proposalCategory"
+            }
+          }
+        },
+        {
+          "name": "targetProgram",
+          "type": "pubkey"
+        },
+        {
+          "name": "ixData",
+          "type": "bytes"
+        },
+        {
+          "name": "metadataUri",
+          "type": "bytes"
+        },
+        {
+          "name": "snapshot",
+          "type": {
+            "defined": {
+              "name": "proposalSnapshot"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "proposerCancel",
+      "discriminator": [
+        191,
+        37,
+        166,
+        218,
+        45,
+        231,
+        66,
+        236
+      ],
+      "accounts": [
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "proposal.proposal_id",
+                "account": "proposalAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposer",
+          "signer": true,
+          "relations": [
+            "proposal"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "queueExecution",
+      "discriminator": [
+        112,
+        47,
+        222,
+        94,
+        168,
+        153,
+        227,
+        95
+      ],
+      "accounts": [
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "proposal.proposal_id",
+                "account": "proposalAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "registerProgram",
+      "discriminator": [
+        104,
+        9,
+        166,
+        5,
+        200,
+        228,
+        112,
+        131
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "label",
+          "type": {
+            "array": [
+              "u8",
+              16
+            ]
+          }
+        },
+        {
+          "name": "programId",
+          "type": "pubkey"
+        },
+        {
+          "name": "isCritical",
+          "type": "bool"
+        },
+        {
+          "name": "paramAuthoritySeed",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "maxParamPayloadBytes",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "setPaused",
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "vote",
+      "discriminator": [
+        227,
+        110,
+        155,
+        23,
+        136,
+        126,
+        172,
+        25
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "proposal.proposal_id",
+                "account": "proposalAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "voteRecord",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "proposal"
+              },
+              {
+                "kind": "account",
+                "path": "voter"
+              }
+            ]
+          }
+        },
+        {
+          "name": "voter",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "choice",
+          "type": {
+            "defined": {
+              "name": "voteChoice"
+            }
+          }
+        },
+        {
+          "name": "weight",
+          "type": "u128"
+        },
+        {
+          "name": "merkleProof",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "executionRecord",
+      "discriminator": [
+        133,
+        201,
+        182,
+        206,
+        224,
+        111,
+        45,
+        168
+      ]
+    },
+    {
+      "name": "governanceConfig",
+      "discriminator": [
+        81,
+        63,
+        124,
+        107,
+        210,
+        100,
+        145,
+        70
+      ]
+    },
+    {
+      "name": "programRegistry",
+      "discriminator": [
+        104,
+        149,
+        117,
+        95,
+        105,
+        140,
+        29,
+        64
+      ]
+    },
+    {
+      "name": "proposalAccount",
+      "discriminator": [
+        164,
+        190,
+        4,
+        248,
+        203,
+        124,
+        243,
+        64
+      ]
+    },
+    {
+      "name": "voteRecord",
+      "discriminator": [
+        112,
+        9,
+        123,
+        165,
+        234,
+        9,
+        157,
+        167
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "configInitialized",
+      "discriminator": [
+        181,
+        49,
+        200,
+        156,
+        19,
+        167,
+        178,
+        91
+      ]
+    },
+    {
+      "name": "pausedSet",
+      "discriminator": [
+        171,
+        125,
+        127,
+        156,
+        233,
+        81,
+        68,
+        66
+      ]
+    },
+    {
+      "name": "programRegistered",
+      "discriminator": [
+        211,
+        177,
+        222,
+        158,
+        113,
+        85,
+        224,
+        7
+      ]
+    },
+    {
+      "name": "proposalCancelled",
+      "discriminator": [
+        253,
+        59,
+        104,
+        46,
+        129,
+        78,
+        9,
+        14
+      ]
+    },
+    {
+      "name": "proposalCreated",
+      "discriminator": [
+        186,
+        8,
+        160,
+        108,
+        81,
+        13,
+        51,
+        206
+      ]
+    },
+    {
+      "name": "proposalExecuted",
+      "discriminator": [
+        92,
+        213,
+        189,
+        201,
+        101,
+        83,
+        111,
+        83
+      ]
+    },
+    {
+      "name": "proposalExpired",
+      "discriminator": [
+        48,
+        8,
+        10,
+        52,
+        213,
+        133,
+        166,
+        223
+      ]
+    },
+    {
+      "name": "proposalFinalized",
+      "discriminator": [
+        159,
+        104,
+        210,
+        220,
+        86,
+        209,
+        61,
+        51
+      ]
+    },
+    {
+      "name": "voteCast",
+      "discriminator": [
+        39,
+        53,
+        195,
+        104,
+        188,
+        17,
+        225,
+        213
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "unauthorized",
+      "msg": "signer is not authorized"
+    },
+    {
+      "code": 6001,
+      "name": "paused",
+      "msg": "governance is paused"
+    },
+    {
+      "code": 6002,
+      "name": "invalidProposalStatus",
+      "msg": "proposal is not in the expected status"
+    },
+    {
+      "code": 6003,
+      "name": "votingNotEnded",
+      "msg": "voting window has not ended"
+    },
+    {
+      "code": 6004,
+      "name": "votingEnded",
+      "msg": "voting window has ended"
+    },
+    {
+      "code": 6005,
+      "name": "timelockNotElapsed",
+      "msg": "timelock has not elapsed"
+    },
+    {
+      "code": 6006,
+      "name": "executionWindowExpired",
+      "msg": "execution window has expired"
+    },
+    {
+      "code": 6007,
+      "name": "quorumNotMet",
+      "msg": "quorum was not met"
+    },
+    {
+      "code": 6008,
+      "name": "merkleProofInvalid",
+      "msg": "merkle proof is invalid"
+    },
+    {
+      "code": 6009,
+      "name": "merkleProofTooDeep",
+      "msg": "merkle proof exceeds max depth"
+    },
+    {
+      "code": 6010,
+      "name": "registryFull",
+      "msg": "program registry is at capacity"
+    },
+    {
+      "code": 6011,
+      "name": "duplicateProgram",
+      "msg": "duplicate program in registry"
+    },
+    {
+      "code": 6012,
+      "name": "programNotRegistered",
+      "msg": "target program not found in registry"
+    },
+    {
+      "code": 6013,
+      "name": "arithmeticOverflow",
+      "msg": "arithmetic overflow"
+    },
+    {
+      "code": 6014,
+      "name": "payloadTooLarge",
+      "msg": "ix_data exceeds max payload size for target program"
+    },
+    {
+      "code": 6015,
+      "name": "cannotCancelAfterVoteStart",
+      "msg": "proposal cannot be cancelled after voting starts"
+    },
+    {
+      "code": 6016,
+      "name": "emptyMetadataUri",
+      "msg": "metadata_uri is empty"
+    }
+  ],
+  "types": [
+    {
+      "name": "configInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "executionRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proposalId",
+            "type": "u64"
+          },
+          {
+            "name": "executedAt",
+            "type": "i64"
+          },
+          {
+            "name": "result",
+            "type": {
+              "defined": {
+                "name": "executionResult"
+              }
+            }
+          },
+          {
+            "name": "cpiTarget",
+            "type": "pubkey"
+          },
+          {
+            "name": "cpiPayloadHash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "executionResult",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "ok"
+          },
+          {
+            "name": "cpiFailed",
+            "fields": [
+              {
+                "name": "code",
+                "type": "u32"
+              }
+            ]
+          },
+          {
+            "name": "targetMissing"
+          },
+          {
+            "name": "payloadInvalid"
+          }
+        ]
+      }
+    },
+    {
+      "name": "governanceConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "nxsStaking",
+            "type": "pubkey"
+          },
+          {
+            "name": "capabilityRegistry",
+            "type": "pubkey"
+          },
+          {
+            "name": "feeCollector",
+            "type": "pubkey"
+          },
+          {
+            "name": "emergencyCouncil",
+            "type": "pubkey"
+          },
+          {
+            "name": "minProposerStake",
+            "type": "u64"
+          },
+          {
+            "name": "proposerCollateral",
+            "type": "u64"
+          },
+          {
+            "name": "voteWindowSecsStandard",
+            "type": "i64"
+          },
+          {
+            "name": "voteWindowSecsEmergency",
+            "type": "i64"
+          },
+          {
+            "name": "voteWindowSecsMeta",
+            "type": "i64"
+          },
+          {
+            "name": "quorumBps",
+            "type": "u16"
+          },
+          {
+            "name": "passThresholdBps",
+            "type": "u16"
+          },
+          {
+            "name": "metaPassThresholdBps",
+            "type": "u16"
+          },
+          {
+            "name": "timelockSecsStandard",
+            "type": "i64"
+          },
+          {
+            "name": "timelockSecsCritical",
+            "type": "i64"
+          },
+          {
+            "name": "timelockSecsMeta",
+            "type": "i64"
+          },
+          {
+            "name": "minLockToVoteSecs",
+            "type": "i64"
+          },
+          {
+            "name": "devModeTimelockOverrideSecs",
+            "type": "i64"
+          },
+          {
+            "name": "nextProposalId",
+            "type": "u64"
+          },
+          {
+            "name": "nextEmergencyId",
+            "type": "u64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "initConfigParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "nxsStaking",
+            "type": "pubkey"
+          },
+          {
+            "name": "capabilityRegistry",
+            "type": "pubkey"
+          },
+          {
+            "name": "feeCollector",
+            "type": "pubkey"
+          },
+          {
+            "name": "emergencyCouncil",
+            "type": "pubkey"
+          },
+          {
+            "name": "minProposerStake",
+            "type": "u64"
+          },
+          {
+            "name": "proposerCollateral",
+            "type": "u64"
+          },
+          {
+            "name": "quorumBps",
+            "type": "u16"
+          },
+          {
+            "name": "passThresholdBps",
+            "type": "u16"
+          },
+          {
+            "name": "metaPassThresholdBps",
+            "type": "u16"
+          },
+          {
+            "name": "devModeTimelockOverrideSecs",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pausedSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "programRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programId",
+            "type": "pubkey"
+          },
+          {
+            "name": "label",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "isCritical",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "programRegistry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "entries",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "registeredProgram"
+                }
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "proposalAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proposalId",
+            "type": "u64"
+          },
+          {
+            "name": "proposer",
+            "type": "pubkey"
+          },
+          {
+            "name": "category",
+            "type": {
+              "defined": {
+                "name": "proposalCategory"
+              }
+            }
+          },
+          {
+            "name": "targetProgram",
+            "type": "pubkey"
+          },
+          {
+            "name": "ixData",
+            "type": "bytes"
+          },
+          {
+            "name": "metadataUri",
+            "type": "bytes"
+          },
+          {
+            "name": "snapshot",
+            "type": {
+              "defined": {
+                "name": "proposalSnapshot"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "proposalStatus"
+              }
+            }
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          },
+          {
+            "name": "voteStart",
+            "type": "i64"
+          },
+          {
+            "name": "voteEnd",
+            "type": "i64"
+          },
+          {
+            "name": "talliedAt",
+            "type": "i64"
+          },
+          {
+            "name": "executableAt",
+            "type": "i64"
+          },
+          {
+            "name": "executedAt",
+            "type": "i64"
+          },
+          {
+            "name": "forWeight",
+            "type": "u128"
+          },
+          {
+            "name": "againstWeight",
+            "type": "u128"
+          },
+          {
+            "name": "abstainWeight",
+            "type": "u128"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "proposalCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proposalId",
+            "type": "u64"
+          },
+          {
+            "name": "by",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "proposalCategory",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "parameterChange"
+          },
+          {
+            "name": "programUpgrade"
+          },
+          {
+            "name": "treasurySpend"
+          },
+          {
+            "name": "emergencyPause"
+          },
+          {
+            "name": "capabilityTagUpdate"
+          },
+          {
+            "name": "meta"
+          }
+        ]
+      }
+    },
+    {
+      "name": "proposalCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proposalId",
+            "type": "u64"
+          },
+          {
+            "name": "proposer",
+            "type": "pubkey"
+          },
+          {
+            "name": "category",
+            "type": {
+              "defined": {
+                "name": "proposalCategory"
+              }
+            }
+          },
+          {
+            "name": "targetProgram",
+            "type": "pubkey"
+          },
+          {
+            "name": "voteEnd",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "proposalExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proposalId",
+            "type": "u64"
+          },
+          {
+            "name": "cpiTarget",
+            "type": "pubkey"
+          },
+          {
+            "name": "success",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "proposalExpired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proposalId",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "proposalFinalized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proposalId",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "proposalStatus"
+              }
+            }
+          },
+          {
+            "name": "forWeight",
+            "type": "u128"
+          },
+          {
+            "name": "againstWeight",
+            "type": "u128"
+          },
+          {
+            "name": "abstainWeight",
+            "type": "u128"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "proposalSnapshot",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "totalEligibleWeight",
+            "type": "u128"
+          },
+          {
+            "name": "snapshotSlot",
+            "type": "u64"
+          },
+          {
+            "name": "snapshotRoot",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "proposalStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "voting"
+          },
+          {
+            "name": "passed"
+          },
+          {
+            "name": "rejected"
+          },
+          {
+            "name": "queued"
+          },
+          {
+            "name": "executed"
+          },
+          {
+            "name": "failed"
+          },
+          {
+            "name": "cancelled"
+          },
+          {
+            "name": "expired"
+          }
+        ]
+      }
+    },
+    {
+      "name": "registeredProgram",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programId",
+            "type": "pubkey"
+          },
+          {
+            "name": "label",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "isCritical",
+            "type": "bool"
+          },
+          {
+            "name": "paramAuthoritySeed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "maxParamPayloadBytes",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "voteCast",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proposalId",
+            "type": "u64"
+          },
+          {
+            "name": "voter",
+            "type": "pubkey"
+          },
+          {
+            "name": "choice",
+            "type": {
+              "defined": {
+                "name": "voteChoice"
+              }
+            }
+          },
+          {
+            "name": "weight",
+            "type": "u128"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "voteChoice",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "for"
+          },
+          {
+            "name": "against"
+          },
+          {
+            "name": "abstain"
+          }
+        ]
+      }
+    },
+    {
+      "name": "voteRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proposalId",
+            "type": "u64"
+          },
+          {
+            "name": "voter",
+            "type": "pubkey"
+          },
+          {
+            "name": "choice",
+            "type": {
+              "defined": {
+                "name": "voteChoice"
+              }
+            }
+          },
+          {
+            "name": "weight",
+            "type": "u128"
+          },
+          {
+            "name": "castAt",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
     }
   ]
 };

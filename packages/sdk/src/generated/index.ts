@@ -5,6 +5,8 @@ export type { CapabilityRegistry } from './capability_registry.js';
 export type { DisputeArbitration } from './dispute_arbitration.js';
 export type { FeeCollector } from './fee_collector.js';
 export type { GovernanceProgram } from './governance_program.js';
+export type { NxsStaking } from './nxs_staking.js';
 export type { ProofVerifier } from './proof_verifier.js';
 export type { TaskMarket } from './task_market.js';
+export type { TemplateRegistry } from './template_registry.js';
 export type { TreasuryStandard } from './treasury_standard.js';

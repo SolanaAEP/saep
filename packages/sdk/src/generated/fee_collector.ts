@@ -130,6 +130,341 @@ export type FeeCollector = {
       "args": []
     },
     {
+      "name": "claimStaker",
+      "discriminator": [
+        226,
+        211,
+        121,
+        82,
+        144,
+        238,
+        194,
+        189
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "epochId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "claim",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  97,
+                  105,
+                  109
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "epochId"
+              },
+              {
+                "kind": "account",
+                "path": "staker"
+              }
+            ]
+          }
+        },
+        {
+          "name": "saepMint"
+        },
+        {
+          "name": "stakerVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "stakerTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "staker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "epochId",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "merkleProof",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "commitDistributionRoot",
+      "discriminator": [
+        101,
+        170,
+        88,
+        162,
+        27,
+        185,
+        114,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "epochId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "committer",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "epochId",
+          "type": "u64"
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "leafCount",
+          "type": "u32"
+        },
+        {
+          "name": "totalWeight",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "executeBurn",
+      "discriminator": [
+        234,
+        48,
+        129,
+        220,
+        40,
+        222,
+        58,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "epochId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "saepMint",
+          "writable": true
+        },
+        {
+          "name": "burnVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  114,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": [
+        {
+          "name": "epochId",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "initAgentHookAllowlist",
       "discriminator": [
         3,
@@ -221,6 +556,94 @@ export type FeeCollector = {
               "u8",
               32
             ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "initConfig",
+      "discriminator": [
+        23,
+        235,
+        115,
+        232,
+        168,
+        96,
+        1,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "epochZero",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "deployer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "initConfigParams"
+            }
           }
         }
       ]
@@ -396,6 +819,207 @@ export type FeeCollector = {
       ]
     },
     {
+      "name": "processEpoch",
+      "discriminator": [
+        115,
+        194,
+        215,
+        160,
+        113,
+        154,
+        81,
+        5
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "currentEpoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "current_epoch.epoch_id",
+                "account": "epochAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "nextEpoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.next_epoch_id",
+                "account": "feeCollectorConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "saepMint"
+        },
+        {
+          "name": "intakeVault",
+          "docs": [
+            "intake vault token account — holds all accumulated fees"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  116,
+                  97,
+                  107,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "burnVault",
+          "docs": [
+            "burn vault token account"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  114,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "stakerVault",
+          "docs": [
+            "staker vault token account"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "grantRecipient",
+          "docs": [
+            "grant recipient token account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "treasuryRecipient",
+          "docs": [
+            "treasury recipient token account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "snapshotId",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "proposeGuardReset",
       "discriminator": [
         123,
@@ -461,6 +1085,149 @@ export type FeeCollector = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "recordCollateralForfeit",
+      "discriminator": [
+        22,
+        30,
+        71,
+        211,
+        142,
+        173,
+        126,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "currentEpoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "current_epoch.epoch_id",
+                "account": "epochAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "callerProgram",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "recordSlashReceipt",
+      "discriminator": [
+        70,
+        33,
+        26,
+        61,
+        28,
+        85,
+        239,
+        183
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "currentEpoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "current_epoch.epoch_id",
+                "account": "epochAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "callerProgram",
+          "docs": [
+            "caller program identity — must be one of the registered slash sources"
+          ],
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "setAllowedCallers",
@@ -598,6 +1365,272 @@ export type FeeCollector = {
         {
           "name": "defaultDeny",
           "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setDistributionParams",
+      "discriminator": [
+        139,
+        153,
+        98,
+        199,
+        230,
+        5,
+        186,
+        224
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "meta_authority (Squads 6-of-9 via governance CPI)"
+          ],
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "burnBps",
+          "type": "u16"
+        },
+        {
+          "name": "stakerShareBps",
+          "type": "u16"
+        },
+        {
+          "name": "grantShareBps",
+          "type": "u16"
+        },
+        {
+          "name": "treasuryShareBps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "setPaused",
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "sweepStaleEpoch",
+      "discriminator": [
+        86,
+        109,
+        152,
+        218,
+        91,
+        243,
+        19,
+        187
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "epochId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "nextEpoch",
+          "docs": [
+            "next epoch to credit the residuals"
+          ],
+          "writable": true
+        },
+        {
+          "name": "saepMint"
+        },
+        {
+          "name": "stakerVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "burnVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  114,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "intakeVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  116,
+                  97,
+                  107,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": [
+        {
+          "name": "epochId",
+          "type": "u64"
         }
       ]
     },
@@ -839,6 +1872,32 @@ export type FeeCollector = {
       ]
     },
     {
+      "name": "epochAccount",
+      "discriminator": [
+        206,
+        7,
+        143,
+        108,
+        95,
+        249,
+        190,
+        24
+      ]
+    },
+    {
+      "name": "feeCollectorConfig",
+      "discriminator": [
+        59,
+        59,
+        68,
+        103,
+        77,
+        32,
+        113,
+        81
+      ]
+    },
+    {
       "name": "hookAllowlist",
       "discriminator": [
         252,
@@ -863,6 +1922,19 @@ export type FeeCollector = {
         193,
         32
       ]
+    },
+    {
+      "name": "stakerClaim",
+      "discriminator": [
+        108,
+        62,
+        148,
+        33,
+        207,
+        7,
+        247,
+        112
+      ]
     }
   ],
   "events": [
@@ -877,6 +1949,110 @@ export type FeeCollector = {
         203,
         20,
         172
+      ]
+    },
+    {
+      "name": "burnExecuted",
+      "discriminator": [
+        148,
+        9,
+        16,
+        114,
+        196,
+        85,
+        217,
+        2
+      ]
+    },
+    {
+      "name": "collateralForfeited",
+      "discriminator": [
+        29,
+        138,
+        62,
+        71,
+        27,
+        198,
+        7,
+        231
+      ]
+    },
+    {
+      "name": "distributionParamsUpdated",
+      "discriminator": [
+        229,
+        97,
+        209,
+        133,
+        213,
+        153,
+        90,
+        52
+      ]
+    },
+    {
+      "name": "distributionRootCommitted",
+      "discriminator": [
+        59,
+        170,
+        147,
+        74,
+        245,
+        109,
+        110,
+        223
+      ]
+    },
+    {
+      "name": "epochProcessed",
+      "discriminator": [
+        18,
+        238,
+        2,
+        247,
+        238,
+        178,
+        94,
+        138
+      ]
+    },
+    {
+      "name": "epochSwept",
+      "discriminator": [
+        11,
+        16,
+        10,
+        21,
+        155,
+        190,
+        75,
+        56
+      ]
+    },
+    {
+      "name": "feeCollectorInitialized",
+      "discriminator": [
+        13,
+        12,
+        215,
+        187,
+        199,
+        185,
+        143,
+        228
+      ]
+    },
+    {
+      "name": "feesCollected",
+      "discriminator": [
+        233,
+        23,
+        117,
+        225,
+        107,
+        178,
+        254,
+        8
       ]
     },
     {
@@ -945,6 +2121,19 @@ export type FeeCollector = {
       ]
     },
     {
+      "name": "pausedSet",
+      "discriminator": [
+        171,
+        125,
+        127,
+        156,
+        233,
+        81,
+        68,
+        66
+      ]
+    },
+    {
       "name": "reentrancyRejected",
       "discriminator": [
         210,
@@ -955,6 +2144,32 @@ export type FeeCollector = {
         49,
         86,
         89
+      ]
+    },
+    {
+      "name": "slashReceived",
+      "discriminator": [
+        123,
+        9,
+        22,
+        198,
+        22,
+        16,
+        160,
+        106
+      ]
+    },
+    {
+      "name": "stakerClaimed",
+      "discriminator": [
+        153,
+        39,
+        64,
+        225,
+        151,
+        207,
+        143,
+        17
       ]
     }
   ],
@@ -1033,6 +2248,111 @@ export type FeeCollector = {
       "code": 6014,
       "name": "adminResetNotTimelocked",
       "msg": "admin reset has not met the 24h timelock"
+    },
+    {
+      "code": 6015,
+      "name": "paused",
+      "msg": "program is paused"
+    },
+    {
+      "code": 6016,
+      "name": "invalidBpsSum",
+      "msg": "bps quadruple must sum to 10000"
+    },
+    {
+      "code": 6017,
+      "name": "bucketCapExceeded",
+      "msg": "bucket bps exceeds its hard cap"
+    },
+    {
+      "code": 6018,
+      "name": "epochNotOpen",
+      "msg": "epoch is not in Open status"
+    },
+    {
+      "code": 6019,
+      "name": "epochNotElapsed",
+      "msg": "epoch duration has not elapsed"
+    },
+    {
+      "code": 6020,
+      "name": "intakeAccountingDrift",
+      "msg": "intake vault balance does not match total_collected"
+    },
+    {
+      "code": 6021,
+      "name": "distributionAlreadyCommitted",
+      "msg": "distribution root already committed for this epoch"
+    },
+    {
+      "code": 6022,
+      "name": "distributionWindowElapsed",
+      "msg": "distribution commit window has elapsed"
+    },
+    {
+      "code": 6023,
+      "name": "merkleProofInvalid",
+      "msg": "merkle proof is invalid"
+    },
+    {
+      "code": 6024,
+      "name": "merkleProofTooDeep",
+      "msg": "merkle proof exceeds max depth"
+    },
+    {
+      "code": 6025,
+      "name": "claimOverflow",
+      "msg": "claim would exceed staker_amount for this epoch"
+    },
+    {
+      "code": 6026,
+      "name": "claimWindowElapsed",
+      "msg": "claim window has elapsed"
+    },
+    {
+      "code": 6027,
+      "name": "burnBelowThreshold",
+      "msg": "burn amount below minimum threshold"
+    },
+    {
+      "code": 6028,
+      "name": "burnAlreadyExecuted",
+      "msg": "burn already executed for this epoch"
+    },
+    {
+      "code": 6029,
+      "name": "sweepGraceNotElapsed",
+      "msg": "sweep grace period has not elapsed"
+    },
+    {
+      "code": 6030,
+      "name": "alreadySwept",
+      "msg": "epoch has already been swept"
+    },
+    {
+      "code": 6031,
+      "name": "invalidEpochStatus",
+      "msg": "invalid epoch status for this operation"
+    },
+    {
+      "code": 6032,
+      "name": "arithmeticOverflow",
+      "msg": "arithmetic overflow"
+    },
+    {
+      "code": 6033,
+      "name": "callerNotRegisteredSlasher",
+      "msg": "caller is not a registered slash source"
+    },
+    {
+      "code": 6034,
+      "name": "invalidEpochDuration",
+      "msg": "epoch duration out of allowed range"
+    },
+    {
+      "code": 6035,
+      "name": "invalidClaimWindow",
+      "msg": "claim window out of allowed range"
     }
   ],
   "types": [
@@ -1110,6 +2430,458 @@ export type FeeCollector = {
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "burnExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epochId",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "crank",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "collateralForfeited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epochId",
+            "type": "u64"
+          },
+          {
+            "name": "sourceProgram",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "distributionParamsUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "burnBps",
+            "type": "u16"
+          },
+          {
+            "name": "stakerShareBps",
+            "type": "u16"
+          },
+          {
+            "name": "grantShareBps",
+            "type": "u16"
+          },
+          {
+            "name": "treasuryShareBps",
+            "type": "u16"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "distributionRootCommitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epochId",
+            "type": "u64"
+          },
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leafCount",
+            "type": "u32"
+          },
+          {
+            "name": "totalWeight",
+            "type": "u64"
+          },
+          {
+            "name": "committer",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "epochAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epochId",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "epochStatus"
+              }
+            }
+          },
+          {
+            "name": "startedAtSlot",
+            "type": "u64"
+          },
+          {
+            "name": "startedAtTs",
+            "type": "i64"
+          },
+          {
+            "name": "closedAtSlot",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "closedAtTs",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "snapshotId",
+            "type": "u64"
+          },
+          {
+            "name": "totalCollected",
+            "type": "u64"
+          },
+          {
+            "name": "burnAmount",
+            "type": "u64"
+          },
+          {
+            "name": "burnExecuted",
+            "type": "bool"
+          },
+          {
+            "name": "stakerAmount",
+            "type": "u64"
+          },
+          {
+            "name": "stakerDistributionRoot",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "stakerDistributionCommitted",
+            "type": "bool"
+          },
+          {
+            "name": "stakerClaimedTotal",
+            "type": "u64"
+          },
+          {
+            "name": "grantAmount",
+            "type": "u64"
+          },
+          {
+            "name": "treasuryAmount",
+            "type": "u64"
+          },
+          {
+            "name": "staleSwept",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "epochProcessed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epochId",
+            "type": "u64"
+          },
+          {
+            "name": "totalCollected",
+            "type": "u64"
+          },
+          {
+            "name": "burnAmount",
+            "type": "u64"
+          },
+          {
+            "name": "stakerAmount",
+            "type": "u64"
+          },
+          {
+            "name": "grantAmount",
+            "type": "u64"
+          },
+          {
+            "name": "treasuryAmount",
+            "type": "u64"
+          },
+          {
+            "name": "snapshotId",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "epochStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "open"
+          },
+          {
+            "name": "splitting"
+          },
+          {
+            "name": "distributionCommitted"
+          },
+          {
+            "name": "stale"
+          }
+        ]
+      }
+    },
+    {
+      "name": "epochSwept",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epochId",
+            "type": "u64"
+          },
+          {
+            "name": "residualStaker",
+            "type": "u64"
+          },
+          {
+            "name": "residualBurn",
+            "type": "u64"
+          },
+          {
+            "name": "rolledToEpoch",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "feeCollectorConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pendingAuthority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "metaAuthority",
+            "type": "pubkey"
+          },
+          {
+            "name": "governanceProgram",
+            "type": "pubkey"
+          },
+          {
+            "name": "nxsStaking",
+            "type": "pubkey"
+          },
+          {
+            "name": "agentRegistry",
+            "type": "pubkey"
+          },
+          {
+            "name": "disputeArbitration",
+            "type": "pubkey"
+          },
+          {
+            "name": "emergencyCouncil",
+            "type": "pubkey"
+          },
+          {
+            "name": "saepMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "grantRecipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasuryRecipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "burnBps",
+            "type": "u16"
+          },
+          {
+            "name": "stakerShareBps",
+            "type": "u16"
+          },
+          {
+            "name": "grantShareBps",
+            "type": "u16"
+          },
+          {
+            "name": "treasuryShareBps",
+            "type": "u16"
+          },
+          {
+            "name": "burnCapBps",
+            "type": "u16"
+          },
+          {
+            "name": "stakerCapBps",
+            "type": "u16"
+          },
+          {
+            "name": "grantCapBps",
+            "type": "u16"
+          },
+          {
+            "name": "treasuryCapBps",
+            "type": "u16"
+          },
+          {
+            "name": "epochDurationSecs",
+            "type": "i64"
+          },
+          {
+            "name": "nextEpochId",
+            "type": "u64"
+          },
+          {
+            "name": "claimWindowSecs",
+            "type": "i64"
+          },
+          {
+            "name": "minEpochTotalForBurn",
+            "type": "u64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "feeCollectorInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "saepMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "epochDurationSecs",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "feesCollected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epochId",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "collector",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -1243,6 +3015,82 @@ export type FeeCollector = {
       }
     },
     {
+      "name": "initConfigParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "metaAuthority",
+            "type": "pubkey"
+          },
+          {
+            "name": "governanceProgram",
+            "type": "pubkey"
+          },
+          {
+            "name": "nxsStaking",
+            "type": "pubkey"
+          },
+          {
+            "name": "agentRegistry",
+            "type": "pubkey"
+          },
+          {
+            "name": "disputeArbitration",
+            "type": "pubkey"
+          },
+          {
+            "name": "emergencyCouncil",
+            "type": "pubkey"
+          },
+          {
+            "name": "saepMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "grantRecipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasuryRecipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "burnBps",
+            "type": "u16"
+          },
+          {
+            "name": "stakerShareBps",
+            "type": "u16"
+          },
+          {
+            "name": "grantShareBps",
+            "type": "u16"
+          },
+          {
+            "name": "treasuryShareBps",
+            "type": "u16"
+          },
+          {
+            "name": "epochDurationSecs",
+            "type": "i64"
+          },
+          {
+            "name": "claimWindowSecs",
+            "type": "i64"
+          },
+          {
+            "name": "minEpochTotalForBurn",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "mintAccepted",
       "type": {
         "kind": "struct",
@@ -1264,6 +3112,26 @@ export type FeeCollector = {
           {
             "name": "slot",
             "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pausedSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
           },
           {
             "name": "timestamp",
@@ -1316,6 +3184,82 @@ export type FeeCollector = {
           {
             "name": "slot",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "slashReceived",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epochId",
+            "type": "u64"
+          },
+          {
+            "name": "slasherProgram",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stakerClaim",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epochId",
+            "type": "u64"
+          },
+          {
+            "name": "staker",
+            "type": "pubkey"
+          },
+          {
+            "name": "amountClaimed",
+            "type": "u64"
+          },
+          {
+            "name": "claimedAtSlot",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stakerClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epochId",
+            "type": "u64"
+          },
+          {
+            "name": "staker",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }

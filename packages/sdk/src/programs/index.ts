@@ -8,16 +8,20 @@ import capabilityRegistryIdl from '../idl/capability_registry.json' with { type:
 import disputeArbitrationIdl from '../idl/dispute_arbitration.json' with { type: 'json' };
 import feeCollectorIdl from '../idl/fee_collector.json' with { type: 'json' };
 import governanceProgramIdl from '../idl/governance_program.json' with { type: 'json' };
+import nxsStakingIdl from '../idl/nxs_staking.json' with { type: 'json' };
 import proofVerifierIdl from '../idl/proof_verifier.json' with { type: 'json' };
 import taskMarketIdl from '../idl/task_market.json' with { type: 'json' };
+import templateRegistryIdl from '../idl/template_registry.json' with { type: 'json' };
 import treasuryStandardIdl from '../idl/treasury_standard.json' with { type: 'json' };
 import type { AgentRegistry } from '../generated/agent_registry.js';
 import type { CapabilityRegistry } from '../generated/capability_registry.js';
 import type { DisputeArbitration } from '../generated/dispute_arbitration.js';
 import type { FeeCollector } from '../generated/fee_collector.js';
 import type { GovernanceProgram } from '../generated/governance_program.js';
+import type { NxsStaking } from '../generated/nxs_staking.js';
 import type { ProofVerifier } from '../generated/proof_verifier.js';
 import type { TaskMarket } from '../generated/task_market.js';
+import type { TemplateRegistry } from '../generated/template_registry.js';
 import type { TreasuryStandard } from '../generated/treasury_standard.js';
 import type { ClusterConfig, SaepProgramName } from '../cluster/index.js';
 
@@ -82,6 +86,14 @@ export function governanceProgramProgram(
   return new Program<GovernanceProgram>(idl, provider);
 }
 
+export function nxsStakingProgram(
+  provider: AnchorProvider,
+  config: ClusterConfig,
+): Program<NxsStaking> {
+  const idl = withAddress<NxsStaking>(nxsStakingIdl as unknown as NxsStaking, config.programIds.nxsStaking);
+  return new Program<NxsStaking>(idl, provider);
+}
+
 export function proofVerifierProgram(
   provider: AnchorProvider,
   config: ClusterConfig,
@@ -98,6 +110,14 @@ export function taskMarketProgram(
   return new Program<TaskMarket>(idl, provider);
 }
 
+export function templateRegistryProgram(
+  provider: AnchorProvider,
+  config: ClusterConfig,
+): Program<TemplateRegistry> {
+  const idl = withAddress<TemplateRegistry>(templateRegistryIdl as unknown as TemplateRegistry, config.programIds.templateRegistry);
+  return new Program<TemplateRegistry>(idl, provider);
+}
+
 export function treasuryStandardProgram(
   provider: AnchorProvider,
   config: ClusterConfig,
@@ -106,7 +126,7 @@ export function treasuryStandardProgram(
   return new Program<TreasuryStandard>(idl, provider);
 }
 
-export type { AgentRegistry, CapabilityRegistry, DisputeArbitration, FeeCollector, GovernanceProgram, ProofVerifier, TaskMarket, TreasuryStandard };
+export type { AgentRegistry, CapabilityRegistry, DisputeArbitration, FeeCollector, GovernanceProgram, NxsStaking, ProofVerifier, TaskMarket, TemplateRegistry, TreasuryStandard };
 export { PublicKey };
 
 export type SaepProgramFactory = (p: AnchorProvider, c: ClusterConfig) => Program<Idl>;

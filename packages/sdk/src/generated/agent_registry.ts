@@ -406,8 +406,7 @@ export type AgentRegistry = {
           "signer": true
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         }
       ],
       "args": []
@@ -443,6 +442,12 @@ export type AgentRegistry = {
               }
             ]
           }
+        },
+        {
+          "name": "stakeMintInfo",
+          "docs": [
+            "The stake mint account — validated to have no TransferHook extension."
+          ]
         },
         {
           "name": "payer",
@@ -945,8 +950,7 @@ export type AgentRegistry = {
           }
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         },
         {
           "name": "systemProgram",
@@ -1682,8 +1686,7 @@ export type AgentRegistry = {
           ]
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         }
       ],
       "args": [
@@ -1807,8 +1810,7 @@ export type AgentRegistry = {
           ]
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         }
       ],
       "args": []
@@ -2821,6 +2823,11 @@ export type AgentRegistry = {
       "code": 6041,
       "name": "civicGatewayProgramMismatch",
       "msg": "civic gateway token account owner does not match civic gateway program"
+    },
+    {
+      "code": 6042,
+      "name": "invalidCivicGateway",
+      "msg": "civic gateway program cannot be set to Pubkey::default"
     }
   ],
   "types": [

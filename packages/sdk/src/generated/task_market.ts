@@ -332,8 +332,7 @@ export type TaskMarket = {
           ]
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         }
       ],
       "args": []
@@ -552,8 +551,216 @@ export type TaskMarket = {
           "signer": true
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeBid",
+      "discriminator": [
+        169,
+        171,
+        66,
+        115,
+        220,
+        168,
+        231,
+        21
+      ],
+      "accounts": [
+        {
+          "name": "task",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "taskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bidBook",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  105,
+                  100,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bid",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  105,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              },
+              {
+                "kind": "account",
+                "path": "bidder"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bidder",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeBidBook",
+      "discriminator": [
+        72,
+        95,
+        184,
+        179,
+        250,
+        52,
+        119,
+        165
+      ],
+      "accounts": [
+        {
+          "name": "task",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.client",
+                "account": "taskContract"
+              },
+              {
+                "kind": "account",
+                "path": "task.task_nonce",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bidBook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  105,
+                  100,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "paymentMint"
+        },
+        {
+          "name": "bondEscrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.task_id",
+                "account": "taskContract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "client",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "task"
+          ]
+        },
+        {
+          "name": "tokenProgram"
         }
       ],
       "args": []
@@ -938,8 +1145,7 @@ export type TaskMarket = {
           "optional": true
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         },
         {
           "name": "systemProgram",
@@ -1342,8 +1548,7 @@ export type TaskMarket = {
           "signer": true
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         }
       ],
       "args": []
@@ -1479,8 +1684,7 @@ export type TaskMarket = {
           ]
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         },
         {
           "name": "systemProgram",
@@ -1828,8 +2032,7 @@ export type TaskMarket = {
           ]
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         },
         {
           "name": "systemProgram",
@@ -2163,8 +2366,7 @@ export type TaskMarket = {
           "signer": true
         },
         {
-          "name": "tokenProgram",
-          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          "name": "tokenProgram"
         }
       ],
       "args": []
@@ -3659,6 +3861,16 @@ export type TaskMarket = {
       "code": 6057,
       "name": "invalidBidInEnumeration",
       "msg": "unrevealed or slashed bid present in close_bidding enumeration"
+    },
+    {
+      "code": 6058,
+      "name": "bondNotClaimed",
+      "msg": "bond must be claimed before closing bid PDA"
+    },
+    {
+      "code": 6059,
+      "name": "escrowNotEmpty",
+      "msg": "bond escrow still holds tokens"
     }
   ],
   "types": [
@@ -5306,6 +5518,27 @@ export type TaskMarket = {
                 32
               ]
             }
+          },
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "client",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
           },
           {
             "name": "agentPayout",
