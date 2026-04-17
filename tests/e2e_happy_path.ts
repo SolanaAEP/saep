@@ -369,7 +369,7 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
         PROGRAM_IDS.agent_registry,
         PROGRAM_IDS.treasury_standard,
         PROGRAM_IDS.proof_verifier,
-        PROGRAM_IDS.fee_collector,
+        feeCollector.publicKey,
         solrepPool.publicKey,
         PROTOCOL_FEE_BPS,
         SOLREP_FEE_BPS,
