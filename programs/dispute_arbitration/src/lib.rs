@@ -3,15 +3,14 @@ use anchor_lang::prelude::*;
 pub mod errors;
 pub mod events;
 pub mod guard;
+pub mod instructions;
+pub mod state;
 
 #[cfg(test)]
 mod fuzz;
 
-use errors::DisputeArbitrationError;
-use guard::{
-    assert_reset_timelock, AllowedCallers, DisputeConfig, ReentrancyGuard, MAX_ALLOWED_CALLERS,
-    SEED_ALLOWED_CALLERS, SEED_DISPUTE_CONFIG, SEED_GUARD,
-};
+use instructions::*;
+use state::*;
 
 declare_id!("GM8xiT17USBpCW24XXBmUR8YVCxxrJPMEcsddwfUokMa");
 
@@ -19,164 +18,138 @@ declare_id!("GM8xiT17USBpCW24XXBmUR8YVCxxrJPMEcsddwfUokMa");
 pub mod dispute_arbitration {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, authority: Pubkey) -> Result<()> {
-        let c = &mut ctx.accounts.config;
-        c.authority = authority;
-        c.bump = ctx.bumps.config;
-        Ok(())
+    // --- Guard Admin ---
+
+    pub fn initialize(
+        ctx: Context<Initialize>,
+        params: guard_admin::InitConfigParams,
+    ) -> Result<()> {
+        guard_admin::initialize_handler(ctx, params)
     }
 
-    pub fn init_guard(
-        ctx: Context<InitGuard>,
-        initial_callers: Vec<Pubkey>,
-    ) -> Result<()> {
-        require!(
-            initial_callers.len() <= MAX_ALLOWED_CALLERS,
-            DisputeArbitrationError::UnauthorizedCaller
-        );
-        for p in &initial_callers {
-            require!(
-                *p != Pubkey::default(),
-                DisputeArbitrationError::UnauthorizedCaller
-            );
-        }
-        let g = &mut ctx.accounts.guard;
-        g.active = false;
-        g.entered_by = Pubkey::default();
-        g.entered_at_slot = 0;
-        g.reset_proposed_at = 0;
-        g.bump = ctx.bumps.guard;
-
-        let a = &mut ctx.accounts.allowed_callers;
-        a.programs = initial_callers;
-        a.bump = ctx.bumps.allowed_callers;
-        Ok(())
+    pub fn init_guard(ctx: Context<InitGuard>, initial_callers: Vec<Pubkey>) -> Result<()> {
+        guard_admin::init_guard_handler(ctx, initial_callers)
     }
 
     pub fn set_allowed_callers(
         ctx: Context<SetAllowedCallers>,
         programs: Vec<Pubkey>,
     ) -> Result<()> {
-        require!(
-            programs.len() <= MAX_ALLOWED_CALLERS,
-            DisputeArbitrationError::UnauthorizedCaller
-        );
-        for p in &programs {
-            require!(
-                *p != Pubkey::default(),
-                DisputeArbitrationError::UnauthorizedCaller
-            );
-        }
-        ctx.accounts.allowed_callers.programs = programs;
-        Ok(())
+        guard_admin::set_allowed_callers_handler(ctx, programs)
     }
 
     pub fn propose_guard_reset(ctx: Context<ProposeGuardReset>) -> Result<()> {
-        ctx.accounts.guard.reset_proposed_at = Clock::get()?.unix_timestamp;
-        Ok(())
+        guard_admin::propose_guard_reset_handler(ctx)
     }
 
     pub fn admin_reset_guard(ctx: Context<AdminResetGuard>) -> Result<()> {
-        let now = Clock::get()?.unix_timestamp;
-        assert_reset_timelock(&ctx.accounts.guard, now)?;
-        let g = &mut ctx.accounts.guard;
-        g.active = false;
-        g.entered_by = Pubkey::default();
-        g.entered_at_slot = 0;
-        g.reset_proposed_at = 0;
-        Ok(())
+        guard_admin::admin_reset_guard_handler(ctx)
     }
-}
 
-#[derive(Accounts)]
-pub struct Initialize<'info> {
-    #[account(
-        init,
-        payer = payer,
-        space = 8 + DisputeConfig::INIT_SPACE,
-        seeds = [SEED_DISPUTE_CONFIG],
-        bump,
-    )]
-    pub config: Account<'info, DisputeConfig>,
+    // --- Arbitrator ---
 
-    #[account(mut)]
-    pub payer: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
+    pub fn register_arbitrator(
+        ctx: Context<RegisterArbitrator>,
+        effective_stake: u64,
+        lock_end: i64,
+    ) -> Result<()> {
+        arbitrator::register_handler(ctx, effective_stake, lock_end)
+    }
 
-#[derive(Accounts)]
-pub struct InitGuard<'info> {
-    #[account(
-        seeds = [SEED_DISPUTE_CONFIG],
-        bump = config.bump,
-        has_one = authority @ DisputeArbitrationError::Unauthorized,
-    )]
-    pub config: Account<'info, DisputeConfig>,
+    pub fn refresh_stake(
+        ctx: Context<RefreshStake>,
+        new_stake: u64,
+        new_lock_end: i64,
+    ) -> Result<()> {
+        arbitrator::refresh_stake_handler(ctx, new_stake, new_lock_end)
+    }
 
-    #[account(
-        init,
-        payer = authority,
-        space = 8 + ReentrancyGuard::INIT_SPACE,
-        seeds = [SEED_GUARD],
-        bump,
-    )]
-    pub guard: Account<'info, ReentrancyGuard>,
+    pub fn snapshot_pool(
+        ctx: Context<SnapshotPool>,
+        arbitrators: Vec<Pubkey>,
+        stakes: Vec<u64>,
+    ) -> Result<()> {
+        arbitrator::snapshot_pool_handler(ctx, arbitrators, stakes)
+    }
 
-    #[account(
-        init,
-        payer = authority,
-        space = 8 + AllowedCallers::INIT_SPACE,
-        seeds = [SEED_ALLOWED_CALLERS],
-        bump,
-    )]
-    pub allowed_callers: Account<'info, AllowedCallers>,
+    pub fn begin_withdraw(ctx: Context<BeginWithdraw>) -> Result<()> {
+        arbitrator::begin_withdraw_handler(ctx)
+    }
 
-    #[account(mut)]
-    pub authority: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
+    pub fn complete_withdraw(ctx: Context<CompleteWithdraw>) -> Result<()> {
+        arbitrator::complete_withdraw_handler(ctx)
+    }
 
-#[derive(Accounts)]
-pub struct SetAllowedCallers<'info> {
-    #[account(
-        seeds = [SEED_DISPUTE_CONFIG],
-        bump = config.bump,
-        has_one = authority @ DisputeArbitrationError::Unauthorized,
-    )]
-    pub config: Account<'info, DisputeConfig>,
+    // --- Dispute Lifecycle ---
 
-    #[account(mut, seeds = [SEED_ALLOWED_CALLERS], bump = allowed_callers.bump)]
-    pub allowed_callers: Account<'info, AllowedCallers>,
+    pub fn raise_dispute(
+        ctx: Context<RaiseDispute>,
+        task_id: u64,
+        client: Pubkey,
+        agent_operator: Pubkey,
+        escrow_amount: u64,
+        payment_mint: Pubkey,
+    ) -> Result<()> {
+        dispute::raise_dispute_handler(ctx, task_id, client, agent_operator, escrow_amount, payment_mint)
+    }
 
-    pub authority: Signer<'info>,
-}
+    pub fn consume_vrf(ctx: Context<ConsumeVrf>, vrf_result: [u8; 32]) -> Result<()> {
+        dispute::consume_vrf_handler(ctx, vrf_result)
+    }
 
-#[derive(Accounts)]
-pub struct ProposeGuardReset<'info> {
-    #[account(
-        seeds = [SEED_DISPUTE_CONFIG],
-        bump = config.bump,
-        has_one = authority @ DisputeArbitrationError::Unauthorized,
-    )]
-    pub config: Account<'info, DisputeConfig>,
+    pub fn cancel_stale_vrf(ctx: Context<CancelStaleVrf>) -> Result<()> {
+        dispute::cancel_stale_vrf_handler(ctx)
+    }
 
-    #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
-    pub guard: Account<'info, ReentrancyGuard>,
+    // --- Voting ---
 
-    pub authority: Signer<'info>,
-}
+    pub fn commit_vote(ctx: Context<CommitVote>, commit_hash: [u8; 32]) -> Result<()> {
+        voting::commit_vote_handler(ctx, commit_hash)
+    }
 
-#[derive(Accounts)]
-pub struct AdminResetGuard<'info> {
-    #[account(
-        seeds = [SEED_DISPUTE_CONFIG],
-        bump = config.bump,
-        has_one = authority @ DisputeArbitrationError::Unauthorized,
-    )]
-    pub config: Account<'info, DisputeConfig>,
+    pub fn reveal_vote(
+        ctx: Context<RevealVote>,
+        verdict: DisputeVerdict,
+        salt: [u8; 32],
+    ) -> Result<()> {
+        voting::reveal_vote_handler(ctx, verdict, salt)
+    }
 
-    #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
-    pub guard: Account<'info, ReentrancyGuard>,
+    pub fn tally_round(ctx: Context<TallyRound>) -> Result<()> {
+        voting::tally_round_handler(ctx)
+    }
 
-    pub authority: Signer<'info>,
+    // --- Resolution ---
+
+    pub fn escalate_appeal(ctx: Context<EscalateAppeal>) -> Result<()> {
+        resolution::escalate_appeal_handler(ctx)
+    }
+
+    pub fn resolve_dispute(ctx: Context<ResolveDispute>) -> Result<()> {
+        resolution::resolve_dispute_handler(ctx)
+    }
+
+    // --- Slashing ---
+
+    pub fn slash_arbitrator(ctx: Context<SlashArbitrator>, reason_code: u8) -> Result<()> {
+        slashing::slash_arbitrator_handler(ctx, reason_code)
+    }
+
+    pub fn execute_slash(ctx: Context<ExecuteSlash>) -> Result<()> {
+        slashing::execute_slash_handler(ctx)
+    }
+
+    pub fn cancel_slash(ctx: Context<CancelSlash>) -> Result<()> {
+        slashing::cancel_slash_handler(ctx)
+    }
+
+    // --- Params ---
+
+    pub fn set_params(ctx: Context<SetParams>, input: UpdateParamsInput) -> Result<()> {
+        params::set_params_handler(ctx, input)
+    }
+
+    pub fn set_paused(ctx: Context<SetDisputePaused>, paused: bool) -> Result<()> {
+        params::set_paused_handler(ctx, paused)
+    }
 }

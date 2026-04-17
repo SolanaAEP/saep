@@ -1,38 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::errors::DisputeArbitrationError;
-
-pub const SEED_GUARD: &[u8] = b"guard";
-pub const SEED_ALLOWED_CALLERS: &[u8] = b"allowed_callers";
-pub const SEED_DISPUTE_CONFIG: &[u8] = b"dispute_config";
-pub const MAX_ALLOWED_CALLERS: usize = 8;
-pub const MAX_CPI_STACK_HEIGHT: usize = 3;
-pub const ADMIN_RESET_TIMELOCK_SECS: i64 = 24 * 60 * 60;
-
-#[account]
-#[derive(InitSpace)]
-pub struct DisputeConfig {
-    pub authority: Pubkey,
-    pub bump: u8,
-}
-
-#[account]
-#[derive(InitSpace)]
-pub struct ReentrancyGuard {
-    pub active: bool,
-    pub entered_by: Pubkey,
-    pub entered_at_slot: u64,
-    pub reset_proposed_at: i64,
-    pub bump: u8,
-}
-
-#[account]
-#[derive(InitSpace)]
-pub struct AllowedCallers {
-    #[max_len(MAX_ALLOWED_CALLERS)]
-    pub programs: Vec<Pubkey>,
-    pub bump: u8,
-}
+use crate::state::{ReentrancyGuard, AllowedCallers, MAX_CPI_STACK_HEIGHT, ADMIN_RESET_TIMELOCK_SECS};
 
 pub fn try_enter(guard: &mut ReentrancyGuard, caller: Pubkey, slot: u64) -> Result<()> {
     require!(!guard.active, DisputeArbitrationError::GuardAlreadyActive);

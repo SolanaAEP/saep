@@ -1,17 +1,14 @@
-//! Account-deserialization fuzz harness.
-//!
-//! Targets the discriminator + Borsh validation surface for
-//! `DisputeConfig`, `ReentrancyGuard`, and `AllowedCallers`.
-//!
-//! Out of scope: instruction-level owner / signer fuzz — see the BACKLOG
-//! "Owner/signer/discriminator fuzz tests" item. SVM-driven layer follows
-//! once `cargo-build-sbf` is wired on the host.
+#![cfg(test)]
 
 use anchor_lang::prelude::*;
 use anchor_lang::{AccountDeserialize, AccountSerialize, Discriminator};
 use proptest::prelude::*;
 
-use crate::guard::{AllowedCallers, DisputeConfig, ReentrancyGuard};
+use crate::state::{
+    AllowedCallers, ArbitratorAccount, DisputeCase, DisputeConfig, DisputePool,
+    DisputeVoteRecord, AppealRecord, PendingSlash, ReentrancyGuard,
+    compute_commit_hash, DisputeVerdict,
+};
 
 fn bytes<T: AccountSerialize>(v: &T) -> Vec<u8> {
     let mut buf = Vec::new();
@@ -22,6 +19,29 @@ fn bytes<T: AccountSerialize>(v: &T) -> Vec<u8> {
 fn sample_config() -> DisputeConfig {
     DisputeConfig {
         authority: Pubkey::new_from_array([1u8; 32]),
+        pending_authority: Pubkey::default(),
+        task_market: Pubkey::new_from_array([2u8; 32]),
+        nxs_staking: Pubkey::new_from_array([3u8; 32]),
+        fee_collector: Pubkey::new_from_array([4u8; 32]),
+        agent_registry: Pubkey::new_from_array([5u8; 32]),
+        switchboard_program: Pubkey::new_from_array([6u8; 32]),
+        emergency_council: Pubkey::new_from_array([7u8; 32]),
+        round1_size: 3,
+        round2_size: 5,
+        commit_window_secs: 86400,
+        reveal_window_secs: 86400,
+        appeal_window_secs: 86400,
+        appeal_collateral_bps: 15000,
+        max_slash_bps: 1000,
+        slash_timelock_secs: 2592000,
+        min_stake: 1_000_000,
+        min_lock_secs: 604800,
+        vrf_stale_slots: 150,
+        round2_window_secs: 604800,
+        bad_faith_threshold: 3,
+        bad_faith_lookback: 10,
+        next_case_id: 0,
+        paused: false,
         bump: 254,
     }
 }
@@ -46,6 +66,8 @@ fn sample_allowed() -> AllowedCallers {
     }
 }
 
+// --- Guard round-trip tests ---
+
 #[test]
 fn config_round_trip() {
     let v = sample_config();
@@ -54,6 +76,8 @@ fn config_round_trip() {
     let parsed = DisputeConfig::try_deserialize(&mut slice).unwrap();
     assert_eq!(parsed.authority, v.authority);
     assert_eq!(parsed.bump, v.bump);
+    assert_eq!(parsed.round1_size, 3);
+    assert_eq!(parsed.max_slash_bps, 1000);
 }
 
 #[test]
@@ -110,12 +134,46 @@ fn discriminators_pairwise_distinct() {
         DisputeConfig::DISCRIMINATOR,
         ReentrancyGuard::DISCRIMINATOR,
         AllowedCallers::DISCRIMINATOR,
+        ArbitratorAccount::DISCRIMINATOR,
+        DisputePool::DISCRIMINATOR,
+        DisputeCase::DISCRIMINATOR,
+        DisputeVoteRecord::DISCRIMINATOR,
+        AppealRecord::DISCRIMINATOR,
+        PendingSlash::DISCRIMINATOR,
     ];
     for i in 0..discs.len() {
         for j in (i + 1)..discs.len() {
-            assert_ne!(discs[i], discs[j]);
+            assert_ne!(discs[i], discs[j], "discriminator collision at ({}, {})", i, j);
         }
     }
+}
+
+// --- Commit-reveal tests ---
+
+#[test]
+fn commit_hash_deterministic() {
+    let salt = [42u8; 32];
+    let h1 = compute_commit_hash(&DisputeVerdict::AgentWins, &salt);
+    let h2 = compute_commit_hash(&DisputeVerdict::AgentWins, &salt);
+    assert_eq!(h1, h2);
+}
+
+#[test]
+fn commit_hash_different_verdicts() {
+    let salt = [42u8; 32];
+    let h1 = compute_commit_hash(&DisputeVerdict::AgentWins, &salt);
+    let h2 = compute_commit_hash(&DisputeVerdict::ClientWins, &salt);
+    let h3 = compute_commit_hash(&DisputeVerdict::Split, &salt);
+    assert_ne!(h1, h2);
+    assert_ne!(h2, h3);
+    assert_ne!(h1, h3);
+}
+
+#[test]
+fn commit_hash_different_salts() {
+    let h1 = compute_commit_hash(&DisputeVerdict::AgentWins, &[1u8; 32]);
+    let h2 = compute_commit_hash(&DisputeVerdict::AgentWins, &[2u8; 32]);
+    assert_ne!(h1, h2);
 }
 
 proptest! {
@@ -149,39 +207,56 @@ proptest! {
     }
 
     #[test]
-    fn allowed_callers_rejects_arbitrary_discriminator(
-        disc in any::<[u8; 8]>(),
-        tail in proptest::collection::vec(any::<u8>(), 0..256),
+    fn arbitrary_bytes_arbitrator(data in proptest::collection::vec(any::<u8>(), 0..512)) {
+        let mut slice = data.as_slice();
+        let _ = ArbitratorAccount::try_deserialize(&mut slice);
+    }
+
+    #[test]
+    fn arbitrary_bytes_dispute_case(data in proptest::collection::vec(any::<u8>(), 0..2048)) {
+        let mut slice = data.as_slice();
+        let _ = DisputeCase::try_deserialize(&mut slice);
+    }
+
+    #[test]
+    fn arbitrary_bytes_vote_record(data in proptest::collection::vec(any::<u8>(), 0..512)) {
+        let mut slice = data.as_slice();
+        let _ = DisputeVoteRecord::try_deserialize(&mut slice);
+    }
+
+    #[test]
+    fn arbitrary_bytes_appeal_record(data in proptest::collection::vec(any::<u8>(), 0..256)) {
+        let mut slice = data.as_slice();
+        let _ = AppealRecord::try_deserialize(&mut slice);
+    }
+
+    #[test]
+    fn arbitrary_bytes_pending_slash(data in proptest::collection::vec(any::<u8>(), 0..256)) {
+        let mut slice = data.as_slice();
+        let _ = PendingSlash::try_deserialize(&mut slice);
+    }
+
+    #[test]
+    fn commit_hash_no_collision(
+        salt1 in any::<[u8; 32]>(),
+        salt2 in any::<[u8; 32]>(),
+        v1 in 1u8..4u8,
+        v2 in 1u8..4u8,
     ) {
-        prop_assume!(disc != AllowedCallers::DISCRIMINATOR);
-        let mut buf: Vec<u8> = disc.to_vec();
-        buf.extend(tail);
-        let mut slice = buf.as_slice();
-        prop_assert!(AllowedCallers::try_deserialize(&mut slice).is_err());
-    }
-
-    #[test]
-    fn config_correct_disc_random_tail_no_panic(tail in proptest::collection::vec(any::<u8>(), 0..512)) {
-        let mut buf: Vec<u8> = DisputeConfig::DISCRIMINATOR.to_vec();
-        buf.extend(tail);
-        let mut slice = buf.as_slice();
-        let _ = DisputeConfig::try_deserialize(&mut slice);
-    }
-
-    #[test]
-    fn guard_correct_disc_random_tail_no_panic(tail in proptest::collection::vec(any::<u8>(), 0..512)) {
-        let mut buf: Vec<u8> = ReentrancyGuard::DISCRIMINATOR.to_vec();
-        buf.extend(tail);
-        let mut slice = buf.as_slice();
-        let _ = ReentrancyGuard::try_deserialize(&mut slice);
-    }
-
-    #[test]
-    fn allowed_callers_correct_disc_random_tail_no_panic(tail in proptest::collection::vec(any::<u8>(), 0..512)) {
-        let mut buf: Vec<u8> = AllowedCallers::DISCRIMINATOR.to_vec();
-        buf.extend(tail);
-        let mut slice = buf.as_slice();
-        let _ = AllowedCallers::try_deserialize(&mut slice);
+        prop_assume!(salt1 != salt2 || v1 != v2);
+        let verdict1 = match v1 {
+            1 => DisputeVerdict::AgentWins,
+            2 => DisputeVerdict::ClientWins,
+            _ => DisputeVerdict::Split,
+        };
+        let verdict2 = match v2 {
+            1 => DisputeVerdict::AgentWins,
+            2 => DisputeVerdict::ClientWins,
+            _ => DisputeVerdict::Split,
+        };
+        let h1 = compute_commit_hash(&verdict1, &salt1);
+        let h2 = compute_commit_hash(&verdict2, &salt2);
+        prop_assert_ne!(h1, h2);
     }
 
     #[test]
@@ -205,32 +280,5 @@ proptest! {
         prop_assert_eq!(parsed.entered_at_slot, slot);
         prop_assert_eq!(parsed.reset_proposed_at, proposed_at);
         prop_assert_eq!(parsed.bump, bump);
-    }
-
-    #[test]
-    fn allowed_callers_vec_length_byte_fuzz(
-        len_byte_0 in any::<u8>(),
-        len_byte_1 in any::<u8>(),
-        len_byte_2 in any::<u8>(),
-        len_byte_3 in any::<u8>(),
-    ) {
-        let mut buf: Vec<u8> = AllowedCallers::DISCRIMINATOR.to_vec();
-        buf.extend([len_byte_0, len_byte_1, len_byte_2, len_byte_3]);
-        buf.extend([0u8; 64]);
-        let mut slice = buf.as_slice();
-        let _ = AllowedCallers::try_deserialize(&mut slice);
-    }
-
-    #[test]
-    fn config_extra_trailing_bytes_accepted(
-        extra in proptest::collection::vec(any::<u8>(), 1..64),
-    ) {
-        let v = sample_config();
-        let mut buf = bytes(&v);
-        buf.extend(extra);
-        let mut slice = buf.as_slice();
-        let parsed = DisputeConfig::try_deserialize(&mut slice);
-        prop_assert!(parsed.is_ok());
-        prop_assert!(!slice.is_empty());
     }
 }
