@@ -689,11 +689,7 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
     expect(bid.slashed).to.equal(false);
   });
 
-  it('winner claim_bond: bond refunded (winner_agent is agentPda, not operator)', async () => {
-    // NOTE: close_bidding sets winner_agent = agent PDA key, but claim_bond
-    // compares winner_agent against bidder.key() (operator). Since these differ,
-    // the winner falls into the Refund path, not WinnerRetain. This is a known
-    // mismatch tracked for the audit fix pass.
+  it('winner claim_bond: bond retained (WinnerRetain path)', async () => {
     const op = operators[1]!; // winner
     const [bidPda] = taskMarketPdas.bid(taskId, op.publicKey);
     const [bidBookPda] = taskMarketPdas.bidBook(taskId);
@@ -727,8 +723,8 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
       .rpc();
 
     const balanceAfter = await getTokenBalance(context, bidderAta);
-    // winner_agent is agentPda, bidder is operator — mismatch → Refund path
-    expect(Number(balanceAfter - balanceBefore)).to.equal(expectedBond);
+    // Winner's bond stays in escrow — no transfer back
+    expect(Number(balanceAfter - balanceBefore)).to.equal(0);
 
     const bid = await taskMarketProgram.account.bid.fetch(bidPda);
     expect(bid.refunded).to.equal(true);

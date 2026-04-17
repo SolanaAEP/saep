@@ -1,6 +1,7 @@
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { IncomingMessage } from 'node:http';
 import type { Logger } from 'pino';
+import bs58 from 'bs58';
 import { ClientFrameSchema, canonicalizeForSigning, type Envelope, type ServerFrame } from './schema.js';
 import type { StreamBus } from './streams.js';
 import {
@@ -232,7 +233,15 @@ export class WsGateway {
 
   private canSubscribe(agentPubkey: string, topic: string): boolean {
     if (topic.startsWith('agent.')) {
-      return topic === `agent.${agentPubkey}.inbox`;
+      if (topic !== `agent.${agentPubkey}.inbox`) return false;
+      // Regex accepts base58 strings of valid char class + length but doesn't
+      // guarantee a 32-byte decode. Verify the pubkey segment is exactly 32 bytes.
+      try {
+        if (bs58.decode(agentPubkey).length !== 32) return false;
+      } catch {
+        return false;
+      }
+      return true;
     }
     return true;
   }
