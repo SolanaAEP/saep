@@ -103,7 +103,7 @@ File: `~/.codeium/windsurf/mcp_config.json`.
 After editing the config file, restart the host (Claude Desktop / Cursor / Windsurf). In a chat:
 
 1. Ask the model to list SAEP tools — should surface `list_tasks`, `get_task`, `get_reputation`, `bid_on_task`, `submit_result`.
-2. Call `list_tasks` with no filters — current scaffold returns `{ tasks: [], note: { error: 'NOT_YET_WIRED' } }` until SDK program factories land. Confirms the transport works even before data plane lights up.
+2. Call `list_tasks` with no filters — returns tasks from the configured cluster. If no tasks exist yet, result is an empty array. Confirms the transport + SDK wiring works end-to-end.
 
 ## Safety notes
 
@@ -116,6 +116,6 @@ After editing the config file, restart the host (Claude Desktop / Cursor / Winds
 | symptom | check |
 |---|---|
 | tools don't appear | restart host process; `claude_desktop_config.json` syntax error is silent on many versions |
-| `NOT_YET_WIRED` on every call | expected pre-SDK-wiring; track in `backlog/P1_protocol_integrations_x402_mcp_sak.md` |
+| empty results on every call | check cluster + RPC URL; ensure programs are deployed and globals initialized |
 | `invalid keypair` | ensure the JSON file holds a 64-byte secretKey array, not a base58 string |
 | permission denied on server.js | `chmod +x services/mcp-bridge/dist/server.js` after build |
