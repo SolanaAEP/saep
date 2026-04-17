@@ -3,6 +3,13 @@ import type { IncomingMessage } from 'node:http';
 import type { Logger } from 'pino';
 import bs58 from 'bs58';
 import { ClientFrameSchema, canonicalizeForSigning, type Envelope, type ServerFrame } from './schema.js';
+import {
+  isExpired,
+  shouldAnchor as msgShouldAnchor,
+  routingMode,
+  broadcastChannel,
+  type MessageType,
+} from './message_types.js';
 import type { StreamBus } from './streams.js';
 import {
   verifySessionToken,
@@ -220,12 +227,39 @@ export class WsGateway {
           recordPublish('ws', env.topic, 'rejected');
           return;
         }
+
+        if (env.msg_type) {
+          const msgType = env.msg_type as MessageType;
+
+          if (isExpired(msgType, env.ts)) {
+            this.send(ws, session, { type: 'reject', id: env.id, reason: 'ttl_expired' });
+            recordRejection('ws', 'ttl_expired');
+            recordPublish('ws', env.topic, 'rejected');
+            return;
+          }
+
+          if (routingMode(msgType) === 'direct' && !env.to_agent) {
+            this.send(ws, session, { type: 'reject', id: env.id, reason: 'direct_requires_recipient' });
+            recordRejection('ws', 'direct_requires_recipient');
+            recordPublish('ws', env.topic, 'rejected');
+            return;
+          }
+        }
+
         const start = performance.now();
-        await this.bus.ensureGroup(env.topic);
-        await this.bus.publish(env);
-        this.anchor?.enqueue(env);
+        const publishTopic = this.resolvePublishTopic(env);
+        await this.bus.ensureGroup(publishTopic);
+        const envToPublish = publishTopic !== env.topic ? { ...env, topic: publishTopic } : env;
+        await this.bus.publish(envToPublish);
+
+        if (env.msg_type && msgShouldAnchor(env.msg_type as MessageType)) {
+          this.anchor?.enqueue(envToPublish);
+        } else if (!env.msg_type) {
+          this.anchor?.enqueue(envToPublish);
+        }
+
         this.send(ws, session, { type: 'ack', id: env.id });
-        recordPublish('ws', env.topic, 'ok', (performance.now() - start) / 1000);
+        recordPublish('ws', publishTopic, 'ok', (performance.now() - start) / 1000);
         return;
       }
     }
@@ -244,6 +278,15 @@ export class WsGateway {
       return true;
     }
     return true;
+  }
+
+  private resolvePublishTopic(env: Envelope): string {
+    if (!env.msg_type) return env.topic;
+    const mode = routingMode(env.msg_type as MessageType);
+    if (mode === 'direct' && env.to_agent) {
+      return `agent.${env.to_agent}.inbox`;
+    }
+    return env.topic;
   }
 
   private async verifyEnvelope(env: Envelope): Promise<'ok' | 'bad_sig' | 'stale_ts' | 'not_active'> {
