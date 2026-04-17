@@ -13,6 +13,7 @@ const EnvSchema = z.object({
   SOLANA_RPC_URL: z.string().default('http://127.0.0.1:8899'),
   PROXY_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
   MAX_402_RETRIES: z.coerce.number().int().min(0).max(3).default(1),
+  SAEP_CLUSTER: z.enum(['mainnet-beta', 'devnet', 'localnet']).default('localnet'),
 });
 
 export type Config = {
@@ -28,6 +29,7 @@ export type Config = {
   solanaRpcUrl: string;
   proxyTimeoutMs: number;
   max402Retries: number;
+  cluster: 'mainnet-beta' | 'devnet' | 'localnet';
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -45,5 +47,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     solanaRpcUrl: parsed.SOLANA_RPC_URL,
     proxyTimeoutMs: parsed.PROXY_TIMEOUT_MS,
     max402Retries: parsed.MAX_402_RETRIES,
+    cluster: parsed.SAEP_CLUSTER,
   };
 }

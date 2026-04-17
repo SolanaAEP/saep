@@ -14,7 +14,7 @@ function isPrivateIp(host: string): boolean {
     if (host.startsWith(cidr.prefix)) return true;
   }
   if (host.startsWith('172.')) {
-    const second = parseInt(host.split('.')[1], 10);
+    const second = parseInt(host.split('.')[1] ?? '', 10);
     if (second >= 16 && second <= 31) return true;
   }
   return host === '::1' || host === '::' || host.startsWith('fe80:') || host.startsWith('fc') || host.startsWith('fd');
@@ -31,9 +31,10 @@ export function isTargetAllowed(
   } catch {
     return false;
   }
+  // Explicit allowlist bypasses scheme/IP guards (operator opted in)
+  if (allowList.some((h) => h === url.hostname)) return true;
   if (url.protocol !== 'https:') return false;
   if (isPrivateIp(url.hostname)) return false;
-  if (allowList.some((h) => h === url.hostname)) return true;
   return matchesPattern(url.hostname, pattern);
 }
 

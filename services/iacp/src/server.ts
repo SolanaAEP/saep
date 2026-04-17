@@ -108,6 +108,25 @@ async function main(): Promise<void> {
 
   const app = Fastify({ loggerInstance: log });
 
+  const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (allowedOrigins.length > 0) {
+    app.addHook('onSend', async (req, reply) => {
+      const origin = req.headers.origin;
+      if (origin && allowedOrigins.includes(origin)) {
+        reply.header('access-control-allow-origin', origin);
+        reply.header('access-control-allow-methods', 'GET, POST, OPTIONS');
+        reply.header('access-control-allow-headers', 'content-type, x-iacp-service-token');
+      }
+    });
+    app.options('/*', async (_req, reply) => {
+      reply.code(204).send();
+    });
+  }
+
   app.get('/healthz', async () => ({
     status: 'ok',
     connectedClients: gateway.sessionCount(),
@@ -126,10 +145,22 @@ async function main(): Promise<void> {
   app.get<{ Params: { id: string }; Querystring: { limit?: string } }>(
     '/topics/:id/recent',
     async (req, reply) => {
+      const topic = req.params.id;
+      const token = req.headers['x-iacp-service-token'];
+      const expected = process.env.IACP_SERVICE_TOKEN;
+      if (
+        !expected ||
+        typeof token !== 'string' ||
+        token.length !== expected.length ||
+        !crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected))
+      ) {
+        reply.code(401);
+        return { error: 'unauthorized' };
+      }
       const limit = req.query.limit ? Math.max(1, Math.min(256, Number(req.query.limit))) : 64;
-      const entries = ring.recent(req.params.id, limit);
+      const entries = ring.recent(topic, limit);
       reply.header('cache-control', 'no-store');
-      return { topic: req.params.id, count: entries.length, entries };
+      return { topic, count: entries.length, entries };
     },
   );
 

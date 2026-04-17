@@ -45,13 +45,13 @@ export function useYellowstoneSubscription(opts: UseYellowstoneSubscriptionOptio
   useEffect(() => {
     if (!config || !enabled || accounts.length === 0) return;
 
-    const url = new URL(config.endpoint);
-    if (config.token) url.searchParams.set('x-token', config.token);
-
-    const ws = new WebSocket(url.toString());
+    const ws = new WebSocket(config.endpoint);
     wsRef.current = ws;
 
     ws.onopen = () => {
+      if (config.token) {
+        ws.send(JSON.stringify({ jsonrpc: '2.0', id: 0, method: 'authenticate', params: { token: config.token } }));
+      }
       setConnected(true);
       const subscribe = {
         jsonrpc: '2.0',

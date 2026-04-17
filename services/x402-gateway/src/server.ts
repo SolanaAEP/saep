@@ -47,12 +47,26 @@ export function build(opts: BuildOpts) {
   const redis = opts.redis ?? new IORedis(cfg.redisUrl);
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
 
-  app.get('/healthz', async () => ({
-    status: 'ok',
-    redis: redis.status,
-    allow_pattern: cfg.allowPattern,
-    allow_list: cfg.allowList,
-  }));
+  const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (allowedOrigins.length > 0) {
+    app.addHook('onSend', async (req, reply) => {
+      const origin = req.headers.origin;
+      if (origin && allowedOrigins.includes(origin)) {
+        reply.header('access-control-allow-origin', origin);
+        reply.header('access-control-allow-methods', 'GET, POST, OPTIONS');
+        reply.header('access-control-allow-headers', 'content-type, x-payment');
+      }
+    });
+    app.options('/*', async (_req, reply) => {
+      reply.code(204).send();
+    });
+  }
+
+  app.get('/healthz', async () => ({ status: 'ok' }));
 
   app.get('/metrics', async (_req, reply) => {
     reply.header('content-type', registry.contentType);
@@ -123,9 +137,10 @@ export function build(opts: BuildOpts) {
       } catch (e) {
         proxyRequests.inc({ status: 'upstream_error' });
         end({ status: 'upstream_error' });
+        console.error('[x402-gateway] upstream fetch failed:', e);
         return reply.code(502).send({
           error: 'upstream_error',
-          detail: e instanceof Error ? e.message : String(e),
+          detail: 'upstream_unavailable',
         });
       }
 
@@ -145,6 +160,7 @@ export function build(opts: BuildOpts) {
       try {
         const receipt = await settleViaTaskMarket(
           cfg.solanaRpcUrl,
+          cfg.cluster,
           payment,
           body.agent_did,
           argsHash,
@@ -154,10 +170,10 @@ export function build(opts: BuildOpts) {
       } catch (e) {
         proxyRequests.inc({ status: 'settlement_failed' });
         end({ status: 'settlement_failed' });
+        console.error('[x402-gateway] settlement failed:', e);
         return reply.code(402).send({
           error: 'settlement_failed',
-          detail: e instanceof Error ? e.message : String(e),
-          payment_details: payment,
+          detail: 'settlement_rejected',
         });
       }
     }

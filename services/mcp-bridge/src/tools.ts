@@ -95,7 +95,7 @@ const autoSignTimestamps: number[] = [];
 function checkVelocity(limit: number): boolean {
   const now = Date.now();
   const windowStart = now - 60_000;
-  while (autoSignTimestamps.length > 0 && autoSignTimestamps[0] < windowStart) {
+  while (autoSignTimestamps.length > 0 && autoSignTimestamps[0]! < windowStart) {
     autoSignTimestamps.shift();
   }
   return autoSignTimestamps.length < limit;

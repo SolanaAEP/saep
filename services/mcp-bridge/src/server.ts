@@ -44,8 +44,19 @@ export async function main(): Promise<void> {
       const result = await tool.handler(req.params.arguments ?? {}, cfg);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return { isError: true, content: [{ type: 'text', text: message }] };
+      console.error(`[saep-mcp-bridge] tool=${req.params.name}`, err);
+      const msg = err instanceof Error ? err.message : String(err);
+      let category: string;
+      if (/failed to fetch|rpc|send transaction|simulation/i.test(msg)) {
+        category = 'rpc_error';
+      } else if (/keypair|secret key|signer|wallet/i.test(msg)) {
+        category = 'keypair_error';
+      } else if (/invalid|missing|required|must be|expected/i.test(msg)) {
+        category = 'validation_error';
+      } else {
+        category = 'internal_error';
+      }
+      return { isError: true, content: [{ type: 'text', text: category }] };
     }
   });
 

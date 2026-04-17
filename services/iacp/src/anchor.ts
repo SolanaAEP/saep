@@ -7,7 +7,7 @@ import {
   TransactionInstruction,
 } from '@solana/web3.js';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import type { Logger } from 'pino';
 import type { Envelope } from './schema.js';
 import {
@@ -228,6 +228,12 @@ export class AnchorWorkerPool {
 }
 
 export function loadAnchorSigner(path: string): Keypair {
+  const mode = statSync(path).mode & 0o777;
+  if (mode & 0o044) {
+    process.stderr.write(
+      `WARNING: keypair file ${path} has permissions ${mode.toString(8).padStart(4, '0')}, recommended 0600\n`,
+    );
+  }
   const raw = JSON.parse(readFileSync(path, 'utf8')) as number[];
   if (!Array.isArray(raw) || raw.length !== 64) {
     throw new Error(`anchor wallet at ${path} is not a 64-byte secret key array`);

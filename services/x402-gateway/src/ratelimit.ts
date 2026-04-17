@@ -13,12 +13,16 @@ export async function checkRate(
   const minKey = `x402:rl:min:${agentDid}:${minuteBucket}`;
   const dayKey = `x402:rl:day:${agentDid}:${dayBucket}`;
 
+  const luaScript = `
+    local count = redis.call('INCR', KEYS[1])
+    if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
+    return count
+  `;
+
   const [minCount, dayCount] = await Promise.all([
-    redis.incr(minKey),
-    redis.incr(dayKey),
+    redis.eval(luaScript, 1, minKey, '120') as Promise<number>,
+    redis.eval(luaScript, 1, dayKey, String(86_400 + 3600)) as Promise<number>,
   ]);
-  if (minCount === 1) await redis.expire(minKey, 120);
-  if (dayCount === 1) await redis.expire(dayKey, 86_400 + 3600);
 
   return {
     allowed: minCount <= perMin && dayCount <= perDay,
