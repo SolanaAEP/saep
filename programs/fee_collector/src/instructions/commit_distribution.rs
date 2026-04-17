@@ -17,6 +17,10 @@ pub struct CommitDistributionRoot<'info> {
     )]
     pub epoch: Box<Account<'info, EpochAccount>>,
 
+    #[account(
+        constraint = committer.key() == config.authority || committer.key() == config.meta_authority
+            @ FeeCollectorError::Unauthorized
+    )]
     pub committer: Signer<'info>,
 }
 

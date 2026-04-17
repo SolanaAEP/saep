@@ -2,10 +2,9 @@
 
 ## Active
 
-### Devnet deploy blocked on SOL balance
-- **Status:** BLOCKED
-- **Detail:** 2.78 SOL available, need ~10+ SOL for remaining M1 programs (agent_registry 577KB, treasury_standard 646KB). task_market already deployed. Airdrop rate-limited.
-- **Action needed:** Fund devnet wallet or wait for airdrop cooldown. Wallet: `8xbXHAhiVe2BrYDq4qpTA5SSYJG9XNjNN6jcrudhTKCM`
+### Template registry devnet deploy
+- **Status:** DEFERRED (M2)
+- **Detail:** 9/10 programs deployed. Only template_registry pending (M2 scope). 2.78 SOL remaining.
 
 ### wXRP/RLUSD mint metadata
 - **Status:** DEFERRED

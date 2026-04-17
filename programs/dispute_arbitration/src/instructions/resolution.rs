@@ -64,7 +64,8 @@ pub fn escalate_appeal_handler(ctx: Context<EscalateAppeal>) -> Result<()> {
         .checked_mul(config.appeal_collateral_bps as u128)
         .ok_or(DisputeArbitrationError::ArithmeticOverflow)?
         / BPS_DENOMINATOR as u128;
-    let collateral = collateral as u64;
+    let collateral = u64::try_from(collateral)
+        .map_err(|_| DisputeArbitrationError::ArithmeticOverflow)?;
 
     // M2 structural: transfer_checked for collateral lock would go here
 

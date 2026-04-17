@@ -61,11 +61,11 @@ pub struct ProcessEpoch<'info> {
     pub staker_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// grant recipient token account
-    #[account(mut, token::mint = saep_mint)]
+    #[account(mut, token::mint = saep_mint, address = config.grant_recipient)]
     pub grant_recipient: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// treasury recipient token account
-    #[account(mut, token::mint = saep_mint)]
+    #[account(mut, token::mint = saep_mint, address = config.treasury_recipient)]
     pub treasury_recipient: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut)]

@@ -58,6 +58,7 @@ pub struct SweepStaleEpoch<'info> {
 }
 
 pub fn handler(ctx: Context<SweepStaleEpoch>, epoch_id: u64) -> Result<()> {
+    require!(epoch_id < u64::MAX, FeeCollectorError::ArithmeticOverflow);
     let epoch = &ctx.accounts.epoch;
     require!(
         matches!(
