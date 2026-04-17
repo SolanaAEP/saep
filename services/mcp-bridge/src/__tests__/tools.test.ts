@@ -133,8 +133,10 @@ describe('mcp-bridge config', () => {
     expect(cfg.keypair).toBeNull();
   });
 
-  it('honors SAEP_AUTO_SIGN=true', () => {
-    expect(loadConfig({ SAEP_AUTO_SIGN: 'true' }).autoSign).toBe(true);
+  it('honors SAEP_AUTO_SIGN=true (requires keypair)', () => {
+    expect(() => loadConfig({ SAEP_AUTO_SIGN: 'true' })).toThrow(
+      'SAEP_AUTO_SIGN=true requires SAEP_OPERATOR_KEYPAIR',
+    );
   });
 
   it('defaults autoSignMaxLamports to 1_000_000', () => {

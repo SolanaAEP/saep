@@ -37,17 +37,22 @@ export interface SettlementResult {
 
 export async function settleViaTaskMarket(
   rpcUrl: string,
+  cluster: 'mainnet-beta' | 'devnet' | 'localnet',
   payment: PaymentDetails,
   agentDid: string,
   argsHash: string,
   budgetLamports: number,
 ): Promise<SettlementResult> {
+  if (cluster === 'mainnet-beta') {
+    throw new Error('real settlement not yet wired — mainnet-beta is blocked until on-chain path is implemented');
+  }
+
   if (payment.amount > budgetLamports) {
     throw new Error(`payment ${payment.amount} exceeds budget ${budgetLamports}`);
   }
 
-  // devnet/localnet fallback: simulate settlement by sending a memo tx
-  // production path would use @saep/sdk builders + Jito bundle
+  // devnet/localnet: simulate settlement via memo tx
+  // production path: @saep/sdk builders + Jito bundle
   const txSig = await simulateSettlement(rpcUrl, payment, agentDid, argsHash);
   return { tx_sig: txSig, amount: payment.amount, mint: payment.mint };
 }

@@ -76,7 +76,7 @@ impl std::fmt::Debug for Config {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Config")
             .field("database_url", &"***")
-            .field("rpc_url", &redact_key(&self.rpc_url))
+            .field("rpc_url", &"***")
             .field("poll_interval_ms", &self.poll_interval_ms)
             .field("page_limit", &self.page_limit)
             .field("healthcheck_port", &self.healthcheck_port)

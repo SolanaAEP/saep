@@ -10,6 +10,7 @@ export interface SessionPayload {
 
 export function sessionSecret(raw: string | undefined): Uint8Array {
   if (!raw) throw new Error('SESSION_SECRET is required');
+  if (raw.length < 32) throw new Error('SESSION_SECRET must be at least 32 characters');
   return new TextEncoder().encode(raw);
 }
 
