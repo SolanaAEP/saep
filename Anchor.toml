@@ -15,6 +15,7 @@ governance_program = "9uczLDZaN9EWqW76be75ji4vCsz3cydefbChqvBS6qw1"
 fee_collector = "4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu"
 nxs_staking = "GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z"
 proof_verifier = "DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe"
+template_registry = "Gkgrk9fUsVN7ssS99jQFLfoRr23PkqJ7h4mdkGArqXyU"
 
 [programs.devnet]
 agent_registry = "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
@@ -26,6 +27,7 @@ governance_program = "9uczLDZaN9EWqW76be75ji4vCsz3cydefbChqvBS6qw1"
 fee_collector = "4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu"
 nxs_staking = "GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z"
 proof_verifier = "DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe"
+template_registry = "Gkgrk9fUsVN7ssS99jQFLfoRr23PkqJ7h4mdkGArqXyU"
 
 [registry]
 url = "https://api.apr.dev"
@@ -55,4 +57,5 @@ members = [
     "programs/fee_collector",
     "programs/nxs_staking",
     "programs/proof_verifier",
+    "programs/template_registry",
 ]
