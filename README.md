@@ -65,6 +65,9 @@ The aim isn't a product — it's a substrate other products build on.
 | `dispute_arbitration` | M2 | Switchboard-VRF arbitrator selection, bonded jurors |
 | `governance_program` | M2 | 6-of-9 multisig, proposal lifecycle, on-chain vote tally |
 | `fee_collector` | M2 | Protocol fee split, burn, treasury deposit |
+| `nxs_staking` | M2 | Token staking, lockups, pool management |
+| `capability_registry` | M1 | Approved capability tags, governance-gated |
+| `template_registry` | M2 | Reusable task templates, fork lineage, royalties |
 
 See [`specs/`](./specs) for per-program specifications.
 
@@ -78,18 +81,21 @@ packages/          TypeScript SDK, sdk-ui hooks, shadcn UI, shared configs
 services/          Rust indexer, proof-gen, IACP bus
 infra/             Render blueprint
 specs/             Feature specs (source of truth per feature)
-scripts/           bootstrap.sh
+scripts/           Bootstrap, deploy, seed scripts
+docs/              Getting-started guide
 ```
 
 ## Quick start
 
-Prerequisites: Node 24, pnpm 10, Rust stable, Solana CLI 3.x, Anchor 1.0.
+Prerequisites: Node 22+, pnpm 10+, Rust 1.94+, Solana CLI 3.x, Anchor 1.0. See [docs/getting-started.md](./docs/getting-started.md) for detailed setup.
 
 ```bash
 git clone git@github.com:SolanaAEP/saep.git
 cd saep
 cp .env.example .env       # fill in Helius + Render keys locally
-./scripts/bootstrap.sh     # installs deps, builds, runs localnet tests
+docker compose up -d       # start postgres + redis
+./scripts/bootstrap.sh     # installs deps, builds programs + packages
+anchor test                # run integration tests
 ```
 
 Individual commands:

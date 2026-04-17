@@ -3,6 +3,12 @@
 # is not one of the three personas. Use scripts/commit-as.sh to set them.
 set -u
 
+# External contributors: set SAEP_SKIP_IDENTITY_CHECK=1 to bypass.
+# Core team uses scripts/commit-as.sh for rotation identity.
+if [ "${SAEP_SKIP_IDENTITY_CHECK:-0}" = "1" ]; then
+  exit 0
+fi
+
 ALLOWED_EMAILS=(
   "hl@buildonsaep.com"
   "mmn@buildonsaep.com"
