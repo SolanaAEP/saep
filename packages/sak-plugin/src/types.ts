@@ -1,7 +1,8 @@
 import type { Connection, PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
 import type { z } from 'zod';
+import type { SaepCluster } from '@saep/sdk';
 
-export type SakCluster = 'devnet' | 'mainnet-beta' | 'localnet';
+export type SakCluster = SaepCluster;
 
 export type SakWallet = {
   publicKey: PublicKey;
