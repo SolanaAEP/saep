@@ -64,4 +64,6 @@ pub enum ProofVerifierError {
     SampleHashMismatch,
     #[msg("poseidon hash computation failed")]
     PoseidonError,
+    #[msg("vk is already finalized and cannot accept more ic points")]
+    VkAlreadyFinalized,
 }

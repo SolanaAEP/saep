@@ -46,6 +46,9 @@ export function loadDevVk() {
   return JSON.parse(readFileSync(vkPath, 'utf-8'));
 }
 
+// Chunked VK registration: init_vk (header) + append_vk_ic (IC points).
+// Required because full VK data (1166 bytes for 9 public inputs) exceeds
+// Solana's 1232-byte transaction size limit.
 export async function registerDevVk(
   program: anchor.Program<ProofVerifier>,
   authority: anchor.web3.PublicKey,
@@ -58,19 +61,30 @@ export async function registerDevVk(
   const gammaG2 = g2ToBytes(vkJson.vk_gamma_2);
   const deltaG2 = g2ToBytes(vkJson.vk_delta_2);
   const ic = vkJson.IC.map((p: [string, string, string]) => g1ToBytes(p));
+  const circuitLabel = padLabel(label);
 
+  // tx1: init header
   await program.methods
-    .registerVk(
+    .initVk(
       Array.from(vkId) as unknown as number[],
       alphaG1 as unknown as number[],
       betaG2 as unknown as number[],
       gammaG2 as unknown as number[],
       deltaG2 as unknown as number[],
-      ic as unknown as number[][],
       vkJson.nPublic,
-      padLabel(label) as unknown as number[],
+      circuitLabel as unknown as number[],
       false,
     )
     .accountsPartial({ authority, payer: authority })
+    .rpc();
+
+  // tx2: append all IC points + finalize
+  const { PublicKey } = await import('@solana/web3.js');
+  const [vkPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from('vk'), vkId], program.programId,
+  );
+  await program.methods
+    .appendVkIc(ic as unknown as number[][], true)
+    .accountsPartial({ authority, vk: vkPda })
     .rpc();
 }

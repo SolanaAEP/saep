@@ -23,7 +23,7 @@ import type { CapabilityRegistry } from '../target/types/capability_registry';
 import type { AgentRegistry } from '../target/types/agent_registry';
 import type { TaskMarket } from '../target/types/task_market';
 import type { ProofVerifier } from '../target/types/proof_verifier';
-import { computeVkId, fieldElementToBytes, g1ToBytes, g2ToBytes } from './helpers/vk';
+import { computeVkId, fieldElementToBytes, g1ToBytes, g2ToBytes, registerDevVk } from './helpers/vk';
 
 // Constants
 const PROGRAM_IDS = {
@@ -339,30 +339,7 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
       .accountsPartial({ payer: authority.publicKey })
       .rpc();
 
-    const vkJson = vk;
-    const alphaG1 = g1ToBytes(vkJson.vk_alpha_1);
-    const betaG2 = g2ToBytes(vkJson.vk_beta_2);
-    const gammaG2 = g2ToBytes(vkJson.vk_gamma_2);
-    const deltaG2 = g2ToBytes(vkJson.vk_delta_2);
-    const ic = vkJson.IC.map((p: [string, string, string]) => g1ToBytes(p));
-
-    await proofVerifierProgram.methods
-      .registerVk(
-        Array.from(vkId) as unknown as number[],
-        alphaG1 as unknown as number[],
-        betaG2 as unknown as number[],
-        gammaG2 as unknown as number[],
-        deltaG2 as unknown as number[],
-        ic as unknown as number[][],
-        vkJson.nPublic,
-        padBytes(CIRCUIT_LABEL, 32) as unknown as number[],
-        false,
-      )
-      .accountsPartial({
-        authority: authority.publicKey,
-        payer: authority.publicKey,
-      })
-      .rpc();
+    await registerDevVk(proofVerifierProgram, authority.publicKey, vkId);
 
     const [vkPda] = proofVerifierPdas.vk(vkId);
     const [modePda] = proofVerifierPdas.mode();
