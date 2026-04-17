@@ -11,6 +11,8 @@ pub struct Config {
     pub reorg_window_slots: u64,
     pub reorg_window_depth: u32,
     pub redis_url: Option<String>,
+    pub api_port: Option<u16>,
+    pub cors_origins: Vec<String>,
 }
 
 impl Config {
@@ -59,6 +61,13 @@ impl Config {
                 .ok()
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty()),
+            api_port: std::env::var("API_PORT")
+                .ok()
+                .and_then(|v| v.parse().ok()),
+            cors_origins: std::env::var("CORS_ORIGINS")
+                .ok()
+                .map(|s| s.split(',').map(|o| o.trim().to_string()).collect())
+                .unwrap_or_default(),
         })
     }
 }
@@ -75,6 +84,8 @@ impl std::fmt::Debug for Config {
             .field("reorg_window_slots", &self.reorg_window_slots)
             .field("reorg_window_depth", &self.reorg_window_depth)
             .field("redis_url", &self.redis_url.as_ref().map(|_| "***"))
+            .field("api_port", &self.api_port)
+            .field("cors_origins", &self.cors_origins)
             .finish()
     }
 }

@@ -14,6 +14,7 @@ pub const MAX_CONFIDENCE_BPS: u64 = 100;
 pub const DEFAULT_SLIPPAGE_BPS: u64 = 50;
 pub const BPS_DENOM: u64 = 10_000;
 pub const BASE_DECIMALS: u8 = 6;
+pub const MAX_ROUTE_DATA_LEN: usize = 512;
 
 #[account]
 #[derive(InitSpace)]

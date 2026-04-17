@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import Fastify from 'fastify';
 import { Redis } from 'ioredis';
 import pino from 'pino';
@@ -142,7 +143,12 @@ async function main(): Promise<void> {
     const env = parsed.data.envelope;
     const token = req.headers['x-iacp-service-token'];
     const expected = process.env.IACP_SERVICE_TOKEN;
-    if (!expected || token !== expected) {
+    if (
+      !expected ||
+      typeof token !== 'string' ||
+      token.length !== expected.length ||
+      !crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected))
+    ) {
       reply.code(401);
       recordRejection('rest', 'unauthorized');
       return { error: 'unauthorized' };

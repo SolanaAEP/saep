@@ -118,4 +118,8 @@ pub enum TaskMarketError {
     CapabilityNotInAgentMask,
     #[msg("unrevealed or slashed bid present in close_bidding enumeration")]
     InvalidBidInEnumeration,
+    #[msg("bond must be claimed before closing bid PDA")]
+    BondNotClaimed,
+    #[msg("bond escrow still holds tokens")]
+    EscrowNotEmpty,
 }

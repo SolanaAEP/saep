@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
+use anchor_spl::token_interface::{transfer_checked, TokenInterface, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use fee_collector::{
@@ -59,7 +59,7 @@ pub struct ClaimBond<'info> {
     pub hook_allowlist: Option<Account<'info, HookAllowlist>>,
 
     pub bidder: Signer<'info>,
-    pub token_program: Program<'info, Token2022>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 enum Outcome {

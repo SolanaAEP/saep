@@ -191,6 +191,14 @@ pub mod task_market {
         instructions::cancel_bidding::handler(ctx)
     }
 
+    pub fn close_bid(ctx: Context<CloseBid>) -> Result<()> {
+        instructions::close_bid::handler(ctx)
+    }
+
+    pub fn close_bid_book(ctx: Context<CloseBidBook>) -> Result<()> {
+        instructions::close_bid_book::handler(ctx)
+    }
+
     pub fn init_guard(
         ctx: Context<InitGuard>,
         initial_callers: Vec<Pubkey>,

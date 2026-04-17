@@ -176,9 +176,6 @@ pub fn handler<'info>(ctx: Context<'info, CloseBidding<'info>>) -> Result<()> {
         // F-2026-07: when no revealed bid survives, reset task.status to
         // Funded so the client can re-open bidding per spec §Invariant 5.
         ctx.accounts.task.status = TaskStatus::Funded;
-        // Detach the now-cancelled bid book so re-open_bidding can attach a
-        // fresh one without hitting `BidBookAlreadyOpen`.
-        ctx.accounts.task.bid_book = None;
     }
 
     emit!(BidBookClosed {

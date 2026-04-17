@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_2022::{transfer_checked, Token2022, TransferChecked};
+use anchor_spl::token_interface::{transfer_checked, TokenInterface, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use fee_collector::{
@@ -7,7 +7,8 @@ use fee_collector::{
 };
 
 use crate::errors::TreasuryError;
-use crate::events::StreamClosed;
+use crate::events::{GuardEntered, StreamClosed};
+use crate::guard::{exit as guard_exit, try_enter, ReentrancyGuard, SEED_GUARD};
 use crate::state::{
     assert_call_target_allowed, resolve_hook_allowlist, AgentTreasury, AllowedTargets,
     PaymentStream, StreamStatus, TreasuryGlobal,
@@ -68,12 +69,24 @@ pub struct CloseStream<'info> {
     )]
     pub agent_hooks: Option<Account<'info, AgentHookAllowlist>>,
 
+    #[account(mut, seeds = [SEED_GUARD], bump = guard.bump)]
+    pub guard: Box<Account<'info, ReentrancyGuard>>,
+
     pub signer: Signer<'info>,
-    pub token_program: Program<'info, Token2022>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 pub fn handler(ctx: Context<CloseStream>) -> Result<()> {
-    let now = Clock::get()?.unix_timestamp;
+    let clock = Clock::get()?;
+    try_enter(&mut ctx.accounts.guard, crate::ID, clock.slot)?;
+    emit!(GuardEntered {
+        program: crate::ID,
+        caller: crate::ID,
+        slot: clock.slot,
+        stack_height: 1,
+    });
+
+    let now = clock.unix_timestamp;
     let s = &mut ctx.accounts.stream;
     require!(s.status == StreamStatus::Active, TreasuryError::StreamAlreadyClosed);
 
@@ -171,5 +184,7 @@ pub fn handler(ctx: Context<CloseStream>) -> Result<()> {
         client_refund,
         timestamp: now,
     });
+
+    guard_exit(&mut ctx.accounts.guard);
     Ok(())
 }
