@@ -149,6 +149,8 @@ At ~100 CU per comparison (conservative), this costs ~200k CU for the dedup loop
 1. Sorting `seen_bidders` and using binary search (O(n log n) total), or
 2. Pre-sorting remaining_accounts by bidder pubkey and checking only adjacent pairs (O(n) total), with a require that they arrive sorted.
 
+**Status:** ACCEPTED (M1) — bounded at 64 bidders, ~200k CU worst case is within 1.4M max. Most M1 tasks will have <10 bids. Revisit for M2 if bidder counts grow.
+
 ---
 
 ### F-2026-20 — HookRejected event emitted in warn-only path
