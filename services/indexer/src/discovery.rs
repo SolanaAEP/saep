@@ -8,8 +8,11 @@
 //!
 //! Cycle-99 scope: 3 detail GETs (`/v1/discovery/agents/:did`,
 //! `/v1/discovery/tasks/:task_id_hex`, `/v1/discovery/tasks/:task_id_hex/timeline`).
-//! Remaining (capabilities, treasury, WS, rate-limiter, cache) land in subsequent
-//! cycles.
+//!
+//! Cycle-100 scope: capabilities surface (`/v1/discovery/capabilities`,
+//! `/v1/discovery/capabilities/:bit`) folding over capability_registry
+//! TagApproved/TagRetired events. Remaining (treasury, agent sub-endpoints,
+//! WS, rate-limiter, cache) land in subsequent cycles.
 
 use axum::{
     extract::{Path, Query, State},
@@ -39,8 +42,12 @@ pub fn router(state: ApiState) -> Router {
             "/v1/discovery/tasks/:task_id_hex/timeline",
             get(task_timeline),
         )
+        .route("/v1/discovery/capabilities", get(list_capabilities))
+        .route("/v1/discovery/capabilities/:bit", get(capability_detail))
         .with_state(state)
 }
+
+const CAPABILITY_REGISTRY_PROGRAM_ID: &str = "GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F";
 
 #[derive(Debug, Deserialize)]
 pub struct AgentsQuery {
@@ -791,6 +798,155 @@ struct CountRow {
     n: i64,
 }
 
+// ---------- capabilities ----------
+
+#[derive(Debug, Deserialize)]
+pub struct CapabilitiesQuery {
+    pub include_retired: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Capability {
+    pub bit: i32,
+    pub slug: String,
+    pub added_by: Option<String>,
+    pub approved_at_unix: Option<i64>,
+    pub retired: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CapabilitiesList {
+    pub items: Vec<Capability>,
+}
+
+#[derive(QueryableByName)]
+struct RawCapabilityRow {
+    #[diesel(sql_type = Int4)]
+    bit: i32,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Jsonb>)]
+    slug_bytes: Option<serde_json::Value>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    added_by: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<BigInt>)]
+    approved_at_unix: Option<i64>,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    retired: bool,
+}
+
+// Shared CTE: latest TagApproved + latest TagApproved-or-TagRetired per bit.
+// `latest_per_bit` decides current retired state; `latest_approved` carries
+// the slug/added_by/timestamp from the most recent approval (re-approval
+// after retirement overwrites — matches on-chain semantics).
+const CAPABILITIES_CTE: &str = "\
+WITH latest_approved AS ( \
+  SELECT DISTINCT ON ((data->>'bit_index')::int) \
+    (data->>'bit_index')::int         AS bit, \
+    data->'slug'                      AS slug_bytes, \
+    data->>'added_by'                 AS added_by, \
+    (data->>'timestamp')::bigint      AS approved_at_unix \
+  FROM program_events \
+  WHERE program_id = $1 \
+    AND event_name = 'TagApproved' \
+  ORDER BY (data->>'bit_index')::int, slot DESC, id DESC \
+), latest_state AS ( \
+  SELECT DISTINCT ON ((data->>'bit_index')::int) \
+    (data->>'bit_index')::int AS bit, \
+    event_name \
+  FROM program_events \
+  WHERE program_id = $1 \
+    AND event_name IN ('TagApproved','TagRetired') \
+  ORDER BY (data->>'bit_index')::int, slot DESC, id DESC \
+)";
+
+pub async fn list_capabilities(
+    State(state): State<ApiState>,
+    Query(q): Query<CapabilitiesQuery>,
+) -> Result<Json<CapabilitiesList>, ApiError> {
+    let include_retired = q.include_retired.unwrap_or(false);
+
+    let rows = tokio::task::spawn_blocking(move || -> Result<Vec<RawCapabilityRow>, ApiError> {
+        let mut conn = state.pool.get().map_err(ApiError::internal)?;
+        let mut sql = String::from(CAPABILITIES_CTE);
+        sql.push_str(
+            " SELECT a.bit, a.slug_bytes, a.added_by, a.approved_at_unix, \
+                     (ls.event_name = 'TagRetired') AS retired \
+              FROM latest_approved a \
+              LEFT JOIN latest_state ls ON ls.bit = a.bit",
+        );
+        if !include_retired {
+            sql.push_str(" WHERE ls.event_name = 'TagApproved'");
+        }
+        sql.push_str(" ORDER BY a.bit ASC");
+        sql_query(sql)
+            .bind::<Text, _>(CAPABILITY_REGISTRY_PROGRAM_ID)
+            .load::<RawCapabilityRow>(&mut conn)
+            .map_err(ApiError::internal)
+    })
+    .await
+    .map_err(ApiError::internal)??;
+
+    let items = rows.into_iter().map(row_to_capability).collect();
+    Ok(Json(CapabilitiesList { items }))
+}
+
+pub async fn capability_detail(
+    State(state): State<ApiState>,
+    Path(bit): Path<i32>,
+) -> Result<Json<Capability>, ApiError> {
+    if !(0..128).contains(&bit) {
+        return Err(ApiError::bad_request("bit must be 0..128"));
+    }
+
+    let row = tokio::task::spawn_blocking(move || -> Result<Option<RawCapabilityRow>, ApiError> {
+        let mut conn = state.pool.get().map_err(ApiError::internal)?;
+        let mut sql = String::from(CAPABILITIES_CTE);
+        sql.push_str(
+            " SELECT a.bit, a.slug_bytes, a.added_by, a.approved_at_unix, \
+                     (ls.event_name = 'TagRetired') AS retired \
+              FROM latest_approved a \
+              LEFT JOIN latest_state ls ON ls.bit = a.bit \
+              WHERE a.bit = $2",
+        );
+        Ok(sql_query(sql)
+            .bind::<Text, _>(CAPABILITY_REGISTRY_PROGRAM_ID)
+            .bind::<Int4, _>(bit)
+            .load::<RawCapabilityRow>(&mut conn)
+            .map_err(ApiError::internal)?
+            .into_iter()
+            .next())
+    })
+    .await
+    .map_err(ApiError::internal)??
+    .ok_or_else(|| ApiError::not_found("capability not found"))?;
+
+    Ok(Json(row_to_capability(row)))
+}
+
+fn row_to_capability(r: RawCapabilityRow) -> Capability {
+    Capability {
+        bit: r.bit,
+        slug: r.slug_bytes.as_ref().map(slug_from_jsonb).unwrap_or_default(),
+        added_by: r.added_by,
+        approved_at_unix: r.approved_at_unix,
+        retired: r.retired,
+    }
+}
+
+// Slug is a [u8;32] in the IDL event; borsh_decode emits a JSON array-of-u8.
+// Trim trailing zero bytes + interpret as UTF-8; lossy fallback on non-ascii
+// so an upstream schema drift can't panic the handler.
+fn slug_from_jsonb(v: &serde_json::Value) -> String {
+    let Some(arr) = v.as_array() else {
+        return String::new();
+    };
+    let bytes: Vec<u8> = arr
+        .iter()
+        .filter_map(|n| n.as_u64().and_then(|x| u8::try_from(x).ok()))
+        .collect();
+    let end = bytes.iter().rposition(|b| *b != 0).map(|p| p + 1).unwrap_or(0);
+    String::from_utf8_lossy(&bytes[..end]).into_owned()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -879,5 +1035,37 @@ mod tests {
             );
         }
         assert_eq!(TIMELINE_EVENTS.len(), TASK_STATUSES.len());
+    }
+
+    #[test]
+    fn slug_from_jsonb_trims_trailing_zeros() {
+        // "mixer" padded to 32 bytes with zero-fill.
+        let mut bytes = vec![b'm', b'i', b'x', b'e', b'r'];
+        bytes.resize(32, 0);
+        let v = serde_json::Value::Array(
+            bytes.into_iter().map(|b| serde_json::json!(b)).collect(),
+        );
+        assert_eq!(slug_from_jsonb(&v), "mixer");
+    }
+
+    #[test]
+    fn slug_from_jsonb_handles_all_zero_and_malformed() {
+        let all_zero = serde_json::Value::Array(vec![serde_json::json!(0); 32]);
+        assert_eq!(slug_from_jsonb(&all_zero), "");
+        assert_eq!(slug_from_jsonb(&serde_json::json!({})), "");
+        assert_eq!(slug_from_jsonb(&serde_json::json!(null)), "");
+    }
+
+    #[test]
+    fn capability_registry_program_id_matches_programs_rs() {
+        // Drift guard: the CTE binds this constant; if programs.rs rotates,
+        // this assert catches the mismatch before handlers silently return
+        // empty result sets.
+        let from_registry = crate::programs::SAEP_PROGRAMS
+            .iter()
+            .find(|p| p.name == "capability_registry")
+            .map(|p| p.id)
+            .unwrap();
+        assert_eq!(from_registry, CAPABILITY_REGISTRY_PROGRAM_ID);
     }
 }
