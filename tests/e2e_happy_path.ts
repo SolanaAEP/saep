@@ -342,7 +342,7 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
         1000, // max_slash_bps
         new BN(86400), // slash_timelock_secs
       )
-      .accountsPartial({ payer: authority.publicKey })
+      .accountsPartial({ payer: authority.publicKey, stakeMintInfo: stakeMint })
       .rpc();
 
     // -----------------------------------------------------------------------

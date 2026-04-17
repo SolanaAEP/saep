@@ -327,7 +327,7 @@ describe('task_market SPL Token compat (bankrun)', function () {
         1000,
         new BN(86400),
       )
-      .accountsPartial({ payer: authority.publicKey })
+      .accountsPartial({ payer: authority.publicKey, stakeMintInfo: stakeMint })
       .rpc();
 
     const [regGlobalPda] = agentRegPdas.global();

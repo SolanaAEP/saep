@@ -322,7 +322,7 @@ describe('task_market commit-reveal bidding (bankrun)', function () {
         1000,
         new BN(86400),
       )
-      .accountsPartial({ payer: authority.publicKey })
+      .accountsPartial({ payer: authority.publicKey, stakeMintInfo: stakeMint })
       .rpc();
 
     // Init agent_registry reentrancy guard
