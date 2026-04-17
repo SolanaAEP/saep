@@ -102,8 +102,8 @@ function encryptWitness(priv: PrivateInputs): {
   tag: string;
   key: Buffer;
 } {
-  // WITNESS-ENCRYPT-STUB — AES-256-GCM with ephemeral per-job key. Key is stored in Redis
-  // with short TTL (see keyKey()) and deleted by the worker after decrypt.
+  // AES-256-GCM with ephemeral per-job key. Key stored in Redis with short TTL
+  // (see keyKey()) and deleted by the worker after decrypt.
   const key = randomBytes(32);
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', key, iv);
