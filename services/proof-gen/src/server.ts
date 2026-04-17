@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import Fastify from 'fastify';
+import { jwtVerify } from 'jose';
 import pino from 'pino';
 import {
   ProveRequestSchema,
@@ -49,16 +50,49 @@ function artifactsReady(): boolean {
   return existsSync(WASM_PATH) && existsSync(ZKEY_PATH);
 }
 
-function resolveAgent(authHeader: string | undefined): { agent_did: string } | null {
-  // SIWS-AUTH-STUB — M1 accepts any bearer; returns a placeholder DID.
+const SESSION_SECRET = process.env.SESSION_SECRET;
+const SESSION_ISSUER = 'saep.portal';
+
+let sessionKey: Uint8Array | null = null;
+function getSessionKey(): Uint8Array {
+  if (sessionKey) return sessionKey;
+  if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
+    throw new Error('SESSION_SECRET env var required (>=32 chars)');
+  }
+  sessionKey = new TextEncoder().encode(SESSION_SECRET);
+  return sessionKey;
+}
+
+async function resolveAgent(authHeader: string | undefined): Promise<{ agent_did: string } | null> {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   const token = authHeader.slice('Bearer '.length).trim();
   if (!token) return null;
-  return { agent_did: 'agent:dev' };
+  try {
+    const secret = getSessionKey();
+    const { payload } = await jwtVerify(token, secret, { issuer: SESSION_ISSUER });
+    const address = payload.sub;
+    if (typeof address !== 'string') return null;
+    return { agent_did: address };
+  } catch {
+    return null;
+  }
 }
 
-function checkRateLimit(_agentDid: string): { ok: true } | { ok: false; retry_after: number } {
-  // RATE-LIMIT-STUB — token bucket per agent_did, 10/min burst, 2/min sustained.
+const BURST_LIMIT = 10;
+const WINDOW_MS = 60_000;
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(agentDid: string): { ok: true } | { ok: false; retry_after: number } {
+  const now = Date.now();
+  let bucket = rateBuckets.get(agentDid);
+  if (!bucket || now >= bucket.resetAt) {
+    bucket = { count: 0, resetAt: now + WINDOW_MS };
+    rateBuckets.set(agentDid, bucket);
+  }
+  bucket.count++;
+  if (bucket.count > BURST_LIMIT) {
+    return { ok: false, retry_after: Math.ceil((bucket.resetAt - now) / 1000) };
+  }
   return { ok: true };
 }
 
@@ -136,7 +170,7 @@ export async function buildServer() {
       return reply.code(503).send({ error: 'no_artifacts' });
     }
 
-    const agent = resolveAgent(req.headers.authorization);
+    const agent = await resolveAgent(req.headers.authorization);
     if (!agent) return reply.code(401).send({ error: 'unauthorized' });
 
     const rl = checkRateLimit(agent.agent_did);
