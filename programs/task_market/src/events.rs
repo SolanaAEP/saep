@@ -58,6 +58,10 @@ pub struct VerificationFailed {
 #[event]
 pub struct TaskReleased {
     pub task_id: [u8; 32],
+    pub agent_did: [u8; 32],
+    pub operator: Pubkey,
+    pub client: Pubkey,
+    pub mint: Pubkey,
     pub agent_payout: u64,
     pub protocol_fee: u64,
     pub solrep_fee: u64,
