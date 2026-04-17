@@ -4,7 +4,7 @@
     "name": "dispute_arbitration",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "SAEP dispute_arbitration program (stub)"
+    "description": "SAEP dispute arbitration — commit-reveal voting, appeals, slashing"
   },
   "instructions": [
     {
@@ -70,6 +70,765 @@
           "relations": [
             "config"
           ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "begin_withdraw",
+      "discriminator": [
+        194,
+        165,
+        222,
+        75,
+        204,
+        184,
+        171,
+        58
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "arbitrator",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  114,
+                  98,
+                  105,
+                  116,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "operator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "arbitrator"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_slash",
+      "discriminator": [
+        222,
+        163,
+        161,
+        54,
+        103,
+        113,
+        42,
+        67
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "arbitrator",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  114,
+                  98,
+                  105,
+                  116,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pending_slash.arbitrator",
+                "account": "PendingSlash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_slash",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  110,
+                  100,
+                  105,
+                  110,
+                  103,
+                  95,
+                  115,
+                  108,
+                  97,
+                  115,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pending_slash.arbitrator",
+                "account": "PendingSlash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_stale_vrf",
+      "discriminator": [
+        87,
+        6,
+        207,
+        170,
+        139,
+        213,
+        13,
+        150
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "dispute_case",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dispute_case.case_id",
+                "account": "DisputeCase"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "commit_vote",
+      "discriminator": [
+        134,
+        97,
+        90,
+        126,
+        91,
+        66,
+        16,
+        26
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "dispute_case",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dispute_case.case_id",
+                "account": "DisputeCase"
+              }
+            ]
+          }
+        },
+        {
+          "name": "arbitrator",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  114,
+                  98,
+                  105,
+                  116,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "arbitrator_signer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vote_record",
+          "writable": true
+        },
+        {
+          "name": "operator",
+          "relations": [
+            "arbitrator"
+          ]
+        },
+        {
+          "name": "arbitrator_signer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "commit_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "complete_withdraw",
+      "discriminator": [
+        172,
+        129,
+        141,
+        17,
+        95,
+        253,
+        251,
+        98
+      ],
+      "accounts": [
+        {
+          "name": "arbitrator",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  114,
+                  98,
+                  105,
+                  116,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "operator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "arbitrator"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "consume_vrf",
+      "discriminator": [
+        147,
+        13,
+        167,
+        195,
+        209,
+        51,
+        78,
+        64
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "dispute_case",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dispute_case.case_id",
+                "account": "DisputeCase"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "vrf_result",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "escalate_appeal",
+      "discriminator": [
+        207,
+        25,
+        110,
+        186,
+        204,
+        76,
+        4,
+        220
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "dispute_case",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dispute_case.case_id",
+                "account": "DisputeCase"
+              }
+            ]
+          }
+        },
+        {
+          "name": "appeal_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  112,
+                  112,
+                  101,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dispute_case.case_id",
+                "account": "DisputeCase"
+              }
+            ]
+          }
+        },
+        {
+          "name": "appellant",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "execute_slash",
+      "discriminator": [
+        15,
+        240,
+        38,
+        73,
+        175,
+        55,
+        88,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "arbitrator",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  114,
+                  98,
+                  105,
+                  116,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pending_slash.arbitrator",
+                "account": "PendingSlash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_slash",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  110,
+                  100,
+                  105,
+                  110,
+                  103,
+                  95,
+                  115,
+                  108,
+                  97,
+                  115,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pending_slash.arbitrator",
+                "account": "PendingSlash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
         }
       ],
       "args": []
@@ -233,8 +992,12 @@
       ],
       "args": [
         {
-          "name": "authority",
-          "type": "pubkey"
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "InitConfigParams"
+            }
+          }
         }
       ]
     },
@@ -304,6 +1067,519 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "raise_dispute",
+      "discriminator": [
+        41,
+        243,
+        1,
+        51,
+        150,
+        95,
+        246,
+        73
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "dispute_case",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.next_case_id",
+                "account": "DisputeConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "task_id",
+          "type": "u64"
+        },
+        {
+          "name": "client",
+          "type": "pubkey"
+        },
+        {
+          "name": "agent_operator",
+          "type": "pubkey"
+        },
+        {
+          "name": "escrow_amount",
+          "type": "u64"
+        },
+        {
+          "name": "payment_mint",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "refresh_stake",
+      "discriminator": [
+        194,
+        123,
+        40,
+        247,
+        37,
+        237,
+        119,
+        119
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "arbitrator",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  114,
+                  98,
+                  105,
+                  116,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "operator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stake_account",
+          "docs": [
+            "values passed as args until NXSStaking CPI reads are wired."
+          ]
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "arbitrator"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_stake",
+          "type": "u64"
+        },
+        {
+          "name": "new_lock_end",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "register_arbitrator",
+      "discriminator": [
+        141,
+        158,
+        50,
+        47,
+        214,
+        118,
+        229,
+        183
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "arbitrator",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  114,
+                  98,
+                  105,
+                  116,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "operator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stake_account",
+          "docs": [
+            "The NXSStaking StakeAccount for this operator.",
+            "effective_stake/lock_end passed as args until NXSStaking CPI reads are wired.",
+            "Pre-audit TODO: deserialize StakeAccount and read values on-chain."
+          ]
+        },
+        {
+          "name": "operator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "effective_stake",
+          "type": "u64"
+        },
+        {
+          "name": "lock_end",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "resolve_dispute",
+      "discriminator": [
+        231,
+        6,
+        202,
+        6,
+        96,
+        103,
+        12,
+        230
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "dispute_case",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dispute_case.case_id",
+                "account": "DisputeCase"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "reveal_vote",
+      "discriminator": [
+        100,
+        157,
+        139,
+        17,
+        186,
+        75,
+        185,
+        149
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "dispute_case",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dispute_case.case_id",
+                "account": "DisputeCase"
+              }
+            ]
+          }
+        },
+        {
+          "name": "arbitrator",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  114,
+                  98,
+                  105,
+                  116,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "arbitrator_signer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vote_record",
+          "writable": true
+        },
+        {
+          "name": "arbitrator_signer",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "verdict",
+          "type": {
+            "defined": {
+              "name": "DisputeVerdict"
+            }
+          }
+        },
+        {
+          "name": "salt",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "set_allowed_callers",
@@ -388,6 +1664,400 @@
           }
         }
       ]
+    },
+    {
+      "name": "set_params",
+      "discriminator": [
+        27,
+        234,
+        178,
+        52,
+        147,
+        2,
+        187,
+        141
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "input",
+          "type": {
+            "defined": {
+              "name": "UpdateParamsInput"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_paused",
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "slash_arbitrator",
+      "discriminator": [
+        156,
+        206,
+        214,
+        107,
+        241,
+        102,
+        228,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "dispute_case",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dispute_case.case_id",
+                "account": "DisputeCase"
+              }
+            ]
+          }
+        },
+        {
+          "name": "arbitrator",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  114,
+                  98,
+                  105,
+                  116,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "arbitrator.operator",
+                "account": "ArbitratorAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_slash",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  110,
+                  100,
+                  105,
+                  110,
+                  103,
+                  95,
+                  115,
+                  108,
+                  97,
+                  115,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "arbitrator.operator",
+                "account": "ArbitratorAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "reason_code",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "snapshot_pool",
+      "discriminator": [
+        117,
+        201,
+        126,
+        48,
+        223,
+        232,
+        125,
+        78
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "arbitrators",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "stakes",
+          "type": {
+            "vec": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "tally_round",
+      "discriminator": [
+        176,
+        99,
+        204,
+        229,
+        229,
+        240,
+        167,
+        240
+      ],
+      "accounts": [
+        {
+          "name": "dispute_case",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101,
+                  95,
+                  99,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dispute_case.case_id",
+                "account": "DisputeCase"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -405,6 +2075,45 @@
       ]
     },
     {
+      "name": "AppealRecord",
+      "discriminator": [
+        224,
+        132,
+        120,
+        231,
+        41,
+        145,
+        233,
+        27
+      ]
+    },
+    {
+      "name": "ArbitratorAccount",
+      "discriminator": [
+        5,
+        170,
+        140,
+        245,
+        127,
+        134,
+        11,
+        44
+      ]
+    },
+    {
+      "name": "DisputeCase",
+      "discriminator": [
+        164,
+        200,
+        54,
+        239,
+        94,
+        76,
+        51,
+        130
+      ]
+    },
+    {
       "name": "DisputeConfig",
       "discriminator": [
         230,
@@ -415,6 +2124,45 @@
         93,
         56,
         156
+      ]
+    },
+    {
+      "name": "DisputePool",
+      "discriminator": [
+        149,
+        179,
+        47,
+        36,
+        73,
+        3,
+        87,
+        69
+      ]
+    },
+    {
+      "name": "DisputeVoteRecord",
+      "discriminator": [
+        46,
+        202,
+        204,
+        190,
+        143,
+        118,
+        130,
+        63
+      ]
+    },
+    {
+      "name": "PendingSlash",
+      "discriminator": [
+        211,
+        113,
+        250,
+        223,
+        122,
+        12,
+        110,
+        22
       ]
     },
     {
@@ -443,6 +2191,84 @@
         117,
         63,
         122
+      ]
+    },
+    {
+      "name": "AppealEscalated",
+      "discriminator": [
+        62,
+        220,
+        89,
+        50,
+        68,
+        6,
+        17,
+        143
+      ]
+    },
+    {
+      "name": "ArbitratorRegistered",
+      "discriminator": [
+        74,
+        66,
+        60,
+        131,
+        232,
+        53,
+        205,
+        93
+      ]
+    },
+    {
+      "name": "ArbitratorsSelected",
+      "discriminator": [
+        35,
+        36,
+        141,
+        17,
+        145,
+        124,
+        247,
+        105
+      ]
+    },
+    {
+      "name": "DisputeCancelled",
+      "discriminator": [
+        38,
+        80,
+        189,
+        225,
+        112,
+        190,
+        156,
+        178
+      ]
+    },
+    {
+      "name": "DisputeRaised",
+      "discriminator": [
+        246,
+        167,
+        109,
+        37,
+        142,
+        45,
+        38,
+        176
+      ]
+    },
+    {
+      "name": "DisputeResolved",
+      "discriminator": [
+        121,
+        64,
+        249,
+        153,
+        139,
+        128,
+        236,
+        187
       ]
     },
     {
@@ -485,6 +2311,45 @@
       ]
     },
     {
+      "name": "ParamsUpdated",
+      "discriminator": [
+        2,
+        163,
+        138,
+        99,
+        135,
+        11,
+        136,
+        169
+      ]
+    },
+    {
+      "name": "PausedSet",
+      "discriminator": [
+        171,
+        125,
+        127,
+        156,
+        233,
+        81,
+        68,
+        66
+      ]
+    },
+    {
+      "name": "PoolSnapshotted",
+      "discriminator": [
+        17,
+        10,
+        153,
+        33,
+        111,
+        92,
+        104,
+        216
+      ]
+    },
+    {
       "name": "ReentrancyRejected",
       "discriminator": [
         210,
@@ -495,6 +2360,84 @@
         49,
         86,
         89
+      ]
+    },
+    {
+      "name": "RoundTallied",
+      "discriminator": [
+        37,
+        194,
+        201,
+        75,
+        95,
+        168,
+        56,
+        93
+      ]
+    },
+    {
+      "name": "SlashCancelled",
+      "discriminator": [
+        30,
+        217,
+        21,
+        135,
+        62,
+        236,
+        194,
+        221
+      ]
+    },
+    {
+      "name": "SlashExecuted",
+      "discriminator": [
+        170,
+        48,
+        78,
+        119,
+        242,
+        155,
+        108,
+        61
+      ]
+    },
+    {
+      "name": "SlashProposed",
+      "discriminator": [
+        158,
+        90,
+        179,
+        8,
+        227,
+        190,
+        15,
+        231
+      ]
+    },
+    {
+      "name": "VoteCommitted",
+      "discriminator": [
+        74,
+        67,
+        158,
+        48,
+        168,
+        230,
+        217,
+        77
+      ]
+    },
+    {
+      "name": "VoteRevealed",
+      "discriminator": [
+        104,
+        162,
+        140,
+        194,
+        213,
+        217,
+        117,
+        179
       ]
     }
   ],
@@ -538,6 +2481,166 @@
       "code": 6007,
       "name": "AdminResetNotTimelocked",
       "msg": "admin reset has not met the 24h timelock"
+    },
+    {
+      "code": 6008,
+      "name": "Paused",
+      "msg": "program is paused"
+    },
+    {
+      "code": 6009,
+      "name": "PoolMissing",
+      "msg": "dispute pool has not been snapshotted"
+    },
+    {
+      "code": 6010,
+      "name": "PoolTooSmall",
+      "msg": "dispute pool has too few eligible arbitrators"
+    },
+    {
+      "code": 6011,
+      "name": "VrfStale",
+      "msg": "VRF result is stale"
+    },
+    {
+      "code": 6012,
+      "name": "VrfNotFulfilled",
+      "msg": "VRF has not been fulfilled"
+    },
+    {
+      "code": 6013,
+      "name": "WrongStatus",
+      "msg": "invalid status for this operation"
+    },
+    {
+      "code": 6014,
+      "name": "CommitWindowClosed",
+      "msg": "commit window has closed"
+    },
+    {
+      "code": 6015,
+      "name": "RevealWindowClosed",
+      "msg": "reveal window has closed"
+    },
+    {
+      "code": 6016,
+      "name": "RevealWindowOpen",
+      "msg": "reveal window has not closed yet"
+    },
+    {
+      "code": 6017,
+      "name": "CommitHashMismatch",
+      "msg": "commit hash does not match revealed data"
+    },
+    {
+      "code": 6018,
+      "name": "DuplicateVote",
+      "msg": "arbitrator has already voted in this round"
+    },
+    {
+      "code": 6019,
+      "name": "ArbitratorNotSelected",
+      "msg": "arbitrator was not selected for this case"
+    },
+    {
+      "code": 6020,
+      "name": "AppealWindowClosed",
+      "msg": "appeal window has closed"
+    },
+    {
+      "code": 6021,
+      "name": "AppealCollateralInsufficient",
+      "msg": "appeal collateral is insufficient"
+    },
+    {
+      "code": 6022,
+      "name": "TooManyAppeals",
+      "msg": "maximum number of appeals reached"
+    },
+    {
+      "code": 6023,
+      "name": "SlashAlreadyPending",
+      "msg": "a pending slash already exists for this arbitrator"
+    },
+    {
+      "code": 6024,
+      "name": "SlashTimelockNotElapsed",
+      "msg": "slash timelock has not elapsed"
+    },
+    {
+      "code": 6025,
+      "name": "NoMajority",
+      "msg": "no clean majority was reached"
+    },
+    {
+      "code": 6026,
+      "name": "VerdictEncodingInvalid",
+      "msg": "verdict encoding is invalid"
+    },
+    {
+      "code": 6027,
+      "name": "StakeInsufficient",
+      "msg": "stake is below minimum requirement"
+    },
+    {
+      "code": 6028,
+      "name": "StakeLockTooShort",
+      "msg": "stake lockup is too short"
+    },
+    {
+      "code": 6029,
+      "name": "ArithmeticOverflow",
+      "msg": "arithmetic overflow"
+    },
+    {
+      "code": 6030,
+      "name": "CallerNotTaskMarket",
+      "msg": "caller is not the task market program"
+    },
+    {
+      "code": 6031,
+      "name": "ArbitratorNotActive",
+      "msg": "arbitrator is not active"
+    },
+    {
+      "code": 6032,
+      "name": "PoolFull",
+      "msg": "pool is at maximum capacity"
+    },
+    {
+      "code": 6033,
+      "name": "AlreadyRegistered",
+      "msg": "arbitrator already registered"
+    },
+    {
+      "code": 6034,
+      "name": "AppealWindowOpen",
+      "msg": "appeal window has not elapsed"
+    },
+    {
+      "code": 6035,
+      "name": "ExecutionWindowOpen",
+      "msg": "execution window has not elapsed"
+    },
+    {
+      "code": 6036,
+      "name": "NotWithdrawing",
+      "msg": "arbitrator is not in withdrawing status"
+    },
+    {
+      "code": 6037,
+      "name": "WithdrawNotReady",
+      "msg": "withdraw unlock time has not been reached"
+    },
+    {
+      "code": 6038,
+      "name": "BadFaithThresholdNotMet",
+      "msg": "bad faith threshold not met for slash"
+    },
+    {
+      "code": 6039,
+      "name": "InvalidBps",
+      "msg": "invalid bps value"
     }
   ],
   "types": [
@@ -580,6 +2683,319 @@
       }
     },
     {
+      "name": "AppealEscalated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "appellant",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AppealRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "appellant",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "u8"
+          },
+          {
+            "name": "collateral_amount",
+            "type": "u64"
+          },
+          {
+            "name": "collateral_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "filed_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ArbitratorAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "stake_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "effective_stake",
+            "type": "u64"
+          },
+          {
+            "name": "effective_lock_end",
+            "type": "i64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "ArbitratorStatus"
+              }
+            }
+          },
+          {
+            "name": "bad_faith_strikes",
+            "type": "u8"
+          },
+          {
+            "name": "cases_participated",
+            "type": "u32"
+          },
+          {
+            "name": "withdraw_unlock_time",
+            "type": "i64"
+          },
+          {
+            "name": "registered_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ArbitratorRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "effective_stake",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ArbitratorStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Paused"
+          },
+          {
+            "name": "Slashed"
+          },
+          {
+            "name": "Withdrawing"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ArbitratorsSelected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "arbitrators",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "round",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "task_id",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeCase",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "task_id",
+            "type": "u64"
+          },
+          {
+            "name": "client",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent_operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "escrow_amount",
+            "type": "u64"
+          },
+          {
+            "name": "payment_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "DisputeStatus"
+              }
+            }
+          },
+          {
+            "name": "round",
+            "type": "u8"
+          },
+          {
+            "name": "arbitrators",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "arbitrator_count",
+            "type": "u8"
+          },
+          {
+            "name": "vrf_request",
+            "type": "pubkey"
+          },
+          {
+            "name": "vrf_result",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "commit_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "reveal_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "verdict",
+            "type": {
+              "defined": {
+                "name": "DisputeVerdict"
+              }
+            }
+          },
+          {
+            "name": "votes_for_agent",
+            "type": "u128"
+          },
+          {
+            "name": "votes_for_client",
+            "type": "u128"
+          },
+          {
+            "name": "votes_for_split",
+            "type": "u128"
+          },
+          {
+            "name": "total_revealed_weight",
+            "type": "u128"
+          },
+          {
+            "name": "resolved_at",
+            "type": "i64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "snapshot_pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "DisputeConfig",
       "type": {
         "kind": "struct",
@@ -587,6 +3003,307 @@
           {
             "name": "authority",
             "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "task_market",
+            "type": "pubkey"
+          },
+          {
+            "name": "nxs_staking",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_collector",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent_registry",
+            "type": "pubkey"
+          },
+          {
+            "name": "switchboard_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "emergency_council",
+            "type": "pubkey"
+          },
+          {
+            "name": "round1_size",
+            "type": "u8"
+          },
+          {
+            "name": "round2_size",
+            "type": "u8"
+          },
+          {
+            "name": "commit_window_secs",
+            "type": "i64"
+          },
+          {
+            "name": "reveal_window_secs",
+            "type": "i64"
+          },
+          {
+            "name": "appeal_window_secs",
+            "type": "i64"
+          },
+          {
+            "name": "appeal_collateral_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_slash_bps",
+            "type": "u16"
+          },
+          {
+            "name": "slash_timelock_secs",
+            "type": "i64"
+          },
+          {
+            "name": "min_stake",
+            "type": "u64"
+          },
+          {
+            "name": "min_lock_secs",
+            "type": "i64"
+          },
+          {
+            "name": "vrf_stale_slots",
+            "type": "u64"
+          },
+          {
+            "name": "round2_window_secs",
+            "type": "i64"
+          },
+          {
+            "name": "bad_faith_threshold",
+            "type": "u8"
+          },
+          {
+            "name": "bad_faith_lookback",
+            "type": "u8"
+          },
+          {
+            "name": "next_case_id",
+            "type": "u64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputePool",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "snapshot_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "snapshot_time",
+            "type": "i64"
+          },
+          {
+            "name": "total_staked",
+            "type": "u128"
+          },
+          {
+            "name": "arbitrator_count",
+            "type": "u16"
+          },
+          {
+            "name": "arbitrators",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "cumulative_stakes",
+            "type": {
+              "vec": "u64"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeRaised",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "task_id",
+            "type": "u64"
+          },
+          {
+            "name": "client",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent_operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "escrow_amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeResolved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "task_id",
+            "type": "u64"
+          },
+          {
+            "name": "verdict",
+            "type": {
+              "defined": {
+                "name": "DisputeVerdict"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "RequestedVrf"
+          },
+          {
+            "name": "SelectionReady"
+          },
+          {
+            "name": "Committing"
+          },
+          {
+            "name": "Revealing"
+          },
+          {
+            "name": "Tallied"
+          },
+          {
+            "name": "Appealed"
+          },
+          {
+            "name": "Resolved"
+          },
+          {
+            "name": "Cancelled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeVerdict",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "None"
+          },
+          {
+            "name": "AgentWins"
+          },
+          {
+            "name": "ClientWins"
+          },
+          {
+            "name": "Split"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeVoteRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "arbitrator",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "u8"
+          },
+          {
+            "name": "commit_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "committed_at",
+            "type": "i64"
+          },
+          {
+            "name": "revealed_verdict",
+            "type": {
+              "defined": {
+                "name": "DisputeVerdict"
+              }
+            }
+          },
+          {
+            "name": "revealed",
+            "type": "bool"
+          },
+          {
+            "name": "revealed_weight",
+            "type": "u128"
+          },
+          {
+            "name": "revealed_at",
+            "type": "i64"
           },
           {
             "name": "bump",
@@ -656,6 +3373,142 @@
       }
     },
     {
+      "name": "InitConfigParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "task_market",
+            "type": "pubkey"
+          },
+          {
+            "name": "nxs_staking",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_collector",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent_registry",
+            "type": "pubkey"
+          },
+          {
+            "name": "switchboard_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "emergency_council",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_stake",
+            "type": "u64"
+          },
+          {
+            "name": "min_lock_secs",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ParamsUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PausedSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PendingSlash",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "arbitrator",
+            "type": "pubkey"
+          },
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "reason_code",
+            "type": "u8"
+          },
+          {
+            "name": "executable_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolSnapshotted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch",
+            "type": "u64"
+          },
+          {
+            "name": "arbitrator_count",
+            "type": "u16"
+          },
+          {
+            "name": "total_staked",
+            "type": "u128"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "ReentrancyGuard",
       "type": {
         "kind": "struct",
@@ -699,6 +3552,252 @@
           {
             "name": "slot",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RoundTallied",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "round",
+            "type": "u8"
+          },
+          {
+            "name": "verdict",
+            "type": {
+              "defined": {
+                "name": "DisputeVerdict"
+              }
+            }
+          },
+          {
+            "name": "votes_for_agent",
+            "type": "u128"
+          },
+          {
+            "name": "votes_for_client",
+            "type": "u128"
+          },
+          {
+            "name": "votes_for_split",
+            "type": "u128"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SlashCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "arbitrator",
+            "type": "pubkey"
+          },
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SlashExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "arbitrator",
+            "type": "pubkey"
+          },
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SlashProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "arbitrator",
+            "type": "pubkey"
+          },
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "reason_code",
+            "type": "u8"
+          },
+          {
+            "name": "executable_at",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateParamsInput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "commit_window_secs",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "reveal_window_secs",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "appeal_window_secs",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "appeal_collateral_bps",
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "max_slash_bps",
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "slash_timelock_secs",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "min_stake",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "min_lock_secs",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "vrf_stale_slots",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "bad_faith_threshold",
+            "type": {
+              "option": "u8"
+            }
+          },
+          {
+            "name": "bad_faith_lookback",
+            "type": {
+              "option": "u8"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "VoteCommitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "arbitrator",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VoteRevealed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "case_id",
+            "type": "u64"
+          },
+          {
+            "name": "arbitrator",
+            "type": "pubkey"
+          },
+          {
+            "name": "verdict",
+            "type": {
+              "defined": {
+                "name": "DisputeVerdict"
+              }
+            }
+          },
+          {
+            "name": "weight",
+            "type": "u128"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
