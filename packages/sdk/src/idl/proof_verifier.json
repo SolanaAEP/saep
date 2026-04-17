@@ -280,6 +280,92 @@
       "args": []
     },
     {
+      "name": "append_vk_ic",
+      "discriminator": [
+        79,
+        17,
+        2,
+        173,
+        71,
+        133,
+        96,
+        148
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vk.vk_id",
+                "account": "VerifierKey"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "ic_points",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        },
+        {
+          "name": "finalize",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "cancel_vk_activation",
       "discriminator": [
         16,
@@ -651,6 +737,147 @@
           "type": {
             "vec": "pubkey"
           }
+        }
+      ]
+    },
+    {
+      "name": "init_vk",
+      "discriminator": [
+        130,
+        185,
+        234,
+        65,
+        43,
+        113,
+        212,
+        132
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "vk_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "vk_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "alpha_g1",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "beta_g2",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "gamma_g2",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "delta_g2",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "num_public_inputs",
+          "type": "u8"
+        },
+        {
+          "name": "circuit_label",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "is_production",
+          "type": "bool"
         }
       ]
     },
@@ -1326,10 +1553,6 @@
         },
         {
           "name": "rep_authority",
-          "docs": [
-            "Only passed through to agent_registry as the CPI signer; ownership of",
-            "the derivation is the security guarantee."
-          ],
           "pda": {
             "seeds": [
               {
@@ -2056,6 +2279,21 @@
       "code": 6028,
       "name": "ReputationBindingNotReady",
       "msg": "reputation args are not yet bound to the circuit's public outputs; rail disabled"
+    },
+    {
+      "code": 6029,
+      "name": "SampleHashMismatch",
+      "msg": "on-chain poseidon hash of sample does not match proof's sample_hash commitment"
+    },
+    {
+      "code": 6030,
+      "name": "PoseidonError",
+      "msg": "poseidon hash computation failed"
+    },
+    {
+      "code": 6031,
+      "name": "VkAlreadyFinalized",
+      "msg": "vk is already finalized and cannot accept more ic points"
     }
   ],
   "types": [
