@@ -19,6 +19,7 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 [dependencies]
 anchor-lang = "1.0.0"
 anchor-spl = { version = "1.0.0", features = ["token_2022", "token_2022_extensions"] }
+solana-sha256-hasher = "2.3"
 
 [dev-dependencies]
 proptest = "1"

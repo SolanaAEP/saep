@@ -1,7 +1,23 @@
 pub mod agent_hook_allowlist;
+pub mod claim_staker;
+pub mod commit_distribution;
+pub mod execute_burn;
 pub mod guard;
 pub mod hook_allowlist;
+pub mod init_config;
+pub mod process_epoch;
+pub mod record_intake;
+pub mod set_params;
+pub mod sweep_stale;
 
 pub use agent_hook_allowlist::*;
+pub use claim_staker::*;
+pub use commit_distribution::*;
+pub use execute_burn::*;
 pub use guard::*;
 pub use hook_allowlist::*;
+pub use init_config::*;
+pub use process_epoch::*;
+pub use record_intake::*;
+pub use set_params::*;
+pub use sweep_stale::*;

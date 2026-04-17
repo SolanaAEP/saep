@@ -832,6 +832,7 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "proptest",
+ "solana-sha256-hasher 2.3.0",
 ]
 
 [[package]]
