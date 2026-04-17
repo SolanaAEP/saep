@@ -31,13 +31,25 @@
 //! (not carried in current IDL — deferred pending program event-payload
 //! extension; same class of spec↔IDL drift as cycle-96 INBOX item (5)).
 //! Remaining (agent streams, WS, rate-limiter, cache) land in subsequent cycles.
+//!
+//! Cycle-104 scope: Prometheus metrics per `specs/discovery-api.md` §Metrics.
+//! `metrics_mw` is layered over the sub-router — per-request timer +
+//! class-bucketed counter keyed on the 5 endpoint classes from spec
+//! §Rate-limits (`agents` / `tasks` / `treasury` / `capabilities` / `catch_all`).
+//! `time_discovery_query` timer wraps the top SQL call in each list/detail
+//! handler so `saep_discovery_db_query_duration_seconds` carries real data
+//! for the read-heavy paths; cache + rate-limit + WS series are registered
+//! but stay zero until those layers land.
 
 use axum::{
     extract::{Path, Query, State},
+    middleware::{self, Next},
     response::Json,
     routing::get,
     Router,
 };
+use axum::http::Request;
+use axum::body::Body;
 use base64::Engine;
 use diesel::prelude::*;
 use diesel::sql_query;
@@ -45,6 +57,7 @@ use diesel::sql_types::{BigInt, Bytea, Int2, Int4, Jsonb, Text, Timestamptz};
 use serde::{Deserialize, Serialize};
 
 use crate::api::{ApiError, ApiState};
+use crate::metrics;
 
 const DEFAULT_LIMIT: i64 = 50;
 const MAX_LIMIT: i64 = 200;
@@ -69,7 +82,36 @@ pub fn router(state: ApiState) -> Router {
         .route("/v1/discovery/capabilities/:bit", get(capability_detail))
         .route("/v1/discovery/treasury/:did", get(treasury_detail))
         .route("/v1/discovery/treasury/:did/vaults", get(treasury_vaults))
+        .layer(middleware::from_fn(metrics_mw))
         .with_state(state)
+}
+
+/// Maps a discovery request path to the 5-way endpoint class used for
+/// `saep_discovery_*` label cardinality. Mirrors the rate-limit bucketing
+/// from `specs/discovery-api.md:225`.
+pub(crate) fn endpoint_class(path: &str) -> &'static str {
+    let rest = match path.strip_prefix("/v1/discovery/") {
+        Some(r) => r,
+        None => return "catch_all",
+    };
+    let head = rest.split('/').next().unwrap_or("");
+    match head {
+        "agents" => "agents",
+        "tasks" => "tasks",
+        "treasury" => "treasury",
+        "capabilities" => "capabilities",
+        _ => "catch_all",
+    }
+}
+
+async fn metrics_mw(req: Request<Body>, next: Next) -> axum::response::Response {
+    let class = endpoint_class(req.uri().path());
+    let timer = metrics::time_discovery_request(class);
+    let resp = next.run(req).await;
+    timer.observe_duration();
+    let status = resp.status().as_u16();
+    metrics::inc_discovery_request(class, &status.to_string());
+    resp
 }
 
 const CAPABILITY_REGISTRY_PROGRAM_ID: &str = "GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F";
@@ -140,6 +182,7 @@ pub async fn list_agents(
         None => None,
     };
 
+    let qtimer = metrics::time_discovery_query("discovery.list_agents");
     let rows = tokio::task::spawn_blocking(move || -> Result<Vec<RawAgentRow>, ApiError> {
         let mut conn = state.pool.get().map_err(ApiError::internal)?;
         let mut sql = String::from(
@@ -219,6 +262,7 @@ pub async fn list_agents(
     })
     .await
     .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
 
     let has_more = rows.len() as i64 > limit;
     let items: Vec<AgentSummary> = rows
@@ -336,6 +380,7 @@ pub async fn list_tasks(
         None => None,
     };
 
+    let qtimer = metrics::time_discovery_query("discovery.list_tasks");
     let rows = tokio::task::spawn_blocking(move || -> Result<Vec<RawTaskRow>, ApiError> {
         let mut conn = state.pool.get().map_err(ApiError::internal)?;
         let mut sql = String::from(
@@ -427,6 +472,7 @@ pub async fn list_tasks(
     })
     .await
     .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
 
     let has_more = rows.len() as i64 > limit;
     let items: Vec<TaskSummary> = rows
@@ -686,6 +732,7 @@ pub async fn agent_detail(
 ) -> Result<Json<AgentDetail>, ApiError> {
     let did_bytes = parse_hex_32(&did_hex).map_err(ApiError::bad_request)?;
 
+    let qtimer = metrics::time_discovery_query("discovery.agent_detail");
     let (base, bits) = tokio::task::spawn_blocking(
         move || -> Result<(Option<RawAgentDetailRow>, Vec<RawReputationBitRow>), ApiError> {
             let mut conn = state.pool.get().map_err(ApiError::internal)?;
@@ -717,6 +764,7 @@ pub async fn agent_detail(
     )
     .await
     .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
 
     let base = base.ok_or_else(|| ApiError::not_found("agent not found"))?;
 
@@ -792,6 +840,7 @@ pub async fn task_detail(
 ) -> Result<Json<TaskDetail>, ApiError> {
     let task_id = parse_hex_32(&task_id_hex).map_err(ApiError::bad_request)?;
 
+    let qtimer = metrics::time_discovery_query("discovery.task_detail");
     let row = tokio::task::spawn_blocking(move || -> Result<Option<RawTaskDetailRow>, ApiError> {
         let mut conn = state.pool.get().map_err(ApiError::internal)?;
         Ok(sql_query(
@@ -809,6 +858,7 @@ pub async fn task_detail(
     .await
     .map_err(ApiError::internal)??
     .ok_or_else(|| ApiError::not_found("task not found"))?;
+    qtimer.observe_duration();
 
     Ok(Json(TaskDetail {
         task_id_hex: hex::encode(&row.task_id),
@@ -1531,5 +1581,101 @@ mod tests {
             assert!(vaults[0].get(field).is_some(), "missing field {field}");
         }
         assert_eq!(vaults[0]["balance"], "3500000");
+    }
+
+    #[test]
+    fn endpoint_class_maps_every_registered_route() {
+        // Five classes from spec §Rate-limits; must cover the 11 landed routes.
+        assert_eq!(endpoint_class("/v1/discovery/agents"), "agents");
+        assert_eq!(
+            endpoint_class("/v1/discovery/agents/deadbeef"),
+            "agents"
+        );
+        assert_eq!(
+            endpoint_class("/v1/discovery/agents/deadbeef/tasks"),
+            "agents"
+        );
+        assert_eq!(
+            endpoint_class("/v1/discovery/agents/deadbeef/reputation"),
+            "agents"
+        );
+        assert_eq!(endpoint_class("/v1/discovery/tasks"), "tasks");
+        assert_eq!(
+            endpoint_class("/v1/discovery/tasks/abc123"),
+            "tasks"
+        );
+        assert_eq!(
+            endpoint_class("/v1/discovery/tasks/abc123/timeline"),
+            "tasks"
+        );
+        assert_eq!(
+            endpoint_class("/v1/discovery/capabilities"),
+            "capabilities"
+        );
+        assert_eq!(
+            endpoint_class("/v1/discovery/capabilities/7"),
+            "capabilities"
+        );
+        assert_eq!(
+            endpoint_class("/v1/discovery/treasury/deadbeef"),
+            "treasury"
+        );
+        assert_eq!(
+            endpoint_class("/v1/discovery/treasury/deadbeef/vaults"),
+            "treasury"
+        );
+        assert_eq!(endpoint_class("/v1/discovery/unknown"), "catch_all");
+        assert_eq!(endpoint_class("/unrelated"), "catch_all");
+        assert_eq!(endpoint_class(""), "catch_all");
+    }
+
+    #[test]
+    fn discovery_metrics_are_registered_and_render() {
+        // Touch each Lazy static so registration side-effects fire, then
+        // verify the rendered Prometheus payload carries the series names
+        // spec §Metrics mandates. Guards against accidental rename or
+        // registration drop.
+        metrics::inc_discovery_request("agents", "200");
+        let t = metrics::time_discovery_request("tasks");
+        t.observe_duration();
+        let q = metrics::time_discovery_query("discovery.list_agents");
+        q.observe_duration();
+        metrics::DISCOVERY_CACHE_HITS
+            .with_label_values(&["agents"])
+            .inc();
+        metrics::DISCOVERY_CACHE_MISSES
+            .with_label_values(&["agents"])
+            .inc();
+        metrics::DISCOVERY_WS_CONNECTIONS.inc();
+        metrics::DISCOVERY_WS_SUBSCRIPTIONS
+            .with_label_values(&["tasks"])
+            .set(0);
+        metrics::DISCOVERY_WS_EVENTS_SENT
+            .with_label_values(&["tasks"])
+            .inc();
+        metrics::DISCOVERY_WS_EVENTS_DROPPED
+            .with_label_values(&["tasks", "queue_full"])
+            .inc();
+        metrics::DISCOVERY_RATE_LIMITED
+            .with_label_values(&["ip", "agents"])
+            .inc();
+
+        let mf = prometheus::gather();
+        let names: std::collections::HashSet<_> =
+            mf.iter().map(|f| f.name().to_string()).collect();
+        for expected in [
+            "saep_discovery_request_total",
+            "saep_discovery_request_duration_seconds",
+            "saep_discovery_cache_hits_total",
+            "saep_discovery_cache_misses_total",
+            "saep_discovery_ws_connections",
+            "saep_discovery_ws_subscriptions",
+            "saep_discovery_ws_events_sent_total",
+            "saep_discovery_ws_events_dropped_total",
+            "saep_discovery_rate_limited_total",
+            "saep_discovery_db_query_duration_seconds",
+        ] {
+            assert!(names.contains(expected), "missing metric {expected}");
+        }
     }
 }
