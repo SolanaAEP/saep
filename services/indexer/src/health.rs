@@ -3,6 +3,7 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::api::{self, ApiState};
 use crate::db::PgPool;
+use crate::discovery;
 use crate::metrics;
 use crate::stats;
 
@@ -33,7 +34,8 @@ pub fn public_router(pool: PgPool, allowed_origins: Vec<String>) -> Router {
 
     Router::new()
         .merge(api::router(pool))
-        .merge(stats::router(state))
+        .merge(stats::router(state.clone()))
+        .merge(discovery::router(state))
         .layer(cors)
 }
 
@@ -45,7 +47,8 @@ pub fn router(pool: PgPool) -> Router {
         .route("/metrics", get(metrics_handler))
         .with_state(pool.clone())
         .merge(api::router(pool))
-        .merge(stats::router(state))
+        .merge(stats::router(state.clone()))
+        .merge(discovery::router(state))
 }
 
 async fn metrics_handler(State(pool): State<PgPool>) -> impl IntoResponse {

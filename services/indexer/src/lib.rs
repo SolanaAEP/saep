@@ -2,6 +2,7 @@ pub mod api;
 pub mod borsh_decode;
 pub mod config;
 pub mod db;
+pub mod discovery;
 pub mod health;
 pub mod idl;
 pub mod ingest;
