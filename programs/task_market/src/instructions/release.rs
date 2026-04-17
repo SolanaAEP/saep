@@ -208,6 +208,10 @@ pub fn handler(ctx: Context<Release>) -> Result<()> {
 
     emit!(TaskReleased {
         task_id,
+        agent_did: ctx.accounts.agent_account.agent_id,
+        operator: ctx.accounts.agent_account.operator,
+        client: ctx.accounts.task.client,
+        mint: ctx.accounts.payment_mint.key(),
         agent_payout,
         protocol_fee,
         solrep_fee,
