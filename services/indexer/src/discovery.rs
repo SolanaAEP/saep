@@ -40,6 +40,14 @@
 //! handler so `saep_discovery_db_query_duration_seconds` carries real data
 //! for the read-heavy paths; cache + rate-limit + WS series are registered
 //! but stay zero until those layers land.
+//!
+//! Cycle-105 scope: extended `time_discovery_query` coverage from 4 → 10 handler
+//! sites — `agent_reputation`, `task_timeline`, `list_capabilities`,
+//! `capability_detail`, `treasury_detail`, `treasury_vaults` all carry per-query
+//! labels now. `agent_tasks` intentionally excluded: it delegates to `list_tasks`
+//! with an injected `agent_did` filter, so its SQL is already attributed to
+//! `discovery.list_tasks`. The `{query}` label reflects SQL pathway, not HTTP
+//! endpoint.
 
 use axum::{
     extract::{Path, Query, State},
@@ -551,6 +559,7 @@ pub async fn agent_reputation(
 ) -> Result<Json<AgentReputation>, ApiError> {
     let did_bytes = parse_hex_32(&did_hex).map_err(ApiError::bad_request)?;
 
+    let qtimer = metrics::time_discovery_query("discovery.agent_reputation");
     let (exists, bits) = tokio::task::spawn_blocking(
         move || -> Result<(bool, Vec<RawReputationBitRow>), ApiError> {
             let mut conn = state.pool.get().map_err(ApiError::internal)?;
@@ -579,6 +588,7 @@ pub async fn agent_reputation(
     )
     .await
     .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
 
     if !exists {
         return Err(ApiError::not_found("agent not found"));
@@ -917,6 +927,7 @@ pub async fn task_timeline(
     let jsonb_filter = bytes_to_jsonb_array(&task_id);
     let task_id_for_lookup = task_id.clone();
 
+    let qtimer = metrics::time_discovery_query("discovery.task_timeline");
     let (exists, rows) = tokio::task::spawn_blocking(
         move || -> Result<(bool, Vec<RawTimelineRow>), ApiError> {
             let mut conn = state.pool.get().map_err(ApiError::internal)?;
@@ -948,6 +959,7 @@ pub async fn task_timeline(
     )
     .await
     .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
 
     if !exists {
         return Err(ApiError::not_found("task not found"));
@@ -1041,6 +1053,7 @@ pub async fn list_capabilities(
 ) -> Result<Json<CapabilitiesList>, ApiError> {
     let include_retired = q.include_retired.unwrap_or(false);
 
+    let qtimer = metrics::time_discovery_query("discovery.list_capabilities");
     let rows = tokio::task::spawn_blocking(move || -> Result<Vec<RawCapabilityRow>, ApiError> {
         let mut conn = state.pool.get().map_err(ApiError::internal)?;
         let mut sql = String::from(CAPABILITIES_CTE);
@@ -1061,6 +1074,7 @@ pub async fn list_capabilities(
     })
     .await
     .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
 
     let items = rows.into_iter().map(row_to_capability).collect();
     Ok(Json(CapabilitiesList { items }))
@@ -1074,7 +1088,8 @@ pub async fn capability_detail(
         return Err(ApiError::bad_request("bit must be 0..128"));
     }
 
-    let row = tokio::task::spawn_blocking(move || -> Result<Option<RawCapabilityRow>, ApiError> {
+    let qtimer = metrics::time_discovery_query("discovery.capability_detail");
+    let maybe_row = tokio::task::spawn_blocking(move || -> Result<Option<RawCapabilityRow>, ApiError> {
         let mut conn = state.pool.get().map_err(ApiError::internal)?;
         let mut sql = String::from(CAPABILITIES_CTE);
         sql.push_str(
@@ -1093,9 +1108,10 @@ pub async fn capability_detail(
             .next())
     })
     .await
-    .map_err(ApiError::internal)??
-    .ok_or_else(|| ApiError::not_found("capability not found"))?;
+    .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
 
+    let row = maybe_row.ok_or_else(|| ApiError::not_found("capability not found"))?;
     Ok(Json(row_to_capability(row)))
 }
 
@@ -1160,7 +1176,8 @@ pub async fn treasury_detail(
     let did_bytes = parse_hex_32(&did_hex).map_err(ApiError::bad_request)?;
     let jsonb_filter = bytes_to_jsonb_array(&did_bytes);
 
-    let row = tokio::task::spawn_blocking(
+    let qtimer = metrics::time_discovery_query("discovery.treasury_detail");
+    let maybe_row = tokio::task::spawn_blocking(
         move || -> Result<Option<RawTreasuryDetailRow>, ApiError> {
             let mut conn = state.pool.get().map_err(ApiError::internal)?;
             let jsonb: serde_json::Value =
@@ -1207,8 +1224,10 @@ pub async fn treasury_detail(
         },
     )
     .await
-    .map_err(ApiError::internal)??
-    .ok_or_else(|| ApiError::not_found("treasury not found"))?;
+    .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
+
+    let row = maybe_row.ok_or_else(|| ApiError::not_found("treasury not found"))?;
 
     Ok(Json(TreasuryDetail {
         did_hex,
@@ -1257,6 +1276,7 @@ pub async fn treasury_vaults(
     let did_bytes = parse_hex_32(&did_hex).map_err(ApiError::bad_request)?;
     let jsonb_filter = bytes_to_jsonb_array(&did_bytes);
 
+    let qtimer = metrics::time_discovery_query("discovery.treasury_vaults");
     let (exists, rows) = tokio::task::spawn_blocking(
         move || -> Result<(bool, Vec<RawTreasuryVaultRow>), ApiError> {
             let mut conn = state.pool.get().map_err(ApiError::internal)?;
@@ -1306,6 +1326,7 @@ pub async fn treasury_vaults(
     )
     .await
     .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
 
     if !exists {
         return Err(ApiError::not_found("treasury not found"));
