@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MessageTypeSchema } from './message_types.js';
 
 export const TopicSchema = z
   .string()
@@ -11,6 +12,7 @@ export const EnvelopeSchema = z.object({
   topic: TopicSchema,
   from_agent: z.string().min(32).max(44),
   to_agent: z.string().min(32).max(44).nullable(),
+  msg_type: MessageTypeSchema.optional(),
   payload_cid: z.string().min(1).max(256),
   payload_digest: z.string().regex(/^[0-9a-f]{64}$/),
   signature: z.string().min(1).max(128),
@@ -58,6 +60,7 @@ export function canonicalizeForSigning(env: Envelope): string {
     topic: rest.topic,
     from_agent: rest.from_agent,
     to_agent: rest.to_agent,
+    msg_type: rest.msg_type ?? null,
     payload_cid: rest.payload_cid,
     payload_digest: rest.payload_digest,
     ts: rest.ts,
