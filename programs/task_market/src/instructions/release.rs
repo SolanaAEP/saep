@@ -35,13 +35,21 @@ pub struct Release<'info> {
     )]
     pub escrow: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(mut, token::mint = payment_mint)]
+    #[account(mut, token::mint = payment_mint, token::authority = agent_account.operator)]
     pub agent_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(mut, token::mint = payment_mint)]
+    #[account(
+        mut,
+        token::mint = payment_mint,
+        constraint = fee_collector_token_account.owner == global.fee_collector @ TaskMarketError::Unauthorized,
+    )]
     pub fee_collector_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(mut, token::mint = payment_mint)]
+    #[account(
+        mut,
+        token::mint = payment_mint,
+        constraint = solrep_pool_token_account.owner == global.solrep_pool @ TaskMarketError::Unauthorized,
+    )]
     pub solrep_pool_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(

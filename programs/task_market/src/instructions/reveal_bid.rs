@@ -50,6 +50,10 @@ pub fn handler(
         TaskMarketError::PhaseClosed
     );
 
+    if book.phase == BidPhase::Commit {
+        book.phase = BidPhase::Reveal;
+    }
+
     let bid = &mut ctx.accounts.bid;
     require!(!bid.revealed, TaskMarketError::WrongStatus);
     require!(!bid.slashed, TaskMarketError::WrongStatus);

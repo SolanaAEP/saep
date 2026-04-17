@@ -41,7 +41,7 @@ pub struct Withdraw<'info> {
     )]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(mut, token::mint = mint, token::token_program = token_program)]
+    #[account(mut, token::mint = mint, token::authority = operator, token::token_program = token_program)]
     pub destination: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// CHECK: Pyth PriceUpdateV2 for mint/USD — deserialized + validated via read_oracle.

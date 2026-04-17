@@ -37,7 +37,7 @@ wallet = "~/.config/solana/id.json"
 members = ["programs/agent_registry", "programs/capability_registry", "programs/treasury_standard", "programs/task_market", "programs/dispute_arbitration", "programs/governance_program", "programs/fee_collector", "programs/nxs_staking", "programs/proof_verifier", "programs/template_registry"]
 
 [scripts]
-test = "pnpm exec mocha --require ts-node/register --timeout 1000000 'tests/**/*.ts'"
+test = "NODE_OPTIONS='--import tsx/esm' pnpm exec mocha --timeout 1000000 'tests/**/*.ts'"
 
 [hooks]
 

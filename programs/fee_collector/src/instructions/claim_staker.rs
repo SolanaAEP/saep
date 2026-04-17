@@ -102,8 +102,7 @@ pub fn handler(
     c.bump = ctx.bumps.claim;
 
     // transfer from staker_vault
-    let (_, vault_bump) =
-        Pubkey::find_program_address(&[SEED_STAKER_VAULT], ctx.program_id);
+    let vault_bump = ctx.bumps.staker_vault;
     let vault_seeds: &[&[u8]] = &[SEED_STAKER_VAULT, &[vault_bump]];
     let signer = &[vault_seeds];
 

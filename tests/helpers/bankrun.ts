@@ -1,9 +1,10 @@
 import * as anchor from '@coral-xyz/anchor';
 import { Clock, ProgramTestContext, startAnchor } from 'solana-bankrun';
 import { BankrunProvider } from 'anchor-bankrun';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = resolve(__dirname, '../..');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
 export interface BankrunEnv {
   context: ProgramTestContext;
