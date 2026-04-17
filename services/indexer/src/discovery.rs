@@ -14,9 +14,14 @@
 //! TagApproved/TagRetired events.
 //!
 //! Cycle-101 scope: `/v1/discovery/agents/:did/tasks` — thin wrapper over
-//! `list_tasks` with the `agent_did` filter pinned from the path. Remaining
-//! (treasury, agent streams + reputation sub-endpoints, WS, rate-limiter,
-//! cache) land in subsequent cycles.
+//! `list_tasks` with the `agent_did` filter pinned from the path.
+//!
+//! Cycle-102 scope: `/v1/discovery/agents/:did/reputation` — alias surface for
+//! the per-bit current-state `reputation_rollup` query that `api::agent_reputation`
+//! already exposes under the legacy `/api/` namespace. Spec §4.1 lists the path
+//! under `/v1/discovery/` for namespace parity; day/week-bucketed 90d time-series
+//! enhancement is deferred (see INBOX). Remaining (treasury, agent streams, WS,
+//! rate-limiter, cache) land in subsequent cycles.
 
 use axum::{
     extract::{Path, Query, State},
@@ -41,6 +46,10 @@ pub fn router(state: ApiState) -> Router {
         .route("/v1/discovery/agents", get(list_agents))
         .route("/v1/discovery/agents/:did", get(agent_detail))
         .route("/v1/discovery/agents/:did/tasks", get(agent_tasks))
+        .route(
+            "/v1/discovery/agents/:did/reputation",
+            get(agent_reputation),
+        )
         .route("/v1/discovery/tasks", get(list_tasks))
         .route("/v1/discovery/tasks/:task_id_hex", get(task_detail))
         .route(
@@ -464,6 +473,79 @@ pub async fn agent_tasks(
         cursor: q.cursor,
     };
     list_tasks(State(state), Query(merged)).await
+}
+
+#[derive(Debug, Serialize)]
+pub struct AgentReputation {
+    pub did_hex: String,
+    pub reputation: Vec<ReputationBit>,
+}
+
+#[derive(QueryableByName)]
+struct RawExistsRow {
+    #[diesel(sql_type = BigInt)]
+    n: i64,
+}
+
+pub async fn agent_reputation(
+    State(state): State<ApiState>,
+    Path(did_hex): Path<String>,
+) -> Result<Json<AgentReputation>, ApiError> {
+    let did_bytes = parse_hex_32(&did_hex).map_err(ApiError::bad_request)?;
+
+    let (exists, bits) = tokio::task::spawn_blocking(
+        move || -> Result<(bool, Vec<RawReputationBitRow>), ApiError> {
+            let mut conn = state.pool.get().map_err(ApiError::internal)?;
+            let existence: Vec<RawExistsRow> =
+                sql_query("SELECT count(*)::bigint AS n FROM agent_directory WHERE agent_did = $1")
+                    .bind::<Bytea, _>(did_bytes.clone())
+                    .load::<RawExistsRow>(&mut conn)
+                    .map_err(ApiError::internal)?;
+            let exists = existence.first().map(|r| r.n).unwrap_or(0) > 0;
+            if !exists {
+                return Ok((false, Vec::new()));
+            }
+            let bits = sql_query(
+                "SELECT capability_bit, quality, timeliness, availability, \
+                        cost_efficiency, honesty, jobs_completed, jobs_disputed, \
+                        composite_score, last_update \
+                 FROM reputation_rollup \
+                 WHERE agent_did = $1 \
+                 ORDER BY capability_bit ASC",
+            )
+            .bind::<Bytea, _>(did_bytes)
+            .load::<RawReputationBitRow>(&mut conn)
+            .map_err(ApiError::internal)?;
+            Ok((true, bits))
+        },
+    )
+    .await
+    .map_err(ApiError::internal)??;
+
+    if !exists {
+        return Err(ApiError::not_found("agent not found"));
+    }
+
+    let reputation = bits
+        .into_iter()
+        .map(|b| ReputationBit {
+            capability_bit: b.capability_bit,
+            quality: b.quality,
+            timeliness: b.timeliness,
+            availability: b.availability,
+            cost_efficiency: b.cost_efficiency,
+            honesty: b.honesty,
+            jobs_completed: b.jobs_completed,
+            jobs_disputed: b.jobs_disputed,
+            composite_score: b.composite_score,
+            last_update_unix: b.last_update.timestamp(),
+        })
+        .collect();
+
+    Ok(Json(AgentReputation {
+        did_hex,
+        reputation,
+    }))
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -1117,6 +1199,47 @@ mod tests {
         assert_eq!(merged.agent_did, Some(path_did));
         assert_eq!(merged.status.as_deref(), Some("funded"));
         assert_eq!(merged.limit, Some(10));
+    }
+
+    #[test]
+    fn agent_reputation_response_shape() {
+        // Contract: `AgentReputation` serializes to `{did_hex, reputation: []}`
+        // with the did unchanged from path input; reputation bits carry the
+        // same 10 per-bit fields as `agent_detail`'s embedded `ReputationBit`.
+        // Guards against a refactor that drops either top-level field.
+        let r = AgentReputation {
+            did_hex: "ab".repeat(32),
+            reputation: vec![ReputationBit {
+                capability_bit: 3,
+                quality: 9500,
+                timeliness: 9000,
+                availability: 8800,
+                cost_efficiency: 9100,
+                honesty: 9900,
+                jobs_completed: 42,
+                jobs_disputed: 1,
+                composite_score: 92_500,
+                last_update_unix: 1_700_000_000,
+            }],
+        };
+        let j = serde_json::to_value(&r).unwrap();
+        assert_eq!(j["did_hex"], "ab".repeat(32));
+        assert_eq!(j["reputation"].as_array().unwrap().len(), 1);
+        let bit = &j["reputation"][0];
+        for field in [
+            "capability_bit",
+            "quality",
+            "timeliness",
+            "availability",
+            "cost_efficiency",
+            "honesty",
+            "jobs_completed",
+            "jobs_disputed",
+            "composite_score",
+            "last_update_unix",
+        ] {
+            assert!(!bit[field].is_null(), "missing field {field}");
+        }
     }
 
     #[test]
