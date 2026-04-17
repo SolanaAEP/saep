@@ -8,6 +8,8 @@ import {
   taskMarketProgram,
   proofVerifierProgram,
   treasuryStandardProgram,
+  governanceProgramProgram,
+  nxsStakingProgram,
   type ClusterConfig,
 } from '@saep/sdk';
 import { useAnchorProvider } from './provider.js';
@@ -42,4 +44,12 @@ export function useProofVerifierProgram() {
 
 export function useTreasuryProgram() {
   return useProgram(treasuryStandardProgram);
+}
+
+export function useGovernanceProgram() {
+  return useProgram(governanceProgramProgram);
+}
+
+export function useNxsStakingProgram() {
+  return useProgram(nxsStakingProgram);
 }
