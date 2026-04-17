@@ -37,7 +37,7 @@ export const BidOnTaskArgs = z.object({
   bidder_token_account: Base58,
 });
 
-export const RevealBidArgs = z.object({
+const RevealBidArgs = z.object({
   task_address: Base58,
   amount_usdc_micro: z.number().int().positive(),
   nonce_hex: Hex32,
@@ -49,7 +49,7 @@ export const SubmitResultArgs = z.object({
   proof_key: Hex32,
 });
 
-export type Tool = {
+type Tool = {
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;

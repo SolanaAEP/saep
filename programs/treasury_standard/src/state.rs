@@ -235,12 +235,16 @@ pub struct OraclePrice {
     pub exponent: i32,
 }
 
+// Fields must match the on-chain Pyth PriceUpdateV2 binary layout exactly —
+// AnchorDeserialize reads them positionally, so unused fields still occupy space.
+#[allow(dead_code)]
 #[derive(AnchorDeserialize)]
 enum PythVerificationLevel {
     Partial { num_signatures: u8 },
     Full,
 }
 
+#[allow(dead_code)]
 #[derive(AnchorDeserialize)]
 struct PythPriceFeedMessage {
     pub feed_id: [u8; 32],
@@ -253,6 +257,7 @@ struct PythPriceFeedMessage {
     pub ema_conf: u64,
 }
 
+#[allow(dead_code)]
 #[derive(AnchorDeserialize)]
 struct PythPriceUpdateV2 {
     pub write_authority: Pubkey,
