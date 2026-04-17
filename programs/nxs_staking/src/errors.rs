@@ -18,4 +18,22 @@ pub enum NxsStakingError {
     GuardNotInitialized,
     #[msg("admin reset has not met the 24h timelock")]
     AdminResetNotTimelocked,
+    #[msg("staking pool is paused")]
+    Paused,
+    #[msg("lockup duration out of allowed range")]
+    InvalidLockup,
+    #[msg("amount must be greater than zero")]
+    ZeroAmount,
+    #[msg("lockup period has not ended")]
+    LockupNotEnded,
+    #[msg("cooldown period has not ended")]
+    CooldownNotEnded,
+    #[msg("stake account is not active")]
+    NotActive,
+    #[msg("stake account is not in cooldown")]
+    NotInCooldown,
+    #[msg("arithmetic overflow")]
+    ArithmeticOverflow,
+    #[msg("epoch has not ended yet")]
+    EpochNotEnded,
 }

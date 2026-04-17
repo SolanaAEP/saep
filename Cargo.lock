@@ -1283,6 +1283,7 @@ name = "nxs_staking"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "anchor-spl",
  "proptest",
 ]
 
@@ -3859,6 +3860,15 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys",
+]
+
+[[package]]
+name = "template_registry"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "proptest",
 ]
 
 [[package]]
