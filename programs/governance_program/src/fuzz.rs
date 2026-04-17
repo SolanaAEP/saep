@@ -1,15 +1,12 @@
-//! Account-deserialization fuzz harness (stub).
-//!
-//! governance_program is currently a scaffold with no persistent account types.
-//! This module exists so the fuzz-coverage gate passes uniformly across all
-//! programs. Once state types land, expand this to match the pattern used by
-//! treasury_standard, capability_registry, et al.
-//!
-//! The single proptest below exercises the `Initialize` instruction's
-//! `Accounts` struct — which is empty — to confirm Anchor's zero-account
-//! deserialization path doesn't panic on arbitrary bytes.
+#![cfg(test)]
 
+use anchor_lang::AnchorDeserialize;
 use proptest::prelude::*;
+
+use crate::state::{
+    compute_vote_leaf, verify_vote_proof, GovernanceConfig, ProgramRegistry, ProposalAccount,
+    VoteRecord, ExecutionRecord,
+};
 
 proptest! {
     #![proptest_config(ProptestConfig {
@@ -18,13 +15,67 @@ proptest! {
     })]
 
     #[test]
-    fn arbitrary_bytes_do_not_panic(data in proptest::collection::vec(any::<u8>(), 0..512)) {
-        // governance_program has no #[account] structs yet. Feed arbitrary bytes
-        // through Borsh to confirm the program crate links cleanly and the test
-        // infra runs. Real coverage arrives when state types are added.
-        use anchor_lang::AnchorDeserialize;
+    fn arbitrary_bytes_governance_config(data in proptest::collection::vec(any::<u8>(), 0..1024)) {
         let mut slice = data.as_slice();
-        let _ = <u8 as AnchorDeserialize>::deserialize(&mut slice);
-        let _ = <u64 as AnchorDeserialize>::deserialize(&mut slice);
+        let _ = GovernanceConfig::deserialize(&mut slice);
+    }
+
+    #[test]
+    fn arbitrary_bytes_program_registry(data in proptest::collection::vec(any::<u8>(), 0..2048)) {
+        let mut slice = data.as_slice();
+        let _ = ProgramRegistry::deserialize(&mut slice);
+    }
+
+    #[test]
+    fn arbitrary_bytes_proposal_account(data in proptest::collection::vec(any::<u8>(), 0..2048)) {
+        let mut slice = data.as_slice();
+        let _ = ProposalAccount::deserialize(&mut slice);
+    }
+
+    #[test]
+    fn arbitrary_bytes_vote_record(data in proptest::collection::vec(any::<u8>(), 0..256)) {
+        let mut slice = data.as_slice();
+        let _ = VoteRecord::deserialize(&mut slice);
+    }
+
+    #[test]
+    fn arbitrary_bytes_execution_record(data in proptest::collection::vec(any::<u8>(), 0..256)) {
+        let mut slice = data.as_slice();
+        let _ = ExecutionRecord::deserialize(&mut slice);
+    }
+
+    #[test]
+    fn vote_leaf_deterministic(
+        voter_bytes in any::<[u8; 32]>(),
+        weight in any::<u128>(),
+    ) {
+        let voter = anchor_lang::prelude::Pubkey::new_from_array(voter_bytes);
+        let l1 = compute_vote_leaf(&voter, weight);
+        let l2 = compute_vote_leaf(&voter, weight);
+        prop_assert_eq!(l1, l2);
+    }
+
+    #[test]
+    fn vote_leaf_different_voters_different_leaves(
+        v1 in any::<[u8; 32]>(),
+        v2 in any::<[u8; 32]>(),
+        weight in any::<u128>(),
+    ) {
+        prop_assume!(v1 != v2);
+        let l1 = compute_vote_leaf(&anchor_lang::prelude::Pubkey::new_from_array(v1), weight);
+        let l2 = compute_vote_leaf(&anchor_lang::prelude::Pubkey::new_from_array(v2), weight);
+        prop_assert_ne!(l1, l2);
+    }
+
+    #[test]
+    fn bad_proof_rejected(
+        voter_bytes in any::<[u8; 32]>(),
+        weight in any::<u128>(),
+        fake_root in any::<[u8; 32]>(),
+    ) {
+        let voter = anchor_lang::prelude::Pubkey::new_from_array(voter_bytes);
+        let leaf = compute_vote_leaf(&voter, weight);
+        prop_assume!(fake_root != leaf);
+        prop_assert!(!verify_vote_proof(&[], &fake_root, leaf));
     }
 }
