@@ -28,8 +28,10 @@
 - **Security scan**: zero findings across all programs (UncheckedAccount docs ✓, no unwrap in prod ✓, numeric casts safe ✓, authority checks ✓, reentrancy guards ✓)
 - **MCP bridge tools**: all 6 wired to SDK (was previously thought to be stubbed — confirmed wired with `taskMarketProgram()`, `agentRegistryProgram()`, etc.)
 - **NOT_YET_WIRED remaining**: only compute-broker (io.net/Akash) — explicitly M2 scope per backlog
-- **Devnet deploy**: 4/9 programs deployed (governance_program, capability_registry, nxs_staking, dispute_arbitration). Remaining 5 (fee_collector, proof_verifier, agent_registry, treasury_standard, task_market) blocked on devnet SOL — faucet rate-limited (1 SOL/project/day via Helius). Current balance: 1.28 SOL. Need ~40 SOL total for remaining programs. Will retry airdrop next session.
-- **RLUSD**: blocked — Ripple hasn't deployed SPL mint on Solana
+- **Devnet deploy**: 8/9 programs deployed. Only task_market remains — needs ~5.6 SOL, wallet has 2.78 SOL. Faucet rate-limited.
+- **wXRP**: blocked — wXRP is EVM-only (Hex Trust custody on Ethereum). No SPL mint on Solana. Removed fabricated SDK entry.
+- **RLUSD**: blocked — natively on XRPL + Ethereum only (Ripple). No SPL mint on Solana.
+- **Both**: need Wormhole/deBridge bridge or native Solana issuance before SAEP can accept them as payment mints.
 - **377 Rust tests green**, 5 SPL compat bankrun tests green
 
 ## 2026-04-16 — F-2026-12 caller_program derivation from instructions sysvar — CLOSED 2026-04-16
