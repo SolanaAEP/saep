@@ -41,6 +41,16 @@ export const PublishBodySchema = z.object({
 
 export type PublishBody = z.infer<typeof PublishBodySchema>;
 
+export const HEARTBEAT_TOPIC = 'system.heartbeat' as const;
+
+export const HeartbeatPayloadSchema = z.object({
+  agent_did: z.string().min(32).max(44),
+  capability_bit: z.number().int().min(0).max(127),
+  seen_at_unix: z.number().int().nonnegative(),
+});
+
+export type HeartbeatPayload = z.infer<typeof HeartbeatPayloadSchema>;
+
 export function canonicalizeForSigning(env: Envelope): string {
   const { signature: _sig, ...rest } = env;
   return JSON.stringify({

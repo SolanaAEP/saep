@@ -54,3 +54,45 @@ pub struct ReentrancyRejected {
     pub offending_caller: Pubkey,
     pub slot: u64,
 }
+
+#[event]
+pub struct FeesCollected {
+    pub task_id: [u8; 32],
+    pub agent_did: [u8; 32],
+    pub operator: Pubkey,
+    pub client: Pubkey,
+    pub mint: Pubkey,
+    pub protocol_fee: u64,
+    pub agent_payout: u64,
+    pub epoch_id: u64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct SlashReceived {
+    pub agent_did: [u8; 32],
+    pub slasher_program: Pubkey,
+    pub amount: u64,
+    pub epoch_id: u64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct CollateralForfeited {
+    pub task_id: [u8; 32],
+    pub source_program: Pubkey,
+    pub amount: u64,
+    pub epoch_id: u64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct EpochProcessed {
+    pub epoch_id: u64,
+    pub total_collected: u64,
+    pub burn_amount: u64,
+    pub staker_amount: u64,
+    pub grant_amount: u64,
+    pub treasury_amount: u64,
+    pub timestamp: i64,
+}
