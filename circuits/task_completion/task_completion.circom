@@ -65,12 +65,28 @@ template TaskCompletion(N_TASK, N_RESULT, K, LOG_K) {
     signal input submitted_at;
     signal input criteria_root;
 
+    // Reputation binding (F-2026-02 fix): these public inputs bind the proof
+    // to a specific agent + capability + sample vector + task, preventing any
+    // holder of a valid proof from writing arbitrary reputation samples.
+    signal input agent_did;
+    signal input capability_bit;
+    signal input sample_hash;
+    signal input task_id;
+
     signal input task_preimage[N_TASK];
     signal input result_preimage[N_RESULT];
     signal input salt;
     signal input criteria_satisfied[K];
     signal input criteria_path[LOG_K];
     signal input criteria_index[LOG_K];
+
+    // Private reputation sample inputs — hashed to produce sample_hash
+    signal input rep_quality;
+    signal input rep_timeliness;
+    signal input rep_availability;
+    signal input rep_cost_efficiency;
+    signal input rep_honesty;
+    signal input rep_disputed;
 
     component ds = DomainSeparator();
 
@@ -122,7 +138,39 @@ template TaskCompletion(N_TASK, N_RESULT, K, LOG_K) {
     sat_bits.in <== submitted_at;
     component dl_bits = Num2Bits(64);
     dl_bits.in <== deadline;
+
+    // 6. Reputation binding (F-2026-02): hash private sample vector and constrain
+    //    against the public sample_hash. This ensures the proof commits to a specific
+    //    reputation sample — the on-chain handler reads (agent_did, capability_bit,
+    //    sample_hash, task_id) from public_inputs, not from caller args.
+    component sh = Poseidon(6);
+    sh.inputs[0] <== rep_quality;
+    sh.inputs[1] <== rep_timeliness;
+    sh.inputs[2] <== rep_availability;
+    sh.inputs[3] <== rep_cost_efficiency;
+    sh.inputs[4] <== rep_honesty;
+    sh.inputs[5] <== rep_disputed;
+    sample_hash === sh.out;
+
+    // Range-bind capability_bit to 7 bits (0..127)
+    component cb_bits = Num2Bits(7);
+    cb_bits.in <== capability_bit;
+
+    // Booleanity check on rep_disputed
+    rep_disputed * (rep_disputed - 1) === 0;
+
+    // Range-bind reputation axes to 16 bits (0..65535)
+    component q_bits = Num2Bits(16);
+    q_bits.in <== rep_quality;
+    component t_bits = Num2Bits(16);
+    t_bits.in <== rep_timeliness;
+    component a_bits = Num2Bits(16);
+    a_bits.in <== rep_availability;
+    component ce_bits = Num2Bits(16);
+    ce_bits.in <== rep_cost_efficiency;
+    component h_bits = Num2Bits(16);
+    h_bits.in <== rep_honesty;
 }
 
-component main { public [task_hash, result_hash, deadline, submitted_at, criteria_root] } =
+component main { public [task_hash, result_hash, deadline, submitted_at, criteria_root, agent_did, capability_bit, sample_hash, task_id] } =
     TaskCompletion(16, 32, 8, 3);

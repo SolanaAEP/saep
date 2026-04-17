@@ -228,6 +228,69 @@ pub fn update_reputation_handler(
     Ok(())
 }
 
+/// Permissionless crank: decay the availability axis of a CategoryReputation
+/// PDA by folding `miss_count` zero-samples through EWMA. Called by the indexer
+/// after detecting heartbeat misses on the IACP bus.
+///
+/// Cooldown: at most once per 24h per (agent_did, capability_bit). Enforced via
+/// `last_update` on the availability axis vs clock.
+const DECAY_COOLDOWN_SECS: i64 = 86_400;
+const MAX_DECAY_MISSES: u8 = 7;
+
+#[derive(Accounts)]
+#[instruction(agent_did: [u8; 32], capability_bit: u16)]
+pub struct DecayAvailability<'info> {
+    #[account(seeds = [b"global"], bump = global.bump)]
+    pub global: Box<Account<'info, RegistryGlobal>>,
+
+    #[account(
+        mut,
+        seeds = [b"rep", agent_did.as_ref(), &capability_bit.to_le_bytes()],
+        bump = category.bump,
+        constraint = category.agent_did == agent_did @ AgentRegistryError::AgentNotFound,
+        constraint = category.capability_bit == capability_bit @ AgentRegistryError::InvalidCapabilityBit,
+    )]
+    pub category: Box<Account<'info, CategoryReputation>>,
+}
+
+pub fn decay_availability_handler(
+    ctx: Context<DecayAvailability>,
+    agent_did: [u8; 32],
+    capability_bit: u16,
+    miss_count: u8,
+) -> Result<()> {
+    let g = &ctx.accounts.global;
+    require!(!g.paused, AgentRegistryError::Paused);
+    require!(miss_count > 0 && miss_count <= MAX_DECAY_MISSES, AgentRegistryError::ReputationOutOfRange);
+
+    let now = Clock::get()?.unix_timestamp;
+    let cat = &mut ctx.accounts.category;
+
+    require!(
+        now - cat.score.last_update >= DECAY_COOLDOWN_SECS,
+        AgentRegistryError::DecayCooldownNotElapsed
+    );
+
+    let old_availability = cat.score.availability;
+    let alpha = cat.score.ewma_alpha_bps;
+
+    for _ in 0..miss_count {
+        cat.score.availability = ewma(cat.score.availability, 0, alpha)?;
+    }
+    cat.score.last_update = now;
+
+    emit!(crate::events::AvailabilityDecayed {
+        agent_did,
+        capability_bit,
+        old_availability,
+        new_availability: cat.score.availability,
+        miss_count,
+        timestamp: now,
+    });
+
+    Ok(())
+}
+
 pub fn set_proof_verifier_handler(
     ctx: Context<super::governance::GovernanceUpdate>,
     new_proof_verifier: Pubkey,
