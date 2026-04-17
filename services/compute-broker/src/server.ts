@@ -9,8 +9,7 @@ import {
   type AttestationPayload,
 } from './attestation.js';
 import {
-  AkashProviderStub,
-  IonetProviderStub,
+  createProviders,
   selectProvider,
   type ComputeProvider,
 } from './providers.js';
@@ -42,10 +41,7 @@ export type BuildOpts = {
 
 export function build(opts: BuildOpts) {
   const cfg = opts.cfg;
-  const providers = opts.providers ?? {
-    ionet: new IonetProviderStub(),
-    akash: new AkashProviderStub(),
-  };
+  const providers = opts.providers ?? createProviders(cfg);
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
 
   app.get('/healthz', async () => ({
