@@ -1,7 +1,7 @@
 [package]
 name = "dispute_arbitration"
 version = "0.1.0"
-description = "SAEP dispute_arbitration program (stub)"
+description = "SAEP dispute arbitration — commit-reveal voting, appeals, slashing"
 edition = "2021"
 
 [lib]
@@ -17,7 +17,8 @@ default = []
 idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
-anchor-lang = "1.0.0"
+anchor-lang = { version = "1.0.0", features = ["init-if-needed"] }
+solana-sha256-hasher = "2.3"
 
 [dev-dependencies]
 proptest = "1"
