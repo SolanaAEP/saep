@@ -1,7 +1,7 @@
 use agent_registry::program::AgentRegistry;
 use agent_registry::state::ReputationSample;
 use anchor_lang::prelude::*;
-use light_poseidon::{Poseidon, PoseidonBytesHasher, PoseidonHasher};
+use light_poseidon::{Poseidon, PoseidonBytesHasher};
 use solana_instructions_sysvar::ID as IX_SYSVAR_ID;
 
 use crate::errors::ProofVerifierError;

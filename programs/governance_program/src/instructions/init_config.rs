@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 
-use crate::errors::GovernanceError;
 use crate::events::ConfigInitialized;
 use crate::state::*;
 
