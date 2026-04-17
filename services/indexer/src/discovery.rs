@@ -20,8 +20,17 @@
 //! the per-bit current-state `reputation_rollup` query that `api::agent_reputation`
 //! already exposes under the legacy `/api/` namespace. Spec §4.1 lists the path
 //! under `/v1/discovery/` for namespace parity; day/week-bucketed 90d time-series
-//! enhancement is deferred (see INBOX). Remaining (treasury, agent streams, WS,
-//! rate-limiter, cache) land in subsequent cycles.
+//! enhancement is deferred (see INBOX).
+//!
+//! Cycle-103 scope: `/v1/discovery/treasury/:did` + `/v1/discovery/treasury/:did/vaults`
+//! — direct fold over treasury_standard `TreasuryCreated` / `LimitsUpdated` /
+//! `TreasuryFunded` / `TreasuryWithdraw` events. No matview: per-agent event
+//! volume is bounded (one TreasuryCreated, few LimitsUpdated, per-mint
+//! funded/withdraw pairs) and the existing event_name + program_id indexes
+//! narrow well. Stream events require `stream_nonce` for per-stream state
+//! (not carried in current IDL — deferred pending program event-payload
+//! extension; same class of spec↔IDL drift as cycle-96 INBOX item (5)).
+//! Remaining (agent streams, WS, rate-limiter, cache) land in subsequent cycles.
 
 use axum::{
     extract::{Path, Query, State},
@@ -58,10 +67,13 @@ pub fn router(state: ApiState) -> Router {
         )
         .route("/v1/discovery/capabilities", get(list_capabilities))
         .route("/v1/discovery/capabilities/:bit", get(capability_detail))
+        .route("/v1/discovery/treasury/:did", get(treasury_detail))
+        .route("/v1/discovery/treasury/:did/vaults", get(treasury_vaults))
         .with_state(state)
 }
 
 const CAPABILITY_REGISTRY_PROGRAM_ID: &str = "GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F";
+const TREASURY_STANDARD_PROGRAM_ID: &str = "6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ";
 
 #[derive(Debug, Deserialize)]
 pub struct AgentsQuery {
@@ -1062,6 +1074,207 @@ fn slug_from_jsonb(v: &serde_json::Value) -> String {
     String::from_utf8_lossy(&bytes[..end]).into_owned()
 }
 
+// ---------- treasury ----------
+
+#[derive(Debug, Serialize)]
+pub struct TreasuryDetail {
+    pub did_hex: String,
+    pub operator: Option<String>,
+    pub per_tx_limit: Option<String>,
+    pub daily_limit: Option<String>,
+    pub weekly_limit: Option<String>,
+    pub created_at_unix: i64,
+    pub limits_updated_at_unix: Option<i64>,
+}
+
+#[derive(QueryableByName)]
+struct RawTreasuryDetailRow {
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    operator: Option<String>,
+    #[diesel(sql_type = Text)]
+    per_tx_text: String,
+    #[diesel(sql_type = Text)]
+    daily_text: String,
+    #[diesel(sql_type = Text)]
+    weekly_text: String,
+    #[diesel(sql_type = BigInt)]
+    created_unix: i64,
+    #[diesel(sql_type = diesel::sql_types::Nullable<BigInt>)]
+    limits_updated_unix: Option<i64>,
+}
+
+pub async fn treasury_detail(
+    State(state): State<ApiState>,
+    Path(did_hex): Path<String>,
+) -> Result<Json<TreasuryDetail>, ApiError> {
+    let did_bytes = parse_hex_32(&did_hex).map_err(ApiError::bad_request)?;
+    let jsonb_filter = bytes_to_jsonb_array(&did_bytes);
+
+    let row = tokio::task::spawn_blocking(
+        move || -> Result<Option<RawTreasuryDetailRow>, ApiError> {
+            let mut conn = state.pool.get().map_err(ApiError::internal)?;
+            let jsonb: serde_json::Value =
+                serde_json::from_str(&jsonb_filter).expect("jsonb");
+            Ok(sql_query(
+                "WITH created AS ( \
+                   SELECT DISTINCT ON (data->'agent_did') \
+                     data->>'operator'                  AS operator, \
+                     (data->>'daily_spend_limit')::numeric AS daily, \
+                     (data->>'per_tx_limit')::numeric   AS per_tx, \
+                     (data->>'weekly_limit')::numeric   AS weekly, \
+                     (data->>'timestamp')::bigint       AS created_unix \
+                   FROM program_events \
+                   WHERE program_id = $1 \
+                     AND event_name = 'TreasuryCreated' \
+                     AND data->'agent_did' = $2::jsonb \
+                   ORDER BY data->'agent_did', slot DESC, id DESC \
+                 ), updated AS ( \
+                   SELECT DISTINCT ON (data->'agent_did') \
+                     (data->>'daily')::numeric    AS daily, \
+                     (data->>'per_tx')::numeric   AS per_tx, \
+                     (data->>'weekly')::numeric   AS weekly, \
+                     (data->>'timestamp')::bigint AS updated_unix \
+                   FROM program_events \
+                   WHERE program_id = $1 \
+                     AND event_name = 'LimitsUpdated' \
+                     AND data->'agent_did' = $2::jsonb \
+                   ORDER BY data->'agent_did', slot DESC, id DESC \
+                 ) \
+                 SELECT c.operator, \
+                        COALESCE(u.per_tx, c.per_tx)::text AS per_tx_text, \
+                        COALESCE(u.daily,  c.daily )::text AS daily_text, \
+                        COALESCE(u.weekly, c.weekly)::text AS weekly_text, \
+                        c.created_unix, \
+                        u.updated_unix AS limits_updated_unix \
+                 FROM created c LEFT JOIN updated u ON TRUE",
+            )
+            .bind::<Text, _>(TREASURY_STANDARD_PROGRAM_ID)
+            .bind::<Jsonb, _>(jsonb)
+            .load::<RawTreasuryDetailRow>(&mut conn)
+            .map_err(ApiError::internal)?
+            .into_iter()
+            .next())
+        },
+    )
+    .await
+    .map_err(ApiError::internal)??
+    .ok_or_else(|| ApiError::not_found("treasury not found"))?;
+
+    Ok(Json(TreasuryDetail {
+        did_hex,
+        operator: row.operator,
+        per_tx_limit: Some(row.per_tx_text),
+        daily_limit: Some(row.daily_text),
+        weekly_limit: Some(row.weekly_text),
+        created_at_unix: row.created_unix,
+        limits_updated_at_unix: row.limits_updated_unix,
+    }))
+}
+
+#[derive(Debug, Serialize)]
+pub struct TreasuryVault {
+    pub mint: String,
+    pub funded_total: String,
+    pub withdrawn_total: String,
+    pub balance: String,
+    pub last_activity_unix: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TreasuryVaults {
+    pub did_hex: String,
+    pub vaults: Vec<TreasuryVault>,
+}
+
+#[derive(QueryableByName)]
+struct RawTreasuryVaultRow {
+    #[diesel(sql_type = Text)]
+    mint: String,
+    #[diesel(sql_type = Text)]
+    funded_total: String,
+    #[diesel(sql_type = Text)]
+    withdrawn_total: String,
+    #[diesel(sql_type = Text)]
+    balance: String,
+    #[diesel(sql_type = BigInt)]
+    last_activity_unix: i64,
+}
+
+pub async fn treasury_vaults(
+    State(state): State<ApiState>,
+    Path(did_hex): Path<String>,
+) -> Result<Json<TreasuryVaults>, ApiError> {
+    let did_bytes = parse_hex_32(&did_hex).map_err(ApiError::bad_request)?;
+    let jsonb_filter = bytes_to_jsonb_array(&did_bytes);
+
+    let (exists, rows) = tokio::task::spawn_blocking(
+        move || -> Result<(bool, Vec<RawTreasuryVaultRow>), ApiError> {
+            let mut conn = state.pool.get().map_err(ApiError::internal)?;
+            let jsonb: serde_json::Value =
+                serde_json::from_str(&jsonb_filter).expect("jsonb");
+            let exists: i64 = sql_query(
+                "SELECT COUNT(*)::bigint AS n FROM program_events \
+                 WHERE program_id = $1 \
+                   AND event_name = 'TreasuryCreated' \
+                   AND data->'agent_did' = $2::jsonb",
+            )
+            .bind::<Text, _>(TREASURY_STANDARD_PROGRAM_ID)
+            .bind::<Jsonb, _>(jsonb.clone())
+            .get_result::<CountRow>(&mut conn)
+            .map_err(ApiError::internal)?
+            .n;
+            if exists == 0 {
+                return Ok((false, Vec::new()));
+            }
+            let rows = sql_query(
+                "SELECT data->>'mint' AS mint, \
+                        SUM(CASE WHEN event_name = 'TreasuryFunded' \
+                                 THEN (data->>'amount')::numeric ELSE 0 END)::text \
+                          AS funded_total, \
+                        SUM(CASE WHEN event_name = 'TreasuryWithdraw' \
+                                 THEN (data->>'amount')::numeric ELSE 0 END)::text \
+                          AS withdrawn_total, \
+                        (SUM(CASE WHEN event_name = 'TreasuryFunded' \
+                                  THEN (data->>'amount')::numeric ELSE 0 END) \
+                         - SUM(CASE WHEN event_name = 'TreasuryWithdraw' \
+                                    THEN (data->>'amount')::numeric ELSE 0 END))::text \
+                          AS balance, \
+                        MAX((data->>'timestamp')::bigint) AS last_activity_unix \
+                 FROM program_events \
+                 WHERE program_id = $1 \
+                   AND event_name IN ('TreasuryFunded', 'TreasuryWithdraw') \
+                   AND data->'agent_did' = $2::jsonb \
+                 GROUP BY data->>'mint' \
+                 ORDER BY data->>'mint' ASC",
+            )
+            .bind::<Text, _>(TREASURY_STANDARD_PROGRAM_ID)
+            .bind::<Jsonb, _>(jsonb)
+            .load::<RawTreasuryVaultRow>(&mut conn)
+            .map_err(ApiError::internal)?;
+            Ok((true, rows))
+        },
+    )
+    .await
+    .map_err(ApiError::internal)??;
+
+    if !exists {
+        return Err(ApiError::not_found("treasury not found"));
+    }
+
+    let vaults = rows
+        .into_iter()
+        .map(|r| TreasuryVault {
+            mint: r.mint,
+            funded_total: r.funded_total,
+            withdrawn_total: r.withdrawn_total,
+            balance: r.balance,
+            last_activity_unix: r.last_activity_unix,
+        })
+        .collect();
+
+    Ok(Json(TreasuryVaults { did_hex, vaults }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1253,5 +1466,70 @@ mod tests {
             .map(|p| p.id)
             .unwrap();
         assert_eq!(from_registry, CAPABILITY_REGISTRY_PROGRAM_ID);
+    }
+
+    #[test]
+    fn treasury_standard_program_id_matches_programs_rs() {
+        let from_registry = crate::programs::SAEP_PROGRAMS
+            .iter()
+            .find(|p| p.name == "treasury_standard")
+            .map(|p| p.id)
+            .unwrap();
+        assert_eq!(from_registry, TREASURY_STANDARD_PROGRAM_ID);
+    }
+
+    #[test]
+    fn treasury_detail_response_shape() {
+        let d = TreasuryDetail {
+            did_hex: "ab".repeat(32),
+            operator: Some("OperatorPubkey".into()),
+            per_tx_limit: Some("1000000".into()),
+            daily_limit: Some("10000000".into()),
+            weekly_limit: Some("50000000".into()),
+            created_at_unix: 1_700_000_000,
+            limits_updated_at_unix: Some(1_700_100_000),
+        };
+        let j = serde_json::to_value(&d).unwrap();
+        for field in [
+            "did_hex",
+            "operator",
+            "per_tx_limit",
+            "daily_limit",
+            "weekly_limit",
+            "created_at_unix",
+            "limits_updated_at_unix",
+        ] {
+            assert!(j.get(field).is_some(), "missing field {field}");
+        }
+        assert_eq!(j["per_tx_limit"], "1000000");
+        assert_eq!(j["limits_updated_at_unix"], 1_700_100_000);
+    }
+
+    #[test]
+    fn treasury_vaults_response_shape() {
+        let v = TreasuryVaults {
+            did_hex: "cd".repeat(32),
+            vaults: vec![TreasuryVault {
+                mint: "MintPubkey".into(),
+                funded_total: "5000000".into(),
+                withdrawn_total: "1500000".into(),
+                balance: "3500000".into(),
+                last_activity_unix: 1_700_050_000,
+            }],
+        };
+        let j = serde_json::to_value(&v).unwrap();
+        assert_eq!(j["did_hex"], "cd".repeat(32));
+        let vaults = j["vaults"].as_array().unwrap();
+        assert_eq!(vaults.len(), 1);
+        for field in [
+            "mint",
+            "funded_total",
+            "withdrawn_total",
+            "balance",
+            "last_activity_unix",
+        ] {
+            assert!(vaults[0].get(field).is_some(), "missing field {field}");
+        }
+        assert_eq!(vaults[0]["balance"], "3500000");
     }
 }
