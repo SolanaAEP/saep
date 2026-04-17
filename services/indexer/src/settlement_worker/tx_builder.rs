@@ -222,6 +222,7 @@ impl TxBuilder {
                 self.validate_program(&primary.program_id, &self.programs.task_market)?;
                 let mut out = vec![primary.to_instruction()?];
                 for s in siblings {
+                    self.validate_sibling_program(&s.program_id)?;
                     out.push(s.to_instruction()?);
                 }
                 Ok(out)
@@ -232,6 +233,7 @@ impl TxBuilder {
                 self.validate_program(&primary.program_id, &self.programs.task_market)?;
                 let mut out = vec![primary.to_instruction()?];
                 for s in siblings {
+                    self.validate_sibling_program(&s.program_id)?;
                     out.push(s.to_instruction()?);
                 }
                 Ok(out)
@@ -243,6 +245,18 @@ impl TxBuilder {
     fn validate_program(&self, claimed_b58: &str, expected: &[u8; 32]) -> Result<(), TxBuilderError> {
         let got = decode_b58_pubkey(claimed_b58)?;
         if &got != expected {
+            return Err(TxBuilderError::UnknownProgram(claimed_b58.to_string()));
+        }
+        Ok(())
+    }
+
+    // OC-L-04: sibling program_ids must belong to the known SAEP program set.
+    fn validate_sibling_program(&self, claimed_b58: &str) -> Result<(), TxBuilderError> {
+        let got = decode_b58_pubkey(claimed_b58)?;
+        let known = SAEP_PROGRAMS
+            .iter()
+            .any(|p| decode_b58_pubkey(p.id).map_or(false, |id| id == got));
+        if !known {
             return Err(TxBuilderError::UnknownProgram(claimed_b58.to_string()));
         }
         Ok(())
@@ -319,6 +333,47 @@ mod tests {
             })
             .unwrap();
         assert!(ixs.is_empty());
+    }
+
+    #[test]
+    fn rejects_sibling_with_unknown_program_id() {
+        let ids = WorkerProgramIds::from_registry().unwrap();
+        let task_market_b58 = bs58::encode(ids.task_market).into_string();
+        let fake_acct = bs58::encode([1u8; 32]).into_string();
+        let rogue_program = bs58::encode([0xde, 0xad, 0xbe, 0xef,
+                                          0xde, 0xad, 0xbe, 0xef,
+                                          0xde, 0xad, 0xbe, 0xef,
+                                          0xde, 0xad, 0xbe, 0xef,
+                                          0xde, 0xad, 0xbe, 0xef,
+                                          0xde, 0xad, 0xbe, 0xef,
+                                          0xde, 0xad, 0xbe, 0xef,
+                                          0xde, 0xad, 0xbe, 0xef]).into_string();
+        let trigger = SettlementTrigger::TaskVerified {
+            task_id: "t2".into(),
+            payment_lamports: 0,
+            primary: ResolvedIx {
+                program_id: task_market_b58,
+                ix_name: "release".into(),
+                accounts: vec![ResolvedAccount {
+                    pubkey: fake_acct.clone(),
+                    is_signer: false,
+                    is_writable: true,
+                }],
+                args_hex: String::new(),
+            },
+            siblings: vec![ResolvedIx {
+                program_id: rogue_program,
+                ix_name: "drain".into(),
+                accounts: vec![ResolvedAccount {
+                    pubkey: fake_acct,
+                    is_signer: false,
+                    is_writable: true,
+                }],
+                args_hex: String::new(),
+            }],
+        };
+        let builder = TxBuilder::new(ids);
+        assert!(builder.build(&trigger).is_err());
     }
 
     #[test]
