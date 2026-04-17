@@ -109,7 +109,14 @@ const taskMarketPdas = {
   escrow: (task: PublicKey) => PublicKey.findProgramAddressSync(
     [Buffer.from('task_escrow'), task.toBuffer()], PROGRAM_IDS.task_market,
   ),
+  guard: () => PublicKey.findProgramAddressSync(
+    [Buffer.from('guard')], PROGRAM_IDS.task_market,
+  ),
 };
+
+const agentRegGuardPda = () => PublicKey.findProgramAddressSync(
+  [Buffer.from('guard')], PROGRAM_IDS.agent_registry,
+);
 
 const proofVerifierPdas = {
   config: () => PublicKey.findProgramAddressSync(
@@ -345,6 +352,16 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
       .accountsPartial({ payer: authority.publicKey, stakeMintInfo: stakeMint })
       .rpc();
 
+    // Init agent_registry reentrancy guard (required by register_agent)
+    const [regGlobalPdaForGuard] = agentRegPdas.global();
+    await agentRegProgram.methods
+      .initGuard([PROGRAM_IDS.agent_registry])
+      .accountsPartial({
+        global: regGlobalPdaForGuard,
+        authority: authority.publicKey,
+      })
+      .rpc();
+
     // -----------------------------------------------------------------------
     // Init proof_verifier + register VK + propose activation
     // -----------------------------------------------------------------------
@@ -421,6 +438,16 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
       .accountsPartial({ payer: authority.publicKey })
       .rpc();
 
+    // Init task_market reentrancy guard (required by fund_task / submit_result / release)
+    const [marketGlobalForGuard] = taskMarketPdas.global();
+    await taskMarketProgram.methods
+      .initGuard([PROGRAM_IDS.task_market])
+      .accountsPartial({
+        global: marketGlobalForGuard,
+        authority: authority.publicKey,
+      })
+      .rpc();
+
     // -----------------------------------------------------------------------
     // Register agent
     // -----------------------------------------------------------------------
@@ -453,6 +480,8 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
         stakeVault: stakePda,
         operatorTokenAccount: operatorStakeAta,
         operator: operator.publicKey,
+        personhoodAttestation: null,
+        guard: agentRegGuardPda()[0],
         tokenProgram: TOKEN_2022_PROGRAM_ID,
       })
       .signers([operator])
@@ -533,6 +562,7 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
     const [escrowPda] = taskMarketPdas.escrow(taskPda);
     const [marketGlobal] = taskMarketPdas.global();
 
+    const [marketGuardForFund] = taskMarketPdas.guard();
     await taskMarketProgram.methods
       .fundTask()
       .accountsPartial({
@@ -541,6 +571,8 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
         paymentMint,
         escrow: escrowPda,
         clientTokenAccount: clientAta,
+        hookAllowlist: null,
+        guard: marketGuardForFund,
         client: client.publicKey,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
       })
@@ -558,6 +590,7 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
     const proofKey = Buffer.alloc(32, 0);
     proofKey.write('proof-gen-job-001', 'utf8');
 
+    const [marketGuardForSubmit] = taskMarketPdas.guard();
     await taskMarketProgram.methods
       .submitResult(
         resultHashBytes as unknown as number[],
@@ -569,6 +602,7 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
         operator: operator.publicKey,
         agentRegistryProgram: PROGRAM_IDS.agent_registry,
         agentAccount: agentPda,
+        guard: marketGuardForSubmit,
       })
       .signers([operator])
       .rpc();
@@ -622,6 +656,7 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
     const escrowBefore = await getTokenBalance(context, escrowPda);
     expect(Number(escrowBefore)).to.equal(PAYMENT_AMOUNT);
 
+    const [marketGuardForRelease] = taskMarketPdas.guard();
     await taskMarketProgram.methods
       .release()
       .accountsPartial({
@@ -636,6 +671,8 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
         registryGlobal: regGlobal,
         agentAccount: agentPda,
         selfProgram: PROGRAM_IDS.task_market,
+        hookAllowlist: null,
+        guard: marketGuardForRelease,
         cranker: provider.wallet.publicKey,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
       })
