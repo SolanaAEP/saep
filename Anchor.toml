@@ -13,6 +13,7 @@ task_market = "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w"
 dispute_arbitration = "GM8xiT17USBpCW24XXBmUR8YVCxxrJPMEcsddwfUokMa"
 governance_program = "9uczLDZaN9EWqW76be75ji4vCsz3cydefbChqvBS6qw1"
 fee_collector = "4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu"
+nxs_staking = "GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z"
 proof_verifier = "DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe"
 
 [registry]
@@ -41,5 +42,6 @@ members = [
     "programs/dispute_arbitration",
     "programs/governance_program",
     "programs/fee_collector",
+    "programs/nxs_staking",
     "programs/proof_verifier",
 ]
