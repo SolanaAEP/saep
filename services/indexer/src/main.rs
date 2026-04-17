@@ -57,6 +57,11 @@ async fn main() -> Result<()> {
         }
     });
 
+    let sweep_interval = jobs::rate_limit_sweeper::interval_from_env();
+    tokio::spawn(async move {
+        jobs::rate_limit_sweeper::run(sweep_interval).await;
+    });
+
     let publisher = pubsub::Publisher::from_env(cfg.redis_url.as_deref()).await;
     if publisher.enabled() {
         tracing::info!("redis pubsub fanout active");
