@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 pub mod errors;
 pub mod events;
+mod fuzz;
 pub mod guard;
 
 use errors::NxsStakingError;
