@@ -5,57 +5,49 @@ anchor_version = "1.0.0"
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-agent_registry = "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
-capability_registry = "GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F"
-treasury_standard = "6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ"
-task_market = "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w"
-dispute_arbitration = "GM8xiT17USBpCW24XXBmUR8YVCxxrJPMEcsddwfUokMa"
-governance_program = "9uczLDZaN9EWqW76be75ji4vCsz3cydefbChqvBS6qw1"
-fee_collector = "4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu"
-nxs_staking = "GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z"
-proof_verifier = "DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe"
-template_registry = "Gkgrk9fUsVN7ssS99jQFLfoRr23PkqJ7h4mdkGArqXyU"
-
 [programs.devnet]
 agent_registry = "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
 capability_registry = "GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F"
-treasury_standard = "6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ"
-task_market = "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w"
 dispute_arbitration = "GM8xiT17USBpCW24XXBmUR8YVCxxrJPMEcsddwfUokMa"
-governance_program = "9uczLDZaN9EWqW76be75ji4vCsz3cydefbChqvBS6qw1"
 fee_collector = "4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu"
+governance_program = "9uczLDZaN9EWqW76be75ji4vCsz3cydefbChqvBS6qw1"
 nxs_staking = "GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z"
 proof_verifier = "DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe"
+task_market = "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w"
 template_registry = "Gkgrk9fUsVN7ssS99jQFLfoRr23PkqJ7h4mdkGArqXyU"
+treasury_standard = "6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ"
 
-[registry]
-url = "https://api.apr.dev"
+[programs.localnet]
+agent_registry = "EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu"
+capability_registry = "GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F"
+dispute_arbitration = "GM8xiT17USBpCW24XXBmUR8YVCxxrJPMEcsddwfUokMa"
+fee_collector = "4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu"
+governance_program = "9uczLDZaN9EWqW76be75ji4vCsz3cydefbChqvBS6qw1"
+nxs_staking = "GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z"
+proof_verifier = "DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe"
+task_market = "HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w"
+template_registry = "3QE649JDQbbudJX5j3VkmRSiRvfcu3mHCymPxZn9KC3e"
+treasury_standard = "6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ"
 
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
+[workspace]
+members = ["programs/agent_registry", "programs/capability_registry", "programs/treasury_standard", "programs/task_market", "programs/dispute_arbitration", "programs/governance_program", "programs/fee_collector", "programs/nxs_staking", "programs/proof_verifier", "programs/template_registry"]
+
 [scripts]
 test = "pnpm exec mocha --require ts-node/register --timeout 1000000 'tests/**/*.ts'"
 
+[hooks]
+
 [test]
 startup_wait = 20000
+shutdown_wait = 2000
+upgradeable = false
 
 [test.validator]
 bind_address = "127.0.0.1"
 url = "https://api.mainnet-beta.solana.com"
-
-[workspace]
-members = [
-    "programs/agent_registry",
-    "programs/capability_registry",
-    "programs/treasury_standard",
-    "programs/task_market",
-    "programs/dispute_arbitration",
-    "programs/governance_program",
-    "programs/fee_collector",
-    "programs/nxs_staking",
-    "programs/proof_verifier",
-    "programs/template_registry",
-]
+ledger = ".anchor/test-ledger"
+rpc_port = 8899

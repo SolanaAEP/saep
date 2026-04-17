@@ -11,7 +11,7 @@ mod fuzz;
 use instructions::*;
 use state::CONFIG_URI_LEN;
 
-declare_id!("Gkgrk9fUsVN7ssS99jQFLfoRr23PkqJ7h4mdkGArqXyU");
+declare_id!("3QE649JDQbbudJX5j3VkmRSiRvfcu3mHCymPxZn9KC3e");
 
 #[program]
 pub mod template_registry {

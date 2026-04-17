@@ -789,6 +789,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "proptest",
+ "solana-sha256-hasher 2.3.0",
 ]
 
 [[package]]
