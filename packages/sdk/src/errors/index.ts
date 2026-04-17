@@ -221,6 +221,9 @@ export const ProofVerifierErrors = {
   GuardNotInitialized: 6026,
   AdminResetNotTimelocked: 6027,
   ReputationBindingNotReady: 6028,
+  SampleHashMismatch: 6029,
+  PoseidonError: 6030,
+  VkAlreadyFinalized: 6031,
 } as const;
 
 export const TaskMarketErrors = {
@@ -590,6 +593,9 @@ const PROGRAM_ERROR_DEFS: Record<string, { errors: Record<string, number>; msgs:
       6026: 'reentrancy guard has not been initialized',
       6027: 'admin reset has not met the 24h timelock',
       6028: 'reputation args are not yet bound to the circuit\'s public outputs; rail disabled',
+      6029: 'on-chain poseidon hash of sample does not match proof\'s sample_hash commitment',
+      6030: 'poseidon hash computation failed',
+      6031: 'vk is already finalized and cannot accept more ic points',
     },
   },
   task_market: {

@@ -288,6 +288,92 @@ export type ProofVerifier = {
       "args": []
     },
     {
+      "name": "appendVkIc",
+      "discriminator": [
+        79,
+        17,
+        2,
+        173,
+        71,
+        133,
+        96,
+        148
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vk.vk_id",
+                "account": "verifierKey"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "icPoints",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        },
+        {
+          "name": "finalize",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "cancelVkActivation",
       "discriminator": [
         16,
@@ -659,6 +745,147 @@ export type ProofVerifier = {
           "type": {
             "vec": "pubkey"
           }
+        }
+      ]
+    },
+    {
+      "name": "initVk",
+      "discriminator": [
+        130,
+        185,
+        234,
+        65,
+        43,
+        113,
+        212,
+        132
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "vkId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "vkId",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "alphaG1",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "betaG2",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "gammaG2",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "deltaG2",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "numPublicInputs",
+          "type": "u8"
+        },
+        {
+          "name": "circuitLabel",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "isProduction",
+          "type": "bool"
         }
       ]
     },
@@ -1334,10 +1561,6 @@ export type ProofVerifier = {
         },
         {
           "name": "repAuthority",
-          "docs": [
-            "Only passed through to agent_registry as the CPI signer; ownership of",
-            "the derivation is the security guarantee."
-          ],
           "pda": {
             "seeds": [
               {
@@ -2064,6 +2287,21 @@ export type ProofVerifier = {
       "code": 6028,
       "name": "reputationBindingNotReady",
       "msg": "reputation args are not yet bound to the circuit's public outputs; rail disabled"
+    },
+    {
+      "code": 6029,
+      "name": "sampleHashMismatch",
+      "msg": "on-chain poseidon hash of sample does not match proof's sample_hash commitment"
+    },
+    {
+      "code": 6030,
+      "name": "poseidonError",
+      "msg": "poseidon hash computation failed"
+    },
+    {
+      "code": 6031,
+      "name": "vkAlreadyFinalized",
+      "msg": "vk is already finalized and cannot accept more ic points"
     }
   ],
   "types": [
