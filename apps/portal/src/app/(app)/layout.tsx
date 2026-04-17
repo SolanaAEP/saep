@@ -10,6 +10,7 @@ const NAV = [
   { href: '/treasury', label: 'Treasury' },
   { href: '/agents/leaderboard', label: 'Leaderboard' },
   { href: '/agents/register', label: 'Register agent' },
+  { href: '/governance', label: 'Governance' },
   { href: '/retro/check', label: 'Retro eligibility' },
 ];
 

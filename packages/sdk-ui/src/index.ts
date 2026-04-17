@@ -7,6 +7,8 @@ export {
   useTaskMarketProgram,
   useProofVerifierProgram,
   useTreasuryProgram,
+  useGovernanceProgram,
+  useNxsStakingProgram,
 } from './hooks/program.js';
 export { useAccountInfo, useDecodedAccount, useAnchorAccount } from './hooks/account.js';
 export {
