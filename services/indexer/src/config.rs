@@ -13,6 +13,7 @@ pub struct Config {
     pub redis_url: Option<String>,
     pub api_port: Option<u16>,
     pub cors_origins: Vec<String>,
+    pub matview_refresh_interval_s: u64,
 }
 
 impl Config {
@@ -68,6 +69,10 @@ impl Config {
                 .ok()
                 .map(|s| s.split(',').map(|o| o.trim().to_string()).collect())
                 .unwrap_or_default(),
+            matview_refresh_interval_s: std::env::var("MATVIEW_REFRESH_INTERVAL_S")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(60),
         })
     }
 }
@@ -86,6 +91,7 @@ impl std::fmt::Debug for Config {
             .field("redis_url", &self.redis_url.as_ref().map(|_| "***"))
             .field("api_port", &self.api_port)
             .field("cors_origins", &self.cors_origins)
+            .field("matview_refresh_interval_s", &self.matview_refresh_interval_s)
             .finish()
     }
 }

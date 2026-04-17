@@ -1,8 +1,9 @@
 use anyhow::Result;
 use std::net::SocketAddr;
+use std::time::Duration;
 use tokio::net::TcpListener;
 
-use saep_indexer::{config, db, health, poller, pubsub, reorg};
+use saep_indexer::{config, db, health, jobs, poller, pubsub, reorg};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -45,6 +46,14 @@ async fn main() -> Result<()> {
     tokio::spawn(async move {
         if let Err(e) = reorg::run(reorg_cfg, reorg_pool).await {
             tracing::error!(error = %e, "reorg watcher exited");
+        }
+    });
+
+    let matview_pool = pool.clone();
+    let matview_interval = Duration::from_secs(cfg.matview_refresh_interval_s);
+    tokio::spawn(async move {
+        if let Err(e) = jobs::matview_refresh::run(matview_pool, matview_interval).await {
+            tracing::error!(error = %e, "matview refresh worker exited");
         }
     });
 
