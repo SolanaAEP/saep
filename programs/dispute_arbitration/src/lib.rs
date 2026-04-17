@@ -4,6 +4,9 @@ pub mod errors;
 pub mod events;
 pub mod guard;
 
+#[cfg(test)]
+mod fuzz;
+
 use errors::DisputeArbitrationError;
 use guard::{
     assert_reset_timelock, AllowedCallers, DisputeConfig, ReentrancyGuard, MAX_ALLOWED_CALLERS,
