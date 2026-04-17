@@ -47,6 +47,10 @@ once_cell = "1.19"
 redis = { version = "0.27", default-features = false, features = ["tokio-comp", "connection-manager", "streams"] }
 async-trait = "0.1"
 tower-http = { version = "0.6", features = ["cors"] }
+yellowstone-grpc-client = "13.0"
+yellowstone-grpc-proto = "12.2"
+tonic = "0.12"
+futures = "0.3"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

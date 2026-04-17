@@ -12,6 +12,8 @@ pub const SAEP_PROGRAMS: &[SaepProgram] = &[
     SaepProgram { name: "dispute_arbitration", id: "GM8xiT17USBpCW24XXBmUR8YVCxxrJPMEcsddwfUokMa" },
     SaepProgram { name: "governance_program",  id: "9uczLDZaN9EWqW76be75ji4vCsz3cydefbChqvBS6qw1" },
     SaepProgram { name: "fee_collector",       id: "4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu" },
+    SaepProgram { name: "nxs_staking",         id: "GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z" },
+    SaepProgram { name: "template_registry",   id: "3QE649JDQbbudJX5j3VkmRSiRvfcu3mHCymPxZn9KC3e" },
 ];
 
 pub fn all_ids() -> Vec<String> {
