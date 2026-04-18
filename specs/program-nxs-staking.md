@@ -256,9 +256,13 @@ Concurrent slashes do NOT block `unstake` post-lock-expiry; pending slashes are 
 
 ## Events
 
-`StakingInitialized`, `Staked`, `LockExtended`, `Unstaked`, `ResidualClaimed`, `YieldSnapshot`, `ApyUpdated`, `SnapshotCommitted`, `SlashProposed`, `SlashExecuted`, `SlashCancelled`, `ParamsUpdated`, `PausedSet`, `AuthorityTransferProposed`, `AuthorityAccepted`.
+M1 actually-emit (per `programs/nxs_staking/src/events.rs` + `emit!` call sites in `lib.rs`): `PoolInitialized`, `Staked`, `UnstakeInitiated`, `Withdrawn`, `EpochSnapshotted`. Renames from earlier spec drafts: `StakingInitialized` landed as `PoolInitialized`; the one-shot `Unstaked` split into the two-step `UnstakeInitiated` (begin_unstake, starts cooldown) + `Withdrawn` (withdraw, after cooldown); `SnapshotCommitted` landed as `EpochSnapshotted`.
 
-Each event carries `stake_account` (when stake-scoped), `operator` (always), `slot`, and `timestamp` so the indexer can replay any stake event deterministically.
+Forward-looking M2-reserved (paired with spec-enumerated ixs not yet scaffolded against dedicated event types at M1): `LockExtended` (→ `extend_lock`), `ResidualClaimed` (→ `claim_residual`), `YieldSnapshot` (→ `claim`), `ApyUpdated` (→ `set_apy`), `SlashProposed` (→ `propose_slash`), `SlashExecuted` (→ `execute_slash`), `SlashCancelled` (→ `cancel_slash`), `ParamsUpdated` (→ `set_params`), `PausedSet` (→ `set_paused`), `AuthorityTransferProposed` + `AuthorityAccepted` (→ two-step authority-transfer ixs). Current scaffold lands `initialize` / `init_pool` / `stake` / `begin_unstake` / `withdraw` / `snapshot_epoch` + guard admin ops; the slash / residual-claim / APY / snapshot-verify / param-mutation ixs enumerated in §Instructions remain spec-only at M1.
+
+Struct-defined but never `emit!`'d (scaffold parity with other programs' guard modules; wire-up lands when guard ixs go beyond the init/reset shapes): `GuardEntered`, `ReentrancyRejected`, `GuardInitialized`, `GuardAdminReset`, `AllowedCallersUpdated`.
+
+All 5 M1-emit events carry `timestamp`; the 3 stake-scoped events (`Staked` / `UnstakeInitiated` / `Withdrawn`) carry `owner` (the stake-owner wallet; the `StakeAccount` PDA is derived off-chain from `owner` + `lock_id`). `PoolInitialized` carries `authority` + `stake_mint`; `EpochSnapshotted` carries `epoch` + `total_voting_power` + `staker_count`. No M1-emit event carries `slot` in the body — slot resolves from the containing transaction in the indexer. Only 2 of the 5 struct-only guard events (`GuardEntered`, `ReentrancyRejected`) carry `slot` in-body, matching the scaffold parity pattern across fee_collector / agent_registry / task_market guard modules.
 
 ## Errors
 
