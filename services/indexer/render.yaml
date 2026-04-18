@@ -14,6 +14,8 @@ services:
     dockerContext: .
     autoDeploy: true
     envVars:
+      - key: INDEXER_ROLE
+        value: poller
       - key: DATABASE_URL
         fromDatabase:
           name: saep-indexer-db
@@ -28,5 +30,32 @@ services:
         value: "200"
       - key: HEALTHCHECK_PORT
         value: "8080"
+      - key: RUST_LOG
+        value: info,saep_indexer=debug
+
+  - type: web
+    name: saep-indexer-api
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: services/indexer/Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    healthCheckPath: /healthz
+    envVars:
+      - key: INDEXER_ROLE
+        value: api
+      - key: DATABASE_URL
+        fromDatabase:
+          name: saep-indexer-db
+          property: connectionString
+      # Render injects $PORT (default 10000) — API binds here; internal metrics
+      # bind to HEALTHCHECK_PORT and are not exposed externally.
+      - key: HEALTHCHECK_PORT
+        value: "10001"
+      - key: API_PORT
+        value: "10000"
+      - key: CORS_ORIGINS
+        value: "https://app.buildonsaep.com,https://saep-app.onrender.com"
       - key: RUST_LOG
         value: info,saep_indexer=debug

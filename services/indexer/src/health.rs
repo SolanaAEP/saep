@@ -33,6 +33,7 @@ pub fn public_router(pool: PgPool, allowed_origins: Vec<String>) -> Router {
     };
 
     Router::new()
+        .route("/healthz", get(|| async { "ok" }))
         .merge(api::router(pool))
         .merge(stats::router(state.clone()))
         .merge(discovery::router(state))

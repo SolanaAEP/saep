@@ -5,6 +5,35 @@ use tokio::net::TcpListener;
 
 use saep_indexer::{config, db, grpc_stream, health, jobs, poller, pubsub, reorg};
 
+/// `INDEXER_ROLE`:
+/// - `poller` (default): runs reorg watcher, matview refresh, and the polling/
+///   streaming ingest. Does not expose a public API. Render worker-type.
+/// - `api`: runs only the public HTTP router (leaderboard, bidding, etc).
+///   Reads from the DB written by the poller role. Render web-type.
+/// - `all`: runs both. Single-binary dev / localhost use.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Role {
+    Poller,
+    Api,
+    All,
+}
+
+impl Role {
+    fn from_env() -> Self {
+        match std::env::var("INDEXER_ROLE").as_deref() {
+            Ok("api") => Role::Api,
+            Ok("all") => Role::All,
+            _ => Role::Poller,
+        }
+    }
+    fn runs_api(self) -> bool {
+        matches!(self, Role::Api | Role::All)
+    }
+    fn runs_poller(self) -> bool {
+        matches!(self, Role::Poller | Role::All)
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenvy::dotenv().ok();
@@ -13,11 +42,14 @@ async fn main() -> Result<()> {
         .init();
 
     let cfg = config::Config::from_env()?;
-    tracing::info!(?cfg, "starting saep-indexer");
+    let role = Role::from_env();
+    tracing::info!(?cfg, ?role, "starting saep-indexer");
 
     let pool = db::pool(&cfg.database_url)?;
-    db::run_migrations(&pool)?;
-    tracing::info!("migrations applied");
+    if role.runs_poller() {
+        db::run_migrations(&pool)?;
+        tracing::info!("migrations applied");
+    }
     saep_indexer::metrics::set_pool_max(db::POOL_MAX_SIZE);
 
     let internal_addr: SocketAddr = format!("0.0.0.0:{}", cfg.healthcheck_port).parse()?;
@@ -29,17 +61,27 @@ async fn main() -> Result<()> {
         }
     });
 
-    let api_port = cfg.api_port.unwrap_or(cfg.healthcheck_port + 1);
-    let api_addr: SocketAddr = format!("0.0.0.0:{}", api_port).parse()?;
-    let api_listener = TcpListener::bind(api_addr).await?;
-    let api_pool = pool.clone();
-    let allowed_origins = cfg.cors_origins.clone();
-    tokio::spawn(async move {
-        if let Err(e) = axum::serve(api_listener, health::public_router(api_pool, allowed_origins)).await {
-            tracing::error!(error = %e, "public API server crashed");
-        }
-    });
-    tracing::info!(%internal_addr, %api_addr, "servers started");
+    if role.runs_api() {
+        let api_port = cfg.api_port.unwrap_or(cfg.healthcheck_port + 1);
+        let api_addr: SocketAddr = format!("0.0.0.0:{}", api_port).parse()?;
+        let api_listener = TcpListener::bind(api_addr).await?;
+        let api_pool = pool.clone();
+        let allowed_origins = cfg.cors_origins.clone();
+        tokio::spawn(async move {
+            if let Err(e) = axum::serve(api_listener, health::public_router(api_pool, allowed_origins)).await {
+                tracing::error!(error = %e, "public API server crashed");
+            }
+        });
+        tracing::info!(%internal_addr, api_port, "api server started");
+    } else {
+        tracing::info!(%internal_addr, "api role disabled; internal-only");
+    }
+
+    if role == Role::Api {
+        tracing::info!("api-only role — skipping poller / reorg / matview / sweeper");
+        futures::future::pending::<()>().await;
+        return Ok(());
+    }
 
     let reorg_cfg = cfg.clone();
     let reorg_pool = pool.clone();
