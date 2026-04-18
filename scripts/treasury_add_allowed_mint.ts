@@ -5,13 +5,8 @@ import type { TreasuryStandard } from '../target/types/treasury_standard';
 const PROGRAM_ID = new PublicKey('6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ');
 
 // Hex Trust + LayerZero wrapped XRP on Solana (mint created 2026-01-20).
-// As of 2026-04: Solana-side circulating supply ~10.87 wXRP, ~$1 Jupiter liquidity,
-// 6 holders, no DEX pools (`isSus: true` in Jupiter metadata). This script is
-// DEVNET ONLY — symbolic allowlist to test multi-mint code paths and signal
-// readiness for when Solana-side wXRP liquidity matures.
-//
-// DO NOT run against mainnet until: Jupiter TVL > $1M, >1k holders, and an
-// active Raydium/Meteora pool exists.
+// As of 2026-04-18: ~$1M liquidity, active wXRP/USDC pool on Jupiter.
+// Mainnet-eligible once SAEP treasury_standard deploys to mainnet.
 const WXRP = new PublicKey('6UpQcMAb5xMzxc7ZfPaVMgx3KqsvKZdT5U718BzD5We2');
 
 async function main() {

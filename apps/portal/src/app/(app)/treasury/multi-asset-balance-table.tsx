@@ -12,7 +12,6 @@ const KNOWN: Record<string, Meta> = {
   '6UpQcMAb5xMzxc7ZfPaVMgx3KqsvKZdT5U718BzD5We2': {
     symbol: 'wXRP',
     decimals: 6,
-    badge: 'Experimental — low liquidity',
   },
 };
 
