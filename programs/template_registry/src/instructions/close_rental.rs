@@ -82,8 +82,8 @@ pub fn handler(ctx: Context<CloseRental>) -> Result<()> {
 
     // pay remaining accrual to author + platform
     if remaining_accrual > 0 {
-        let platform_fee = remaining_accrual.checked_mul(platform_fee_bps).and_then(|v| v.checked_div(10_000)).unwrap_or(0);
-        let author_royalty = remaining_accrual.checked_mul(royalty_bps).and_then(|v| v.checked_div(10_000)).unwrap_or(0);
+        let platform_fee = remaining_accrual.checked_mul(platform_fee_bps).and_then(|v| v.checked_div(10_000)).ok_or(TemplateRegistryError::ArithmeticOverflow)?;
+        let author_royalty = remaining_accrual.checked_mul(royalty_bps).and_then(|v| v.checked_div(10_000)).ok_or(TemplateRegistryError::ArithmeticOverflow)?;
 
         if author_royalty > 0 {
             transfer_checked(

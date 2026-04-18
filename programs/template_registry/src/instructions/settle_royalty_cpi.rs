@@ -36,12 +36,19 @@ pub struct SettleRoyaltyCpi<'info> {
     pub author_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// treasury_standard PDA that signs the CPI
+    #[account(
+        constraint = source.owner == settler.key() @ TemplateRegistryError::InvalidCpiCaller,
+    )]
     pub settler: Signer<'info>,
 
     pub token_program: Interface<'info, TokenInterface>,
 }
 
 pub fn handler(ctx: Context<SettleRoyaltyCpi>, gross_amount: u64) -> Result<()> {
+    // CPI-only gate: stack height 1 = top-level, >1 = CPI call.
+    let stack_height = anchor_lang::solana_program::instruction::get_stack_height();
+    require!(stack_height > 1, TemplateRegistryError::InvalidCpiCaller);
+
     let template = &ctx.accounts.template;
     require!(
         template.status != TemplateStatus::Retired,
