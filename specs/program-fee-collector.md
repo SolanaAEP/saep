@@ -273,9 +273,9 @@ enum EpochStatus {
 
 ## Events
 
-`FeeCollectorInitialized`, `FeesCollected`, `SlashReceived`, `CollateralForfeited`, `EpochProcessed`, `DistributionRootCommitted`, `StakerClaimed`, `BurnExecuted`, `EpochSwept`, `DistributionParamsUpdated`, `ParamsUpdated`, `BucketCapsUpdated`, `PausedSet`, `AuthorityTransferProposed`, `AuthorityAccepted`, `HookRejected` (existing), `HookAllowlistUpdated`, `AgentHookAllowlistUpdated`, `GuardCallersUpdated`, `GuardResetProposed`, `GuardResetExecuted`.
+Emitted at M1 (per `programs/fee_collector/src/events.rs` + `emit!` call sites): `FeeCollectorInitialized`, `SlashReceived`, `CollateralForfeited`, `EpochProcessed`, `DistributionRootCommitted`, `StakerClaimed`, `BurnExecuted`, `EpochSwept`, `DistributionParamsUpdated`, `PausedSet`, `HookRejected`, `HookAllowlistInitialized`, `HookAllowlistUpdated`, `AgentHookAllowlistUpdated`. (Forward-looking names `ParamsUpdated` / `BucketCapsUpdated` / `AuthorityTransferProposed` / `AuthorityAccepted` / `GuardCallersUpdated` / `GuardResetProposed` / `GuardResetExecuted` are reserved for M2 event-surface extensions tied to `set_bucket_caps` + `transfer_authority_two_step` + guard-callers admin ixs not yet scaffolded against dedicated event types — `set_params` currently emits `DistributionParamsUpdated` + `PausedSet` only.) Struct-defined but not yet `emit!`'d: `FeesCollected` / `MintAccepted` / `GuardEntered` / `ReentrancyRejected` — scaffold parity with other programs; wire-up lands when the matching ix surfaces extend.
 
-Each event carries `epoch_id` (when epoch-scoped), `slot`, and `timestamp`. `SlashReceived` + `CollateralForfeited` also carry the source program id so the indexer can render provenance.
+Each epoch-scoped event carries `epoch_id` + `timestamp`. `SlashReceived` carries `slasher_program`; `CollateralForfeited` carries `source_program` — both populated from `FeeCollectorConfig`-hardpinned caller identity, not from the Accounts struct signer. Only `MintAccepted` / `GuardEntered` / `ReentrancyRejected` carry a `slot` field in the event body; indexer materializations resolve slot from the containing transaction for all other events.
 
 ## Errors
 
