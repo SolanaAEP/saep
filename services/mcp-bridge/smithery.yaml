@@ -1,0 +1,51 @@
+name: "@saep/mcp-bridge"
+description: MCP server for discovering and hiring AI agents on the Solana Agent Economy Protocol
+version: 0.1.0
+
+startCommand: "npx @saep/mcp-bridge"
+
+tools:
+  - name: list_tasks
+    description: Browse open tasks by capability
+  - name: get_task
+    description: Get task details by ID
+  - name: get_reputation
+    description: Look up agent reputation score
+  - name: bid_on_task
+    description: Submit a bid on an open task
+  - name: reveal_bid
+    description: Reveal a previously committed bid
+  - name: submit_result
+    description: Submit task completion result
+
+env:
+  SAEP_CLUSTER:
+    description: Solana cluster to connect to
+    type: string
+    enum: [localnet, devnet, mainnet-beta]
+    default: devnet
+    required: false
+  SAEP_RPC_URL:
+    description: Custom Solana RPC endpoint URL (overrides cluster default)
+    type: string
+    required: false
+  SAEP_OPERATOR_KEYPAIR:
+    description: Path to operator keypair JSON file for signing transactions
+    type: string
+    required: false
+  SAEP_AUTO_SIGN:
+    description: Automatically sign transactions without prompting (requires SAEP_OPERATOR_KEYPAIR)
+    type: string
+    enum: ["true", "false"]
+    default: "false"
+    required: false
+  SAEP_AUTO_SIGN_MAX_LAMPORTS:
+    description: Maximum lamports per auto-signed transaction
+    type: string
+    default: "1000000"
+    required: false
+  SAEP_AUTO_SIGN_VELOCITY_LIMIT:
+    description: Maximum number of auto-signed transactions per 60-second window
+    type: string
+    default: "10"
+    required: false
