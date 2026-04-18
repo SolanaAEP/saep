@@ -176,9 +176,26 @@ Client-side: both instructions in one versioned tx submitted as a Jito bundle. P
 
 ## Events
 
-`TaskCreated`, `TaskFunded`, `ResultSubmitted`, `TaskVerified`, `VerificationFailed`, `TaskReleased`, `TaskExpired`, `DisputeRaised`, `GlobalParamsUpdated`, `PausedSet`.
+`programs/task_market/src/events.rs` declares 21 `#[event]` structs; 20 fire from 31 `emit!` sites across 15 instruction modules, and `ReentrancyRejected` is a struct-only scaffold-parity placeholder (same convention as fee_collector / nxs_staking / dispute_arbitration / governance guard-runtime variants) — the `guard::check_callee_preconditions` reject path returns `TaskMarketError::ReentrancyDetected` by error, no event. Guard-vocabulary coverage is 2-of-5 live (`GuardEntered` + `ReentrancyRejected` struct-only); the 3 guard-admin events (`GuardInitialized`, `GuardAdminReset`, `AllowedCallersUpdated`) are absent from both struct and emit — the `instructions/guard.rs` guard-admin ixs (init / set_allowed_callers / propose_guard_reset / admin_reset_guard) land without event emission, and post-emit state is observable only via `ReentrancyGuard` + `AllowedCallers` account reads. Agent_registry remains the only in-scope program with the full 5-of-5 live guard vocabulary (cycle 161).
 
-All events carry `task_id` and `timestamp` so the indexer can reconstruct per-task history deterministically.
+Emit inventory by concern (8 buckets: global / task lifecycle / settlement / dispute / bidding / mint allowlist / payload / guard-runtime):
+- **global** — `GlobalInitialized` (init_global.rs:69); `GlobalParamsUpdated` ×4 (governance.rs:28 / :50 / :79 — one site per setter + allow_payment_mint.rs:112 reusing the event on the mint-allowlist-add path); `PausedSet` (governance.rs:58).
+- **task lifecycle** — `TaskCreated` (create_task.rs:136); `TaskFunded` (fund_task.rs:100); `TaskCancelled` (cancel_unfunded_task.rs:33); `TaskExpired` ×2 (expire.rs:166 + disputed_timeout_refund.rs:122 — dual-emit flags two distinct expiry surfaces, client-initiated 1h-grace expiry vs dispute-timeout forced refund).
+- **settlement** — `ResultSubmitted` (submit_result.rs:87); `TaskVerified` (verify_task.rs:140, carries `dispute_window_end`); `VerificationFailed` (verify_task.rs:124 — status unchanged per spec-07 verify_task semantics); `TaskReleased` (release.rs:215, carries `agent_payout` + `protocol_fee` + `solrep_fee` split triple).
+- **dispute** — `DisputeRaised` (raise_dispute.rs:28). Terminal hand-off per `audit-package-m1.md` §6.5 — `raise_dispute` is a named-stub family at M1 pending M2 DisputeArbitration `execute_dispute_verdict` / `force_release` landing.
+- **bidding** (commit-reveal scheme per cycle-74 audit report) — `BidBookOpened` (open_bidding.rs:113); `BidCommitted` (commit_bid.rs:209); `BidRevealed` ×2 (reveal_bid.rs:69 + :89 — dual-emit matches the two reveal branches, bidder-signed decommit vs operator-delegated reveal); `BidBookClosed` (close_bidding.rs:181, carries `winner_agent: Option<Pubkey>` + `winner_amount` + `reveal_count: u16`); `BidSlashed` (claim_bond.rs:157 — fires only on the no-reveal-slash branch).
+- **mint allowlist** — `MintAccepted` (allow_payment_mint.rs:105, carries `accept_flags: u32` bitmask + `hook_program: Option<Pubkey>` for TransferHook-mint detection per spec-07 hook-allowlist).
+- **payload** — `TaskPayloadStored` (create_task.rs:144 — second emit from `create_task` after `TaskCreated`, carries `kind_discriminant: u8` + `capability_bit: u16` for the discriminated-union TaskPayload surface).
+- **guard-runtime** — `GuardEntered` ×7 (expire / submit_result / close_bidding / verify_task / disputed_timeout_refund / release / fund_task — every ix that crosses `guard::check_callee_preconditions`; `create_task` omits guard-entry per its lack of CPI-out surface).
+
+Field-carrying shape against actual struct bodies:
+- **`task_id: [u8; 32]` on 15 of 21** — absent from `GlobalInitialized`, `GlobalParamsUpdated`, `PausedSet` (program-scoped), `MintAccepted` (keyed on `mint`), `GuardEntered` + `ReentrancyRejected` (guard-runtime, keyed on `(program, caller, slot)`).
+- **`timestamp: i64` on 12 of 21** — absent from all 5 bidding events, `TaskPayloadStored` (keyed on task_id + ix-context), `GuardEntered` + `ReentrancyRejected` (substitute `slot: u64` per the cycles 157–163 guard-runtime convention). `MintAccepted` uniquely carries both `slot` and `timestamp`.
+- **`slot: u64` on 3 of 21** — `GuardEntered`, `ReentrancyRejected`, `MintAccepted`.
+- **`agent_did: [u8; 32]` on 2 of 21** — `TaskCreated` (bind at create-time from the matched AgentAccount) and `TaskReleased` (settle-path indexer join against AgentRegistry). Mid-lifecycle events key on `task_id` alone; indexer re-derives `agent_did` via `TaskContract.agent_did` post-read.
+- **Settlement-fee triple on `TaskReleased`** — full `agent_payout` + `protocol_fee` + `solrep_fee` split per spec §fund_task escrow-fee-deduction decision. Consistent with the `compute_fees` property-test surface (cycle 76: no silent zero-fee bypass on bps arithmetic).
+
+Pre-edit spec listed 10 event names with the claim "all events carry `task_id` and `timestamp`" — 11 additional events ship in the IDL (5 bidding + `GlobalInitialized` + `TaskCancelled` + `TaskPayloadStored` + `MintAccepted` + `GuardEntered` + `ReentrancyRejected`), `task_id` is absent from 6 of 21, and `timestamp` is absent from 9 of 21. Indexer-side reconstruction of per-task history uses the `(task_id, slot, ix_index)` composite from `program_events` rather than `(task_id, timestamp)` alone.
 
 ## Errors
 
