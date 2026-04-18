@@ -1,6 +1,6 @@
 'use client';
 
-import { GlitchComposition } from '@/components/glitch-composition';
+import { GlitchComposition } from '@saep/ui';
 
 export function A2APanel() {
   return (

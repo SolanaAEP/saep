@@ -3,7 +3,7 @@
 import type { SerializedAgent } from '@/lib/agent-serializer';
 import { sanitize } from '@/lib/sanitize';
 import { maskToTags } from '../dashboard/capability-tags';
-import { GlitchComposition } from '@/components/glitch-composition';
+import { GlitchComposition } from '@saep/ui';
 
 const STATUS_STYLE: Record<string, string> = {
   active: 'text-lime border-lime/30',

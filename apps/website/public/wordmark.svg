@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 90" role="img" aria-label="SAEP wordmark">
+  <title>SAEP</title>
+  <style>
+    .w { font: 900 82px "Archivo Black", "Helvetica Neue", Arial, sans-serif; letter-spacing: -0.01em; }
+  </style>
+  <text x="0" y="72" class="w" fill="currentColor">SAEP</text>
+  <rect x="340" y="4" width="14" height="14" fill="#CBFF3A"/>
+</svg>
