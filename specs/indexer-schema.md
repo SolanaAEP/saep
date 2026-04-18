@@ -187,7 +187,7 @@ One row per operator. Latest snapshot wins; nightly rollup overwrites. See `spec
 
 ### `retro_fee_samples` — append-only fee-event log
 
-Raw `FeeClaim` events from `fee_collector` feeding the nightly `retro_eligibility` rollup.
+Raw `FeeClaim` events from `fee_collector` feeding the nightly `retro_eligibility` rollup. (M1: `FeeClaim` is a forward-looking name from `specs/retro-airdrop.md`; `fee_collector` currently emits `FeesCollected` / `StakerClaimed` / `SlashReceived` / `CollateralForfeited` but no retro-airdrop-shaped per-`(operator, agent_did, task_id, client)` event yet — see §`jobs::retro_rollup` row below for the matching TODO.)
 
 | Column | Type | Notes |
 |---|---|---|
