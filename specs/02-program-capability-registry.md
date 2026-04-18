@@ -85,13 +85,19 @@ Account size fixed. No `String` on-chain; everything is fixed-width for rent det
 
 ## Events
 
-- `RegistryInitialized { authority }`
-- `TagApproved { bit_index, slug, added_by, timestamp }`
-- `TagRetired { bit_index, timestamp }`
-- `TagManifestUpdated { bit_index }`
-- `AuthorityTransferProposed { pending }`
-- `AuthorityTransferAccepted { new_authority }`
-- `PausedSet { paused }`
+All 7 struct-declared events in the IDL (`programs/capability_registry/src/events.rs`) emit on at least one call site — no struct-only placeholders. Unlike the 7 sister in-scope programs (agent_registry, task_market, treasury_standard, proof_verifier, fee_collector, nxs_staking, dispute_arbitration), CapabilityRegistry carries no guard module: there is no CPI-out surface beyond the `validate_mask` readonly view, so the `GuardConfig` + `AllowedCallers` reentrancy-guard pattern is not applicable here, and the 5 `GuardEntered` / `ReentrancyRejected` / `GuardInitialized` / `GuardAdminReset` / `AllowedCallersUpdated` events documented in those sister specs are absent from this program's IDL by design.
+
+Emit inventory (7 events, 8 call sites):
+
+- `RegistryInitialized { authority }` — `initialize.rs:32`
+- `TagApproved { bit_index, slug, added_by, timestamp }` — `propose_tag.rs:68`
+- `TagRetired { bit_index, timestamp }` — `retire_tag.rs:39`
+- `TagManifestUpdated { bit_index }` — dual-emit: `update_manifest_uri.rs:41` on manifest-URI overwrite **and** `set_tag_personhood.rs:40` on personhood-tier change. The second call site lives on an ix surface not enumerated in §Instructions above (`set_tag_personhood(bit_index, min_tier)` mutates `CapabilityTag.min_personhood_tier` per `pre-audit-04-personhood-gate.md`). Indexer consumers cannot distinguish a manifest-URI change from a personhood-tier change off the IDL event alone; disambiguation requires reading the tag account state post-emit.
+- `AuthorityTransferProposed { pending }` — `authority.rs:26`
+- `AuthorityTransferAccepted { new_authority }` — `authority.rs:55`
+- `PausedSet { paused }` — `set_paused.rs:23`
+
+Field-carrying shape: `timestamp: i64` on 2 of 7 (`TagApproved`, `TagRetired`); absent from the other 5 (`RegistryInitialized`, `TagManifestUpdated`, `AuthorityTransferProposed`, `AuthorityTransferAccepted`, `PausedSet`) — indexer resolves timestamps for those off the containing tx. No `slot` field anywhere. `bit_index: u8` keys the 3 tag-scoped events (`TagApproved`, `TagRetired`, `TagManifestUpdated`); there is no `agent_did` analog because this program is tag-scoped, not agent-scoped. `authority: Pubkey` on `RegistryInitialized` only — subsequent authority rotation emits `AuthorityTransferProposed { pending }` + `AuthorityTransferAccepted { new_authority }` rather than a post-rotation config snapshot.
 
 ## Errors
 
