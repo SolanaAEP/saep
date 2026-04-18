@@ -33,6 +33,50 @@ body {
   }
 }
 
+.wallet-adapter-button {
+  font-family: var(--font-mono, ui-monospace, monospace) !important;
+  font-size: 11px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  background: transparent !important;
+  border: 1px solid var(--lime, #06f512) !important;
+  color: var(--lime, #06f512) !important;
+  border-radius: 0 !important;
+  height: 40px !important;
+  padding: 0 20px !important;
+  transition: background 0.15s, color 0.15s !important;
+}
+.wallet-adapter-button:hover {
+  background: var(--lime, #06f512) !important;
+  color: var(--ink, #0a0a0a) !important;
+}
+.wallet-adapter-button-trigger {
+  background: transparent !important;
+}
+.wallet-adapter-modal-wrapper {
+  background: var(--paper, #f3f4ed) !important;
+  color: var(--ink, #0a0a0a) !important;
+  border-radius: 0 !important;
+  border: 1px solid rgba(10, 10, 10, 0.2) !important;
+  font-family: var(--font-mono, ui-monospace, monospace) !important;
+}
+.wallet-adapter-modal-title {
+  font-family: var(--font-mono, ui-monospace, monospace) !important;
+  font-size: 11px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: var(--ink, #0a0a0a) !important;
+}
+.wallet-adapter-modal-list .wallet-adapter-button {
+  border: none !important;
+  border-bottom: 1px solid rgba(10, 10, 10, 0.1) !important;
+  color: var(--ink, #0a0a0a) !important;
+}
+.wallet-adapter-modal-list .wallet-adapter-button:hover {
+  background: rgba(10, 10, 10, 0.05) !important;
+  color: var(--lime, #06f512) !important;
+}
+
 dialog.mobile-nav {
   margin: 0;
   padding: 0;
