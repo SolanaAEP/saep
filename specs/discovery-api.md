@@ -45,7 +45,7 @@ Shape types below. `total` is returned only when a `WHERE` clause narrows the re
 |---|---|---|---|
 | `GET /tasks` | Filtered task list | `status` (comma-sep), `creator` (base58), `agent_did` (hex-32), `capability_mask` (hex), `created_after` (RFC3339), `created_before` (RFC3339), `cursor`, `limit`, `sort` (`created_desc`/`deadline_asc`/`reward_desc`, default `created_desc`) | `{items: TaskSummary[], cursor?}` |
 | `GET /tasks/:task_id_hex` | Single task detail | — | `TaskDetail` (full `TaskContract` + current escrow balance + proof verify status) |
-| `GET /tasks/:task_id_hex/timeline` | State transitions | — | `{events: TaskEvent[]}` (parsed from `program_events` rows with `event_name` ∈ `{TaskCreated, TaskAccepted, ResultSubmitted, ProofVerified, TaskReleased, TaskDisputed, TaskExpired, TaskCancelled}`) |
+| `GET /tasks/:task_id_hex/timeline` | State transitions | — | `{events: TaskEvent[]}` (parsed from `program_events` rows with `event_name` ∈ `{TaskCreated, BidBookOpened, BidCommitted, BidRevealed, BidBookClosed, ResultSubmitted, TaskVerified, VerificationFailed, TaskReleased, DisputeRaised, TaskExpired, TaskCancelled}`) |
 
 ### Capabilities
 
@@ -131,8 +131,8 @@ Base path: `/v1/discovery/ws`. One socket per client. Subscription-scoped — cl
 
 | Channel | Events | Filter schema |
 |---|---|---|
-| `agents` | `AgentRegistered`, `ManifestUpdated`, `StakeUpdated`, `AgentSlashed`, `AgentStatusChanged` | `{did_hex?, operator?, capability_mask?}` |
-| `tasks` | `TaskCreated`, `TaskAccepted`, `ResultSubmitted`, `ProofVerified`, `TaskReleased`, `TaskDisputed`, `TaskExpired`, `TaskCancelled` | `{task_id_hex?, creator?, agent_did_hex?, status?}` |
+| `agents` | `AgentRegistered`, `ManifestUpdated`, `StakeIncreased`, `SlashExecuted`, `SlashCancelled`, `StatusChanged` | `{did_hex?, operator?, capability_mask?}` |
+| `tasks` | `TaskCreated`, `BidBookOpened`, `BidRevealed`, `BidBookClosed`, `ResultSubmitted`, `TaskVerified`, `VerificationFailed`, `TaskReleased`, `DisputeRaised`, `TaskExpired`, `TaskCancelled` | `{task_id_hex?, client?, agent_did_hex?, status?}` |
 | `treasury` | `VaultInitialized`, `DepositReceived`, `WithdrawExecuted`, `SwapExecuted`, `StreamInitialized`, `StreamClosed`, `LimitUpdated` | `{did_hex?, mint?}` |
 | `proofs` | `ProofVerified`, `VerificationFailed`, `VkActivated` | `{task_id_hex?, vk_id?}` |
 
@@ -157,9 +157,9 @@ Trade-off: a durable cursor (`?since_id=<redis_stream_id>`) would handle WS disc
 
 | Endpoint | TTL | Invalidation |
 |---|---|---|
-| `GET /agents` (filtered list) | 30s | Event-driven invalidation on `AgentRegistered` / `AgentStatusChanged` / `ManifestUpdated` (publisher subscribes to `saep:events:agent_registry` and `DEL`s prefix `disc:agents:*`). |
+| `GET /agents` (filtered list) | 30s | Event-driven invalidation on `AgentRegistered` / `StatusChanged` / `ManifestUpdated` (publisher subscribes to `saep:events:agent_registry` and `DEL`s prefix `disc:agents:*`). |
 | `GET /agents/:did` | 60s | Same event-driven invalidation, narrower key (`disc:agents:did:<did>`). |
-| `GET /agents/:did/tasks` | 15s | `disc:agents:tasks:<did>` invalidated on `TaskCreated` / `TaskAccepted` / `ResultSubmitted` / `TaskReleased` / `TaskDisputed` / `TaskExpired` / `TaskCancelled` with `agent_did == <did>`. |
+| `GET /agents/:did/tasks` | 15s | `disc:agents:tasks:<did>` invalidated on `TaskCreated` / `BidBookClosed` / `ResultSubmitted` / `TaskReleased` / `DisputeRaised` / `TaskExpired` / `TaskCancelled` with `agent_did == <did>`. |
 | `GET /tasks` (filtered list) | 10s | Too high cardinality for event-driven invalidation; short TTL + stampede protection (single-flight via `redis SET NX` lock, 2s timeout). |
 | `GET /tasks/:task_id_hex` | 30s | Event-driven on any task-state event for that `task_id`. |
 | `GET /tasks/:task_id_hex/timeline` | 60s | Append-only underlying data; TTL is the only invalidator (events append but never rewrite). |
@@ -184,17 +184,17 @@ No new tables at M1. Two denormalized views live alongside `reputation_rollup` f
 
 ### Materialized view — `agent_directory`
 
-Refreshed every 60s alongside `reputation_rollup`. One row per agent, folding latest `AgentRegistered` + `ManifestUpdated` + `StakeUpdated` + `AgentSlashed` events.
+Refreshed every 60s alongside `reputation_rollup`. One row per agent, folding latest `AgentRegistered` + `ManifestUpdated` + `StakeIncreased` + `SlashExecuted` events.
 
 | Column | Type | Source |
 |---|---|---|
 | `agent_did` | `BYTEA` (32) PRIMARY KEY | event `data->>'agent_did'` |
 | `operator` | `TEXT` (base58) | latest `AgentRegistered.operator` |
 | `capability_mask` | `NUMERIC(20)` (u64 as numeric) | latest `ManifestUpdated.capability_mask` else `AgentRegistered.capability_mask` |
-| `base_price_lamports` | `NUMERIC(20)` | latest `ManifestUpdated.base_price` |
+| `base_price_lamports` | `NUMERIC(20)` | latest `ManifestUpdated.base_price` (M1: event lacks `base_price`; column omitted from matview until event payload extends — see migration `2026-04-17-000005_discovery_views`) |
 | `reputation_composite` | `INT` | join `reputation_rollup.composite_score` (capability-weighted avg per Open-Q #2) |
-| `status` | `TEXT` | derived: `slashed` if any `AgentSlashed` with no offsetting `SlashResolved`; `paused` if latest `AgentStatusChanged.status = 1`; else `active` |
-| `manifest_uri` | `TEXT` | latest `ManifestUpdated.manifest_uri` |
+| `status` | `TEXT` | derived: `slashed` if any `SlashExecuted` (post-execution slash is terminal at M1; `SlashCancelled` only offsets pre-execution `SlashProposed`); `paused` if latest `StatusChanged.new_status = 1`; else `active` |
+| `manifest_uri` | `TEXT` | latest `ManifestUpdated.manifest_uri` (M1: event lacks `manifest_uri`; column is `NULL::text` stub until event payload extends) |
 | `last_active_unix` | `BIGINT` | max(slot-time) across any event with this did |
 | `refreshed_at` | `TIMESTAMPTZ` | `now()` at refresh |
 
@@ -207,12 +207,12 @@ Same cadence. One row per task, folding latest state transition.
 | Column | Type | Source |
 |---|---|---|
 | `task_id` | `BYTEA` (32) PRIMARY KEY | `data->>'task_id'` |
-| `creator` | `TEXT` | `TaskCreated.creator` |
-| `agent_did` | `BYTEA` NULL | `TaskAccepted.agent_did` |
+| `creator` | `TEXT` | `TaskCreated.client` |
+| `agent_did` | `BYTEA` NULL | `TaskCreated.agent_did` (IDL carries `agent_did` on create; no separate `TaskAccepted` event at M1 — acceptance is signalled by `BidBookClosed.winner_agent`) |
 | `status` | `TEXT` | derived from latest state event |
-| `reward_lamports` | `NUMERIC(20)` | `TaskCreated.reward` |
-| `capability_mask` | `NUMERIC(20)` | `TaskCreated.required_capabilities` |
-| `created_at_unix` | `BIGINT` | `TaskCreated.slot_time` |
+| `reward_lamports` | `NUMERIC(20)` | `TaskCreated.payment_amount` |
+| `capability_mask` | `NUMERIC(20)` | `TaskCreated.required_capabilities` (M1: event lacks this field; column is `NULL::numeric` stub until event payload extends — `(capability_mask, reward_lamports DESC)` index searches over NULLs) |
+| `created_at_unix` | `BIGINT` | `TaskCreated.timestamp` |
 | `deadline_unix` | `BIGINT` | `TaskCreated.deadline` |
 | `updated_at_unix` | `BIGINT` | max slot-time across all events for this task |
 
