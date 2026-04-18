@@ -19,8 +19,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <Centered>
         <div className="flex flex-col gap-4 max-w-sm">
-          <h1 className="text-xl font-semibold">Sign in</h1>
-          <p className="text-sm text-ink/70">
+          <div className="font-mono text-[10px] text-mute tracking-widest uppercase mb-1">
+            authentication required
+          </div>
+          <h1 className="font-display text-xl tracking-tight">Sign in</h1>
+          <p className="text-sm text-mute">
             Connect your Solana wallet and sign a message to access the portal.
           </p>
           <WalletMultiButton />
@@ -39,12 +42,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                   setBusy(false);
                 }
               }}
-              className="h-10 rounded bg-ink text-paper text-sm font-medium disabled:opacity-50"
+              className="font-mono text-[11px] font-medium h-10 px-5 border border-ink text-ink hover:bg-ink hover:text-paper disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
             >
               {busy ? 'Signing…' : 'Sign message to continue'}
             </button>
           ) : null}
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {error ? <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">ERR: {error}</div> : null}
         </div>
       </Centered>
     );
@@ -52,12 +55,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between text-sm text-ink/70">
-        <span className="font-mono">{session.address.slice(0, 4)}…{session.address.slice(-4)}</span>
+      <div className="flex items-center justify-between font-mono text-[11px] text-mute">
+        <span>{session.address.slice(0, 4)}…{session.address.slice(-4)}</span>
         <button
           type="button"
           onClick={() => signOut()}
-          className="underline hover:text-ink"
+          className="text-mute hover:text-lime transition-colors"
         >
           Sign out
         </button>
