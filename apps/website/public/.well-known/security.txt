@@ -1,0 +1,6 @@
+Contact: mailto:security@buildonsaep.com
+Contact: https://buildonsaep.com/security
+Expires: 2027-04-17T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://buildonsaep.com/.well-known/security.txt
+Policy: https://buildonsaep.com/security

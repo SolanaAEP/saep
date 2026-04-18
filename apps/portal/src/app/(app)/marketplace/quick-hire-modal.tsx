@@ -6,7 +6,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { buildCreateTaskIx, type CreateTaskInput } from '@saep/sdk';
 import { useSendTransaction, useTaskMarketProgram, useCluster } from '@saep/sdk-ui';
 import type { SerializedAgent } from '@/lib/agent-serializer';
-import { GlitchComposition } from '@/components/glitch-composition';
+import { GlitchComposition } from '@saep/ui';
 
 const USDC_DEVNET_MINT = new PublicKey(
   process.env.NEXT_PUBLIC_DEFAULT_PAYMENT_MINT ?? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',

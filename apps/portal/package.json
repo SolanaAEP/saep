@@ -17,6 +17,7 @@
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@fontsource/archivo-black": "^5.2.8",
     "@saep/config": "workspace:*",
+    "@saep/ui": "workspace:*",
     "@saep/sdk": "workspace:*",
     "@saep/sdk-ui": "workspace:*",
     "@solana/wallet-adapter-react": "0.15.35",
