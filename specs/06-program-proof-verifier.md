@@ -98,14 +98,20 @@ On-chain size: fixed-width for `num_public_inputs <= 16` (M1 cap; reviewer may r
 
 ## Events
 
-- `VkRegistered`
-- `VkActivationProposed { vk_id, activates_at }`
-- `VkActivated`
-- `VkActivationCancelled`
-- `PausedSet`
-- `AuthorityTransferProposed / Accepted`
+Emit surface = 11 struct declarations in `events.rs`, 14 `emit!` call sites across 7 ix files (source: `grep emit! programs/proof_verifier/src/`). 10 events live, 1 struct-only.
 
-No event on `verify_proof` (too hot a path; callers emit their own settlement events).
+- **Global init** — `VerifierInitialized { authority }` at `init_config.rs:46`.
+- **VK lifecycle** — `VkRegistered { vk_id, circuit_label, is_production }` emits twice: `register_vk.rs:71` (legacy single-tx path) and `append_vk_ic.rs:49` (chunked-flow finalize per cycle-117 `init_vk + append_vk_ic × N` supersession after F-2026-02 circuit extension drove the single-tx payload over the Anchor 0.31 client 1000-byte scratch-buffer ceiling; resolved public `b5916a6`). `VkActivationProposed { vk_id, activates_at }` at `vk_activation.rs:45` (7-day timelock target per spec §1). `VkActivated { vk_id }` at `vk_activation.rs:89`. `VkActivationCancelled { vk_id }` at `vk_activation.rs:116`.
+- **Verify-proof** — no success event on the happy path (hot path; TaskMarket's `TaskVerified` / `VerificationFailed` per cycle-164 §Events sweep close the settlement-side trace). Reject path emits `ReentrancyRejected { program, offending_caller, slot }` ×2 at `verify_proof.rs:75` + `:92` on guard-check failure (caller mismatch / stack-height overflow). Proof_verifier is the **only** program across the 9-cycle §Events sweep where `ReentrancyRejected` is live — every sister program declares it as scaffold-parity placeholder only.
+- **Batch verify** — `BatchVerified { batch_id, count, vk_id }` at `batch_verify.rs:232` inside `finalize_batch_handler`. `open_batch`, `add_batch_proof`, `abort_batch` emit nothing — the batch state-machine is observable on-chain via `BatchState` PDA reads + the terminal `BatchVerified` only.
+- **Reputation CPI (F-2026-02 inert rail)** — `ReentrancyRejected` ×2 at `reputation_cpi.rs:146` + `:163` on guard-check failure. The `verify_and_update_reputation_handler` itself is fail-closed per F-2026-02 (cycle-73 `reports/proof-verifier-audit.md` §Findings) and returns before state change, but the guard-check reject path still fires. Indexer-side: a `ReentrancyRejected` keyed on `reputation_cpi.rs` means a caller tried the inert rail *and* violated the guard — fail-closed on both axes, no state change.
+- **Pause** — `PausedSet { paused }` at `set_paused.rs:23`.
+- **Authority two-step** — `AuthorityTransferProposed { pending }` at `authority.rs:26`. `AuthorityTransferAccepted { new_authority }` at `authority.rs:55`.
+- **Guard runtime (struct-only)** — `GuardEntered { program, caller, slot, stack_height }` declared at `events.rs:53` but no emit site in the crate. **Inverse of the cohort convention**: all 8 prior-swept programs declare `ReentrancyRejected` struct-only + `GuardEntered` live (with `GuardEntered` counts of 7 in task_market, 1 in treasury, 0 in fee_collector / nxs_staking / dispute / governance / capability). Proof_verifier inverts to `ReentrancyRejected` live ×4 + `GuardEntered` struct-only. Guard-admin events (`GuardInitialized` / `GuardAdminReset` / `AllowedCallersUpdated`) absent entirely — zero struct declarations, zero emit sites — matching the 2-of-5-live treasury/task-market admin-side convention but on the runtime axis proof_verifier is the lone outlier.
+
+Field-carrying shape: `vk_id: [u8; 32]` on 5 of 11 (4 VK-lifecycle + `BatchVerified`). `slot: u64` on 2 (`GuardEntered` struct-only + `ReentrancyRejected`). **No `timestamp: i64` field on any event** — proof_verifier is the only program across the 9-cycle §Events sweep without a single timestamp-carrying event (cf. treasury 13-of-14, task-market 12-of-21, agent-registry 9-of-9, etc.). Indexer-side, block time for VK-lifecycle + authority-transfer + pause comes from `program_events.block_time` / `slot`. No `agent_did` on any event (protocol-infrastructure program, not per-agent). `activates_at: i64` on `VkActivationProposed` is the sole i64 timestamp-shape field and is a timelock target, not a wall-clock stamp.
+
+Pre-edit note "no event on `verify_proof`" correct on the happy path; reject path does emit `ReentrancyRejected` ×2 per the Verify-proof bullet above. Pre-edit enumerated 6 of 11 events; 5 were absent (VerifierInitialized, BatchVerified, VkRegistered dual-emit supersession, ReentrancyRejected live ×4, GuardEntered struct-only).
 
 ## Errors
 
