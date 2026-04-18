@@ -248,6 +248,82 @@
       "args": []
     },
     {
+      "name": "decay_availability",
+      "discriminator": [
+        34,
+        192,
+        235,
+        84,
+        20,
+        107,
+        145,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "category",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agent_did"
+              },
+              {
+                "kind": "arg",
+                "path": "capability_bit"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "agent_did",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "capability_bit",
+          "type": "u16"
+        },
+        {
+          "name": "miss_count",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "delegate_control",
       "discriminator": [
         229,
@@ -2332,6 +2408,19 @@
       ]
     },
     {
+      "name": "AvailabilityDecayed",
+      "discriminator": [
+        228,
+        195,
+        71,
+        32,
+        241,
+        41,
+        236,
+        178
+      ]
+    },
+    {
       "name": "CategoryReputationUpdated",
       "discriminator": [
         107,
@@ -2433,19 +2522,6 @@
         16,
         25,
         100
-      ]
-    },
-    {
-      "name": "JobOutcomeRecorded",
-      "discriminator": [
-        69,
-        149,
-        146,
-        2,
-        12,
-        151,
-        230,
-        42
       ]
     },
     {
@@ -2820,6 +2896,11 @@
       "code": 6042,
       "name": "InvalidCivicGateway",
       "msg": "civic gateway program cannot be set to Pubkey::default"
+    },
+    {
+      "code": 6043,
+      "name": "DecayCooldownNotElapsed",
+      "msg": "availability decay cooldown has not elapsed (24h minimum)"
     }
   ],
   "types": [
@@ -3031,6 +3112,43 @@
           {
             "name": "count",
             "type": "u16"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AvailabilityDecayed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agent_did",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "capability_bit",
+            "type": "u16"
+          },
+          {
+            "name": "old_availability",
+            "type": "u16"
+          },
+          {
+            "name": "new_availability",
+            "type": "u16"
+          },
+          {
+            "name": "miss_count",
+            "type": "u8"
           },
           {
             "name": "timestamp",
@@ -3303,39 +3421,6 @@
           {
             "name": "program",
             "type": "pubkey"
-          },
-          {
-            "name": "timestamp",
-            "type": "i64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "JobOutcomeRecorded",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "agent_did",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "success",
-            "type": "bool"
-          },
-          {
-            "name": "disputed",
-            "type": "bool"
-          },
-          {
-            "name": "jobs_completed",
-            "type": "u64"
           },
           {
             "name": "timestamp",
