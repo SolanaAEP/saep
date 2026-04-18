@@ -1,11 +1,16 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { buildCreateTaskIx, type CreateTaskInput } from '@saep/sdk';
 import { useSendTransaction, useTaskMarketProgram, useCluster } from '@saep/sdk-ui';
 import type { SerializedAgent } from '@/lib/agent-serializer';
+
+const USDC_DEVNET_MINT = new PublicKey(
+  process.env.NEXT_PUBLIC_DEFAULT_PAYMENT_MINT ?? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+);
+const PAYMENT_DECIMALS = 6;
 
 function bytesFromHex(hex: string): Uint8Array {
   return Uint8Array.from(hex.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
@@ -25,8 +30,8 @@ export function QuickHireModal({ agent, onClose }: Props) {
   const [deadlineHours, setDeadlineHours] = useState('24');
   const [txSignature, setTxSignature] = useState<string | null>(null);
 
-  const paymentLamports = Math.round(parseFloat(paymentAmount || '0') * 1e9);
-  const valid = taskDescription.length > 0 && paymentLamports > 0 && parseInt(deadlineHours) > 0;
+  const paymentBaseUnits = Math.round(parseFloat(paymentAmount || '0') * 10 ** PAYMENT_DECIMALS);
+  const valid = taskDescription.length > 0 && paymentBaseUnits > 0 && parseInt(deadlineHours) > 0;
 
   const { mutate, isPending, error } = useSendTransaction<CreateTaskInput>({
     buildInstruction: async (input) => buildCreateTaskIx(program!, cluster, input),
@@ -49,6 +54,7 @@ export function QuickHireModal({ agent, onClose }: Props) {
     const deadlineSec = BigInt(Math.floor(Date.now() / 1000) + parseInt(deadlineHours) * 3600);
 
     const didBytes = bytesFromHex(agent.did);
+    const agentIdBytes = bytesFromHex(agent.agentId);
     const operatorKey = new PublicKey(agent.operator);
 
     mutate({
@@ -56,15 +62,15 @@ export function QuickHireModal({ agent, onClose }: Props) {
       taskNonce: nonce,
       agentDid: didBytes,
       agentOperator: operatorKey,
-      agentId: didBytes,
-      paymentMint: publicKey, // fallback; real impl uses selected mint
-      paymentAmount: BigInt(paymentLamports),
+      agentId: agentIdBytes,
+      paymentMint: USDC_DEVNET_MINT,
+      paymentAmount: BigInt(paymentBaseUnits),
       taskHash,
       criteriaRoot,
       deadline: deadlineSec,
       milestoneCount: 0,
     });
-  }, [valid, publicKey, program, taskDescription, deadlineHours, paymentLamports, agent, mutate]);
+  }, [valid, publicKey, program, taskDescription, deadlineHours, paymentBaseUnits, agent, mutate]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
@@ -96,7 +102,7 @@ export function QuickHireModal({ agent, onClose }: Props) {
 
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-ink/70">Payment (SOL)</span>
+            <span className="text-xs text-ink/70">Payment (USDC)</span>
             <input
               type="number"
               step="0.01"
@@ -148,7 +154,7 @@ export function QuickHireModal({ agent, onClose }: Props) {
               disabled={!valid || isPending || !publicKey}
               className="text-xs font-medium px-4 py-1.5 rounded bg-lime text-black hover:bg-lime/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
-              {isPending ? 'Signing...' : !publicKey ? 'Connect wallet' : 'Create task + fund'}
+              {isPending ? 'Signing...' : !publicKey ? 'Connect wallet' : 'Create task'}
             </button>
           )}
         </div>
