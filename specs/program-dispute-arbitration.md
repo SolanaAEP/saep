@@ -282,9 +282,11 @@ Invariant: illegal transitions rejected by status gate. Round 2 tally is final.
 
 ## Events
 
-`ArbitratorRegistered`, `PoolSnapshotted`, `DisputeRaised`, `ArbitratorsSelected`, `DisputeCancelled`, `VoteCommitted`, `VoteRevealed`, `RoundTallied`, `AppealEscalated`, `DisputeResolved`, `SlashProposed`, `SlashExecuted`, `SlashCancelled`, `ParamsUpdated`, `PausedSet`.
+Emitted events (15, per `programs/dispute_arbitration/src/events.rs` + `emit!` call sites in `instructions/*`): `ArbitratorRegistered`, `PoolSnapshotted`, `DisputeRaised`, `ArbitratorsSelected`, `DisputeCancelled`, `VoteCommitted`, `VoteRevealed`, `RoundTallied`, `AppealEscalated`, `DisputeResolved`, `SlashProposed`, `SlashExecuted`, `SlashCancelled`, `ParamsUpdated`, `PausedSet`.
 
-Each event carries `task_id` (when case-scoped) or `arbitrator` (when operator-scoped) plus `timestamp`, so the indexer can replay any dispute deterministically.
+5 struct-only guard events ship in the IDL but are never `emit!`'d at M1 — `GuardEntered`, `ReentrancyRejected`, `GuardInitialized`, `GuardAdminReset`, `AllowedCallersUpdated`. Scaffold parity with the guard modules in `fee_collector` + `nxs_staking`; wire-up lands when the guard-admin ixs go beyond their init/reset shapes.
+
+Case-scoped events carry `case_id: u64` (primary case identifier) — present on 10 of 15 emitted events (dispute lifecycle / vote / slash). `task_id: u64` rides alongside `case_id` on the 3 TaskMarket-bridge events (`DisputeRaised`, `DisputeCancelled`, `DisputeResolved`) so the indexer + TaskMarket caller can correlate without an extra account-read. Operator-scoped events carry `arbitrator: Pubkey` (Vote × 2 + Slash × 3) or `operator: Pubkey` (`ArbitratorRegistered` — pre-registration the arbitrator PDA does not yet exist). `PoolSnapshotted` carries `epoch: u64`; `ParamsUpdated` + `PausedSet` carry `authority: Pubkey`. All 15 emitted events carry `timestamp: i64`; none carry `slot` in the event body — the indexer resolves slot from the containing transaction, same convention as `fee_collector` + `nxs_staking`. The indexer can replay any dispute deterministically off `(case_id, task_id?, timestamp)` plus the per-event payload.
 
 ## Errors
 
