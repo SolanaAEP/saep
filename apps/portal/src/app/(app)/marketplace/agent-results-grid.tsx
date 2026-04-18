@@ -3,12 +3,13 @@
 import type { SerializedAgent } from '@/lib/agent-serializer';
 import { sanitize } from '@/lib/sanitize';
 import { maskToTags } from '../dashboard/capability-tags';
+import { GlitchComposition } from '@/components/glitch-composition';
 
-const STATUS_COLOR: Record<string, string> = {
-  active: 'text-lime bg-lime/10',
-  paused: 'text-yellow-500 bg-yellow-500/10',
-  suspended: 'text-danger bg-danger/10',
-  deregistered: 'text-mute bg-mute/10',
+const STATUS_STYLE: Record<string, string> = {
+  active: 'text-lime border-lime/30',
+  paused: 'text-yellow-500 border-yellow-500/30',
+  suspended: 'text-danger border-danger/30',
+  deregistered: 'text-mute border-mute/30',
 };
 
 function fmtSol(lamports: string): string {
@@ -31,8 +32,8 @@ interface Props {
 export function AgentResultsGrid({ agents, onHire }: Props) {
   if (agents.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-ink/20 p-8 text-sm text-ink/60">
-        No agents match your filters.
+      <div className="border border-dashed border-ink/20 p-8 text-center">
+        <p className="font-mono text-sm text-mute">NO AGENTS MATCH FILTER</p>
       </div>
     );
   }
@@ -44,74 +45,89 @@ export function AgentResultsGrid({ agents, onHire }: Props) {
       {sorted.map((agent) => {
         const tags = maskToTags(BigInt(agent.capabilityMask));
         const score = compositeScore(agent);
+        const statusClass = STATUS_STYLE[agent.status] ?? '';
 
         return (
           <div
             key={agent.address}
-            className="rounded-lg border border-ink/10 p-5 flex flex-col gap-3 hover:border-lime/40 transition-colors"
+            className="group border border-ink/10 flex flex-col overflow-hidden hover:border-lime/40 transition-colors"
           >
-            <header className="flex items-center justify-between gap-2">
-              <a
-                href={`/agents/${agent.did}`}
-                className="font-medium truncate text-sm hover:underline"
+            <div className="relative h-20 overflow-hidden">
+              <GlitchComposition
+                seed={agent.address}
+                className="absolute inset-0 opacity-60 group-hover:opacity-80 transition-opacity"
+              />
+              <div className="absolute top-2 right-2">
+                <span className={`font-mono text-[9px] uppercase px-1.5 py-0.5 border ${statusClass}`}>
+                  {agent.status}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-4 flex flex-col gap-3 flex-1">
+              <header>
+                <a
+                  href={`/agents/${agent.did}`}
+                  className="font-mono text-xs truncate block hover:text-lime transition-colors"
+                >
+                  {sanitize(agent.manifestUri) || `${agent.did.slice(0, 16)}...`}
+                </a>
+                <div className="font-mono text-[9px] text-mute mt-0.5">
+                  {agent.address.slice(0, 4)}...{agent.address.slice(-4)}
+                </div>
+              </header>
+
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {tags.slice(0, 4).map((t) => (
+                    <span key={t} className="font-mono text-[9px] px-1.5 py-0.5 border border-ink/10 text-ink/70">
+                      {t}
+                    </span>
+                  ))}
+                  {tags.length > 4 && (
+                    <span className="font-mono text-[9px] px-1.5 py-0.5 text-mute">+{tags.length - 4}</span>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-3 gap-3 font-mono text-[11px] border-t border-ink/10 pt-3">
+                <div>
+                  <div className="text-[9px] text-mute uppercase">Score</div>
+                  <div>{Math.round(score).toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-mute uppercase">Price</div>
+                  <div>{fmtSol(agent.priceLamports)} SOL</div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-mute uppercase">Jobs</div>
+                  <div>{agent.jobsCompleted}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 font-mono text-[11px] border-t border-ink/10 pt-3">
+                <div>
+                  <div className="text-[9px] text-mute uppercase">Quality</div>
+                  <div>{agent.reputation.quality.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-mute uppercase">Time</div>
+                  <div>{agent.reputation.timeliness.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-mute uppercase">Stake</div>
+                  <div>{fmtSol(agent.stakeAmount)}</div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => onHire(agent)}
+                disabled={agent.status !== 'active'}
+                className="mt-auto font-mono text-[11px] font-medium px-3 py-2 border border-lime text-lime hover:bg-lime hover:text-black disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
               >
-                {sanitize(agent.manifestUri) || `Agent ${agent.did.slice(0, 8)}...`}
-              </a>
-              <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded ${STATUS_COLOR[agent.status] ?? ''}`}>
-                {agent.status}
-              </span>
-            </header>
-
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {tags.slice(0, 4).map((t) => (
-                  <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-ink/5 text-ink/70">
-                    {t}
-                  </span>
-                ))}
-                {tags.length > 4 && (
-                  <span className="text-[10px] px-1.5 py-0.5 text-ink/50">+{tags.length - 4}</span>
-                )}
-              </div>
-            )}
-
-            <dl className="grid grid-cols-3 gap-3 text-xs">
-              <div>
-                <dt className="text-ink/50">Score</dt>
-                <dd>{Math.round(score).toLocaleString()}</dd>
-              </div>
-              <div>
-                <dt className="text-ink/50">Price</dt>
-                <dd className="font-mono">{fmtSol(agent.priceLamports)} SOL</dd>
-              </div>
-              <div>
-                <dt className="text-ink/50">Jobs</dt>
-                <dd>{agent.jobsCompleted}</dd>
-              </div>
-            </dl>
-
-            <dl className="grid grid-cols-3 gap-3 text-xs border-t border-ink/10 pt-3">
-              <div>
-                <dt className="text-ink/50">Quality</dt>
-                <dd>{agent.reputation.quality.toLocaleString()}</dd>
-              </div>
-              <div>
-                <dt className="text-ink/50">Timeliness</dt>
-                <dd>{agent.reputation.timeliness.toLocaleString()}</dd>
-              </div>
-              <div>
-                <dt className="text-ink/50">Stake</dt>
-                <dd className="font-mono">{fmtSol(agent.stakeAmount)}</dd>
-              </div>
-            </dl>
-
-            <button
-              onClick={() => onHire(agent)}
-              disabled={agent.status !== 'active'}
-              className="mt-auto text-xs font-medium px-3 py-1.5 rounded bg-lime text-black hover:bg-lime/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              Hire agent
-            </button>
+                HIRE AGENT
+              </button>
+            </div>
           </div>
         );
       })}
