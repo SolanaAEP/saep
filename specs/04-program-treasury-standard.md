@@ -143,7 +143,22 @@ A per-agent PDA wallet that enforces spending limits at the instruction level an
 
 ## Events
 
-`TreasuryCreated`, `TreasuryFunded`, `TreasuryWithdraw`, `LimitsUpdated`, `StreamInitialized`, `StreamWithdrawn`, `StreamClosed`, `AllowedMintAdded`, `AllowedMintRemoved`, `PausedSet`.
+Scaffold emits 14 of 15 declared events across 19 `emit!` call sites. Spec-vs-IDL drift: pre-edit list enumerated 10 events (the 7 sister-spec sweeps cycles 155–162 hit similar shape). Reconciled set below — IDL canonical.
+
+**M1-emit inventory (14 events, 19 call sites)** grouped by concern, with provenance against `programs/treasury_standard/src/events.rs` + `instructions/`:
+
+- *Global lifecycle (1):* `TreasuryGlobalInitialized` (init_global.rs:59) — `authority`, `agent_registry`, `jupiter_program`, `timestamp`. Program-global; no `agent_did` keying.
+- *Per-agent treasury (3):* `TreasuryCreated` (init_treasury.rs:86), `TreasuryFunded` (fund_treasury.rs:115), `TreasuryWithdraw` (withdraw.rs:146 — carries `normalized_amount` USDC-equivalent post the cycle-22 decimal-normalization landing, in addition to raw `amount`).
+- *Spend-limit governance (1):* `LimitsUpdated` (set_limits.rs:39).
+- *Streams (3):* `StreamInitialized` (init_stream.rs:175 — carries `payer_mint` + `payout_mint` + `rate_per_sec` + `max_duration` + `deposit_total`), `StreamWithdrawn` (withdraw_earned.rs:272 — carries `claimable` + `swapped: bool` flag indicating Jupiter v6 swap leg fired), `StreamClosed` (close_stream.rs:181 — carries split `agent_receipts` + `client_refund` for prorated termination).
+- *Swap (1):* `SwapExecuted` (withdraw_earned.rs:234, conditional on cross-mint stream payout) — carries `amount_in` / `amount_out` / `payer_mint` / `payout_mint` for Jupiter v6 CPI accounting (cycle 19 landing).
+- *Allowlist surfaces (3):* `AllowedMintAdded` (allowed_mints.rs:35), `AllowedMintRemoved` (allowed_mints.rs:50) — both global; `AllowedTargetsUpdated` (allowed_targets.rs:51 + :93, dual-emit on add+remove) — per-agent override per spec §State `AgentTreasury.allowed_targets` invariant.
+- *Pause (1):* `PausedSet` (governance.rs:50).
+- *Reentrancy guard runtime (1 live, 1 struct-only):* `GuardEntered` fires on the 5 fund/withdraw/stream-write surfaces (fund_treasury.rs:71, withdraw.rs:63, withdraw_earned.rs:91, init_stream.rs:98, close_stream.rs:82). `ReentrancyRejected` is struct-only at events.rs:122; no emit site at M1 — same scaffold-parity placeholder pattern that `program-fee-collector.md` / `program-nxs-staking.md` / `program-dispute-arbitration.md` carry. The reject path at `guard::check_callee_preconditions` returns `TreasuryError::ReentrancyDetected` (errors-only), no event yet.
+
+**Guard-admin events absent — distinguishing from agent_registry.** The `instructions/guard.rs` module exposes 4 admin ixs (`init_guard`, `set_allowed_callers`, `propose_guard_reset`, `admin_reset_guard`) with the standard 24h reset timelock (`guard.rs:9 ADMIN_RESET_TIMELOCK_SECS = 86_400`) — but unlike `agent_registry`'s live `GuardInitialized` / `GuardAdminReset` / `AllowedCallersUpdated` (cycle 161), treasury_standard does not declare or emit those events. Indexer-side, guard-admin state changes are visible only via post-emit account reads on `ReentrancyGuard` + `AllowedCallers` PDAs. Flagged for the cross-spec guard-event-vocabulary normalization candidate.
+
+**Field-carrying:** 9 of 14 emitted events carry `agent_did: [u8; 32]` (the 7 per-agent surfaces + AllowedTargetsUpdated + SwapExecuted). 4 are program-scoped (TreasuryGlobalInitialized, AllowedMintAdded/Removed, PausedSet) and key on mint or authority. `GuardEntered` keys on `(program, caller, slot, stack_height)` — no `agent_did`, no `timestamp`; uses `slot: u64` instead per the cycles 157/158/159/160/161 guard-runtime convention. 13 of 14 carry `timestamp: i64`; only `GuardEntered` substitutes `slot`. No `slot` field on the 13 timestamp-carrying events. Fee-bps / treasury-spend-bucket fields N/A — fee splitting lives in `fee_collector` (cycle 157 spec), not here.
 
 ## Errors
 
