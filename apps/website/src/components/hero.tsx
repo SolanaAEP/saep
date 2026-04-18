@@ -130,12 +130,14 @@ export function Hero() {
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
           <div
             ref={imageBoxRef}
-            className="relative pointer-events-auto"
-            onMouseEnter={() => setNavHovered(true)}
-            onMouseLeave={() => setNavHovered(false)}
+            className="relative"
           >
             <SlicedHeroImage navHovered={navHovered} itemCenters={itemCenters} />
-            <div className="absolute right-32 top-1/2 -translate-y-1/2 h-[min(70%,520px)] w-[200px]">
+            <div
+              className="absolute right-32 top-1/2 -translate-y-1/2 h-[min(70%,520px)] w-[200px] pointer-events-auto"
+              onMouseEnter={() => setNavHovered(true)}
+              onMouseLeave={() => setNavHovered(false)}
+            >
               <LeaderNav ref={navRef} />
             </div>
           </div>
