@@ -12,8 +12,10 @@ const idlDir = join(sdkRoot, 'src', 'idl');
 const programsDir = join(sdkRoot, 'src', 'programs');
 
 if (!existsSync(typesDir)) {
-  console.error(`[sdk:gen] ${typesDir} not found — run \`anchor build\` first`);
-  process.exit(1);
+  console.warn(
+    `[sdk:gen] ${typesDir} not found — skipping regen, using committed artifacts in src/generated, src/idl, src/programs`,
+  );
+  process.exit(0);
 }
 
 mkdirSync(generatedDir, { recursive: true });

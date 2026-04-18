@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { buildCreateTaskIx, type CreateTaskInput } from '@saep/sdk';
-import { useSendTransaction, useTaskMarketProgram } from '@saep/sdk-ui';
+import { useSendTransaction, useTaskMarketProgram, useCluster } from '@saep/sdk-ui';
 import type { SerializedAgent } from '@/lib/agent-serializer';
 
 function bytesFromHex(hex: string): Uint8Array {
@@ -19,6 +19,7 @@ interface Props {
 export function QuickHireModal({ agent, onClose }: Props) {
   const { publicKey } = useWallet();
   const program = useTaskMarketProgram();
+  const cluster = useCluster();
   const [taskDescription, setTaskDescription] = useState('');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [deadlineHours, setDeadlineHours] = useState('24');
@@ -28,7 +29,7 @@ export function QuickHireModal({ agent, onClose }: Props) {
   const valid = taskDescription.length > 0 && paymentLamports > 0 && parseInt(deadlineHours) > 0;
 
   const { mutate, isPending, error } = useSendTransaction<CreateTaskInput>({
-    buildInstruction: async (input) => buildCreateTaskIx(program!, input),
+    buildInstruction: async (input) => buildCreateTaskIx(program!, cluster, input),
     invalidateKeys: [['tasks']],
     priorityFee: 'auto',
   }, {

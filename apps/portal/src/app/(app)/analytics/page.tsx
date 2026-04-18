@@ -1,12 +1,4 @@
-// Wire hooks:
-//   useBurnStats()        -> FeesBurnedCounter (cumulative burn, daily snapshots)
-//   useEconomyGraph()     -> AgentEconomyMap (agent nodes, transaction edges)
-//   useTaskVolume()       -> TaskVolumeChart (daily task/value/fee aggregates)
-//   useTopAgents()        -> TopAgentsLeaderboard (ranked agent list)
-//   useNetworkHealth()    -> NetworkHealthPanel (Solana cluster stats)
-//
-// All hooks should return data matching the prop types defined in each component.
-// Data currently uses realistic mock structures that mirror on-chain account shapes.
+'use client';
 
 import dynamic from 'next/dynamic';
 import { FeesBurnedCounter } from './fees-burned';

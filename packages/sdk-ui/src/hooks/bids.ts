@@ -13,6 +13,7 @@ import {
   fetchBidsForTask,
 } from '@saep/sdk';
 import { useTaskMarketProgram, useAgentRegistryProgram } from './program.js';
+import { useCluster } from './cluster.js';
 
 function hexToBytes(hex: string): Uint8Array {
   const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
@@ -163,6 +164,7 @@ export interface CommitBidArgs {
 export function useCommitBid() {
   const program = useTaskMarketProgram();
   const ar = useAgentRegistryProgram();
+  const cluster = useCluster();
   const { connection } = useConnection();
   const { sendTransaction, publicKey } = useWallet();
   const qc = useQueryClient();
@@ -176,7 +178,7 @@ export function useCommitBid() {
       if (!agent.operator.equals(publicKey)) {
         throw new Error('wallet is not the registered operator for this agent_did');
       }
-      const ix = await buildCommitBidIx(program, {
+      const ix = await buildCommitBidIx(program, cluster, {
         bidder: publicKey,
         task: input.task,
         taskId: input.taskId,
