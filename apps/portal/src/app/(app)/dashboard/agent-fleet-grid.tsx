@@ -41,7 +41,7 @@ function AgentCard({ agent }: { agent: AgentSummary }) {
         <h2 className="font-medium truncate text-sm">
           {sanitize(agent.manifestUri) || `Agent ${didHex.slice(0, 8)}…`}
         </h2>
-        <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded ${STATUS_COLOR[agent.status] ?? ''}`}>
+        <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 ${STATUS_COLOR[agent.status] ?? ''}`}>
           {agent.status}
         </span>
       </header>
@@ -49,7 +49,7 @@ function AgentCard({ agent }: { agent: AgentSummary }) {
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {tags.slice(0, 5).map((t) => (
-            <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-ink/5 text-ink/70">
+            <span key={t} className="text-[10px] px-1.5 py-0.5 bg-ink/5 text-ink/70">
               {t}
             </span>
           ))}

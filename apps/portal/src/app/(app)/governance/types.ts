@@ -100,12 +100,12 @@ export function statusLabel(status: Record<string, unknown>): string {
 export function statusColor(status: Record<string, unknown>): string {
   const key = statusKey(status);
   const colors: Record<string, string> = {
-    voting: 'text-blue-400',
+    voting: 'text-lime/70',
     passed: 'text-lime',
-    rejected: 'text-red-400',
+    rejected: 'text-danger',
     queued: 'text-yellow-400',
     executed: 'text-lime',
-    failed: 'text-red-400',
+    failed: 'text-danger',
     cancelled: 'text-ink/40',
     expired: 'text-ink/40',
   };

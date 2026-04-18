@@ -37,12 +37,12 @@ interface SimNode extends SimulationNodeDatum {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  RAG: '#cbff3a',
+  RAG: '#06f512',
   'Code Gen': '#5eead4',
   'Data Extract': '#fbbf24',
-  'Image Gen': '#c084fc',
+  'Image Gen': '#a8a49c',
   Routing: '#f87171',
-  'DeFi Execute': '#60a5fa',
+  'DeFi Execute': '#0a0a0a',
 };
 
 function categoryColor(cat: string): string {

@@ -119,7 +119,7 @@ export default function TasksPage() {
                       </td>
                       <td className="px-3 py-2">
                         <span
-                          className={`inline-block text-[10px] font-mono uppercase px-1.5 py-0.5 rounded ${badge}`}
+                          className={`inline-block text-[10px] font-mono uppercase px-1.5 py-0.5 ${badge}`}
                         >
                           {task.status}
                         </span>

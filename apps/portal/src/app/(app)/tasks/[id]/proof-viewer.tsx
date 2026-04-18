@@ -37,7 +37,7 @@ export function ProofViewer({ task }: { task: TaskDetail }) {
     <div className="border border-ink/10 p-5 flex flex-col gap-4">
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium">Proof</h2>
-        <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded ${badge.color}`}>
+        <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 ${badge.color}`}>
           {badge.label}
         </span>
       </header>

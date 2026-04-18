@@ -48,7 +48,7 @@ export function TaskVolumeChart({ data }: { data: TaskVolumeData }) {
             <button
               key={r}
               onClick={() => setRange(r)}
-              className={`text-[10px] px-2 py-1 rounded font-mono transition-colors ${
+              className={`text-[10px] px-2 py-1 font-mono transition-colors ${
                 range === r ? 'bg-lime/15 text-lime' : 'text-ink/50 hover:text-ink/80'
               }`}
             >
@@ -63,7 +63,7 @@ export function TaskVolumeChart({ data }: { data: TaskVolumeData }) {
           <button
             key={s.key}
             onClick={() => setActiveSeries(s.key)}
-            className={`text-[10px] px-2 py-1 rounded transition-colors ${
+            className={`text-[10px] px-2 py-1 transition-colors ${
               activeSeries === s.key
                 ? 'bg-ink/10 text-ink font-medium'
                 : 'text-ink/50 hover:text-ink/80'

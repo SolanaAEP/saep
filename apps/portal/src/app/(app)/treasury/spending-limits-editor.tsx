@@ -91,7 +91,7 @@ export function SpendingLimitsEditor({ agent }: { agent: AgentSummary }) {
           type="button"
           onClick={submit}
           disabled={!dirty || invalid || isPending}
-          className="text-xs px-4 py-2 rounded bg-lime text-base disabled:opacity-40 disabled:cursor-not-allowed hover:bg-lime/90 transition-colors"
+          className="text-xs px-4 py-2 border border-lime text-lime disabled:opacity-40 disabled:cursor-not-allowed hover:bg-lime/10 transition-colors"
         >
           {isPending ? 'Updating…' : 'Save limits'}
         </button>
@@ -121,7 +121,7 @@ function LimitField({
         step="0.01"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="px-2 py-1.5 bg-ink/5 border border-ink/10 rounded font-mono focus:outline-none focus:border-lime"
+        className="px-2 py-1.5 bg-ink/5 border border-ink/10 font-mono focus:outline-none focus:border-lime"
       />
       <span className="text-[10px] text-ink/40 font-mono">{lamports.toString()} lamports · {hint}</span>
     </label>

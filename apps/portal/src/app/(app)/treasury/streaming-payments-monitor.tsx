@@ -64,7 +64,7 @@ export function StreamingPaymentsMonitor({ agent }: { agent: AgentSummary }) {
               >
                 <div className="flex justify-between items-baseline">
                   <div className="flex gap-2 items-baseline">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusBadge(s.status)}`}>
+                    <span className={`text-[10px] px-1.5 py-0.5 ${statusBadge(s.status)}`}>
                       {s.status}
                     </span>
                     <span className="font-mono text-xs text-ink/60">

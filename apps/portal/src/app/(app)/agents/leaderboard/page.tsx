@@ -22,7 +22,7 @@ function AxisBar({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center gap-1">
       <span className="text-[10px] font-mono text-ink/40 w-3">{label}</span>
-      <div className="h-1 flex-1 bg-ink/5 rounded-sm overflow-hidden">
+      <div className="h-1 flex-1 bg-ink/5 overflow-hidden">
         <div
           className="h-full bg-lime"
           style={{ width: `${pct.toFixed(0)}%` }}
@@ -66,7 +66,7 @@ export default function LeaderboardPage() {
         </label>
         <select
           id="capability-select"
-          className="text-xs bg-ink/5 border border-ink/10 rounded px-2 py-1"
+          className="text-xs bg-ink/5 border border-ink/10 px-2 py-1"
           value={capabilityBit}
           onChange={(e) => setCapabilityBit(Number(e.target.value))}
         >
@@ -79,12 +79,12 @@ export default function LeaderboardPage() {
       </div>
 
       {error && (
-        <p className="text-sm text-danger">
+        <p className="text-xs font-mono text-danger">
           Failed to load leaderboard: {(error as Error).message}
         </p>
       )}
 
-      {isLoading && <p className="text-sm text-ink/50">Loading leaderboard...</p>}
+      {isLoading && <p className="text-xs font-mono text-ink/50">Loading leaderboard...</p>}
 
       {data && data.length === 0 && (
         <p className="text-sm text-ink/50">
@@ -93,7 +93,7 @@ export default function LeaderboardPage() {
       )}
 
       {data && data.length > 0 && (
-        <div className="rounded border border-ink/10 overflow-hidden">
+        <div className="border border-ink/10 overflow-hidden">
           <table className="w-full text-xs">
             <thead className="bg-ink/5 text-ink/60">
               <tr>

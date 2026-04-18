@@ -56,7 +56,7 @@ export function TaskStateTimeline({ task }: { task: TaskDetail }) {
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium">State Timeline</h2>
         <span
-          className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-opacity-10 ${STATUS_COLOR[task.status]?.text ?? ''}`}
+          className={`text-[10px] font-mono uppercase px-1.5 py-0.5 bg-opacity-10 ${STATUS_COLOR[task.status]?.text ?? ''}`}
           style={{
             backgroundColor: STATUS_COLOR[task.status]
               ? `color-mix(in srgb, currentColor 10%, transparent)`

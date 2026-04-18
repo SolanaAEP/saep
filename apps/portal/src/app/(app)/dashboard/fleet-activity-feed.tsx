@@ -82,7 +82,7 @@ export function FleetActivityFeed({
           {events.map((e) => (
             <li
               key={e.id}
-              className="flex items-center justify-between text-xs py-1.5 px-2 rounded hover:bg-ink/5"
+              className="flex items-center justify-between text-xs py-1.5 px-2 hover:bg-ink/5"
             >
               <div className="flex items-center gap-2">
                 <span className="w-1 h-1 rounded-full bg-lime shrink-0" />

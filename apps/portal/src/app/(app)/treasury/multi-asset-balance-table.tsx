@@ -71,7 +71,7 @@ export function MultiAssetBalanceTable({ agent }: { agent: AgentSummary }) {
                     <span>{m.symbol}</span>
                     {m.badge && (
                       <span
-                        className="ml-2 text-[10px] px-1.5 py-0.5 rounded border align-middle border-ink/20 text-ink/60"
+                        className="ml-2 text-[10px] px-1.5 py-0.5 border align-middle border-ink/20 text-ink/60"
                         title={m.badge}
                       >
                         {m.badge}

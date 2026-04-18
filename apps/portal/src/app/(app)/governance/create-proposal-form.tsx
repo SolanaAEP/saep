@@ -152,8 +152,8 @@ export function CreateProposalForm({ config, walletConnected }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-ink/10 p-6 flex flex-col gap-5 max-w-xl bg-ink/[0.02]">
-      <h2 className="text-sm font-semibold">Create proposal</h2>
+    <div className="border border-ink/10 p-6 flex flex-col gap-5 max-w-xl bg-ink/[0.02]">
+      <h2 className="text-sm font-medium">Create proposal</h2>
 
       <div className="flex gap-4 text-xs text-ink/50">
         {minStake !== null && (
@@ -169,7 +169,7 @@ export function CreateProposalForm({ config, walletConnected }: Props) {
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value as ProposalCategory)}
-          className="rounded border border-ink/20 bg-transparent px-3 py-2 text-sm focus:border-lime/60 focus:outline-none"
+          className="border border-ink/20 bg-transparent px-3 py-2 text-sm focus:border-lime/60 focus:outline-none"
         >
           {PROPOSAL_CATEGORIES.map((c) => (
             <option key={c} value={c}>
@@ -186,11 +186,11 @@ export function CreateProposalForm({ config, walletConnected }: Props) {
           type="text"
           value={targetProgram}
           onChange={(e) => setTargetProgram(e.target.value)}
-          className="rounded border border-ink/20 bg-transparent px-3 py-2 text-sm font-mono focus:border-lime/60 focus:outline-none"
+          className="border border-ink/20 bg-transparent px-3 py-2 text-sm font-mono focus:border-lime/60 focus:outline-none"
           placeholder="Program ID..."
         />
         {targetProgram && !targetPubkey && (
-          <span className="text-[10px] text-red-400">Invalid public key</span>
+          <span className="text-[10px] text-danger">Invalid public key</span>
         )}
       </label>
 
@@ -200,7 +200,7 @@ export function CreateProposalForm({ config, walletConnected }: Props) {
           type="text"
           value={metadataUri}
           onChange={(e) => setMetadataUri(e.target.value)}
-          className="rounded border border-ink/20 bg-transparent px-3 py-2 text-sm focus:border-lime/60 focus:outline-none"
+          className="border border-ink/20 bg-transparent px-3 py-2 text-sm focus:border-lime/60 focus:outline-none"
           placeholder="https://arweave.net/... or ipfs://..."
         />
       </label>
@@ -211,27 +211,27 @@ export function CreateProposalForm({ config, walletConnected }: Props) {
           value={ixDataHex}
           onChange={(e) => setIxDataHex(e.target.value)}
           rows={2}
-          className="rounded border border-ink/20 bg-transparent px-3 py-2 text-sm font-mono focus:border-lime/60 focus:outline-none resize-none"
+          className="border border-ink/20 bg-transparent px-3 py-2 text-sm font-mono focus:border-lime/60 focus:outline-none resize-none"
           placeholder="deadbeef..."
         />
         {ixDataHex && !ixData && (
-          <span className="text-[10px] text-red-400">Invalid hex</span>
+          <span className="text-[10px] text-danger">Invalid hex</span>
         )}
       </label>
 
       {error && (
-        <p className="text-xs text-red-400 bg-red-500/10 rounded px-3 py-2">{error}</p>
+        <p className="text-xs font-mono text-danger bg-danger/10 px-3 py-2">{error}</p>
       )}
 
       {success && (
-        <p className="text-xs text-lime bg-lime/10 rounded px-3 py-2">{success}</p>
+        <p className="text-xs font-mono text-lime bg-lime/10 px-3 py-2">{success}</p>
       )}
 
       <div className="flex gap-2 justify-end pt-1">
         <button
           onClick={handleSubmit}
           disabled={!valid || isPending}
-          className="text-xs font-medium px-4 py-2 rounded bg-lime text-black hover:bg-lime/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="text-xs font-medium px-4 py-2 border border-lime text-lime hover:bg-lime/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           {isPending ? 'Submitting...' : 'Submit proposal'}
         </button>

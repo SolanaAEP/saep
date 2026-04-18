@@ -35,7 +35,7 @@ export default async function MarketplacePage() {
       </header>
 
       {error && (
-        <div className="border border-danger/30 bg-danger/5 rounded px-4 py-3">
+        <div className="border border-danger/30 bg-danger/5 px-4 py-3">
           <p className="text-sm text-danger font-mono">ERR: {error}</p>
         </div>
       )}
