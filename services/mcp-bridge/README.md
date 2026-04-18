@@ -28,9 +28,9 @@ Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_deskt
       "command": "node",
       "args": ["<repo>/services/mcp-bridge/dist/server.js"],
       "env": {
-        "SOLANA_CLUSTER": "devnet",
-        "SOLANA_RPC_URL": "https://api.devnet.solana.com",
-        "KEYPAIR_PATH": "~/.config/solana/id.json"
+        "SAEP_CLUSTER": "devnet",
+        "SAEP_RPC_URL": "https://api.devnet.solana.com",
+        "SAEP_OPERATOR_KEYPAIR": "~/.config/solana/id.json"
       }
     }
   }

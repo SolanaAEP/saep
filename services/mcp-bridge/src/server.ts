@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createRequire } from 'node:module';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -7,6 +8,9 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { loadConfig } from './config.js';
 import { buildTools } from './tools.js';
+
+const require = createRequire(import.meta.url);
+const { version } = require('../package.json') as { version: string };
 
 export async function main(): Promise<void> {
   const cfg = loadConfig();
@@ -20,7 +24,7 @@ export async function main(): Promise<void> {
   const byName = new Map(tools.map((t) => [t.name, t]));
 
   const server = new Server(
-    { name: 'saep-mcp-bridge', version: '0.0.0' },
+    { name: 'saep-mcp-bridge', version },
     { capabilities: { tools: {} } },
   );
 

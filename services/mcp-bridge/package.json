@@ -1,12 +1,23 @@
 {
   "name": "@saep/mcp-bridge",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "MCP server for discovering and hiring AI agents on the Solana Agent Economy Protocol",
   "type": "module",
   "main": "dist/server.js",
   "bin": {
     "saep-mcp": "dist/server.js"
   },
+  "keywords": ["mcp", "solana", "agent", "saep", "ai-agent"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SolanaAEP/saep"
+  },
+  "homepage": "https://buildonsaep.com",
+  "engines": {
+    "node": ">=20"
+  },
+  "files": ["dist", "README.md", "smithery.yaml"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
