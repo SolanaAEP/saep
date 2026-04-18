@@ -260,6 +260,44 @@ export async function buildRaiseDisputeIx(
     .instruction();
 }
 
+export interface DisputedTimeoutRefundInput {
+  cranker: PublicKey;
+  client: PublicKey;
+  task: PublicKey;
+  paymentMint: PublicKey;
+  clientTokenAccount: PublicKey;
+  tokenProgramId?: PublicKey;
+}
+
+export async function buildDisputedTimeoutRefundIx(
+  program: Program<TaskMarket>,
+  input: DisputedTimeoutRefundInput,
+): Promise<TransactionInstruction> {
+  const [global] = marketGlobalPda(program.programId);
+  const [escrow] = taskEscrowPda(program.programId, input.task);
+
+  // disputedTimeoutRefund not yet in generated IDL — cast until regen.
+  const methods = program.methods as unknown as {
+    disputedTimeoutRefund: () => {
+      accounts: (a: Record<string, unknown>) => { instruction: () => Promise<TransactionInstruction> };
+    };
+  };
+
+  return methods
+    .disputedTimeoutRefund()
+    .accounts({
+      global,
+      task: input.task,
+      paymentMint: input.paymentMint,
+      escrow,
+      clientTokenAccount: input.clientTokenAccount,
+      client: input.client,
+      cranker: input.cranker,
+      tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
+    })
+    .instruction();
+}
+
 export interface OpenBiddingInput {
   client: PublicKey;
   task: PublicKey;
