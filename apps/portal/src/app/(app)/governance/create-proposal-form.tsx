@@ -145,7 +145,7 @@ export function CreateProposalForm({ config, walletConnected }: Props) {
 
   if (!walletConnected) {
     return (
-      <div className="rounded-lg border border-ink/10 p-8 text-center">
+      <div className="border border-ink/10 p-8 text-center">
         <p className="text-sm text-ink/50">Connect wallet to create a proposal.</p>
       </div>
     );

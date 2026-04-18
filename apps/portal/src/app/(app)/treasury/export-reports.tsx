@@ -114,7 +114,7 @@ export function ExportReports({ agent }: { agent: AgentSummary }) {
   const ready = Boolean(treasury && balances && streams);
 
   return (
-    <div className="rounded-lg border border-ink/10 p-5 flex flex-col gap-3">
+    <div className="border border-ink/10 p-5 flex flex-col gap-3">
       <header className="flex items-baseline justify-between">
         <h2 className="text-sm font-medium">Export reports</h2>
         <span className="text-[10px] text-ink/50">Client-side, no server call</span>

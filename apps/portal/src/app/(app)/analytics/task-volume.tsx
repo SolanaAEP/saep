@@ -40,7 +40,7 @@ export function TaskVolumeChart({ data }: { data: TaskVolumeData }) {
   const series = SERIES.find((s) => s.key === activeSeries)!;
 
   return (
-    <div className="rounded-lg border border-ink/10 p-5 flex flex-col gap-4">
+    <div className="border border-ink/10 p-5 flex flex-col gap-4">
       <header className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-sm font-medium">Task Volume</h2>
         <div className="flex gap-1">

@@ -55,32 +55,35 @@ export default function RetroCheckPage() {
 
   return (
     <section className="flex flex-col gap-6 max-w-3xl">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Retro eligibility</h1>
-        <p className="text-sm text-ink/60">
+      <header className="border-b border-ink/10 pb-6">
+        <div className="font-mono text-[10px] text-mute tracking-widest uppercase mb-1">
+          06 // retroactive distribution
+        </div>
+        <h1 className="font-display text-2xl tracking-tight">Retro eligibility</h1>
+        <p className="text-sm text-mute mt-1">
           Estimated allocation for the signed-in operator based on trailing-window
           fee contribution through fee_collector. Pre-M3: estimate only, no claim.
         </p>
       </header>
 
       {!operatorHex && (
-        <p className="text-sm text-ink/60">Sign in to view eligibility.</p>
+        <p className="font-mono text-[11px] text-mute">Sign in to view eligibility.</p>
       )}
 
       {error && (
-        <p className="text-sm text-danger">
-          Failed to load eligibility: {(error as Error).message}
-        </p>
+        <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">
+          ERR: {(error as Error).message}
+        </div>
       )}
 
       {isLoading && operatorHex && (
-        <p className="text-sm text-ink/50">Loading eligibility...</p>
+        <p className="font-mono text-[11px] text-mute">Loading eligibility…</p>
       )}
 
       {operatorHex && !isLoading && !error && data === null && (
-        <div className="rounded border border-ink/10 p-6 flex flex-col gap-2">
-          <p className="text-sm">No eligibility record for this operator.</p>
-          <p className="text-xs text-ink/50">
+        <div className="border border-ink/10 p-6 flex flex-col gap-2">
+          <p className="font-mono text-[11px]">No eligibility record for this operator.</p>
+          <p className="font-mono text-[10px] text-mute">
             Generate fees via task settlement through a SAEP treasury to appear in
             the trailing-window rollup.
           </p>
@@ -88,8 +91,8 @@ export default function RetroCheckPage() {
       )}
 
       {data && (
-        <div className="rounded border border-ink/10 overflow-hidden">
-          <dl className="grid grid-cols-2 text-sm">
+        <div className="border border-ink/10 overflow-hidden">
+          <dl className="grid grid-cols-2 font-mono text-[11px]">
             <Row label="Operator">
               <span className="font-mono text-xs">
                 {data.operatorHex.slice(0, 12)}…{data.operatorHex.slice(-8)}
@@ -117,7 +120,7 @@ export default function RetroCheckPage() {
         </div>
       )}
 
-      <footer className="text-xs text-ink/50 border-t border-ink/10 pt-4">
+      <footer className="font-mono text-[10px] text-mute border-t border-ink/10 pt-4">
         Allocations are estimates against the current rollup epoch. Final
         distribution is gated on M3 token launch and Halborn audit sign-off per
         <span className="font-mono"> specs/retro-airdrop.md</span>.
@@ -129,7 +132,7 @@ export default function RetroCheckPage() {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <>
-      <dt className="px-4 py-3 bg-ink/5 text-ink/60 border-b border-ink/5">
+      <dt className="px-4 py-3 bg-ink/5 text-mute uppercase text-[10px] border-b border-ink/5">
         {label}
       </dt>
       <dd className="px-4 py-3 border-b border-ink/5">{children}</dd>

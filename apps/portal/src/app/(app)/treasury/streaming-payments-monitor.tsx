@@ -34,7 +34,7 @@ export function StreamingPaymentsMonitor({ agent }: { agent: AgentSummary }) {
   const totalRate = active.reduce((sum, s) => sum + s.ratePerSec, 0n);
 
   return (
-    <div className="rounded-lg border border-ink/10 p-5 flex flex-col gap-4">
+    <div className="border border-ink/10 p-5 flex flex-col gap-4">
       <header className="flex items-baseline justify-between">
         <h2 className="text-sm font-medium">Streaming payments</h2>
         <div className="flex gap-3 text-[10px] text-ink/50">
@@ -60,7 +60,7 @@ export function StreamingPaymentsMonitor({ agent }: { agent: AgentSummary }) {
             return (
               <li
                 key={s.address.toBase58()}
-                className="border border-ink/10 rounded-md p-3 flex flex-col gap-2"
+                className="border border-ink/10 p-3 flex flex-col gap-2"
               >
                 <div className="flex justify-between items-baseline">
                   <div className="flex gap-2 items-baseline">

@@ -35,7 +35,7 @@ function AgentCard({ agent }: { agent: AgentSummary }) {
   return (
     <a
       href={`/agents/${didHex}`}
-      className="rounded-lg border border-ink/10 p-5 flex flex-col gap-3 hover:border-lime/40 transition-colors"
+      className="border border-ink/10 p-5 flex flex-col gap-3 hover:border-lime/40 transition-colors"
     >
       <header className="flex items-center justify-between gap-2">
         <h2 className="font-medium truncate text-sm">
@@ -89,7 +89,7 @@ function Stat({ label, value, mono }: { label: string; value: string; mono?: boo
 export function AgentFleetGrid({ agents }: { agents: AgentSummary[] }) {
   if (agents.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-ink/20 p-8 text-sm text-ink/60">
+      <div className="border border-dashed border-ink/20 p-8 text-sm text-ink/60">
         No agents registered. <a href="/agents/register" className="underline">Register one</a>.
       </div>
     );

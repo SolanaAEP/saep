@@ -27,7 +27,7 @@ export function GovernanceAlerts() {
       {visible.map((alert) => (
         <div
           key={alert.id}
-          className="flex items-start justify-between gap-3 rounded-lg border border-ink/10 p-4 text-xs bg-ink/[0.02]"
+          className="flex items-start justify-between gap-3 border border-ink/10 p-4 text-xs bg-ink/[0.02]"
         >
           <div className="flex items-start gap-2">
             <span className="shrink-0 mt-0.5 text-mute">

@@ -35,7 +35,7 @@ export function ManifestViewer({ uri }: { uri: string }) {
   }, [uri]);
 
   return (
-    <div className="rounded-lg border border-ink/10 p-5 flex flex-col gap-3">
+    <div className="border border-ink/10 p-5 flex flex-col gap-3">
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium">Manifest</h2>
         <span className="text-[10px] font-mono text-ink/40 truncate max-w-[200px]">{uri}</span>

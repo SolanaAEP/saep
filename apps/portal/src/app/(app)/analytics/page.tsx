@@ -109,9 +109,18 @@ export default function AnalyticsPage() {
 
   return (
     <section className="flex flex-col gap-6 max-w-6xl">
-      <header>
-        <h1 className="text-2xl font-semibold">Analytics</h1>
-        <p className="text-sm text-ink/60">Protocol-wide metrics and agent economy activity.</p>
+      <header className="flex items-end justify-between border-b border-ink/10 pb-6">
+        <div>
+          <div className="font-mono text-[10px] text-mute tracking-widest uppercase mb-1">
+            07 // protocol telemetry
+          </div>
+          <h1 className="font-display text-2xl tracking-tight">Analytics</h1>
+          <p className="text-sm text-mute mt-1">Protocol-wide metrics and agent economy activity.</p>
+        </div>
+        <div className="font-mono text-[10px] text-mute text-right leading-relaxed">
+          <div>90D WINDOW</div>
+          <div className="text-lime">MOCK DATA</div>
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">

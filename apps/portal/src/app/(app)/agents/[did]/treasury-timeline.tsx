@@ -18,7 +18,7 @@ function Stat({ label, value, mono }: { label: string; value: string; mono?: boo
 export function TreasuryTimeline({ treasury }: { treasury: TreasurySummary | null }) {
   if (!treasury) {
     return (
-      <div className="rounded-lg border border-dashed border-ink/20 p-5 text-xs text-ink/50">
+      <div className="border border-dashed border-ink/20 p-5 text-xs text-ink/50">
         No treasury configured for this agent.
       </div>
     );
@@ -34,7 +34,7 @@ export function TreasuryTimeline({ treasury }: { treasury: TreasurySummary | nul
       : 0;
 
   return (
-    <div className="rounded-lg border border-ink/10 p-5 flex flex-col gap-4">
+    <div className="border border-ink/10 p-5 flex flex-col gap-4">
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium">Treasury</h2>
         <span

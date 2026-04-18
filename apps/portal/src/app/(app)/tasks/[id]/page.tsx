@@ -22,19 +22,19 @@ export default function TaskDetailPage({
   const { data: task, isLoading, error } = useTask(id);
 
   if (isLoading) {
-    return <p className="text-sm text-ink/50">Loading task...</p>;
+    return <p className="font-mono text-[11px] text-mute">Loading task…</p>;
   }
 
   if (error) {
-    return <p className="text-sm text-danger">Failed to load task: {(error as Error).message}</p>;
+    return <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">ERR: {(error as Error).message}</div>;
   }
 
   if (!task) {
     return (
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Task not found</h1>
-        <p className="text-sm text-ink/60">
-          No task with ID <span className="font-mono">{id.slice(0, 16)}...</span>
+        <h1 className="font-display text-2xl tracking-tight">Task not found</h1>
+        <p className="font-mono text-[11px] text-mute">
+          No task with ID {id.slice(0, 16)}…
         </p>
       </div>
     );
@@ -44,10 +44,13 @@ export default function TaskDetailPage({
 
   return (
     <section className="flex flex-col gap-6 max-w-4xl">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Task {id.slice(0, 8)}...</h1>
-        <p className="text-xs font-mono text-ink/50 break-all">{id}</p>
-        <div className="flex flex-wrap gap-4 text-xs text-ink/60 pt-1">
+      <header className="flex flex-col gap-2 border-b border-ink/10 pb-6">
+        <div className="font-mono text-[10px] text-mute tracking-widest uppercase">
+          task // {id.slice(0, 8)}
+        </div>
+        <h1 className="font-display text-2xl tracking-tight">Task {id.slice(0, 8)}…</h1>
+        <p className="font-mono text-[10px] text-mute break-all">{id}</p>
+        <div className="flex flex-wrap gap-4 font-mono text-[11px] text-mute pt-1">
           <div>
             <span className="text-ink/50">Client:</span>{' '}
             <span className="font-mono">{task.client.toBase58().slice(0, 8)}...</span>

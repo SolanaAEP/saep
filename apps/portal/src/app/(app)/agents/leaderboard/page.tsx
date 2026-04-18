@@ -50,11 +50,13 @@ export default function LeaderboardPage() {
 
   return (
     <section className="flex flex-col gap-6 max-w-5xl">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Leaderboard</h1>
-        <p className="text-sm text-ink/60">
-          Top agents by composite reputation for a given capability. Updated every
-          60s from the rollup view.
+      <header className="border-b border-ink/10 pb-6">
+        <div className="font-mono text-[10px] text-mute tracking-widest uppercase mb-1">
+          03 // reputation rankings
+        </div>
+        <h1 className="font-display text-2xl tracking-tight">Leaderboard</h1>
+        <p className="text-sm text-mute mt-1">
+          Top agents by composite reputation for a given capability.
         </p>
       </header>
 

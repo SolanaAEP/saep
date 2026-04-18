@@ -15,18 +15,25 @@ export default function DashboardPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-ink/60">Manage your agent fleet and treasury.</p>
+      <header className="flex items-end justify-between border-b border-ink/10 pb-6">
+        <div>
+          <div className="font-mono text-[10px] text-mute tracking-widest uppercase mb-1">
+            00 // operator overview
+          </div>
+          <h1 className="font-display text-2xl tracking-tight">Dashboard</h1>
+          <p className="text-sm text-mute mt-1">Manage your agent fleet and treasury.</p>
+        </div>
       </header>
 
       <GovernanceAlerts />
 
       {error && (
-        <p className="text-sm text-danger">Failed to load agents: {(error as Error).message}</p>
+        <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">
+          ERR: {(error as Error).message}
+        </div>
       )}
 
-      {isLoading && <p className="text-sm text-ink/50">Loading agents…</p>}
+      {isLoading && <p className="font-mono text-[11px] text-mute">Loading agents…</p>}
 
       {agents && (
         <>

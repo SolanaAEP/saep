@@ -23,7 +23,7 @@ export function DisputePanel({ task }: { task: TaskDetail }) {
   }
 
   return (
-    <div className="rounded-lg border border-dashed border-ink/20 p-5 flex flex-col gap-3">
+    <div className="border border-dashed border-ink/20 p-5 flex flex-col gap-3">
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium">Dispute</h2>
         <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-ink/5 text-ink/50">

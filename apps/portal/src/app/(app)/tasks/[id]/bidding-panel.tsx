@@ -5,7 +5,7 @@ import { useBiddingState, useTaskBidsIndexed } from '@saep/sdk-ui';
 const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL ?? 'http://127.0.0.1:8080';
 
 const PHASE_COLOR: Record<string, string> = {
-  commit: 'text-blue-500 bg-blue-500/10',
+  commit: 'text-ink bg-ink/10',
   reveal: 'text-yellow-500 bg-yellow-500/10',
   settled: 'text-lime bg-lime/10',
   slashed: 'text-danger bg-danger/10',
@@ -47,7 +47,7 @@ export function BiddingPanel({ taskIdHex }: { taskIdHex: string }) {
   }
   if (!state.data || state.data.phase === 'unknown') {
     return (
-      <div className="rounded-lg border border-ink/10 p-5">
+      <div className="border border-ink/10 p-5">
         <h3 className="text-sm font-semibold">Bidding</h3>
         <p className="text-xs text-ink/50 pt-1">No bid book opened for this task.</p>
       </div>
@@ -58,7 +58,7 @@ export function BiddingPanel({ taskIdHex }: { taskIdHex: string }) {
   const bidRows = bids.data ?? [];
 
   return (
-    <div className="rounded-lg border border-ink/10 p-5 flex flex-col gap-4">
+    <div className="border border-ink/10 p-5 flex flex-col gap-4">
       <header className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Bidding</h3>
         <span className={`text-xs px-2 py-0.5 rounded ${PHASE_COLOR[s.phase]}`}>{s.phase}</span>
