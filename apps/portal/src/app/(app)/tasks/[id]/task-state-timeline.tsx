@@ -14,15 +14,15 @@ const FLOW: { key: string; label: string; ts: (t: TaskDetail) => number }[] = [
 const TERMINAL = new Set(['released', 'expired', 'disputed', 'resolved']);
 
 const STATUS_COLOR: Record<string, { dot: string; text: string }> = {
-  created: { dot: 'bg-ink/40', text: 'text-ink/60' },
-  funded: { dot: 'bg-blue-500', text: 'text-blue-500' },
+  created: { dot: 'bg-mute', text: 'text-mute' },
+  funded: { dot: 'bg-ink', text: 'text-ink' },
   inExecution: { dot: 'bg-yellow-500', text: 'text-yellow-500' },
-  proofSubmitted: { dot: 'bg-purple-500', text: 'text-purple-500' },
+  proofSubmitted: { dot: 'bg-ink', text: 'text-ink' },
   verified: { dot: 'bg-lime', text: 'text-lime' },
   released: { dot: 'bg-lime', text: 'text-lime' },
   expired: { dot: 'bg-danger', text: 'text-danger' },
   disputed: { dot: 'bg-danger', text: 'text-danger' },
-  resolved: { dot: 'bg-ink/60', text: 'text-ink/60' },
+  resolved: { dot: 'bg-mute', text: 'text-mute' },
 };
 
 function fmtTs(ts: number): string {
@@ -52,7 +52,7 @@ export function TaskStateTimeline({ task }: { task: TaskDetail }) {
   const terminal = TERMINAL.has(task.status);
 
   return (
-    <div className="rounded-lg border border-ink/10 p-5 flex flex-col gap-4">
+    <div className="border border-ink/10 p-5 flex flex-col gap-4">
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium">State Timeline</h2>
         <span

@@ -65,7 +65,7 @@ export function ProposalHistory({ proposals }: Props) {
       </div>
 
       {sorted.length === 0 ? (
-        <div className="rounded-lg border border-ink/10 p-8 text-center">
+        <div className="border border-ink/10 p-8 text-center">
           <p className="text-sm text-ink/50">No past proposals</p>
         </div>
       ) : (

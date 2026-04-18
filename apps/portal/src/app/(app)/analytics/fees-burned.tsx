@@ -42,7 +42,7 @@ export function FeesBurnedCounter({ stats }: { stats: BurnStats }) {
   const burn30d = last30.reduce((s, d) => s + d.burned, 0);
 
   return (
-    <div className="rounded-lg border border-ink/10 p-5 flex flex-col gap-4">
+    <div className="border border-ink/10 p-5 flex flex-col gap-4">
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium">Fees Burned</h2>
         <span className="text-[10px] text-ink/50 font-mono">SAEP token</span>

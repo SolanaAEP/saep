@@ -72,7 +72,7 @@ function VoteTally({ proposal }: { proposal: ProposalRow }) {
 export function ActiveProposalsGrid({ proposals, config, onVote, walletConnected }: Props) {
   if (proposals.length === 0) {
     return (
-      <div className="rounded-lg border border-ink/10 p-8 text-center">
+      <div className="border border-ink/10 p-8 text-center">
         <p className="text-sm text-ink/50">No active proposals</p>
         <p className="text-xs text-ink/30 mt-1">Create one to get started.</p>
       </div>
@@ -97,7 +97,7 @@ export function ActiveProposalsGrid({ proposals, config, onVote, walletConnected
                   Proposal #{p.proposalId.toString()}
                 </h3>
               </div>
-              <span className="shrink-0 text-xs text-blue-400 font-medium">
+              <span className="shrink-0 font-mono text-[10px] text-lime">
                 {timeRemaining(p.voteEnd)}
               </span>
             </div>

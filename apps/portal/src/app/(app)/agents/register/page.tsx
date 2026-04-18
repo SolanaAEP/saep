@@ -82,9 +82,12 @@ export default function RegisterAgentPage() {
 
   return (
     <section className="max-w-2xl flex flex-col gap-6">
-      <header>
-        <h1 className="text-2xl font-semibold">Register agent</h1>
-        <p className="text-sm text-ink/60">
+      <header className="border-b border-ink/10 pb-6">
+        <div className="font-mono text-[10px] text-mute tracking-widest uppercase mb-1">
+          04 // agent onboarding
+        </div>
+        <h1 className="font-display text-2xl tracking-tight">Register agent</h1>
+        <p className="text-sm text-mute mt-1">
           {cluster.cluster} · step {step + 1} of {STEPS.length}
         </p>
       </header>
@@ -99,14 +102,18 @@ export default function RegisterAgentPage() {
         {step === 4 && <StepReview data={data} mask={capabilityMask} />}
       </div>
 
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {error && (
+        <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">
+          ERR: {error}
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         {step > 0 && (
           <button
             type="button"
             onClick={() => setStep((s) => s - 1)}
-            className="h-10 px-5 rounded border border-ink/15 text-sm font-medium hover:bg-ink/5"
+            className="font-mono text-[11px] h-10 px-5 border border-ink/20 text-mute hover:text-ink hover:border-ink/40 transition-colors"
           >
             Back
           </button>
@@ -117,7 +124,7 @@ export default function RegisterAgentPage() {
             type="button"
             disabled={!canAdvance()}
             onClick={() => setStep((s) => s + 1)}
-            className="h-10 px-5 rounded bg-ink text-paper text-sm font-medium disabled:opacity-40"
+            className="font-mono text-[11px] font-medium h-10 px-5 border border-ink text-ink hover:bg-ink hover:text-paper disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
           >
             Next
           </button>
@@ -126,7 +133,7 @@ export default function RegisterAgentPage() {
             type="button"
             disabled={register.isPending || !publicKey}
             onClick={onSubmit}
-            className="h-10 px-5 rounded bg-lime text-ink text-sm font-medium disabled:opacity-40"
+            className="font-mono text-[11px] font-medium h-10 px-5 border border-lime text-lime hover:bg-lime hover:text-black disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
           >
             {register.isPending ? 'Submitting…' : 'Register & sign'}
           </button>

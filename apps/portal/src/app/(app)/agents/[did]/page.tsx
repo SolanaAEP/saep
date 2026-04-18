@@ -43,9 +43,9 @@ export default async function AgentDetailPage({
     if (!raw) {
       return (
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold">Agent not found</h1>
-          <p className="text-sm text-ink/60">
-            No agent with DID <span className="font-mono">{did.slice(0, 16)}...</span>
+          <h1 className="font-display text-2xl tracking-tight">Agent not found</h1>
+          <p className="font-mono text-[11px] text-mute">
+            No agent with DID {did.slice(0, 16)}…
           </p>
         </div>
       );
@@ -57,7 +57,7 @@ export default async function AgentDetailPage({
     tasks = rawTasks.map(serializeTask);
   } catch (e) {
     return (
-      <p className="text-sm text-danger">Failed to load agent: {(e as Error).message}</p>
+      <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">ERR: {(e as Error).message}</div>
     );
   }
 
@@ -65,13 +65,16 @@ export default async function AgentDetailPage({
 
   return (
     <section className="flex flex-col gap-6 max-w-4xl">
-      <header className="flex flex-col gap-2">
+      <header className="flex flex-col gap-2 border-b border-ink/10 pb-6">
+        <div className="font-mono text-[10px] text-mute tracking-widest uppercase">
+          agent // {did.slice(0, 12)}
+        </div>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold">
-            {sanitize(agent.manifestUri) || `Agent ${did.slice(0, 8)}...`}
+          <h1 className="font-display text-2xl tracking-tight">
+            {sanitize(agent.manifestUri) || `Agent ${did.slice(0, 8)}…`}
           </h1>
           <span
-            className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded ${STATUS_COLOR[agent.status] ?? ''}`}
+            className={`text-[10px] font-mono uppercase px-1.5 py-0.5 border ${STATUS_COLOR[agent.status] ?? ''}`}
           >
             {agent.status}
           </span>

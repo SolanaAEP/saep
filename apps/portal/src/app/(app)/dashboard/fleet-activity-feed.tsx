@@ -62,7 +62,7 @@ export function FleetActivityFeed({
   }, []);
 
   return (
-    <div className="rounded-lg border border-ink/10 p-5 flex flex-col gap-3">
+    <div className="border border-ink/10 p-5 flex flex-col gap-3">
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium">Activity Feed</h2>
         <div className="flex items-center gap-1.5 text-[10px] text-ink/50">

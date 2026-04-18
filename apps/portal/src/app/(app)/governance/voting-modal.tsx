@@ -31,7 +31,7 @@ function ImpactSummary({ proposal, config }: { proposal: ProposalRow; config: Go
   const quorumPct = quorumTarget > 0n ? Number((total * 100n) / quorumTarget) : 0;
 
   return (
-    <div className="rounded-lg border border-ink/10 p-4 flex flex-col gap-2 bg-ink/[0.02]">
+    <div className="border border-ink/10 p-4 flex flex-col gap-2 bg-ink/[0.02]">
       <h4 className="text-xs font-medium text-ink/70">Economic impact</h4>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
         <span className="text-ink/50">Type</span>

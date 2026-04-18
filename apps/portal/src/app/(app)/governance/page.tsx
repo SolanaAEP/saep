@@ -103,11 +103,16 @@ export default function GovernancePage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-2xl font-semibold">Governance</h1>
-        <p className="text-sm text-ink/60">
-          Vote on proposals, track outcomes, and shape protocol parameters.
-        </p>
+      <header className="flex items-end justify-between border-b border-ink/10 pb-6">
+        <div>
+          <div className="font-mono text-[10px] text-mute tracking-widest uppercase mb-1">
+            05 // protocol governance
+          </div>
+          <h1 className="font-display text-2xl tracking-tight">Governance</h1>
+          <p className="text-sm text-mute mt-1">
+            Vote on proposals, track outcomes, and shape protocol parameters.
+          </p>
+        </div>
       </header>
 
       <nav className="flex gap-1 border-b border-ink/10">
@@ -115,10 +120,10 @@ export default function GovernancePage() {
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`px-3 py-2 text-sm transition-colors border-b-2 -mb-px ${
+            className={`font-mono text-[11px] uppercase px-3 py-2 transition-colors border-b-2 -mb-px ${
               tab === t.key
-                ? 'border-lime text-ink font-medium'
-                : 'border-transparent text-ink/50 hover:text-ink/80'
+                ? 'border-lime text-lime'
+                : 'border-transparent text-mute hover:text-ink'
             }`}
           >
             {t.label}
@@ -127,10 +132,12 @@ export default function GovernancePage() {
       </nav>
 
       {error && (
-        <p className="text-sm text-danger">Failed to load proposals: {(error as Error).message}</p>
+        <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">
+          ERR: {(error as Error).message}
+        </div>
       )}
 
-      {isLoading && <p className="text-sm text-ink/50">Loading proposals...</p>}
+      {isLoading && <p className="font-mono text-[11px] text-mute">Loading proposals…</p>}
 
       {tab === 'active' && (
         <ActiveProposalsGrid

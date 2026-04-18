@@ -6,15 +6,15 @@ import type { SerializedTask } from '@/lib/agent-serializer';
 const PAGE_SIZE = 10;
 
 const STATUS_COLOR: Record<string, string> = {
-  created: 'text-ink/60',
-  funded: 'text-blue-500',
+  created: 'text-mute',
+  funded: 'text-ink',
   inExecution: 'text-yellow-500',
-  proofSubmitted: 'text-purple-500',
+  proofSubmitted: 'text-ink',
   verified: 'text-lime',
   released: 'text-lime',
   expired: 'text-danger',
   disputed: 'text-danger',
-  resolved: 'text-ink/60',
+  resolved: 'text-mute',
 };
 
 function fmtDate(ts: number): string {
@@ -36,7 +36,7 @@ export function JobHistoryTable({ tasks }: { tasks: SerializedTask[] }) {
   const visible = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
-    <div className="rounded-lg border border-ink/10 p-5 flex flex-col gap-3">
+    <div className="border border-ink/10 p-5 flex flex-col gap-3">
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium">Job History</h2>
         <span className="text-[10px] text-ink/50">{tasks.length} total</span>

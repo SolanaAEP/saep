@@ -22,14 +22,14 @@ export function EscrowPanel({ task }: { task: TaskDetail }) {
     : refunded
       ? 'text-danger bg-danger/10'
       : locked
-        ? 'text-blue-500 bg-blue-500/10'
+        ? 'text-ink bg-ink/10'
         : 'text-ink/50 bg-ink/5';
 
   return (
-    <div className="rounded-lg border border-ink/10 p-5 flex flex-col gap-4">
+    <div className="border border-ink/10 p-5 flex flex-col gap-4">
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium">Escrow</h2>
-        <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded ${stateColor}`}>
+        <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 border ${stateColor}`}>
           {state}
         </span>
       </header>

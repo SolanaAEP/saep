@@ -19,25 +19,35 @@ export default function TreasuryPage() {
     return agents.find((a) => didHex(a.did) === selected) ?? agents[0];
   }, [agents, selected]);
 
-  if (isLoading) return <p className="text-sm text-ink/50">Loading treasuries…</p>;
-  if (error) return <p className="text-sm text-danger">Failed to load: {(error as Error).message}</p>;
+  if (isLoading) return <p className="font-mono text-[11px] text-mute">Loading treasuries…</p>;
+  if (error) return <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">ERR: {(error as Error).message}</div>;
 
   if (!agents || agents.length === 0) {
     return (
       <section className="flex flex-col gap-4">
-        <h1 className="text-2xl font-semibold">Treasury</h1>
-        <p className="text-sm text-ink/60">
-          No agents registered yet. Register an agent first to manage its treasury.
-        </p>
+        <header className="border-b border-ink/10 pb-6">
+          <div className="font-mono text-[10px] text-mute tracking-widest uppercase mb-1">
+            02 // treasury management
+          </div>
+          <h1 className="font-display text-2xl tracking-tight">Treasury</h1>
+          <p className="text-sm text-mute mt-1">
+            No agents registered yet. Register an agent first to manage its treasury.
+          </p>
+        </header>
       </section>
     );
   }
 
   return (
     <section className="flex flex-col gap-6 max-w-5xl">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Treasury</h1>
-        <p className="text-sm text-ink/60">Multi-asset balances, streams, and spend controls.</p>
+      <header className="flex items-end justify-between border-b border-ink/10 pb-6">
+        <div>
+          <div className="font-mono text-[10px] text-mute tracking-widest uppercase mb-1">
+            02 // treasury management
+          </div>
+          <h1 className="font-display text-2xl tracking-tight">Treasury</h1>
+          <p className="text-sm text-mute mt-1">Multi-asset balances, streams, and spend controls.</p>
+        </div>
       </header>
 
       <AgentSelector agents={agents} activeDid={active ? didHex(active.did) : null} onSelect={setSelected} />
@@ -73,10 +83,10 @@ function AgentSelector({
           <button
             key={hex}
             onClick={() => onSelect(hex)}
-            className={`text-xs px-3 py-1.5 rounded border transition-colors font-mono ${
+            className={`font-mono text-[11px] px-3 py-1.5 border transition-colors ${
               isActive
-                ? 'bg-lime/10 border-lime text-lime'
-                : 'border-ink/10 text-ink/60 hover:border-ink/30'
+                ? 'bg-lime/5 border-lime text-lime'
+                : 'border-ink/10 text-mute hover:border-ink/30 hover:text-ink'
             }`}
           >
             {hex.slice(0, 12)}…
