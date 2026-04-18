@@ -1272,7 +1272,7 @@ export type DisputeArbitration = {
         {
           "name": "stakeAccount",
           "docs": [
-            "values passed as args until NXSStaking CPI reads are wired."
+            "M2 structural: values passed as args until NXSStaking CPI reads land."
           ]
         },
         {
@@ -1363,9 +1363,7 @@ export type DisputeArbitration = {
         {
           "name": "stakeAccount",
           "docs": [
-            "The NXSStaking StakeAccount for this operator.",
-            "effective_stake/lock_end passed as args until NXSStaking CPI reads are wired.",
-            "Pre-audit TODO: deserialize StakeAccount and read values on-chain."
+            "M2 structural: effective_stake/lock_end passed as args until NXSStaking CPI reads land."
           ]
         },
         {

@@ -256,6 +256,82 @@ export type AgentRegistry = {
       "args": []
     },
     {
+      "name": "decayAvailability",
+      "discriminator": [
+        34,
+        192,
+        235,
+        84,
+        20,
+        107,
+        145,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "category",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agentDid"
+              },
+              {
+                "kind": "arg",
+                "path": "capabilityBit"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "agentDid",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "capabilityBit",
+          "type": "u16"
+        },
+        {
+          "name": "missCount",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "delegateControl",
       "discriminator": [
         229,
@@ -2340,6 +2416,19 @@ export type AgentRegistry = {
       ]
     },
     {
+      "name": "availabilityDecayed",
+      "discriminator": [
+        228,
+        195,
+        71,
+        32,
+        241,
+        41,
+        236,
+        178
+      ]
+    },
+    {
       "name": "categoryReputationUpdated",
       "discriminator": [
         107,
@@ -2441,19 +2530,6 @@ export type AgentRegistry = {
         16,
         25,
         100
-      ]
-    },
-    {
-      "name": "jobOutcomeRecorded",
-      "discriminator": [
-        69,
-        149,
-        146,
-        2,
-        12,
-        151,
-        230,
-        42
       ]
     },
     {
@@ -2828,6 +2904,11 @@ export type AgentRegistry = {
       "code": 6042,
       "name": "invalidCivicGateway",
       "msg": "civic gateway program cannot be set to Pubkey::default"
+    },
+    {
+      "code": 6043,
+      "name": "decayCooldownNotElapsed",
+      "msg": "availability decay cooldown has not elapsed (24h minimum)"
     }
   ],
   "types": [
@@ -3039,6 +3120,43 @@ export type AgentRegistry = {
           {
             "name": "count",
             "type": "u16"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "availabilityDecayed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "capabilityBit",
+            "type": "u16"
+          },
+          {
+            "name": "oldAvailability",
+            "type": "u16"
+          },
+          {
+            "name": "newAvailability",
+            "type": "u16"
+          },
+          {
+            "name": "missCount",
+            "type": "u8"
           },
           {
             "name": "timestamp",
@@ -3311,39 +3429,6 @@ export type AgentRegistry = {
           {
             "name": "program",
             "type": "pubkey"
-          },
-          {
-            "name": "timestamp",
-            "type": "i64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "jobOutcomeRecorded",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "agentDid",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "success",
-            "type": "bool"
-          },
-          {
-            "name": "disputed",
-            "type": "bool"
-          },
-          {
-            "name": "jobsCompleted",
-            "type": "u64"
           },
           {
             "name": "timestamp",
