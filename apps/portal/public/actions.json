@@ -1,0 +1,8 @@
+{
+  "rules": [
+    {
+      "pathPattern": "/api/actions/create-task**",
+      "apiPath": "/api/actions/create-task"
+    }
+  ]
+}
