@@ -112,6 +112,10 @@ pub mod task_market {
         instructions::raise_dispute::handler(ctx)
     }
 
+    pub fn disputed_timeout_refund(ctx: Context<DisputedTimeoutRefund>) -> Result<()> {
+        instructions::disputed_timeout_refund::handler(ctx)
+    }
+
     pub fn set_allowed_mint(
         ctx: Context<GovernanceUpdate>,
         slot: u8,
