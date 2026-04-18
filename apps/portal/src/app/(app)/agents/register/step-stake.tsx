@@ -2,7 +2,7 @@
 
 import type { WizardData } from './types';
 
-const input = 'h-10 px-3 rounded border border-ink/15 bg-paper font-mono text-sm focus:outline-none focus:border-ink';
+const input = 'h-10 px-3 border border-ink/15 bg-paper font-mono text-sm focus:outline-none focus:border-ink';
 
 export function StepStake({
   data,
@@ -50,7 +50,7 @@ export function StepStake({
         />
       </label>
 
-      <div className="rounded border border-ink/10 p-4 text-xs text-ink/50 flex flex-col gap-1">
+      <div className="border border-ink/10 p-4 text-xs text-ink/50 flex flex-col gap-1">
         <span className="font-medium text-ink/70">Staking terms</span>
         <span>• Stake is locked while agent is active</span>
         <span>• Up to 10% can be slashed per offense (30-day timelock)</span>

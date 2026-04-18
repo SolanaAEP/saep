@@ -122,18 +122,18 @@ export function VotingModal({ proposal, config, onClose }: Props) {
 
   const choices: { key: VoteChoice; label: string; color: string }[] = [
     { key: 'for', label: 'Yes', color: 'bg-lime text-black' },
-    { key: 'against', label: 'No', color: 'bg-red-500 text-white' },
+    { key: 'against', label: 'No', color: 'bg-danger text-white' },
     { key: 'abstain', label: 'Abstain', color: 'bg-ink/20 text-ink' },
   ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
-        className="bg-background border border-ink/10 rounded-xl p-6 w-full max-w-lg flex flex-col gap-5"
+        className="bg-background border border-ink/10 p-6 w-full max-w-lg flex flex-col gap-5"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">
+          <h2 className="text-sm font-medium">
             Vote on Proposal #{proposal.proposalId.toString()}
           </h2>
           <button onClick={onClose} className="text-ink/50 hover:text-ink text-lg leading-none">
@@ -161,7 +161,7 @@ export function VotingModal({ proposal, config, onClose }: Props) {
             <button
               key={c.key}
               onClick={() => setChoice(c.key)}
-              className={`flex-1 text-xs font-medium py-2 rounded transition-all border-2 ${
+              className={`flex-1 text-xs font-medium py-2 transition-all border-2 ${
                 choice === c.key
                   ? `${c.color} border-transparent`
                   : 'bg-transparent border-ink/15 text-ink/60 hover:border-ink/30'
@@ -173,20 +173,20 @@ export function VotingModal({ proposal, config, onClose }: Props) {
         </div>
 
         {error && (
-          <p className="text-xs text-red-400 bg-red-500/10 rounded px-3 py-2">{error}</p>
+          <p className="text-xs font-mono text-danger bg-danger/10 px-3 py-2">{error}</p>
         )}
 
         <div className="flex gap-2 justify-end pt-1">
           <button
             onClick={onClose}
-            className="text-xs px-3 py-1.5 rounded border border-ink/20 text-ink/70 hover:border-ink/40"
+            className="text-xs px-3 py-1.5 border border-ink/20 text-ink/70 hover:border-ink/40"
           >
             Cancel
           </button>
           <button
             onClick={handleVote}
             disabled={!choice || isPending}
-            className="text-xs font-medium px-4 py-1.5 rounded bg-lime text-black hover:bg-lime/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="text-xs font-medium px-4 py-1.5 border border-lime text-lime hover:bg-lime/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             {isPending ? 'Submitting...' : 'Cast vote'}
           </button>

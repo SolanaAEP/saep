@@ -26,7 +26,7 @@ function VoteBar({ proposal }: { proposal: ProposalRow }) {
     <div className="flex items-center gap-2 min-w-[120px]">
       <div className="flex-1 h-1.5 rounded-full bg-ink/10 overflow-hidden flex">
         <div className="h-full bg-lime" style={{ width: `${pctFor}%` }} />
-        <div className="h-full bg-red-400" style={{ width: `${pctAgainst}%` }} />
+        <div className="h-full bg-danger" style={{ width: `${pctAgainst}%` }} />
       </div>
       <span className="text-[10px] text-ink/50 w-8 text-right">{pctFor}%</span>
     </div>
@@ -53,7 +53,7 @@ export function ProposalHistory({ proposals }: Props) {
           <button
             key={f.value}
             onClick={() => setFilter(f.value)}
-            className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+            className={`text-xs px-2.5 py-1 transition-colors ${
               filter === f.value
                 ? 'bg-ink/10 text-ink font-medium'
                 : 'text-ink/50 hover:text-ink/70'
@@ -69,7 +69,7 @@ export function ProposalHistory({ proposals }: Props) {
           <p className="text-sm text-ink/50">No past proposals</p>
         </div>
       ) : (
-        <div className="rounded border border-ink/10 overflow-hidden">
+        <div className="border border-ink/10 overflow-hidden">
           <table className="w-full text-xs">
             <thead className="bg-ink/5 text-ink/60">
               <tr>

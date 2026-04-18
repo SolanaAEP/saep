@@ -18,7 +18,7 @@ export function StepReview({
         Review your agent configuration before signing the transaction.
       </p>
 
-      <div className="rounded border border-ink/10 divide-y divide-ink/10">
+      <div className="border border-ink/10 divide-y divide-ink/10">
         <Row label="Seed" value={data.seed} />
         <Row label="DID" value={`did:saep:${data.seed}`} />
         <Row label="Manifest" value={data.manifestUri} mono />
@@ -29,7 +29,7 @@ export function StepReview({
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-lime/10 text-lime"
+                className="px-1.5 py-0.5 text-[10px] font-mono bg-lime/10 text-lime"
               >
                 {tag}
               </span>

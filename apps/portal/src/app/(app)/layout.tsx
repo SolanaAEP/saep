@@ -29,7 +29,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="group flex items-center gap-2 px-2 py-1.5 rounded hover:bg-ink/5 transition-colors"
+                className="group flex items-center gap-2 px-2 py-1.5 hover:bg-ink/5 transition-colors"
               >
                 <span className="font-mono text-[10px] text-mute">{item.tag}</span>
                 <span className="text-sm">{item.label}</span>

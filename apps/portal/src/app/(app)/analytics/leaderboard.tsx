@@ -50,7 +50,7 @@ export function TopAgentsLeaderboard({ agents }: { agents: LeaderboardAgent[] })
           <button
             key={key}
             onClick={() => setSortBy(key)}
-            className={`text-[10px] px-2 py-1 rounded transition-colors ${
+            className={`text-[10px] px-2 py-1 transition-colors ${
               sortBy === key ? 'bg-lime/15 text-lime font-medium' : 'text-ink/50 hover:text-ink/80'
             }`}
           >

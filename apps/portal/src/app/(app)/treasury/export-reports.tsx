@@ -124,14 +124,14 @@ export function ExportReports({ agent }: { agent: AgentSummary }) {
         <button
           onClick={exportCsv}
           disabled={!ready || busy !== null}
-          className="text-xs px-3 py-1.5 rounded border border-ink/10 hover:border-lime hover:text-lime transition-colors disabled:opacity-40"
+          className="text-xs px-3 py-1.5 border border-ink/10 hover:border-lime hover:text-lime transition-colors disabled:opacity-40"
         >
           {busy === 'csv' ? 'Generating…' : 'Download CSV'}
         </button>
         <button
           onClick={exportJson}
           disabled={!ready || busy !== null}
-          className="text-xs px-3 py-1.5 rounded border border-ink/10 hover:border-lime hover:text-lime transition-colors disabled:opacity-40"
+          className="text-xs px-3 py-1.5 border border-ink/10 hover:border-lime hover:text-lime transition-colors disabled:opacity-40"
         >
           {busy === 'json' ? 'Generating…' : 'Download JSON'}
         </button>

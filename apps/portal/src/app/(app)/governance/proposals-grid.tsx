@@ -63,7 +63,7 @@ function VoteTally({ proposal }: { proposal: ProposalRow }) {
   return (
     <div className="flex gap-3 text-xs">
       <span className="text-lime">Yes {pctFor}%</span>
-      <span className="text-red-400">No {pctAgainst}%</span>
+      <span className="text-danger">No {pctAgainst}%</span>
       <span className="text-ink/50">Abstain {pctAbstain}%</span>
     </div>
   );
@@ -86,7 +86,7 @@ export function ActiveProposalsGrid({ proposals, config, onVote, walletConnected
         return (
           <div
             key={p.address.toBase58()}
-            className="rounded-xl border border-ink/10 p-5 flex flex-col gap-3 bg-ink/[0.02] hover:border-ink/20 transition-colors"
+            className="border border-ink/10 p-5 flex flex-col gap-3 bg-ink/[0.02] hover:border-ink/20 transition-colors"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-col gap-1">
@@ -116,7 +116,7 @@ export function ActiveProposalsGrid({ proposals, config, onVote, walletConnected
             <button
               onClick={() => onVote(p)}
               disabled={!walletConnected}
-              className="mt-auto text-xs font-medium px-4 py-2 rounded bg-lime text-black hover:bg-lime/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="mt-auto text-xs font-medium px-4 py-2 border border-lime text-lime hover:bg-lime/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               {walletConnected ? 'Vote' : 'Connect wallet to vote'}
             </button>

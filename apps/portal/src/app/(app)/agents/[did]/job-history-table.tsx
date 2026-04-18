@@ -85,7 +85,7 @@ export function JobHistoryTable({ tasks }: { tasks: SerializedTask[] }) {
               <button
                 disabled={page === 0}
                 onClick={() => setPage((p) => p - 1)}
-                className="px-2 py-1 rounded hover:bg-ink/5 disabled:opacity-30"
+                className="px-2 py-1 hover:bg-ink/5 disabled:opacity-30"
               >
                 Prev
               </button>
@@ -95,7 +95,7 @@ export function JobHistoryTable({ tasks }: { tasks: SerializedTask[] }) {
               <button
                 disabled={page >= pageCount - 1}
                 onClick={() => setPage((p) => p + 1)}
-                className="px-2 py-1 rounded hover:bg-ink/5 disabled:opacity-30"
+                className="px-2 py-1 hover:bg-ink/5 disabled:opacity-30"
               >
                 Next
               </button>

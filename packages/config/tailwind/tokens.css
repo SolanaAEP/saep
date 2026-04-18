@@ -9,8 +9,8 @@
   --ink-2: #1a1a1a;
   --mute: #7a7772;
   --mute-2: #a8a49c;
-  --lime: #cbff3a;
-  --lime-2: #b8e632;
+  --lime: #06f512;
+  --lime-2: #06f512;
   --danger: #e8341c;
 
   --font-display: 'Archivo Black', 'Helvetica Neue', Arial, sans-serif;
@@ -27,8 +27,8 @@
   --ink-2: #d8d4cc;
   --mute: #7a7772;
   --mute-2: #58554f;
-  --lime: #cbff3a;
-  --lime-2: #b8e632;
+  --lime: #06f512;
+  --lime-2: #06f512;
   --danger: #e8341c;
   color-scheme: dark;
 }

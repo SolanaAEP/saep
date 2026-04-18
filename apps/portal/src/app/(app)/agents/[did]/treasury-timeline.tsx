@@ -38,7 +38,7 @@ export function TreasuryTimeline({ treasury }: { treasury: TreasurySummary | nul
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium">Treasury</h2>
         <span
-          className={`text-[10px] px-1.5 py-0.5 rounded ${
+          className={`text-[10px] px-1.5 py-0.5 ${
             treasury.streamingActive ? 'text-lime bg-lime/10' : 'text-ink/50 bg-ink/5'
           }`}
         >

@@ -33,7 +33,7 @@ export function StepCapabilities({
               key={bit}
               type="button"
               onClick={() => toggle(bit)}
-              className={`px-3 py-2 rounded border text-xs font-mono text-left transition-colors ${
+              className={`px-3 py-2 border text-xs font-mono text-left transition-colors ${
                 selected
                   ? 'border-lime bg-lime/10 text-lime'
                   : 'border-ink/10 text-ink/60 hover:border-ink/25'

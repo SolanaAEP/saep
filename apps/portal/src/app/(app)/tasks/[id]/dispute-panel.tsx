@@ -26,7 +26,7 @@ export function DisputePanel({ task }: { task: TaskDetail }) {
     <div className="border border-dashed border-ink/20 p-5 flex flex-col gap-3">
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium">Dispute</h2>
-        <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-ink/5 text-ink/50">
+        <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 bg-ink/5 text-ink/50">
           M2 arbitration
         </span>
       </header>
@@ -36,7 +36,7 @@ export function DisputePanel({ task }: { task: TaskDetail }) {
       </p>
 
       {alreadyDisputed ? (
-        <div className="text-xs text-danger bg-danger/5 rounded px-3 py-2">
+        <div className="text-xs font-mono text-danger bg-danger/5 px-3 py-2">
           This task is in dispute. Resolution will be handled on-chain once arbitration is live.
         </div>
       ) : canDispute && windowOpen ? (
@@ -44,7 +44,7 @@ export function DisputePanel({ task }: { task: TaskDetail }) {
           {!confirming ? (
             <button
               onClick={() => setConfirming(true)}
-              className="self-start text-xs px-3 py-1.5 rounded border border-danger/40 text-danger hover:bg-danger/10 transition-colors"
+              className="self-start text-xs px-3 py-1.5 border border-danger/40 text-danger hover:bg-danger/10 transition-colors"
             >
               Raise dispute
             </button>
@@ -54,13 +54,13 @@ export function DisputePanel({ task }: { task: TaskDetail }) {
               <button
                 onClick={onRaise}
                 disabled={raise.isPending}
-                className="px-3 py-1 rounded bg-danger text-white hover:bg-danger/90 disabled:opacity-50"
+                className="px-3 py-1 bg-danger text-white hover:bg-danger/90 disabled:opacity-50"
               >
                 {raise.isPending ? 'Submitting...' : 'Yes, dispute'}
               </button>
               <button
                 onClick={() => setConfirming(false)}
-                className="px-3 py-1 rounded text-ink/60 hover:bg-ink/5"
+                className="px-3 py-1 text-ink/60 hover:bg-ink/5"
               >
                 Cancel
               </button>

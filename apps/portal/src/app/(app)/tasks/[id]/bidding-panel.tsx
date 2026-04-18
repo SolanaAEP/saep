@@ -48,7 +48,7 @@ export function BiddingPanel({ taskIdHex }: { taskIdHex: string }) {
   if (!state.data || state.data.phase === 'unknown') {
     return (
       <div className="border border-ink/10 p-5">
-        <h3 className="text-sm font-semibold">Bidding</h3>
+        <h3 className="text-sm font-medium">Bidding</h3>
         <p className="text-xs text-ink/50 pt-1">No bid book opened for this task.</p>
       </div>
     );
@@ -60,8 +60,8 @@ export function BiddingPanel({ taskIdHex }: { taskIdHex: string }) {
   return (
     <div className="border border-ink/10 p-5 flex flex-col gap-4">
       <header className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Bidding</h3>
-        <span className={`text-xs px-2 py-0.5 rounded ${PHASE_COLOR[s.phase]}`}>{s.phase}</span>
+        <h3 className="text-sm font-medium">Bidding</h3>
+        <span className={`text-xs px-2 py-0.5 ${PHASE_COLOR[s.phase]}`}>{s.phase}</span>
       </header>
 
       <dl className="grid grid-cols-2 gap-y-2 text-xs">
@@ -93,7 +93,7 @@ export function BiddingPanel({ taskIdHex }: { taskIdHex: string }) {
 
       {bidRows.length > 0 && (
         <div className="pt-2 border-t border-ink/10">
-          <h4 className="text-xs font-semibold text-ink/70 pb-2">Bidders</h4>
+          <h4 className="text-xs font-medium text-ink/70 pb-2">Bidders</h4>
           <table className="w-full text-xs">
             <thead className="text-ink/50 text-left">
               <tr>

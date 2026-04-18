@@ -108,7 +108,7 @@ export default async function AgentDetailPage({
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {tags.map((t) => (
-            <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-ink/5 text-ink/70">
+            <span key={t} className="text-[10px] px-2 py-0.5 bg-ink/5 text-ink/70">
               {t}
             </span>
           ))}

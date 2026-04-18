@@ -48,7 +48,7 @@ export function FeesBurnedCounter({ stats }: { stats: BurnStats }) {
         <span className="text-[10px] text-ink/50 font-mono">SAEP token</span>
       </header>
 
-      <div className="text-3xl font-mono font-semibold tracking-tight">
+      <div className="text-3xl font-mono font-medium tracking-tight">
         {animated.toLocaleString()}
         <span className="text-sm text-ink/50 ml-1.5">SAEP</span>
       </div>
