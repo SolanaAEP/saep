@@ -45,6 +45,8 @@ services:
     plan: starter
     dockerfilePath: services/indexer/Dockerfile
     envVars:
+      - key: INDEXER_ROLE
+        value: poller
       - key: DATABASE_URL
         fromDatabase:
           name: saep-postgres
@@ -53,3 +55,23 @@ services:
         sync: false
       - key: HELIUS_YELLOWSTONE_ENDPOINT
         sync: false
+
+  - type: web
+    name: saep-indexer-api
+    env: docker
+    plan: starter
+    dockerfilePath: services/indexer/Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: INDEXER_ROLE
+        value: api
+      - key: DATABASE_URL
+        fromDatabase:
+          name: saep-postgres
+          property: connectionString
+      - key: HEALTHCHECK_PORT
+        value: "10001"
+      - key: API_PORT
+        value: "10000"
+      - key: CORS_ORIGINS
+        value: "https://app.buildonsaep.com,https://saep-app.onrender.com"
