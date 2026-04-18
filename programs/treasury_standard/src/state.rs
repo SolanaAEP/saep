@@ -267,6 +267,16 @@ struct PythPriceUpdateV2 {
 }
 
 pub fn read_oracle(feed_info: &AccountInfo, clock: &Clock) -> Result<OraclePrice> {
+    // Pyth Solana Receiver — only accounts owned by this program can hold valid PriceUpdateV2 data.
+    // rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ
+    const PYTH_RECEIVER: Pubkey = Pubkey::new_from_array([
+        12, 183, 250, 187, 82, 247, 166, 72,
+        187, 91, 49, 125, 154, 1, 139, 144,
+        87, 203, 2, 71, 116, 250, 254, 1,
+        230, 196, 223, 152, 204, 56, 88, 129,
+    ]);
+    require!(feed_info.owner == &PYTH_RECEIVER, TreasuryError::OracleStale);
+
     let data = feed_info.try_borrow_data()?;
     require!(data.len() >= 8, TreasuryError::OracleStale);
 
