@@ -55,8 +55,13 @@ export interface PaymentMintMeta {
 }
 
 export const KNOWN_PAYMENT_MINTS: Record<string, PaymentMintMeta> = {
-  // wXRP: no SPL mint on Solana — wXRP is EVM-only (Hex Trust custody, Ethereum).
-  //       Add here once bridged to Solana via Wormhole/deBridge.
+  '6UpQcMAb5xMzxc7ZfPaVMgx3KqsvKZdT5U718BzD5We2': {
+    address: new PublicKey('6UpQcMAb5xMzxc7ZfPaVMgx3KqsvKZdT5U718BzD5We2'),
+    symbol: 'wXRP',
+    decimals: 6,
+    tokenProgram: 'spl-token',
+    coingeckoId: 'ripple',
+  },
   // RLUSD: no SPL mint on Solana — natively on XRPL + Ethereum (Ripple).
   //        Add here once bridged or natively issued on Solana.
 };
