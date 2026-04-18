@@ -6,6 +6,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { buildCreateTaskIx, type CreateTaskInput } from '@saep/sdk';
 import { useSendTransaction, useTaskMarketProgram, useCluster } from '@saep/sdk-ui';
 import type { SerializedAgent } from '@/lib/agent-serializer';
+import { GlitchComposition } from '@/components/glitch-composition';
 
 const USDC_DEVNET_MINT = new PublicKey(
   process.env.NEXT_PUBLIC_DEFAULT_PAYMENT_MINT ?? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
@@ -72,91 +73,101 @@ export function QuickHireModal({ agent, onClose }: Props) {
     });
   }, [valid, publicKey, program, taskDescription, deadlineHours, paymentBaseUnits, agent, mutate]);
 
+  const inputClass = 'border border-ink/20 bg-transparent px-3 py-2 font-mono text-sm focus:border-lime focus:outline-none';
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
       <div
-        className="bg-background border border-ink/10 rounded-xl p-6 w-full max-w-md flex flex-col gap-4"
+        className="bg-paper border border-ink/20 w-full max-w-md flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Quick hire</h2>
-          <button onClick={onClose} className="text-ink/50 hover:text-ink text-lg leading-none">
-            &times;
-          </button>
-        </header>
-
-        <p className="text-xs text-ink/60">
-          Hiring <span className="font-mono text-ink">{agent.manifestUri || `${agent.did.slice(0, 12)}...`}</span>
-        </p>
-
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-ink/70">Task description</span>
-          <textarea
-            value={taskDescription}
-            onChange={(e) => setTaskDescription(e.target.value)}
-            rows={3}
-            className="rounded border border-ink/20 bg-transparent px-3 py-2 text-sm focus:border-lime/60 focus:outline-none resize-none"
-            placeholder="Describe the task..."
-          />
-        </label>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-ink/70">Payment (USDC)</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={paymentAmount}
-              onChange={(e) => setPaymentAmount(e.target.value)}
-              className="rounded border border-ink/20 bg-transparent px-3 py-2 text-sm font-mono focus:border-lime/60 focus:outline-none"
-              placeholder="0.00"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-ink/70">Deadline (hours)</span>
-            <input
-              type="number"
-              min="1"
-              value={deadlineHours}
-              onChange={(e) => setDeadlineHours(e.target.value)}
-              className="rounded border border-ink/20 bg-transparent px-3 py-2 text-sm font-mono focus:border-lime/60 focus:outline-none"
-              placeholder="24"
-            />
-          </label>
+        <div className="relative h-16 overflow-hidden border-b border-ink/10">
+          <GlitchComposition seed={`hire-${agent.address}`} className="absolute inset-0 opacity-40" />
+          <div className="relative px-5 py-3 flex items-center justify-between">
+            <div>
+              <div className="font-mono text-[9px] text-mute uppercase tracking-widest">Task Creation</div>
+              <div className="font-mono text-xs mt-0.5">Quick Hire</div>
+            </div>
+            <button onClick={onClose} className="text-mute hover:text-ink text-lg leading-none font-mono">
+              &times;
+            </button>
+          </div>
         </div>
 
-        {error && (
-          <p className="text-xs text-danger bg-danger/10 rounded px-3 py-2">{(error as Error).message}</p>
-        )}
+        <div className="p-5 flex flex-col gap-4">
+          <div className="font-mono text-[10px] text-mute border border-ink/10 px-3 py-2">
+            TARGET: <span className="text-ink">{agent.manifestUri || `${agent.did.slice(0, 16)}...`}</span>
+            <br />
+            ADDR: <span className="text-ink">{agent.address.slice(0, 8)}...{agent.address.slice(-8)}</span>
+          </div>
 
-        {txSignature && (
-          <p className="text-xs text-lime bg-lime/10 rounded px-3 py-2">
-            Task created:{' '}
-            <a href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
-               target="_blank" rel="noopener noreferrer" className="underline font-mono">
-              {txSignature.slice(0, 12)}...
-            </a>
-          </p>
-        )}
+          <label className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] text-mute uppercase">Task description</span>
+            <textarea
+              value={taskDescription}
+              onChange={(e) => setTaskDescription(e.target.value)}
+              rows={3}
+              className={`${inputClass} resize-none`}
+              placeholder="Describe the task..."
+            />
+          </label>
 
-        <div className="flex gap-2 justify-end pt-2">
-          <button
-            onClick={onClose}
-            className="text-xs px-3 py-1.5 rounded border border-ink/20 text-ink/70 hover:border-ink/40"
-          >
-            {txSignature ? 'Close' : 'Cancel'}
-          </button>
-          {!txSignature && (
-            <button
-              onClick={handleSubmit}
-              disabled={!valid || isPending || !publicKey}
-              className="text-xs font-medium px-4 py-1.5 rounded bg-lime text-black hover:bg-lime/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              {isPending ? 'Signing...' : !publicKey ? 'Connect wallet' : 'Create task'}
-            </button>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] text-mute uppercase">Payment (USDC)</span>
+              <input
+                type="number" step="0.01" min="0"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                className={inputClass}
+                placeholder="0.00"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] text-mute uppercase">Deadline (hours)</span>
+              <input
+                type="number" min="1"
+                value={deadlineHours}
+                onChange={(e) => setDeadlineHours(e.target.value)}
+                className={inputClass}
+                placeholder="24"
+              />
+            </label>
+          </div>
+
+          {error && (
+            <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">
+              ERR: {(error as Error).message}
+            </div>
           )}
+
+          {txSignature && (
+            <div className="font-mono text-[11px] text-lime border border-lime/30 bg-lime/5 px-3 py-2">
+              TX CONFIRMED:{' '}
+              <a href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
+                 target="_blank" rel="noopener noreferrer" className="underline">
+                {txSignature.slice(0, 16)}...
+              </a>
+            </div>
+          )}
+
+          <div className="flex gap-2 justify-end pt-2 border-t border-ink/10">
+            <button
+              onClick={onClose}
+              className="font-mono text-[11px] px-4 py-2 border border-ink/20 text-mute hover:text-ink hover:border-ink/40 transition-colors"
+            >
+              {txSignature ? 'CLOSE' : 'CANCEL'}
+            </button>
+            {!txSignature && (
+              <button
+                onClick={handleSubmit}
+                disabled={!valid || isPending || !publicKey}
+                className="font-mono text-[11px] font-medium px-4 py-2 border border-lime text-lime hover:bg-lime hover:text-black disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+              >
+                {isPending ? 'SIGNING...' : !publicKey ? 'CONNECT WALLET' : 'CREATE TASK'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

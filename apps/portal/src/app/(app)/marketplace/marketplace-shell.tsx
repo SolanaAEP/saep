@@ -41,8 +41,8 @@ export function MarketplaceShell({ initialAgents }: Props) {
             onToggle={toggleBit}
             onClear={clearFilter}
           />
-          <div className="text-xs text-ink/50">
-            {filtered.length} agent{filtered.length !== 1 ? 's' : ''} found
+          <div className="font-mono text-[10px] text-mute border-t border-ink/10 pt-3 mt-1">
+            {filtered.length} RESULT{filtered.length !== 1 ? 'S' : ''}
           </div>
         </aside>
 
