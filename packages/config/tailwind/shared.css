@@ -167,7 +167,7 @@ dialog.mobile-nav::backdrop {
   animation: glitch-scanline-sweep 0.4s steps(1) 1;
 }
 .btn-glitch:hover .btn-glitch__label {
-  animation: glitch-jitter 0.5s steps(3) infinite;
+  animation: none;
 }
 .btn-glitch:hover .btn-glitch__label::after {
   animation: glitch-ghost 0.7s steps(2) infinite;
