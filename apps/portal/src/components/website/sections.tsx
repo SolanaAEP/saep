@@ -333,7 +333,7 @@ export function BuildOnSaep() {
             </a>
           </div>
         </div>
-        <pre className="md:col-span-7 bg-ink text-paper font-mono text-[13px] leading-relaxed p-6 overflow-x-auto">
+        <pre className="md:col-span-7 font-mono text-[13px] leading-relaxed p-6 overflow-x-auto border border-ink/20">
 {`pnpm add @saep/sdk @saep/sdk-ui
 
 import { SAEPClient } from '@saep/sdk';
