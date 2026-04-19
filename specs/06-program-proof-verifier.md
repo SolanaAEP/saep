@@ -45,6 +45,35 @@ On-chain size: fixed-width for `num_public_inputs <= 16` (M1 cap; reviewer may r
 - **Seeds:** `[b"mode"]`
 - **Fields:** `is_mainnet: bool`, `bump: u8`. Devnet builds set `is_mainnet = false` so test-SRS VKs are accepted.
 
+### Scaffold-vs-spec deltas (reconciled against `programs/proof_verifier/src/{state.rs, guard.rs}`)
+
+Spec §State above captures pre-landing intent. Scaffold evolved across `645ce1a` (initial + 7d VK timelock), `61e4d80` (batch RLC state-machine → `BatchState`), `c759a7b` (reentrancy-guard primitives → `ReentrancyGuard` + `AllowedCallers`), `41d18ff` (F-2026-04 closed via `load_caller_guard`), `cd5b594` (`reset_guard` helper extract). Deltas:
+
+- **`VerifierConfig` drift (1 absent):** `pending_authority: Option<Pubkey>` (`state.rs:19`) — two-step auth staging slot, same pattern as treasury / capability / dispute scaffolds (cycles 175-177). Spec §Instructions `transfer_authority` + `accept_authority` at line 96 implies the slot; §State doesn't enumerate it.
+- **`VerifierKey` aligned.** 12 fields 1-to-1. (Separate queued drift at line 35 `num_public_inputs == 5` prose: stale post-`7c2143c` / cycle-117 INBOX finding → `9` post-F-2026-02 circuit extension; tracked as am-2 §Events-refresh carry-over, not patched here.)
+- **`GlobalMode` aligned.** 2 fields 1-to-1.
+- **`BatchState` PDA — absent from spec entirely (11 fields).** `state.rs:52-69`: `cranker: Pubkey`, `vk_key: Pubkey`, `batch_id: [u8;16]`, `count: u8`, `max_proofs: u8`, `acc_alpha: [u8;64]`, `acc_vk_x: [u8;64]`, `acc_c: [u8;64]`, `random_state: [u8;32]`, `neg_a_scaled: Vec<[u8;64]>` cap 10, `b_points: Vec<[u8;128]>` cap 10, `bump`. Landed `61e4d80` replacing `batch_verify_stub` with RLC state machine (open_batch → add_batch_proof × N → finalize_batch / abort_batch per BACKLOG row 24). Spec §Instructions line 93 still enumerates `batch_verify_stub` as a single ix — stale post-`61e4d80`. Held for §Instructions-refresh cycle (not patched here).
+- **`ReentrancyGuard` PDA — absent from spec (5 fields).** `guard.rs:48-56`: `active: bool`, `entered_by: Pubkey`, `entered_at_slot: u64`, `reset_proposed_at: i64`, `bump`. Seeds `[SEED_GUARD]`. Landed `c759a7b`.
+- **`AllowedCallers` PDA — absent from spec (2 fields).** `guard.rs:58-64`: `programs: Vec<Pubkey>` cap 8, `bump`. Seeds `[SEED_ALLOWED_CALLERS]`. Landed `c759a7b`. Guard-state-vocabulary matrix row: proof_verifier = `2-PDA (ReentrancyGuard + AllowedCallers)` — confirms cycle-177's 2-PDA cohort prediction for a 3rd program after treasury + dispute. Post-cycle §State-sweep arc state: 4-of-5 M1-in-scope landings (capability `N/A` + treasury `2-PDA` + dispute `2-PDA` + proof_verifier `2-PDA`); task_market §State remaining.
+- **Absent module-level constants (9):**
+  - `state.rs:3-6` — `MAX_PUBLIC_INPUTS = 16`, `MAX_IC_LEN = 17`, `MAX_BATCH_SIZE = 10`, `VK_ROTATION_TIMELOCK_SECS = 7 * 86_400`. Spec §VerifierConfig line 22 "now + 7 days at propose time" carries the timelock as prose; scaffold exposes it as a const (reviewer-visible magic-number policy).
+  - `state.rs:8-13` — `BN254_FIELD_MODULUS_BE: [u8;32]` — load-bearing for `scalar_in_field` pub-input field-bounds check. Spec §`register_vk` line 59 references "Light Protocol's bn254 deserializers" for curve bounds; Light dep removed post-scaffold — scaffold ships direct modulus constant + `sol_alt_bn128_group_op` syscalls instead.
+  - `guard.rs:14-18` — `SEED_GUARD`, `SEED_ALLOWED_CALLERS`, `MAX_ALLOWED_CALLERS = 8`, `MAX_CPI_STACK_HEIGHT = 3`, `ADMIN_RESET_TIMELOCK_SECS = 24h`.
+- **Absent helper fns (7):**
+  - `state.rs:71-80` — `scalar_in_field(scalar_be) -> bool` — rejects pub inputs ≥ BN254 field order (4 unit tests).
+  - `guard.rs:20-46` — `load_caller_guard(caller_guard_ai, expected_caller_program) -> Result<ReentrancyGuard>` — F-2026-04 safe load (owner + PDA-derivation + discriminator validation + `active` flag deser).
+  - `guard.rs:66-72` — `try_enter(guard, caller, slot)`.
+  - `guard.rs:74-77` — `exit(guard)`.
+  - `guard.rs:79-84` — `reset_guard(g)` — admin-reset helper extracted `cd5b594`.
+  - `guard.rs:86-107` — `check_callee_preconditions(self_guard, caller_guard_active, caller_program, allowed, stack_height)` — 4 require! rows (stack-depth + caller-allowlist + caller-guard-active + self-not-reentered).
+  - `guard.rs:109-120` — `assert_reset_timelock(guard, now)` — 24h gate for admin reset.
+
+**Not-patched sibling drifts (held for separate cycles):**
+1. Spec §Instructions line 93 `batch_verify_stub` stale post-`61e4d80` RLC state machine — queued §Instructions-refresh, multi-cycle scope (replaces single ix with `open_batch → add_batch_proof × N → finalize_batch / abort_batch` sub-sequence).
+2. Spec §VerifierKey line 35 `num_public_inputs == 5` stale post-`7c2143c` / cycle-117 → `9` — already queued as am-2 §Events-refresh carry-over (cycle 174).
+3. Spec §`register_vk` line 59 "Light Protocol's bn254 deserializers" stale — Light dep removed; scaffold uses `scalar_in_field` + direct `sol_alt_bn128_group_op` syscalls. Queued for §Instructions-refresh.
+4. Spec §`register_vk` line 53 signature carries single-tx payload shape — stale post-`b5916a6` / cycle-117 INBOX resolution (chunked `init_vk` + `append_vk_ic` per Anchor 0.31 + Solana 1232-byte tx ceiling). Tracked as resolved in INBOX; queued for §Instructions-refresh pairing.
+
 ## Instructions
 
 ### `init_config(authority)`
