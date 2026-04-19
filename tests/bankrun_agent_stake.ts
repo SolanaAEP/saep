@@ -15,6 +15,9 @@ import { TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect } from 'chai';
+import {
+  measureCU, logCU, assertWithinBudget, CU_BUDGETS, printCUSummary, resetCUMeasurements,
+} from './helpers/cu';
 
 import type { CapabilityRegistry } from '../target/types/capability_registry';
 import type { AgentRegistry } from '../target/types/agent_registry';
@@ -75,6 +78,9 @@ describe('bankrun: agent_registry — stake_increase + stake_withdraw CU coverag
 
   const agentId = Buffer.alloc(32, 0);
   agentId.write('stake-test-agent', 'utf8');
+
+  before(function () { resetCUMeasurements(); });
+  after(function () { printCUSummary(); });
 
   before(async () => {
     context = await startAnchor('.', [], []);
@@ -192,7 +198,7 @@ describe('bankrun: agent_registry — stake_increase + stake_withdraw CU coverag
     const vaultBefore = await getTokenBalance(context, stakeVaultPda);
     const opBefore = await getTokenBalance(context, operatorAta);
 
-    await agentRegProgram.methods
+    const stakeIncreaseBuilder = agentRegProgram.methods
       .stakeIncrease(new BN(addAmount))
       .accountsPartial({
         global: agentRegPdas.global()[0],
@@ -204,8 +210,15 @@ describe('bankrun: agent_registry — stake_increase + stake_withdraw CU coverag
         operator: operator.publicKey,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
       })
-      .signers([operator])
-      .rpc();
+      .signers([operator]);
+
+    const stakeIncreaseCU = await measureCU(
+      context, stakeIncreaseBuilder, authority, [operator],
+    );
+    logCU('stake_increase', stakeIncreaseCU);
+    assertWithinBudget('stake_increase', stakeIncreaseCU, CU_BUDGETS.stake_increase!);
+
+    await stakeIncreaseBuilder.rpc();
 
     const agent = await agentRegProgram.account.agentAccount.fetch(agentPda);
     expect(agent.stakeAmount.toNumber()).to.equal(MIN_STAKE + addAmount);
@@ -244,15 +257,22 @@ describe('bankrun: agent_registry — stake_increase + stake_withdraw CU coverag
     const withdrawAmount = 400_000;
     const [guardPda] = agentRegPdas.guard();
 
-    await agentRegProgram.methods
+    const withdrawRequestBuilder = agentRegProgram.methods
       .stakeWithdrawRequest(new BN(withdrawAmount))
       .accountsPartial({
         global: agentRegPdas.global()[0],
         agent: agentPda,
         operator: operator.publicKey,
       })
-      .signers([operator])
-      .rpc();
+      .signers([operator]);
+
+    const withdrawRequestCU = await measureCU(
+      context, withdrawRequestBuilder, authority, [operator],
+    );
+    logCU('stake_withdraw_request', withdrawRequestCU);
+    assertWithinBudget('stake_withdraw_request', withdrawRequestCU, CU_BUDGETS.stake_withdraw_request!);
+
+    await withdrawRequestBuilder.rpc();
 
     const afterRequest = await agentRegProgram.account.agentAccount.fetch(agentPda);
     expect(afterRequest.pendingWithdrawal).to.not.equal(null);
@@ -284,7 +304,7 @@ describe('bankrun: agent_registry — stake_increase + stake_withdraw CU coverag
     const vaultBefore = await getTokenBalance(context, stakeVaultPda);
     const opBefore = await getTokenBalance(context, operatorAta);
 
-    await agentRegProgram.methods
+    const withdrawExecBuilder = agentRegProgram.methods
       .stakeWithdrawExecute()
       .accountsPartial({
         global: agentRegPdas.global()[0],
@@ -296,8 +316,15 @@ describe('bankrun: agent_registry — stake_increase + stake_withdraw CU coverag
         operator: operator.publicKey,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
       })
-      .signers([operator])
-      .rpc();
+      .signers([operator]);
+
+    const withdrawExecCU = await measureCU(
+      context, withdrawExecBuilder, authority, [operator],
+    );
+    logCU('stake_withdraw_execute', withdrawExecCU);
+    assertWithinBudget('stake_withdraw_execute', withdrawExecCU, CU_BUDGETS.stake_withdraw_execute!);
+
+    await withdrawExecBuilder.rpc();
 
     const afterExec = await agentRegProgram.account.agentAccount.fetch(agentPda);
     expect(afterExec.pendingWithdrawal).to.equal(null);
