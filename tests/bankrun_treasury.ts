@@ -3,6 +3,7 @@ import { BN } from '@coral-xyz/anchor';
 import { startAnchor, BankrunProvider } from 'anchor-bankrun';
 import { ProgramTestContext } from 'solana-bankrun';
 import { setBankrunClock } from './helpers/bankrun';
+import { padBytes } from './helpers/encoding';
 import {
   createATA, createToken2022Mint, getTokenBalance, mintTokens, sendTx,
 } from './helpers/token';
@@ -37,12 +38,6 @@ const DAILY_LIMIT = 2_000_000;
 const WEEKLY_LIMIT = 5_000_000;
 const MAX_DAILY_LIMIT = 10_000_000;
 const DEFAULT_DAILY_LIMIT = 500_000;
-
-function padBytes(s: string, len: number): number[] {
-  const buf = Buffer.alloc(len, 0);
-  Buffer.from(s, 'utf8').copy(buf);
-  return Array.from(buf);
-}
 
 const capRegPdas = {
   config: () => PublicKey.findProgramAddressSync(

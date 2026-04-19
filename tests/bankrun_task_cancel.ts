@@ -3,6 +3,7 @@ import { BN } from '@coral-xyz/anchor';
 import { startAnchor, BankrunProvider } from 'anchor-bankrun';
 import { ProgramTestContext } from 'solana-bankrun';
 import { setBankrunClock, warpClockTo } from './helpers/bankrun';
+import { padBytes } from './helpers/encoding';
 import {
   createATA, createToken2022Mint, mintTokens, sendTx,
 } from './helpers/token';
@@ -38,12 +39,6 @@ const CANCEL_GRACE_SECS = 300;
 const T0 = 1_700_000_000n;
 const DEADLINE_A_OFFSET = 600;
 const DEADLINE_B_OFFSET = 1_200;
-
-function padBytes(s: string, len: number): number[] {
-  const buf = Buffer.alloc(len, 0);
-  Buffer.from(s, 'utf8').copy(buf);
-  return Array.from(buf);
-}
 
 const capRegPdas = {
   config: () => PublicKey.findProgramAddressSync(

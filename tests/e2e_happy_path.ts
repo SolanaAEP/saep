@@ -1,7 +1,9 @@
 import * as anchor from '@coral-xyz/anchor';
 import { BN } from '@coral-xyz/anchor';
 import { startAnchor, BankrunProvider } from 'anchor-bankrun';
-import { Clock, ProgramTestContext } from 'solana-bankrun';
+import { ProgramTestContext } from 'solana-bankrun';
+import { setBankrunClock as setClock } from './helpers/bankrun';
+import { padBytes } from './helpers/encoding';
 import {
   createATA, createToken2022Mint, getTokenBalance, mintTokens, sendTx,
 } from './helpers/token';
@@ -59,12 +61,6 @@ function loadFixture() {
   return { proof, publicSignals, vk };
 }
 
-function padBytes(s: string, len: number): number[] {
-  const buf = Buffer.alloc(len, 0);
-  Buffer.from(s, 'utf8').copy(buf);
-  return Array.from(buf);
-}
-
 // PDA helpers
 const capRegPdas = {
   config: () => PublicKey.findProgramAddressSync(
@@ -119,18 +115,6 @@ const proofVerifierPdas = {
     [Buffer.from('vk'), Buffer.from(vkId)], PROGRAM_IDS.proof_verifier,
   ),
 };
-
-// Helpers
-async function setClock(ctx: ProgramTestContext, unixTimestamp: bigint) {
-  const current = await ctx.banksClient.getClock();
-  ctx.setClock(new Clock(
-    current.slot,
-    current.epochStartTimestamp,
-    current.epoch,
-    current.leaderScheduleEpoch,
-    unixTimestamp,
-  ));
-}
 
 function patchTaskVerified(
   data: Buffer,

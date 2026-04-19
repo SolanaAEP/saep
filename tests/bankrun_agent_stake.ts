@@ -3,6 +3,7 @@ import { BN } from '@coral-xyz/anchor';
 import { startAnchor, BankrunProvider } from 'anchor-bankrun';
 import { ProgramTestContext } from 'solana-bankrun';
 import { setBankrunClock, warpClockBy } from './helpers/bankrun';
+import { padBytes } from './helpers/encoding';
 import {
   createATA, createToken2022Mint, getTokenBalance, mintTokens, sendTx,
 } from './helpers/token';
@@ -29,12 +30,6 @@ const MIN_STAKE = 1_000_000;
 const SLASH_TIMELOCK_SECS = 10;
 const INITIAL_BALANCE = 10_000_000;
 const T0 = 1_700_000_000n;
-
-function padBytes(s: string, len: number): number[] {
-  const buf = Buffer.alloc(len, 0);
-  Buffer.from(s, 'utf8').copy(buf);
-  return Array.from(buf);
-}
 
 const capRegPdas = {
   config: () => PublicKey.findProgramAddressSync(
