@@ -99,21 +99,21 @@ dialog.mobile-nav::backdrop {
 /* ── Corner-cut accents — paper triangles that turn lime on hover ── */
 .btn-glitch__accent {
   position: absolute;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   background: var(--paper);
   z-index: 3;
   transition: background var(--duration-normal) var(--ease-default);
   pointer-events: none;
 }
 .btn-glitch__accent--tr {
-  top: -1px;
-  right: -1px;
+  top: -2px;
+  right: -2px;
   clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
 .btn-glitch__accent--bl {
-  bottom: -1px;
-  left: -1px;
+  bottom: -2px;
+  left: -2px;
   clip-path: polygon(0 0, 100% 100%, 0 100%);
 }
 
@@ -319,21 +319,21 @@ dialog.mobile-nav::backdrop {
 .wallet-adapter-button::after {
   content: '' !important;
   position: absolute !important;
-  width: 8px !important;
-  height: 8px !important;
+  width: 10px !important;
+  height: 10px !important;
   background: var(--paper) !important;
   z-index: 3 !important;
   pointer-events: none !important;
   transition: background var(--duration-normal) var(--ease-default) !important;
 }
 .wallet-adapter-button::before {
-  top: -1px !important;
-  right: -1px !important;
+  top: -2px !important;
+  right: -2px !important;
   clip-path: polygon(0 0, 100% 0, 100% 100%) !important;
 }
 .wallet-adapter-button::after {
-  bottom: -1px !important;
-  left: -1px !important;
+  bottom: -2px !important;
+  left: -2px !important;
   clip-path: polygon(0 0, 100% 100%, 0 100%) !important;
 }
 .wallet-adapter-button:hover {
