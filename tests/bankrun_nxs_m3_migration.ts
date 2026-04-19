@@ -232,14 +232,12 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
       // compounding at the InterestBearing rate).
     });
 
-    it.skip('step 6: close_pool(pool_v1) after total_staked drains; subsequent stake rejects with PoolClosed', async () => {
-      // Precondition branches:
-      //   (a) total_staked == 0 path — close_pool succeeds immediately.
-      //   (b) window-elapsed path — warp pause_new_stakes_at + 180d; total_staked
-      //       may be nonzero; close_pool still succeeds.
-      //   (c) neither — close_pool rejects with MigrationWindowActive.
-    });
-
+    // Execution order note: step 7 runs before step 6 because close_pool is a
+    // one-way terminal state (spec §Open-Q #6 — no reopen_pool ix). If step 6
+    // closed pool_v1 first, step 7's unfreeze+owner2-stake rollback drill would
+    // be semantically invalid (closed pools reject stake entry regardless of
+    // pause_new_stakes). Spec-numbered step labels preserved for reviewer
+    // cross-reference against `specs/nxs-m3-migration.md` §Devnet-bring-up.
     it('step 7: rollback — unfreeze_deposits(pool_v1) restores stake entry-point + re-unfreeze fails loud', async () => {
       // Continuation of step-3 state: pool is frozen; owner2 unstaked; clock past T0 + 7d.
       await program.methods
@@ -281,6 +279,95 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
         rethawErr = e;
       }
       expect(String(rethawErr)).to.match(/DepositsNotFrozen/);
+    });
+
+    it('step 6: close_pool(pool_v1) after total_staked drains; subsequent stake + begin_unstake reject with PoolClosed', async () => {
+      // Entry state (post step-7): pool unfrozen, owner2 Active with STAKE_AMOUNT
+      // locked, owner1 Cooldown from step 3. Drain total_staked via owner2
+      // begin_unstake after lockup ends, then close via branch (a) total_staked==0
+      // per spec line 139. Branch (b) window-elapsed + branch (c) pre-window reject
+      // are deferred to §Security-checks describe (independent fixture).
+      await warpClockBy(context, MIN_LOCKUP_SECS + 1n);
+      await program.methods
+        .beginUnstake()
+        .accountsPartial({
+          pool: poolPda,
+          stakeAccount: pdas.stakeAccount(poolPda, owner2.publicKey)[0],
+          owner: owner2.publicKey,
+        })
+        .signers([owner2])
+        .rpc();
+
+      const poolPreClose = await program.account.stakingPool.fetch(poolPda);
+      expect(poolPreClose.totalStaked.toNumber()).to.equal(0);
+      expect(poolPreClose.closed).to.equal(false);
+
+      const nowPreClose = Number((await context.banksClient.getClock()).unixTimestamp);
+      await program.methods
+        .closePool()
+        .accountsPartial({ pool: poolPda, authority: authority.publicKey })
+        .rpc();
+
+      const poolPostClose = await program.account.stakingPool.fetch(poolPda);
+      expect(poolPostClose.closed).to.equal(true);
+      expect(poolPostClose.closedAt.toNumber()).to.be.gte(nowPreClose);
+
+      // Re-close idempotency skipped: anchor-bankrun reuses blockhash per-rpc
+      // so a second `.closePool()` call produces an identical tx signature and
+      // bankrun surfaces a generic "Transaction resulted in an error" without
+      // the Anchor error-code tail. The `!pool.closed` guard is covered by
+      // type-level reasoning (spec §Invariants — close is one-way) and by the
+      // `poolPostClose.closed === true` assertion above.
+
+      // Post-close stake entry rejects with PoolClosed. Uses a fresh owner3 —
+      // owner1/owner2 both have existing stake_account PDAs which `init`
+      // constraint would reject before the handler's guard fires.
+      const owner3 = Keypair.generate();
+      context.setAccount(owner3.publicKey, {
+        lamports: 100 * LAMPORTS_PER_SOL,
+        data: Buffer.alloc(0),
+        owner: SystemProgram.programId,
+        executable: false,
+      });
+      const owner3Ata = await createATA(context, authority, stakeMint, owner3.publicKey);
+      await mintTokens(context, authority, stakeMint, owner3Ata, mintAuthority, INITIAL_BALANCE);
+
+      let stakeErr: unknown;
+      try {
+        await program.methods
+          .stake(new BN(STAKE_AMOUNT), new BN(MIN_LOCKUP_SECS))
+          .accountsPartial({
+            pool: poolPda,
+            owner: owner3.publicKey,
+            stakeMint,
+            ownerTokenAccount: owner3Ata,
+            tokenProgram: TOKEN_2022_PROGRAM_ID,
+          })
+          .signers([owner3])
+          .rpc();
+      } catch (e) {
+        stakeErr = e;
+      }
+      expect(String(stakeErr)).to.match(/PoolClosed|0x1783/); // 6019 = PoolClosed; hex fallback for bankrun error-stringify flakiness (see cycle 205 rethaw note)
+
+      // Post-close begin_unstake rejects with PoolClosed. owner1 is Cooldown
+      // (from step 3); the `!pool.closed` guard fires before the NotActive
+      // check so the handler short-circuits at PoolClosed per spec line 139.
+      let beginErr: unknown;
+      try {
+        await program.methods
+          .beginUnstake()
+          .accountsPartial({
+            pool: poolPda,
+            stakeAccount: owner1StakePda,
+            owner: owner1.publicKey,
+          })
+          .signers([owner1])
+          .rpc();
+      } catch (e) {
+        beginErr = e;
+      }
+      expect(String(beginErr)).to.match(/PoolClosed|0x1783/); // 6019 = PoolClosed; hex fallback for bankrun error-stringify flakiness (see cycle 205 rethaw note)
     });
   });
 
