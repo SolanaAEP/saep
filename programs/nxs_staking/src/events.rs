@@ -97,3 +97,11 @@ pub struct ApyAuthorityMigrated {
     pub new_mint: Pubkey,
     pub attested_at: i64,
 }
+
+#[event]
+pub struct PoolClosed {
+    pub pool: Pubkey,
+    pub authority: Pubkey,
+    pub total_staked_at_close: u64,
+    pub closed_at: i64,
+}

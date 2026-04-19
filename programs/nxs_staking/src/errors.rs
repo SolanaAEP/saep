@@ -40,4 +40,8 @@ pub enum NxsStakingError {
     DepositsFrozen,
     #[msg("deposits are not frozen; nothing to unfreeze")]
     DepositsNotFrozen,
+    #[msg("staking pool is closed; no new state transitions")]
+    PoolClosed,
+    #[msg("migration window still active; pool has stake and grace period has not elapsed")]
+    MigrationWindowActive,
 }

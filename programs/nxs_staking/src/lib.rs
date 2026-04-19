@@ -96,6 +96,8 @@ pub mod nxs_staking {
         pool.paused = false;
         pool.pause_new_stakes = false;
         pool.pause_new_stakes_at = 0;
+        pool.closed = false;
+        pool.closed_at = 0;
         pool.bump = ctx.bumps.pool;
 
         emit!(events::PoolInitialized {
@@ -109,6 +111,7 @@ pub mod nxs_staking {
 
     pub fn stake(ctx: Context<StakeTokens>, amount: u64, lockup_duration_secs: i64) -> Result<()> {
         require!(!ctx.accounts.pool.paused, NxsStakingError::Paused);
+        require!(!ctx.accounts.pool.closed, NxsStakingError::PoolClosed);
         require!(
             !ctx.accounts.pool.pause_new_stakes,
             NxsStakingError::DepositsFrozen,
@@ -172,6 +175,7 @@ pub mod nxs_staking {
 
     pub fn begin_unstake(ctx: Context<BeginUnstake>) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
+        require!(!ctx.accounts.pool.closed, NxsStakingError::PoolClosed);
         let sa = &ctx.accounts.stake_account;
 
         require!(sa.status == StakeStatus::Active, NxsStakingError::NotActive);
@@ -282,6 +286,34 @@ pub mod nxs_staking {
         Ok(())
     }
 
+    pub fn close_pool(ctx: Context<ClosePool>) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        let pool = &mut ctx.accounts.pool;
+        require!(!pool.closed, NxsStakingError::PoolClosed);
+
+        let window_elapsed = pool.pause_new_stakes
+            && now
+                >= pool
+                    .pause_new_stakes_at
+                    .checked_add(MIGRATION_WINDOW_SECS)
+                    .ok_or(NxsStakingError::ArithmeticOverflow)?;
+        require!(
+            pool.total_staked == 0 || window_elapsed,
+            NxsStakingError::MigrationWindowActive,
+        );
+
+        pool.closed = true;
+        pool.closed_at = now;
+
+        emit!(events::PoolClosed {
+            pool: pool.key(),
+            authority: ctx.accounts.authority.key(),
+            total_staked_at_close: pool.total_staked,
+            closed_at: now,
+        });
+        Ok(())
+    }
+
     pub fn migrate_apy_authority(
         _ctx: Context<MigrateApyAuthority>,
         old_mint: Pubkey,
@@ -303,6 +335,7 @@ pub mod nxs_staking {
     ) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         let pool = &ctx.accounts.pool;
+        require!(!pool.closed, NxsStakingError::PoolClosed);
 
         let epoch_end = pool
             .epoch_start_time
@@ -560,6 +593,19 @@ pub struct FreezeDeposits<'info> {
 
 #[derive(Accounts)]
 pub struct UnfreezeDeposits<'info> {
+    #[account(
+        mut,
+        seeds = [b"staking_pool"],
+        bump = pool.bump,
+        has_one = authority @ NxsStakingError::Unauthorized,
+    )]
+    pub pool: Box<Account<'info, StakingPool>>,
+
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ClosePool<'info> {
     #[account(
         mut,
         seeds = [b"staking_pool"],
