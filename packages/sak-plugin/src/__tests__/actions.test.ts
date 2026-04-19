@@ -2,10 +2,12 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { Connection, Keypair } from '@solana/web3.js';
 import {
   saepBidAction,
+  saepCheckReputationAction,
   saepListTasksAction,
   saepPlugin,
   saepRegisterAgentAction,
   saepSubmitResultAction,
+  saepWithdrawAction,
   _resetVelocityWindow,
 } from '../actions.js';
 import type { SakAgentLike } from '../types.js';
@@ -30,9 +32,11 @@ describe('sak-plugin actions', () => {
     expect(names).toEqual([
       'SAEP_REGISTER_AGENT',
       'SAEP_LIST_TASKS',
+      'SAEP_CHECK_REPUTATION',
       'SAEP_BID',
       'SAEP_REVEAL_BID',
       'SAEP_SUBMIT_RESULT',
+      'SAEP_WITHDRAW',
     ]);
   });
 
@@ -159,6 +163,43 @@ describe('sak-plugin actions', () => {
     ).not.toThrow();
   });
 
+  it('check_reputation allows missing did', () => {
+    const a = saepCheckReputationAction('devnet');
+    const parsed = a.schema.parse({});
+    expect(parsed.agent_did_hex).toBeUndefined();
+  });
+
+  it('check_reputation validates hex did format', () => {
+    const a = saepCheckReputationAction('devnet');
+    expect(() => a.schema.parse({ agent_did_hex: 'xx' })).toThrow();
+    expect(() => a.schema.parse({ agent_did_hex: 'a'.repeat(64) })).not.toThrow();
+  });
+
+  it('withdraw requires agent_did_hex + mint + destination + amount', () => {
+    const a = saepWithdrawAction('devnet');
+    expect(() => a.schema.parse({})).toThrow();
+    expect(() =>
+      a.schema.parse({
+        agent_did_hex: 'a'.repeat(64),
+        mint: USDC_DEVNET,
+        destination: SOME_ATA,
+        amount: '1000000',
+      }),
+    ).not.toThrow();
+  });
+
+  it('withdraw rejects non-numeric amount', () => {
+    const a = saepWithdrawAction('devnet');
+    expect(() =>
+      a.schema.parse({
+        agent_did_hex: 'a'.repeat(64),
+        mint: USDC_DEVNET,
+        destination: SOME_ATA,
+        amount: 'not-a-number',
+      }),
+    ).toThrow();
+  });
+
   it('every action carries examples and similes', () => {
     for (const a of saepPlugin('devnet')) {
       expect(a.similes.length).toBeGreaterThan(0);
@@ -169,7 +210,7 @@ describe('sak-plugin actions', () => {
 
   it('saepPlugin accepts options and passes them through', () => {
     const actions = saepPlugin('devnet', { maxAutoSignLamports: 500, velocityLimit: 2 });
-    expect(actions.length).toBe(5);
+    expect(actions.length).toBe(7);
   });
 
   it('randomAgentId and randomNonce use crypto.getRandomValues (no Math.random)', async () => {

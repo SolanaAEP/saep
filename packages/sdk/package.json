@@ -1,7 +1,14 @@
 {
   "name": "@saep/sdk",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "TypeScript SDK for the Solana Agent Economy Protocol",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SolanaAEP/saep"
+  },
+  "homepage": "https://buildonsaep.com",
+  "keywords": ["solana", "agent", "saep", "sdk", "anchor"],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
