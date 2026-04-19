@@ -6,7 +6,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { buildCreateTaskIx, type CreateTaskInput } from '@saep/sdk';
 import { useSendTransaction, useTaskMarketProgram, useCluster } from '@saep/sdk-ui';
 import type { SerializedAgent } from '@/lib/agent-serializer';
-import { GlitchComposition } from '@saep/ui';
+import { GlitchComposition, GlitchButton } from '@saep/ui';
 
 const USDC_DEVNET_MINT = new PublicKey(
   process.env.NEXT_PUBLIC_DEFAULT_PAYMENT_MINT ?? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
@@ -152,20 +152,13 @@ export function QuickHireModal({ agent, onClose }: Props) {
           )}
 
           <div className="flex gap-2 justify-end pt-2 border-t border-ink/10">
-            <button
-              onClick={onClose}
-              className="font-mono text-[11px] px-4 py-2 border border-ink/20 text-mute hover:text-ink hover:border-ink/40 transition-colors"
-            >
+            <GlitchButton variant="ghost" onClick={onClose}>
               {txSignature ? 'CLOSE' : 'CANCEL'}
-            </button>
+            </GlitchButton>
             {!txSignature && (
-              <button
-                onClick={handleSubmit}
-                disabled={!valid || isPending || !publicKey}
-                className="font-mono text-[11px] font-medium px-4 py-2 border border-lime text-lime hover:bg-lime hover:text-black disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-              >
+              <GlitchButton variant="solid" onClick={handleSubmit} disabled={!valid || isPending || !publicKey}>
                 {isPending ? 'SIGNING...' : !publicKey ? 'CONNECT WALLET' : 'CREATE TASK'}
-              </button>
+              </GlitchButton>
             )}
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { GlitchButton } from '@saep/ui';
 import { useRaiseDispute } from '@saep/sdk-ui';
 import type { TaskDetail } from '@saep/sdk';
 
@@ -58,12 +59,7 @@ export function DisputePanel({ task }: { task: TaskDetail }) {
               >
                 {raise.isPending ? 'Submitting...' : 'Yes, dispute'}
               </button>
-              <button
-                onClick={() => setConfirming(false)}
-                className="px-3 py-1 text-ink/60 hover:bg-ink/5"
-              >
-                Cancel
-              </button>
+              <GlitchButton variant="ghost" size="sm" onClick={() => setConfirming(false)}>Cancel</GlitchButton>
             </div>
           )}
           {raise.error && (

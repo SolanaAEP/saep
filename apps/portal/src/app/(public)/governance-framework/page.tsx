@@ -137,7 +137,7 @@ export default function GovernanceFrameworkPage() {
                 <p className="text-[15px] text-ink/80 leading-relaxed max-w-3xl">{s.body}</p>
                 <a
                   href={s.href}
-                  className="inline-block mt-4 font-mono uppercase text-[11px] tracking-[0.08em] border-b border-ink hover:text-[#06f512] hover:border-[#06f512]"
+                  className="inline-block mt-4 font-mono uppercase text-[11px] tracking-[0.08em] border-b border-ink hover:text-lime hover:border-lime"
                 >
                   {s.cta} →
                 </a>
@@ -190,7 +190,7 @@ export default function GovernanceFrameworkPage() {
               <p className="mt-3 text-[14px] text-ink/75 leading-relaxed">{r.v}</p>
               <a
                 href={r.href}
-                className="inline-block mt-4 font-mono uppercase text-[11px] tracking-[0.08em] border-b border-ink hover:text-[#06f512] hover:border-[#06f512]"
+                className="inline-block mt-4 font-mono uppercase text-[11px] tracking-[0.08em] border-b border-ink hover:text-lime hover:border-lime"
               >
                 Details →
               </a>
@@ -209,19 +209,19 @@ export default function GovernanceFrameworkPage() {
           <div className="md:col-span-7 flex flex-col gap-3">
             <a
               href="/specs/squads-multisig"
-              className="block border-t border-ink/30 pt-4 font-display text-[20px] hover:text-[#06f512] transition-colors"
+              className="block border-t border-ink/30 pt-4 font-display text-[20px] hover:text-lime transition-colors"
             >
               Squads multisig ceremony & rotation →
             </a>
             <a
               href="/specs/trusted-setup"
-              className="block border-t border-ink/30 pt-4 font-display text-[20px] hover:text-[#06f512] transition-colors"
+              className="block border-t border-ink/30 pt-4 font-display text-[20px] hover:text-lime transition-colors"
             >
               Trusted-setup ceremony →
             </a>
             <a
               href="/specs/overview"
-              className="block border-t border-ink/30 pt-4 font-display text-[20px] hover:text-[#06f512] transition-colors"
+              className="block border-t border-ink/30 pt-4 font-display text-[20px] hover:text-lime transition-colors"
             >
               Milestone overview →
             </a>

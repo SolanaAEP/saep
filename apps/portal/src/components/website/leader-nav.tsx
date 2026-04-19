@@ -16,7 +16,7 @@ export const LeaderNav = forwardRef<HTMLElement>(function LeaderNav(_props, ref)
           >
             <a
               href={`#${item.slug}`}
-              className="flex items-center justify-end gap-3 font-mono uppercase text-[11px] tracking-[0.08em] text-ink hover:text-[#06f512] transition-colors"
+              className="flex items-center justify-end gap-3 font-mono uppercase text-[11px] tracking-[0.08em] text-ink hover:text-lime transition-colors"
             >
               <svg
                 aria-hidden="true"

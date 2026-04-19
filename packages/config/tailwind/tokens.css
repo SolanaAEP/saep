@@ -2,53 +2,161 @@
 @import '@fontsource-variable/jetbrains-mono';
 @import '@fontsource/archivo-black/400.css';
 
-:root {
-  --paper: #f2f0e8;
-  --paper-2: #edebe3;
-  --ink: #0a0a0a;
-  --ink-2: #1a1a1a;
-  --mute: #7a7772;
-  --mute-2: #a8a49c;
-  --lime: #06f512;
-  --lime-2: #06f512;
-  --danger: #e8341c;
+/* ================================================================
+   SAEP Design Tokens
+   Single source of truth for the entire monorepo.
+   Apps import this file — never redefine these values locally.
+   ================================================================ */
 
+:root {
+  /* ── Color: Core ──────────────────────────────────── */
+  --paper:   #f2f0e8;
+  --paper-2: #edebe3;
+  --paper-3: #e5e3db;
+  --ink:     #0a0a0a;
+  --ink-2:   #1a1a1a;
+  --ink-3:   #2a2a2a;
+  --mute:    #7a7772;
+  --mute-2:  #a8a49c;
+  --mute-3:  #c8c4bc;
+
+  /* ── Color: Accent ────────────────────────────────── */
+  --lime:      #06f512;
+  --lime-dim:  #05c40e;
+  --lime-mute: #04860a;
+
+  /* ── Color: Semantic ──────────────────────────────── */
+  --danger:  #e8341c;
+  --warning: #e8a81c;
+  --info:    #1c8ee8;
+  --success: #06f512;
+
+  /* ── Typography: Stacks ───────────────────────────── */
   --font-display: 'Archivo Black', 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --font-body: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:    'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-body:    'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* ── Typography: Scale ────────────────────────────── */
+  --text-hero:    clamp(48px, 8vw, 112px);
+  --text-h1:      clamp(36px, 5.5vw, 72px);
+  --text-h2:      clamp(32px, 4.5vw, 56px);
+  --text-h3:      clamp(24px, 3vw, 40px);
+  --text-h4:      22px;
+  --text-body:    16px;
+  --text-body-sm: 15px;
+  --text-ui:      14px;
+  --text-caption:  12px;
+  --text-label:   11px;
+  --text-micro:   10px;
+
+  /* ── Typography: Leading ──────────────────────────── */
+  --leading-display: 0.92;
+  --leading-tight:   1.05;
+  --leading-body:    1.6;
+  --leading-relaxed: 1.7;
+
+  /* ── Typography: Tracking ─────────────────────────── */
+  --tracking-tight:  -0.01em;
+  --tracking-normal:  0;
+  --tracking-wide:    0.05em;
+  --tracking-wider:   0.08em;
+  --tracking-widest:  0.15em;
+
+  /* ── Spacing ──────────────────────────────────────── */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+
+  /* ── Layout: Page Insets ──────────────────────────── */
+  --inset-page:   clamp(20px, 5vw, 80px);
+  --inset-section: clamp(72px, 9vw, 128px);
+  --inset-frame-outer: clamp(6px, 0.8vw, 14px);
+  --inset-frame-inner: clamp(14px, 1.8vw, 28px);
+  --inset-frame-corner: clamp(14px, 1.5vw, 22px);
+
+  /* ── Borders ──────────────────────────────────────── */
+  --border-subtle:  1px solid rgba(10, 10, 10, 0.10);
+  --border-default: 1px solid rgba(10, 10, 10, 0.20);
+  --border-strong:  1px solid rgba(10, 10, 10, 0.40);
+  --border-solid:   1px solid var(--ink);
+
+  /* ── Shadows ──────────────────────────────────────── */
+  --shadow-sm:  0 1px 2px rgba(10, 10, 10, 0.06);
+  --shadow-md:  0 2px 8px rgba(10, 10, 10, 0.08);
+  --shadow-lg:  0 4px 16px rgba(10, 10, 10, 0.10);
+  --shadow-glow: 0 0 20px rgba(6, 245, 18, 0.15);
+
+  /* ── Transitions ──────────────────────────────────── */
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast:   100ms;
+  --duration-normal: 150ms;
+  --duration-slow:   300ms;
+
+  /* ── Radii ────────────────────────────────────────── */
+  --radius-none: 0;
+  --radius-sm:   2px;
+  --radius-md:   4px;
 
   color-scheme: light;
 }
 
+/* ── Dark Mode ────────────────────────────────────── */
 [data-theme='dark'] {
-  --paper: #0a0a0a;
+  --paper:   #0a0a0a;
   --paper-2: #141414;
-  --ink: #f2f0e8;
-  --ink-2: #d8d4cc;
-  --mute: #7a7772;
-  --mute-2: #58554f;
-  --lime: #06f512;
-  --lime-2: #06f512;
-  --danger: #e8341c;
+  --paper-3: #1e1e1e;
+  --ink:     #f2f0e8;
+  --ink-2:   #d8d4cc;
+  --ink-3:   #b8b4ac;
+  --mute:    #7a7772;
+  --mute-2:  #58554f;
+  --mute-3:  #3a3836;
+  --lime:      #06f512;
+  --lime-dim:  #2aff36;
+  --lime-mute: #06c40e;
+  --danger:  #ff5040;
+  --warning: #ffb840;
+  --info:    #40a0ff;
+  --success: #06f512;
   color-scheme: dark;
 }
 
+/* ── Tailwind 4 Theme Bridge ──────────────────────── */
 @theme inline {
-  --color-paper: var(--paper);
+  --color-paper:   var(--paper);
   --color-paper-2: var(--paper-2);
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
-  --color-mute: var(--mute);
-  --color-mute-2: var(--mute-2);
-  --color-lime: var(--lime);
-  --color-lime-2: var(--lime-2);
-  --color-danger: var(--danger);
+  --color-paper-3: var(--paper-3);
+  --color-ink:     var(--ink);
+  --color-ink-2:   var(--ink-2);
+  --color-ink-3:   var(--ink-3);
+  --color-mute:    var(--mute);
+  --color-mute-2:  var(--mute-2);
+  --color-mute-3:  var(--mute-3);
+  --color-lime:      var(--lime);
+  --color-lime-dim:  var(--lime-dim);
+  --color-lime-mute: var(--lime-mute);
+  --color-danger:  var(--danger);
+  --color-warning: var(--warning);
+  --color-info:    var(--info);
+  --color-success: var(--success);
 
   --font-display: var(--font-display);
-  --font-mono: var(--font-mono);
-  --font-sans: var(--font-body);
+  --font-mono:    var(--font-mono);
+  --font-sans:    var(--font-body);
+
+  --shadow-sm:   var(--shadow-sm);
+  --shadow-md:   var(--shadow-md);
+  --shadow-lg:   var(--shadow-lg);
+  --shadow-glow: var(--shadow-glow);
 }
 
+/* ── Base Reset ───────────────────────────────────── */
 * {
   border-color: var(--ink);
 }
@@ -62,8 +170,8 @@ body {
 }
 
 body {
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
 }
 
 :focus-visible {

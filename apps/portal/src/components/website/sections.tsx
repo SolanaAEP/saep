@@ -90,7 +90,7 @@ export function WhatIsSaep() {
             <p className="mt-4 text-ink/80 text-[15px] leading-relaxed flex-1">{c.body}</p>
             <a
               href={c.spec}
-              className="mt-6 font-mono uppercase text-[11px] tracking-[0.08em] text-ink border-b border-ink/60 self-start hover:text-[#06f512] hover:border-[#06f512]"
+              className="mt-6 font-mono uppercase text-[11px] tracking-[0.08em] text-ink border-b border-ink/60 self-start hover:text-lime hover:border-lime"
             >
               Read spec →
             </a>
@@ -150,7 +150,7 @@ export function ProtocolFlow() {
               <p className="text-[16px] leading-relaxed text-ink/85">{flowCopy[item.slug]}</p>
               <a
                 href={`/specs/${item.spec}`}
-                className="inline-block mt-6 font-mono uppercase text-[11px] tracking-[0.08em] text-ink border-b border-ink hover:text-[#06f512] hover:border-[#06f512]"
+                className="inline-block mt-6 font-mono uppercase text-[11px] tracking-[0.08em] text-ink border-b border-ink hover:text-lime hover:border-lime"
               >
                 Read the spec →
               </a>
@@ -294,10 +294,10 @@ export function AuditsGovernance() {
         ))}
       </div>
       <div className="flex gap-6 mt-12 font-mono uppercase text-[11px] tracking-[0.08em]">
-        <a href="/security" className="border-b border-ink hover:text-[#06f512] hover:border-[#06f512]">
+        <a href="/security" className="border-b border-ink hover:text-lime hover:border-lime">
           Security policy →
         </a>
-        <a href="/governance-framework" className="border-b border-ink hover:text-[#06f512] hover:border-[#06f512]">
+        <a href="/governance-framework" className="border-b border-ink hover:text-lime hover:border-lime">
           Governance →
         </a>
       </div>
@@ -321,20 +321,20 @@ export function BuildOnSaep() {
           <div className="mt-6 flex gap-4 font-mono uppercase text-[11px] tracking-[0.08em]">
             <a
               href="/docs"
-              className="border-b border-ink hover:text-[#06f512] hover:border-[#06f512]"
+              className="border-b border-ink hover:text-lime hover:border-lime"
             >
               Docs →
             </a>
             <a
               href="/specs"
-              className="border-b border-ink hover:text-[#06f512] hover:border-[#06f512]"
+              className="border-b border-ink hover:text-lime hover:border-lime"
             >
               Specs →
             </a>
           </div>
         </div>
         <pre className="md:col-span-7 font-mono text-[13px] leading-relaxed p-6 overflow-x-auto border border-ink/20">
-{`pnpm add @saep/sdk @saep/sdk-ui
+{`npm install @saep/sdk @saep/sdk-ui
 
 import { SAEPClient } from '@saep/sdk';
 import { useAgent, useRegisterAgent } from '@saep/sdk-ui';
@@ -396,6 +396,7 @@ export function Footer() {
           links={[
             { label: 'Docs', href: '/docs' },
             { label: 'All specs', href: '/specs' },
+            { label: 'Brand kit', href: '/brand' },
             { label: 'GitHub', href: 'https://github.com/SolanaAEP/saep' },
           ]}
         />
@@ -451,7 +452,7 @@ function FooterCol({
       <ul className="mt-4 flex flex-col gap-2">
         {links.map((l) => (
           <li key={l.href}>
-            <a href={l.href} className="text-[14px] text-paper hover:text-[#06f512] transition-colors">
+            <a href={l.href} className="text-[14px] text-paper hover:text-lime transition-colors">
               {l.label}
             </a>
           </li>

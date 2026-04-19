@@ -6,6 +6,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { encodeAgentId } from '@saep/sdk';
 import { useRegisterAgent, useCluster } from '@saep/sdk-ui';
+import { GlitchButton } from '@saep/ui';
 import type { WizardData } from './types';
 import { StepIdentity } from './step-identity';
 import { StepCapabilities } from './step-capabilities';
@@ -110,33 +111,19 @@ export default function RegisterAgentPage() {
 
       <div className="flex items-center gap-3">
         {step > 0 && (
-          <button
-            type="button"
-            onClick={() => setStep((s) => s - 1)}
-            className="font-mono text-[11px] h-10 px-5 border border-ink/20 text-mute hover:text-ink hover:border-ink/40 transition-colors"
-          >
+          <GlitchButton variant="ghost" onClick={() => setStep((s) => s - 1)}>
             Back
-          </button>
+          </GlitchButton>
         )}
         <div className="flex-1" />
         {step < STEPS.length - 1 ? (
-          <button
-            type="button"
-            disabled={!canAdvance()}
-            onClick={() => setStep((s) => s + 1)}
-            className="font-mono text-[11px] font-medium h-10 px-5 border border-ink text-ink hover:bg-ink hover:text-paper disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-          >
+          <GlitchButton variant="outline" disabled={!canAdvance()} onClick={() => setStep((s) => s + 1)}>
             Next
-          </button>
+          </GlitchButton>
         ) : (
-          <button
-            type="button"
-            disabled={register.isPending || !publicKey}
-            onClick={onSubmit}
-            className="font-mono text-[11px] font-medium h-10 px-5 border border-lime text-lime hover:bg-lime hover:text-black disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-          >
-            {register.isPending ? 'Submitting…' : 'Register & sign'}
-          </button>
+          <GlitchButton variant="solid" disabled={register.isPending || !publicKey} onClick={onSubmit}>
+            {register.isPending ? 'Submitting\u2026' : 'Register & sign'}
+          </GlitchButton>
         )}
       </div>
     </section>

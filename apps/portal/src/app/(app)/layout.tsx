@@ -23,12 +23,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div
           aria-hidden="true"
           className="fixed pointer-events-none border z-20"
-          style={{ inset: 'clamp(6px,0.8vw,14px)', borderColor: '#ccc' }}
+          style={{ inset: 'clamp(6px,0.8vw,14px)', borderColor: 'var(--mute-3)' }}
         />
         <div
           aria-hidden="true"
           className="fixed pointer-events-none border z-20"
-          style={{ inset: 'clamp(14px,1.8vw,28px)', borderColor: '#ccc' }}
+          style={{ inset: 'clamp(14px,1.8vw,28px)', borderColor: 'var(--mute-3)' }}
         />
 
         {/* Corner brackets */}

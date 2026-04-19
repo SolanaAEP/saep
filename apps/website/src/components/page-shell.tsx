@@ -33,7 +33,7 @@ export function PageShell({
               <a
                 key={s.href}
                 href={s.href}
-                className="font-mono uppercase text-[11px] tracking-[0.08em] text-ink hover:text-[#06f512] transition-colors"
+                className="font-mono uppercase text-[11px] tracking-[0.08em] text-ink hover:text-lime transition-colors"
               >
                 {s.label}
               </a>
@@ -80,6 +80,7 @@ export function PageShell({
         <div className="flex gap-6 font-mono uppercase text-[10px] tracking-[0.08em] text-mute">
           <a href="/docs" className="hover:text-ink">Docs</a>
           <a href="/specs" className="hover:text-ink">Specs</a>
+          <a href="/brand" className="hover:text-ink">Brand</a>
           <a href="/security" className="hover:text-ink">Security</a>
           <a href="/governance" className="hover:text-ink">Governance</a>
         </div>
