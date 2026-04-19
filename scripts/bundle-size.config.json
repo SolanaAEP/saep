@@ -5,7 +5,6 @@
     "routes": {
       "/": 200,
       "/_not-found": 110,
-      "/app": 320,
       "/agents/[did]": 280,
       "/agents/leaderboard": 280,
       "/agents/register": 280,
