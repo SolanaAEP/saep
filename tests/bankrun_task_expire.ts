@@ -9,6 +9,9 @@ import {
 } from './helpers/token';
 import { PROGRAM_IDS, capRegPdas, agentRegPdas, taskMarketPdas } from './helpers/accounts';
 import {
+  measureCU, logCU, assertWithinBudget, CU_BUDGETS, printCUSummary, resetCUMeasurements,
+} from './helpers/cu';
+import {
   Keypair, PublicKey, SystemProgram,
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
@@ -33,6 +36,9 @@ const DEADLINE_OFFSET_SECS = 600;
 
 describe('bankrun: task_market — expire CU coverage', function () {
   this.timeout(60_000);
+
+  before(function () { resetCUMeasurements(); });
+  after(function () { printCUSummary(); });
 
   let context: ProgramTestContext;
   let provider: BankrunProvider;
@@ -309,7 +315,7 @@ describe('bankrun: task_market — expire CU coverage', function () {
     const clientBefore = await getTokenBalance(context, clientAta);
     expect(Number(escrowBefore)).to.equal(PAYMENT_AMOUNT);
 
-    await taskMarketProgram.methods
+    const expireBuilder = taskMarketProgram.methods
       .expire()
       .accountsPartial({
         global: marketGlobalPda,
@@ -326,8 +332,13 @@ describe('bankrun: task_market — expire CU coverage', function () {
         guard: tmGuardPda,
         cranker: authority.publicKey,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
-      })
-      .rpc();
+      });
+
+    const expireCU = await measureCU(context, expireBuilder, authority);
+    logCU('expire', expireCU);
+    assertWithinBudget('expire', expireCU, CU_BUDGETS.expire!);
+
+    await expireBuilder.rpc();
 
     const escrowAfter = await getTokenBalance(context, escrowPda);
     const clientAfter = await getTokenBalance(context, clientAta);
