@@ -1,7 +1,8 @@
 import * as anchor from '@coral-xyz/anchor';
 import { BN } from '@coral-xyz/anchor';
 import { startAnchor, BankrunProvider } from 'anchor-bankrun';
-import { Clock, ProgramTestContext } from 'solana-bankrun';
+import { ProgramTestContext } from 'solana-bankrun';
+import { setBankrunClock, warpClockBy } from './helpers/bankrun';
 import {
   Keypair, PublicKey, SystemProgram, Transaction,
   LAMPORTS_PER_SOL,
@@ -42,30 +43,6 @@ function padBytes(s: string, len: number): number[] {
   const buf = Buffer.alloc(len, 0);
   Buffer.from(s, 'utf8').copy(buf);
   return Array.from(buf);
-}
-
-async function setClock(ctx: ProgramTestContext, unixTimestamp: bigint): Promise<void> {
-  const current = await ctx.banksClient.getClock();
-  ctx.setClock(new Clock(
-    current.slot,
-    current.epochStartTimestamp,
-    current.epoch,
-    current.leaderScheduleEpoch,
-    unixTimestamp,
-  ));
-}
-
-async function advanceClock(ctx: ProgramTestContext, deltaSecs: bigint): Promise<void> {
-  const current = await ctx.banksClient.getClock();
-  const nextSlot = current.slot + 1n;
-  ctx.warpToSlot(nextSlot);
-  ctx.setClock(new Clock(
-    nextSlot,
-    current.epochStartTimestamp,
-    current.epoch,
-    current.leaderScheduleEpoch,
-    current.unixTimestamp + deltaSecs,
-  ));
 }
 
 async function sendTx(
@@ -209,7 +186,7 @@ describe('bankrun: agent_registry — slash 30d timelock + bps cap', function ()
       });
     }
 
-    await setClock(context, T0);
+    await setBankrunClock(context, T0);
 
     stakeMint = await createToken2022Mint(context, authority, mintAuthority.publicKey, 6);
     slashingTreasuryAta = await createATA(context, authority, stakeMint, slashingAuthority.publicKey);
@@ -384,7 +361,7 @@ describe('bankrun: agent_registry — slash 30d timelock + bps cap', function ()
     // Advance one slot so this cancel_slash's recent_blockhash differs from
     // the prior test's cancel_slash — identical signer + accounts + ix data
     // would otherwise produce the same tx sig and trip bankrun dedup.
-    await advanceClock(context, 1n);
+    await warpClockBy(context, 1n);
     await agentRegProgram.methods
       .cancelSlash()
       .accountsPartial({
@@ -423,7 +400,7 @@ describe('bankrun: agent_registry — slash 30d timelock + bps cap', function ()
   });
 
   it('warp past timelock → execute_slash transfers amount + clears pending', async () => {
-    await advanceClock(context, BigInt(SLASH_TIMELOCK_SECS + 1));
+    await warpClockBy(context, BigInt(SLASH_TIMELOCK_SECS + 1));
 
     const vaultBefore = await getTokenBalance(context, stakeVaultPda);
     const treasuryBefore = await getTokenBalance(context, slashingTreasuryAta);

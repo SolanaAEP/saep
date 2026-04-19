@@ -1,7 +1,8 @@
 import * as anchor from '@coral-xyz/anchor';
 import { BN } from '@coral-xyz/anchor';
 import { startAnchor, BankrunProvider } from 'anchor-bankrun';
-import { Clock, ProgramTestContext } from 'solana-bankrun';
+import { ProgramTestContext } from 'solana-bankrun';
+import { setBankrunClock, warpClockTo } from './helpers/bankrun';
 import {
   Keypair, PublicKey, SystemProgram, Transaction,
   LAMPORTS_PER_SOL,
@@ -45,29 +46,6 @@ function padBytes(s: string, len: number): number[] {
   const buf = Buffer.alloc(len, 0);
   Buffer.from(s, 'utf8').copy(buf);
   return Array.from(buf);
-}
-
-async function setClock(ctx: ProgramTestContext, unixTimestamp: bigint): Promise<void> {
-  const current = await ctx.banksClient.getClock();
-  ctx.setClock(new Clock(
-    current.slot,
-    current.epochStartTimestamp,
-    current.epoch,
-    current.leaderScheduleEpoch,
-    unixTimestamp,
-  ));
-}
-
-async function advanceClock(ctx: ProgramTestContext, unixTimestamp: bigint): Promise<void> {
-  const current = await ctx.banksClient.getClock();
-  await ctx.warpToSlot(current.slot + 1n);
-  ctx.setClock(new Clock(
-    current.slot + 1n,
-    current.epochStartTimestamp,
-    current.epoch,
-    current.leaderScheduleEpoch,
-    unixTimestamp,
-  ));
 }
 
 async function sendTx(
@@ -238,7 +216,7 @@ describe('bankrun: task_market — expire CU coverage', function () {
       });
     }
 
-    await setClock(context, T0);
+    await setBankrunClock(context, T0);
 
     paymentMint = await createToken2022Mint(context, authority, mintAuthority.publicKey, 6);
     stakeMint = await createToken2022Mint(context, authority, mintAuthority.publicKey, 6);
@@ -419,7 +397,7 @@ describe('bankrun: task_market — expire CU coverage', function () {
     const [regGlobalPda] = agentRegPdas.global();
 
     const deadline = Number(T0) + DEADLINE_OFFSET_SECS;
-    await setClock(context, BigInt(deadline + EXPIRE_GRACE_SECS - 60));
+    await setBankrunClock(context, BigInt(deadline + EXPIRE_GRACE_SECS - 60));
 
     let rejected = false;
     try {
@@ -456,7 +434,7 @@ describe('bankrun: task_market — expire CU coverage', function () {
     const [regGlobalPda] = agentRegPdas.global();
 
     const deadline = Number(T0) + DEADLINE_OFFSET_SECS;
-    await advanceClock(context, BigInt(deadline + EXPIRE_GRACE_SECS + 1));
+    await warpClockTo(context, BigInt(deadline + EXPIRE_GRACE_SECS + 1));
 
     const escrowBefore = await getTokenBalance(context, escrowPda);
     const clientBefore = await getTokenBalance(context, clientAta);

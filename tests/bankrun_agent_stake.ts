@@ -1,7 +1,8 @@
 import * as anchor from '@coral-xyz/anchor';
 import { BN } from '@coral-xyz/anchor';
 import { startAnchor, BankrunProvider } from 'anchor-bankrun';
-import { Clock, ProgramTestContext } from 'solana-bankrun';
+import { ProgramTestContext } from 'solana-bankrun';
+import { setBankrunClock, warpClockBy } from './helpers/bankrun';
 import {
   Keypair, PublicKey, SystemProgram, Transaction,
   LAMPORTS_PER_SOL,
@@ -37,30 +38,6 @@ function padBytes(s: string, len: number): number[] {
   const buf = Buffer.alloc(len, 0);
   Buffer.from(s, 'utf8').copy(buf);
   return Array.from(buf);
-}
-
-async function setClock(ctx: ProgramTestContext, unixTimestamp: bigint): Promise<void> {
-  const current = await ctx.banksClient.getClock();
-  ctx.setClock(new Clock(
-    current.slot,
-    current.epochStartTimestamp,
-    current.epoch,
-    current.leaderScheduleEpoch,
-    unixTimestamp,
-  ));
-}
-
-async function advanceClock(ctx: ProgramTestContext, deltaSecs: bigint): Promise<void> {
-  const current = await ctx.banksClient.getClock();
-  const nextSlot = current.slot + 1n;
-  ctx.warpToSlot(nextSlot);
-  ctx.setClock(new Clock(
-    nextSlot,
-    current.epochStartTimestamp,
-    current.epoch,
-    current.leaderScheduleEpoch,
-    current.unixTimestamp + deltaSecs,
-  ));
 }
 
 async function sendTx(
@@ -202,7 +179,7 @@ describe('bankrun: agent_registry — stake_increase + stake_withdraw CU coverag
       });
     }
 
-    await setClock(context, T0);
+    await setBankrunClock(context, T0);
 
     stakeMint = await createToken2022Mint(context, authority, mintAuthority.publicKey, 6);
 
@@ -384,7 +361,7 @@ describe('bankrun: agent_registry — stake_increase + stake_withdraw CU coverag
     }
     expect(String(preTimelockErr)).to.match(/TimelockNotElapsed/);
 
-    await advanceClock(context, BigInt(SLASH_TIMELOCK_SECS + 1));
+    await warpClockBy(context, BigInt(SLASH_TIMELOCK_SECS + 1));
 
     const vaultBefore = await getTokenBalance(context, stakeVaultPda);
     const opBefore = await getTokenBalance(context, operatorAta);

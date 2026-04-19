@@ -1,7 +1,8 @@
 import * as anchor from '@coral-xyz/anchor';
 import { BN } from '@coral-xyz/anchor';
 import { startAnchor, BankrunProvider } from 'anchor-bankrun';
-import { Clock, ProgramTestContext } from 'solana-bankrun';
+import { ProgramTestContext } from 'solana-bankrun';
+import { setBankrunClock } from './helpers/bankrun';
 import {
   Keypair, PublicKey, SystemProgram, Transaction,
   LAMPORTS_PER_SOL, SYSVAR_RENT_PUBKEY,
@@ -45,17 +46,6 @@ function padBytes(s: string, len: number): number[] {
   const buf = Buffer.alloc(len, 0);
   Buffer.from(s, 'utf8').copy(buf);
   return Array.from(buf);
-}
-
-async function setClock(ctx: ProgramTestContext, unixTimestamp: bigint): Promise<void> {
-  const current = await ctx.banksClient.getClock();
-  ctx.setClock(new Clock(
-    current.slot,
-    current.epochStartTimestamp,
-    current.epoch,
-    current.leaderScheduleEpoch,
-    unixTimestamp,
-  ));
 }
 
 async function sendTx(
@@ -233,7 +223,7 @@ describe('bankrun: treasury_standard — init + fund + withdraw + stream CU cove
       });
     }
 
-    await setClock(context, T0);
+    await setBankrunClock(context, T0);
 
     mint = await createToken2022Mint(context, authority, mintAuthority.publicKey, 6);
 
