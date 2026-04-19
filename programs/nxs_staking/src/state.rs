@@ -4,6 +4,7 @@ pub const MIN_LOCKUP_SECS: i64 = 7 * 24 * 3_600;       // 7 days
 pub const MAX_LOCKUP_SECS: i64 = 365 * 24 * 3_600;      // 1 year
 pub const COOLDOWN_SECS: i64 = 3 * 24 * 3_600;           // 3-day unstake cooldown
 pub const MAX_VOTING_POWER_MULTIPLIER: u8 = 4;            // max boost for long lockup
+pub const MIGRATION_WINDOW_SECS: i64 = 180 * 24 * 3_600; // 180-day migration grace
 
 #[account]
 #[derive(InitSpace)]
@@ -20,6 +21,8 @@ pub struct StakingPool {
     pub paused: bool,
     pub pause_new_stakes: bool,
     pub pause_new_stakes_at: i64,
+    pub closed: bool,
+    pub closed_at: i64,
     pub bump: u8,
 }
 

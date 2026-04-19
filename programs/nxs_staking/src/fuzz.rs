@@ -113,6 +113,8 @@ proptest! {
         paused in any::<bool>(),
         pause_new_stakes in any::<bool>(),
         pause_new_stakes_at in any::<i64>(),
+        closed in any::<bool>(),
+        closed_at in any::<i64>(),
         bump in any::<u8>(),
     ) {
         let mut buf = vec![0u8; 8];
@@ -131,6 +133,8 @@ proptest! {
         buf.push(paused as u8);
         buf.push(pause_new_stakes as u8);
         buf.extend_from_slice(&pause_new_stakes_at.to_le_bytes());
+        buf.push(closed as u8);
+        buf.extend_from_slice(&closed_at.to_le_bytes());
         buf.push(bump);
         let mut slice = &buf[8..];
         let parsed = StakingPool::deserialize(&mut slice);
