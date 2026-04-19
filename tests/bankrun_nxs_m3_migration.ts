@@ -384,10 +384,105 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
       // MintNotInterestBearing — NOT silent no-op.
     });
 
-    it.skip('check #3: close_pool pre-window with nonzero total_staked rejects', async () => {
-      // Parallel to §Devnet-bring-up step 6 branch (c), but framed as the
-      // security-check: governance cannot prematurely close a pool that
-      // still has locked stake. Reject with MigrationWindowActive.
+    // check #3 uses an isolated bankrun context (its own `before`) because the
+    // §Devnet-bring-up step 6 has already closed pool_v1 + drained total_staked
+    // in the shared fixture — re-close there would hit the `!pool.closed` gate
+    // first. The singleton `[b"staking_pool"]` PDA also forbids a second pool
+    // in the same context, so a fresh `startAnchor` is the cleanest path to
+    // exercise the pre-close gate with nonzero stake. The fresh program is
+    // bound to a scoped provider — not `anchor.setProvider()` — so the outer
+    // §Events describe's `program` binding (cycle-205) stays intact.
+    describe('check #3: close_pool pre-window with nonzero total_staked rejects', () => {
+      let ctxX: ProgramTestContext;
+      let programX: anchor.Program<NxsStaking>;
+      let authX: Keypair;
+      let poolPdaX: PublicKey;
+
+      before(async () => {
+        ctxX = await startAnchor('.', [], []);
+        const provX = new BankrunProvider(ctxX);
+        const idl = JSON.parse(
+          readFileSync(resolve(process.cwd(), 'target/idl/nxs_staking.json'), 'utf8'),
+        );
+        programX = new anchor.Program<NxsStaking>(idl, provX);
+        authX = ctxX.payer;
+
+        const ownerX = Keypair.generate();
+        const mintAuthX = Keypair.generate();
+        for (const kp of [ownerX, mintAuthX]) {
+          ctxX.setAccount(kp.publicKey, {
+            lamports: 100 * LAMPORTS_PER_SOL,
+            data: Buffer.alloc(0),
+            owner: SystemProgram.programId,
+            executable: false,
+          });
+        }
+        await setBankrunClock(ctxX, T0);
+
+        const stakeMintX = await createToken2022Mint(ctxX, authX, mintAuthX.publicKey, 6);
+        const ownerXAta = await createATA(ctxX, authX, stakeMintX, ownerX.publicKey);
+        await mintTokens(ctxX, authX, stakeMintX, ownerXAta, mintAuthX, INITIAL_BALANCE);
+
+        [poolPdaX] = pdas.stakingPoolSingleton();
+        await programX.methods
+          .initPool(stakeMintX, new BN(86_400), new BN(0))
+          .accountsPartial({ authority: authX.publicKey })
+          .rpc();
+        await programX.methods
+          .stake(new BN(STAKE_AMOUNT), new BN(MIN_LOCKUP_SECS))
+          .accountsPartial({
+            pool: poolPdaX,
+            owner: ownerX.publicKey,
+            stakeMint: stakeMintX,
+            ownerTokenAccount: ownerXAta,
+            tokenProgram: TOKEN_2022_PROGRAM_ID,
+          })
+          .signers([ownerX])
+          .rpc();
+      });
+
+      // Branch (a): pause_new_stakes=false → window_elapsed=false regardless of
+      // clock, since the time-branch requires `pool.pause_new_stakes == true`
+      // per cycle-206 defense-in-depth gate (close without prior freeze should
+      // never trivially pass against mainnet clock via pause_new_stakes_at=0).
+      it('unfrozen pool + nonzero stake rejects MigrationWindowActive', async () => {
+        const pool = await programX.account.stakingPool.fetch(poolPdaX);
+        expect(pool.pauseNewStakes).to.equal(false);
+        expect(pool.totalStaked.toNumber()).to.be.greaterThan(0);
+
+        let err: unknown;
+        try {
+          await programX.methods
+            .closePool()
+            .accountsPartial({ pool: poolPdaX, authority: authX.publicKey })
+            .rpc();
+        } catch (e) {
+          err = e;
+        }
+        expect(String(err)).to.match(/MigrationWindowActive|0x1784/);
+      });
+
+      // Branch (b): frozen but clock still inside 180d window → reject.
+      // 90d warp is mid-window; pause_new_stakes_at + MIGRATION_WINDOW_SECS
+      // has not elapsed so the time-branch also fails → composite rejects.
+      it('frozen pool pre-window + nonzero stake rejects MigrationWindowActive', async () => {
+        await programX.methods
+          .freezeDeposits()
+          .accountsPartial({ pool: poolPdaX, authority: authX.publicKey })
+          .rpc();
+        await warpClockBy(ctxX, 90n * DAY_SECS);
+
+        let err: unknown;
+        try {
+          await programX.methods
+            .closePool()
+            .accountsPartial({ pool: poolPdaX, authority: authX.publicKey })
+            .rpc();
+        } catch (e) {
+          err = e;
+        }
+        expect(String(err)).to.match(/MigrationWindowActive|0x1784/);
+      });
     });
 
     it.skip('check #4: set_apy reentrancy — CPI revert leaves pool.apy_basis_points unchanged', async () => {
