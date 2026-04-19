@@ -44,6 +44,7 @@ import {
   stakingPoolPda,
   stakeAccountPda,
   stakeVaultPda,
+  apyAuthorityPda,
   templateGlobalPda,
   templatePda,
   rentalPda,
@@ -330,6 +331,14 @@ describe('NxsStaking PDAs', () => {
 
   it('stakeVaultPda', () => {
     assertValidPda(stakeVaultPda(PROG, KEY_A));
+  });
+
+  it('apyAuthorityPda is singleton', () => {
+    assertValidPda(apyAuthorityPda(PROG));
+    assertDeterministic(() => apyAuthorityPda(PROG));
+    const [a] = apyAuthorityPda(PROG);
+    const [b] = apyAuthorityPda(new PublicKey('11111111111111111111111111111113'));
+    expect(a.equals(b)).toBe(false);
   });
 });
 
