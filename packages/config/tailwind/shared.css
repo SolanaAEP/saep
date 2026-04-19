@@ -303,14 +303,47 @@ dialog.mobile-nav::backdrop {
   height: 42px !important;
   padding: 0 1.5rem !important;
   transition: border-color var(--duration-fast), background var(--duration-fast), color var(--duration-fast) !important;
+  position: relative !important;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)) !important;
+}
+.wallet-adapter-button::before,
+.wallet-adapter-button::after {
+  content: '' !important;
+  position: absolute !important;
+  width: 4px !important;
+  height: 4px !important;
+  background: var(--lime) !important;
+  opacity: 0 !important;
+  transition: opacity var(--duration-fast) !important;
+  z-index: 3 !important;
+  pointer-events: none !important;
+}
+.wallet-adapter-button::before {
+  top: 1px !important;
+  right: 7px !important;
+}
+.wallet-adapter-button::after {
+  bottom: 1px !important;
+  left: 7px !important;
 }
 .wallet-adapter-button:hover {
   border-color: var(--lime) !important;
   background: transparent !important;
   color: var(--ink) !important;
 }
+.wallet-adapter-button:hover::before,
+.wallet-adapter-button:hover::after {
+  opacity: 1 !important;
+}
 .wallet-adapter-button-trigger {
   background: transparent !important;
+}
+.wallet-adapter-modal-list .wallet-adapter-button {
+  clip-path: none !important;
+}
+.wallet-adapter-modal-list .wallet-adapter-button::before,
+.wallet-adapter-modal-list .wallet-adapter-button::after {
+  display: none !important;
 }
 .wallet-adapter-modal-wrapper {
   background: var(--paper) !important;
