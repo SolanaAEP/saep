@@ -11,6 +11,33 @@ import {
   resolveCluster,
   taskMarketProgram,
 } from '@saep/sdk';
+
+// Mirrors the Anchor-decoded TaskContract shape (from @saep/sdk/accounts/anchor-decoded).
+// Defined locally until next SDK build publishes the exported type.
+interface DecodedTaskContract {
+  taskId: number[];
+  client: PublicKey;
+  agentDid: number[];
+  taskNonce: number[];
+  paymentMint: PublicKey;
+  paymentAmount: BN;
+  status: Record<string, Record<string, never>>;
+  deadline: BN;
+  verified: boolean;
+  createdAt: BN;
+  taskHash: number[];
+  resultHash: number[];
+  proofKey: number[];
+  criteriaRoot: number[];
+  protocolFee: BN;
+  solrepFee: BN;
+  milestoneCount: number;
+  milestonesComplete: number;
+  fundedAt: BN;
+  submittedAt: BN;
+  disputeWindowEnd: BN;
+  payload: Record<string, unknown>;
+}
 import type { Config } from './config.js';
 
 const Base58 = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
@@ -49,11 +76,17 @@ export const SubmitResultArgs = z.object({
   proof_key: Hex32,
 });
 
+interface JsonSchema {
+  type: string;
+  properties: Record<string, { type: string; description?: string }>;
+  required: string[];
+}
+
 type Tool = {
   name: string;
   description: string;
-  inputSchema: Record<string, unknown>;
-  handler: (args: unknown, cfg: Config) => Promise<unknown>;
+  inputSchema: JsonSchema;
+  handler: (args: unknown, cfg: Config) => Promise<Record<string, unknown>>;
 };
 
 const USER_STATUS_MAP: Record<string, string[]> = {
@@ -185,19 +218,19 @@ export function buildTools(): Tool[] {
 
         const accounts = await tm.account.taskContract.all();
         const mapped = accounts.map(({ publicKey, account }) => {
-          const raw = account as unknown as Record<string, unknown>;
-          const status = Object.keys(raw.status as Record<string, unknown>)[0] ?? 'unknown';
+          const raw = account as DecodedTaskContract;
+          const status = Object.keys(raw.status)[0] ?? 'unknown';
           return {
             task_address: publicKey.toBase58(),
-            task_id_hex: bytesToHex(raw.taskId as number[]),
-            client: (raw.client as PublicKey).toBase58(),
-            agent_did_hex: bytesToHex(raw.agentDid as number[]),
-            payment_mint: (raw.paymentMint as PublicKey).toBase58(),
-            payment_amount: (raw.paymentAmount as BN).toString(),
+            task_id_hex: bytesToHex(raw.taskId),
+            client: raw.client.toBase58(),
+            agent_did_hex: bytesToHex(raw.agentDid),
+            payment_mint: raw.paymentMint.toBase58(),
+            payment_amount: raw.paymentAmount.toString(),
             status,
-            deadline: (raw.deadline as BN).toNumber(),
-            verified: raw.verified as boolean,
-            created_at: (raw.createdAt as BN).toNumber(),
+            deadline: raw.deadline.toNumber(),
+            verified: raw.verified,
+            created_at: raw.createdAt.toNumber(),
           };
         });
         const filtered = mapped.filter((t) => {
@@ -222,31 +255,29 @@ export function buildTools(): Tool[] {
         const config = resolveCluster({ cluster: cfg.cluster });
         const tm = taskMarketProgram(cfg.provider, config);
         const pk = new PublicKey(input.task_address);
-        const raw = (await tm.account.taskContract.fetchNullable(pk)) as
-          | Record<string, unknown>
-          | null;
+        const raw = (await tm.account.taskContract.fetchNullable(pk)) as DecodedTaskContract | null;
         if (!raw) return { cluster: cfg.cluster, error: 'task_not_found' };
-        const status = Object.keys(raw.status as Record<string, unknown>)[0] ?? 'unknown';
+        const status = Object.keys(raw.status)[0] ?? 'unknown';
         return {
           cluster: cfg.cluster,
           task_address: pk.toBase58(),
-          task_id_hex: bytesToHex(raw.taskId as number[]),
-          client: (raw.client as PublicKey).toBase58(),
-          agent_did_hex: bytesToHex(raw.agentDid as number[]),
-          payment_mint: (raw.paymentMint as PublicKey).toBase58(),
-          payment_amount: (raw.paymentAmount as BN).toString(),
+          task_id_hex: bytesToHex(raw.taskId),
+          client: raw.client.toBase58(),
+          agent_did_hex: bytesToHex(raw.agentDid),
+          payment_mint: raw.paymentMint.toBase58(),
+          payment_amount: raw.paymentAmount.toString(),
           status,
-          deadline: (raw.deadline as BN).toNumber(),
-          verified: raw.verified as boolean,
-          created_at: (raw.createdAt as BN).toNumber(),
-          task_hash_hex: bytesToHex(raw.taskHash as number[]),
-          result_hash_hex: bytesToHex(raw.resultHash as number[]),
-          proof_key_hex: bytesToHex(raw.proofKey as number[]),
-          criteria_root_hex: bytesToHex(raw.criteriaRoot as number[]),
-          protocol_fee: (raw.protocolFee as BN).toString(),
-          solrep_fee: (raw.solrepFee as BN).toString(),
-          milestone_count: raw.milestoneCount as number,
-          milestones_complete: raw.milestonesComplete as number,
+          deadline: raw.deadline.toNumber(),
+          verified: raw.verified,
+          created_at: raw.createdAt.toNumber(),
+          task_hash_hex: bytesToHex(raw.taskHash),
+          result_hash_hex: bytesToHex(raw.resultHash),
+          proof_key_hex: bytesToHex(raw.proofKey),
+          criteria_root_hex: bytesToHex(raw.criteriaRoot),
+          protocol_fee: raw.protocolFee.toString(),
+          solrep_fee: raw.solrepFee.toString(),
+          milestone_count: raw.milestoneCount,
+          milestones_complete: raw.milestonesComplete,
         };
       },
     },
@@ -414,7 +445,7 @@ export function buildTools(): Tool[] {
   ];
 }
 
-function toJsonSchema(schema: z.ZodTypeAny): Record<string, unknown> {
+function toJsonSchema(schema: z.ZodTypeAny): JsonSchema {
   const def = (schema as z.ZodObject<z.ZodRawShape>)._def;
   const shape =
     def && 'shape' in def && typeof def.shape === 'function' ? def.shape() : {};

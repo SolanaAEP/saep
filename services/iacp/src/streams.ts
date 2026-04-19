@@ -54,9 +54,10 @@ export class StreamBus {
       ...topics,
       ...topics.map(() => '>'),
     ];
-    const raw = (await (this.redis.xreadgroup as (...a: (string | number)[]) => Promise<unknown>)(
+    type XReadGroupReply = Array<[string, Array<[string, string[]]>]>;
+    const raw = (await (this.redis.xreadgroup as (...a: (string | number)[]) => Promise<XReadGroupReply | null>)(
       ...args,
-    )) as Array<[string, Array<[string, string[]]>]> | null;
+    ));
     if (!raw) return [];
     const out: StreamMessage[] = [];
     for (const [topic, entries] of raw) {

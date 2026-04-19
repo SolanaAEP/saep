@@ -27,7 +27,7 @@ export type ProveJobData = {
 };
 
 export type ProveJobResult = {
-  proof: unknown;
+  proof: import('snarkjs').Groth16Proof;
   public_signals: string[];
 };
 

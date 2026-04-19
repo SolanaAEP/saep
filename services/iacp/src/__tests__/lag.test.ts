@@ -14,7 +14,7 @@ class FakeRedis {
   fixtures = new Map<string, PendingFixture | Error>();
   calls: Array<{ topic: string; group: string }> = [];
 
-  async xpending(topic: string, group: string): Promise<unknown> {
+  async xpending(topic: string, group: string): Promise<unknown[]> {
     this.calls.push({ topic, group });
     const fx = this.fixtures.get(topic);
     if (fx instanceof Error) throw fx;

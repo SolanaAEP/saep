@@ -52,7 +52,9 @@ function loadArtifacts(circuit_id: string): CircuitArtifacts {
   return paths;
 }
 
-function decryptWitness(data: ProveJobData, key: Buffer): Record<string, unknown> {
+type CircuitInput = Record<string, string | number | bigint | (string | number | bigint)[]>;
+
+function decryptWitness(data: ProveJobData, key: Buffer): CircuitInput {
   const iv = Buffer.from(data.witness_iv, 'base64');
   const tag = Buffer.from(data.witness_tag, 'base64');
   const ct = Buffer.from(data.witness_ciphertext, 'base64');
@@ -85,7 +87,7 @@ export function startWorker() {
       const key = Buffer.from(keyB64, 'base64');
       await connection.del(keyKey(job.id!));
 
-      let witness: Record<string, unknown>;
+      let witness: CircuitInput;
       try {
         const priv = decryptWitness(job.data, key);
         witness = { ...public_inputs, ...priv };
@@ -99,7 +101,7 @@ export function startWorker() {
         artifacts.zkey,
       );
 
-      const result: ProveJobResult = { proof, public_signals: publicSignals as string[] };
+      const result: ProveJobResult = { proof, public_signals: publicSignals };
 
       const payload = JSON.stringify({ status: 'completed', ...result });
       await connection.set(resultKey(job.id!), payload, 'EX', RESULT_TTL);

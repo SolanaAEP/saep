@@ -21,7 +21,7 @@ import {
   clampPriorityFee,
   getHeliusPriorityFeeEstimate,
   withPriorityFee,
-  type PriorityLevel,
+  type PriorityFeeOptions,
 } from '@saep/sdk';
 
 export interface SimulationResult {
@@ -40,12 +40,8 @@ export interface OptimisticUpdate<TInput> {
   updater: (old: unknown, input: TInput) => unknown;
 }
 
-export interface PriorityFeeConfig {
+export interface PriorityFeeConfig extends PriorityFeeOptions {
   microLamports?: number;
-  cuLimit?: number;
-  level?: PriorityLevel;
-  cap?: number;
-  floor?: number;
   estimateUrl?: string;
 }
 
@@ -62,7 +58,7 @@ export interface UseSendTransactionOptions<TInput> {
 function parseSimulation(response: SimulatedTransactionResponse): SimulationResult {
   return {
     slot: 0,
-    unitsConsumed: response.unitsConsumed ?? undefined,
+    unitsConsumed: response.unitsConsumed,
     logs: response.logs ?? [],
   };
 }
@@ -122,7 +118,7 @@ async function applyPriorityFee(
 
 export class SimulationError extends Error {
   constructor(
-    public readonly err: unknown,
+    public readonly err: string | number | Record<string, unknown> | null,
     public readonly logs: string,
   ) {
     super(`Transaction simulation failed: ${JSON.stringify(err)}\n${logs}`);

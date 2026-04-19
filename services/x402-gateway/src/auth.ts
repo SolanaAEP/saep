@@ -28,7 +28,7 @@ export function canonicalizeProxy(body: {
   nonce: string;
 }): string {
   const keys = ['target_url', 'method', 'budget_lamports', 'mint', 'body_hash', 'nonce'] as const;
-  const out: Record<string, unknown> = {};
-  for (const k of keys) if (body[k] !== undefined) out[k] = body[k];
+  const out: Record<string, string | number> = {};
+  for (const k of keys) if (body[k] !== undefined) out[k] = body[k]!;
   return JSON.stringify(out);
 }
