@@ -59,6 +59,7 @@ A per-agent PDA wallet that enforces spending limits at the instruction level an
   - `withdrawn: u64` — watermark in payer-mint units
   - `escrow_bump: u8`
   - `status: StreamStatus` — `Active | Closed`
+  - `stream_nonce: [u8; 8]` — caller-supplied; backs the seeds enumeration above so concurrent streams between the same `(agent_did, counterparty)` pair derive distinct PDAs
 
 ### `StreamEscrow` PDA — SPL token account per stream
 - **Seeds:** `[b"stream_escrow", stream.key().as_ref()]`
@@ -76,6 +77,10 @@ A per-agent PDA wallet that enforces spending limits at the instruction level an
 - **Field-listing drift surfaced inline (not patched here):** `PaymentStream` spec Seeds line 49 enumerates `stream_nonce.as_ref()` but Fields list lines 50-61 omits the corresponding `stream_nonce: [u8; 8]` field; scaffold has it at `state.rs:89`. Surgical field-insert held as a separate §State-intro-refresh cycle candidate — append-only convention preserved.
 
 **Guard-state-vocabulary matrix row (post-cycle):** treasury_standard = `2-PDA (ReentrancyGuard + AllowedCallers)` — no separate `GuardConfig` account (config lives on `AllowedCallers` directly; corrects cycle-175 next-options "3-PDA guard triplet" prediction). 5-program §State-sweep matrix: 2-of-5 M1-in-scope complete (capability_registry = `N/A`, treasury_standard = `2-PDA`). Pairs with cycle-163 §Events reconciliation (spec commit `4b07e06`) — §Events lines 157-159 surfaced the guard-admin ix family + `ReentrancyRejected` emit-site absence; this §State reconciliation lands the backing PDAs + constants so the two deltas blocks are a load-bearing pair.
+
+### §State-intro-refresh (cycle 184, 2026-04-19)
+
+Field-listing drift bullet held by cycle 176 (line 76 above) is now closed. `PaymentStream.stream_nonce: [u8; 8]` is enumerated in the Fields list at line 62, immediately after `status: StreamStatus`, matching the `state.rs:89` scaffold ordering. The seeds line 49 enumerates `stream_nonce.as_ref()` as the 4th seed component; the Fields entry now backs that seed without forcing a reviewer to cross-read the scaffold to discover it. Field placement preserves the convention "all explicit struct fields, then `bump`" used elsewhere in this spec — the trailing `bump: u8` remains implicit per §State convention (matches `TreasuryGlobal` / `AgentTreasury` / `TreasuryVault` field listings above which also omit their trailing bumps).
 
 ## Instructions
 
