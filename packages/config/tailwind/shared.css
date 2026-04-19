@@ -78,7 +78,8 @@ dialog.mobile-nav::backdrop {
   cursor: pointer;
   transition:
     border-color var(--duration-fast),
-    background var(--duration-fast);
+    background var(--duration-fast),
+    color var(--duration-fast);
   text-decoration: none;
   isolation: isolate;
 }
@@ -301,7 +302,7 @@ dialog.mobile-nav::backdrop {
   border-radius: var(--radius-none) !important;
   height: 42px !important;
   padding: 0 1.5rem !important;
-  transition: border-color var(--duration-fast), background var(--duration-fast) !important;
+  transition: border-color var(--duration-fast), background var(--duration-fast), color var(--duration-fast) !important;
 }
 .wallet-adapter-button:hover {
   border-color: var(--lime) !important;
