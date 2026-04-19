@@ -321,10 +321,43 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
   });
 
   describe('§Events — migrate_apy_authority attestation', () => {
-    it.skip('migrate_apy_authority emits ApyAuthorityMigrated { old_mint, new_mint, attested_at }', async () => {
-      // No-op on state per spec §migrate_apy_authority — event-only CPI. Indexer
-      // + portal key off the event, not polling. Assert event fields exactly
-      // match the tx args + clock unixTimestamp.
+    before(async () => {
+      await program.methods
+        .initialize(authority.publicKey)
+        .accountsPartial({ payer: authority.publicKey })
+        .rpc();
+    });
+
+    it('migrate_apy_authority emits ApyAuthorityMigrated { old_mint, new_mint, attested_at }', async () => {
+      const oldMint = Keypair.generate().publicKey;
+      const newMint = Keypair.generate().publicKey;
+      const expectedAttestedAt = Number(
+        (await context.banksClient.getClock()).unixTimestamp,
+      );
+
+      const ix = await program.methods
+        .migrateApyAuthority(oldMint, newMint)
+        .accountsPartial({ authority: authority.publicKey })
+        .instruction();
+
+      const tx = new anchor.web3.Transaction().add(ix);
+      tx.feePayer = authority.publicKey;
+      tx.recentBlockhash = (await context.banksClient.getLatestBlockhash())[0];
+      tx.sign(authority);
+
+      const sim = await context.banksClient.simulateTransaction(tx);
+      const logs = sim.meta?.logMessages ?? [];
+      const parser = new anchor.EventParser(program.programId, program.coder);
+      const events = [...parser.parseLogs(logs)];
+
+      const ev = events.find((e) => e.name === 'apyAuthorityMigrated');
+      expect(ev, 'ApyAuthorityMigrated event not emitted').to.not.be.undefined;
+      const data = ev!.data as {
+        oldMint: PublicKey; newMint: PublicKey; attestedAt: anchor.BN;
+      };
+      expect(data.oldMint.toBase58()).to.equal(oldMint.toBase58());
+      expect(data.newMint.toBase58()).to.equal(newMint.toBase58());
+      expect(data.attestedAt.toNumber()).to.equal(expectedAttestedAt);
     });
   });
 });
