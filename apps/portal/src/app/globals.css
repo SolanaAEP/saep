@@ -208,3 +208,169 @@ dialog.mobile-nav::backdrop {
   margin: 2rem 0;
 }
 .prose-saep strong { color: var(--ink); }
+
+/* ── Glitch button ─────────────────────────────────── */
+.btn-glitch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 1.5rem;
+  height: 42px;
+  border: 1px solid var(--ink, #0a0a0a);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink, #0a0a0a);
+  background: transparent;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.1s;
+  text-decoration: none;
+}
+.btn-glitch--sm {
+  height: 34px;
+  padding: 0 1rem;
+  font-size: 10px;
+}
+
+/* Scanlines — always present, subtle */
+.btn-glitch::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(10, 10, 10, 0.03) 2px,
+    rgba(10, 10, 10, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Flash layer — single green pulse on hover entry */
+.btn-glitch::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: var(--lime, #06f512);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.btn-glitch:hover {
+  border-color: var(--lime, #06f512);
+}
+.btn-glitch:hover::before {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(10, 10, 10, 0.06) 2px,
+    rgba(10, 10, 10, 0.06) 4px
+  );
+  animation: glitch-scanline 0.6s steps(6) infinite;
+}
+.btn-glitch:hover::after {
+  animation: glitch-flash 0.35s steps(1) 1;
+}
+
+/* Inner text span */
+.btn-glitch > span {
+  position: relative;
+  z-index: 2;
+}
+.btn-glitch:hover > span {
+  animation: glitch-jitter 0.5s steps(3) infinite;
+}
+
+/* Green ghost — chromatic aberration */
+.btn-glitch > span::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--lime, #06f512);
+  opacity: 0;
+  pointer-events: none;
+}
+.btn-glitch:hover > span::after {
+  animation: glitch-ghost 0.7s steps(2) infinite;
+}
+
+/* Solid variant: lime border, on hover → filled */
+.btn-glitch--solid {
+  border-color: var(--lime, #06f512);
+  color: var(--lime, #06f512);
+}
+.btn-glitch--solid:hover {
+  background: var(--lime, #06f512);
+  color: var(--ink, #0a0a0a);
+}
+
+/* Active / pressed */
+.btn-glitch:active {
+  background: var(--lime, #06f512);
+  color: var(--ink, #0a0a0a);
+  border-color: var(--lime, #06f512);
+}
+.btn-glitch:active > span,
+.btn-glitch:active > span::after {
+  animation: none;
+}
+.btn-glitch:active::after {
+  animation: none;
+  opacity: 0;
+}
+
+/* Disabled */
+.btn-glitch:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+@keyframes glitch-flash {
+  0%, 100% { opacity: 0; }
+  8%  { opacity: 0.12; }
+  14% { opacity: 0; }
+  22% { opacity: 0.06; }
+  28% { opacity: 0; }
+}
+
+@keyframes glitch-scanline {
+  from { background-position: 0 0; }
+  to   { background-position: 0 20px; }
+}
+
+@keyframes glitch-jitter {
+  0%, 100% { transform: translate(0, 0); }
+  20%  { transform: translate(-2px, 0); }
+  40%  { transform: translate(1px, 1px); }
+  60%  { transform: translate(-1px, -1px); }
+  80%  { transform: translate(2px, 0); }
+}
+
+@keyframes glitch-ghost {
+  0%   { opacity: 0;   transform: translate(0, 0);    clip-path: inset(0 0 100% 0); }
+  15%  { opacity: 0.7; transform: translate(3px, 0);   clip-path: inset(10% 0 50% 0); }
+  30%  { opacity: 0;   transform: translate(0, 0);     clip-path: inset(0 0 100% 0); }
+  50%  { opacity: 0.5; transform: translate(-2px, 0);  clip-path: inset(40% 0 15% 0); }
+  65%  { opacity: 0;   transform: translate(0, 0);     clip-path: inset(0 0 100% 0); }
+  80%  { opacity: 0.6; transform: translate(2px, -1px); clip-path: inset(55% 0 10% 0); }
+  100% { opacity: 0;   transform: translate(0, 0);     clip-path: inset(0 0 100% 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-glitch:hover::before,
+  .btn-glitch:hover::after,
+  .btn-glitch:hover > span,
+  .btn-glitch:hover > span::after {
+    animation: none !important;
+  }
+}

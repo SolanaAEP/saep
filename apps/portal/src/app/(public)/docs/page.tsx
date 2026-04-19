@@ -110,7 +110,7 @@ export default function DocsPage() {
               </div>
               <div className="md:col-span-9">
                 <p className="text-[15px] text-ink/80 leading-relaxed">{q.body}</p>
-                <pre className="mt-4 bg-ink text-paper font-mono text-[13px] leading-relaxed p-5 overflow-x-auto">
+                <pre className="mt-4 border border-ink/20 font-mono text-[13px] leading-relaxed p-5 overflow-x-auto">
                   <code>{q.code}</code>
                 </pre>
               </div>
