@@ -17,13 +17,6 @@ export const leaseReservationLatency = new Histogram({
   registers: [registry],
 });
 
-export const leaseCancellations = new Counter({
-  name: 'compute_broker_lease_cancellation_total',
-  help: 'cancelled leases',
-  labelNames: ['provider', 'reason'],
-  registers: [registry],
-});
-
 export const attestationsSigned = new Counter({
   name: 'compute_broker_attestations_signed_total',
   help: 'attestations signed by broker key',

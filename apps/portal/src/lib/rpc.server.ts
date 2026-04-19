@@ -3,7 +3,6 @@ import { AnchorProvider, type Wallet } from '@coral-xyz/anchor';
 import {
   agentRegistryProgram,
   taskMarketProgram,
-  treasuryStandardProgram,
 } from '@saep/sdk';
 import { clusterConfig } from './cluster';
 
@@ -26,8 +25,4 @@ export function getAgentRegistryProgram() {
 
 export function getTaskMarketProgram() {
   return taskMarketProgram(readOnlyProvider(), clusterConfig);
-}
-
-export function getTreasuryProgram() {
-  return treasuryStandardProgram(readOnlyProvider(), clusterConfig);
 }

@@ -222,8 +222,6 @@ async function simulateSettlement(
   };
 }
 
-export { buildSettlementTx };
-
 export type TxStatus = 'confirmed' | 'finalized' | 'not_found' | 'failed';
 
 export async function verifySettlement(

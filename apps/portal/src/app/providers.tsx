@@ -25,5 +25,3 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     </ClusterContext.Provider>
   );
 }
-
-export { AppProviders as WalletProviders };

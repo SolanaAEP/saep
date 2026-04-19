@@ -39,9 +39,3 @@ export function randomBytes(n: number): Uint8Array {
   for (let i = 0; i < n; i += 1) out[i] = Math.floor(Math.random() * 256);
   return out;
 }
-
-export function padRight(s: string, len: number): Buffer {
-  const b = Buffer.alloc(len, 0);
-  Buffer.from(s, 'utf8').copy(b, 0, 0, Math.min(s.length, len));
-  return b;
-}

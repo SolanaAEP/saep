@@ -24,8 +24,3 @@ export const cacheHits = new Counter({
   labelNames: ['circuit'] as const,
   registers: [registry],
 });
-
-export const queueDepthGauge = {
-  waiting: 0,
-  active: 0,
-};

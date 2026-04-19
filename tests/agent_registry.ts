@@ -4,8 +4,6 @@ import { getProvider } from './helpers/setup';
 import { agentReg, PROGRAM_IDS } from './helpers/accounts';
 import type { AgentRegistry } from '../target/types/agent_registry';
 
-// CU-MEASURE-PENDING
-
 describe('agent_registry', () => {
   const provider = getProvider();
   // eslint-disable-next-line @typescript-eslint/no-require-imports

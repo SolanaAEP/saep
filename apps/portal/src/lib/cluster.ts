@@ -23,5 +23,3 @@ export const clusterConfig = resolveCluster({
   endpoint,
   programIds: clean,
 });
-
-export const stakeMintAddress = process.env.NEXT_PUBLIC_STAKE_MINT ?? '';
