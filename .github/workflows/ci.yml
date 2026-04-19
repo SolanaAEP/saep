@@ -24,6 +24,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      - name: SAEP mint init dry-run
+        run: pnpm exec tsx scripts/init-saep-mint.ts --dry-run
       - run: pnpm -r build
       # anchor test is excluded from CI — it requires solana-test-validator
       # and the full Anchor test suite is too slow without pre-installed solana
