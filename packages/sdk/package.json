@@ -20,6 +20,7 @@
     "dev": "tsc -p tsconfig.json --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "lint": "echo skip",
     "clean": "rm -rf dist"
   },
@@ -31,6 +32,7 @@
     "zod": "3.23.8"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.4",
     "tsx": "^4.21.0",
     "typescript": "5.7.3",
     "vitest": "^4.1.4"

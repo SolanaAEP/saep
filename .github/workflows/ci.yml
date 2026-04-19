@@ -30,6 +30,10 @@ jobs:
       # binaries. Run anchor test locally or in the dedicated anchor workflow.
       - name: Run service tests
         run: pnpm -r --filter '@saep/*' test || true
+      - name: Coverage gate (sdk + sdk-ui)
+        run: |
+          pnpm --filter @saep/sdk test:coverage
+          pnpm --filter @saep/sdk-ui test:coverage
       - name: bundle size gate
         run: |
           node scripts/check-bundle-size.mjs apps/portal --build
