@@ -345,6 +345,11 @@ dialog.mobile-nav::backdrop {
 .wallet-adapter-button:hover::after {
   background: var(--lime) !important;
 }
+.wallet-adapter-button:focus-visible {
+  outline: 2px solid var(--lime) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px var(--ink) !important;
+}
 .wallet-adapter-button-trigger {
   background: transparent !important;
 }
@@ -368,11 +373,11 @@ dialog.mobile-nav::backdrop {
 }
 .wallet-adapter-modal-list .wallet-adapter-button {
   border: none !important;
-  border-bottom: 1px solid rgba(10, 10, 10, 0.1) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 10%, transparent) !important;
   color: var(--ink) !important;
 }
 .wallet-adapter-modal-list .wallet-adapter-button:hover {
-  background: rgba(10, 10, 10, 0.05) !important;
+  background: color-mix(in srgb, var(--ink) 5%, transparent) !important;
   color: var(--lime) !important;
 }
 

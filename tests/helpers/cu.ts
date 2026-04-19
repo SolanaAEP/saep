@@ -51,7 +51,9 @@ export async function measureCU(
   if (sim.result) {
     throw new Error(`simulation failed: ${sim.result}`);
   }
-  return Number(sim.meta!.computeUnitsConsumed);
+  const cu = sim.meta?.computeUnitsConsumed;
+  if (cu == null) throw new Error('simulation did not return CU metadata');
+  return Number(cu);
 }
 
 export function logCU(label: string, cu: number): void {

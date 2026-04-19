@@ -79,6 +79,9 @@ export function QuickHireModal({ agent, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
       <div
         className="bg-paper border border-ink/20 w-full max-w-md flex flex-col overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="hire-modal-title"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative h-16 overflow-hidden border-b border-ink/10">
@@ -86,9 +89,9 @@ export function QuickHireModal({ agent, onClose }: Props) {
           <div className="relative px-5 py-3 flex items-center justify-between">
             <div>
               <div className="font-mono text-[9px] text-mute uppercase tracking-widest">Task Creation</div>
-              <div className="font-mono text-xs mt-0.5">Quick Hire</div>
+              <div id="hire-modal-title" className="font-mono text-xs mt-0.5">Quick Hire</div>
             </div>
-            <button onClick={onClose} className="text-mute hover:text-ink text-lg leading-none font-mono">
+            <button onClick={onClose} aria-label="Close" className="text-mute hover:text-ink text-lg leading-none font-mono">
               &times;
             </button>
           </div>

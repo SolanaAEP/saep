@@ -104,12 +104,12 @@ pub fn refresh_stake_handler(
 
 #[derive(Accounts)]
 pub struct SnapshotPool<'info> {
-    #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump)]
+    #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump, has_one = authority)]
     pub config: Box<Account<'info, DisputeConfig>>,
 
     #[account(
         init_if_needed,
-        payer = cranker,
+        payer = authority,
         space = 8 + DisputePool::INIT_SPACE,
         seeds = [SEED_DISPUTE_POOL],
         bump,
@@ -117,7 +117,7 @@ pub struct SnapshotPool<'info> {
     pub pool: Box<Account<'info, DisputePool>>,
 
     #[account(mut)]
-    pub cranker: Signer<'info>,
+    pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 

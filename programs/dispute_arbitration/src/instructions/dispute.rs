@@ -94,7 +94,7 @@ pub fn raise_dispute_handler(
 // M2: VRF result passed as arg; Switchboard CPI deferred.
 #[derive(Accounts)]
 pub struct ConsumeVrf<'info> {
-    #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump)]
+    #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump, has_one = authority)]
     pub config: Box<Account<'info, DisputeConfig>>,
 
     #[account(
@@ -110,7 +110,7 @@ pub struct ConsumeVrf<'info> {
     )]
     pub pool: Box<Account<'info, DisputePool>>,
 
-    pub cranker: Signer<'info>,
+    pub authority: Signer<'info>,
 }
 
 pub fn consume_vrf_handler(

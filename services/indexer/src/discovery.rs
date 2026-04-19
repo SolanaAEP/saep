@@ -138,18 +138,22 @@ async fn metrics_mw(req: Request<Body>, next: Next) -> axum::response::Response 
     resp
 }
 
-/// Reads the first hop in `X-Forwarded-For`. Render terminates TLS and sets
-/// the header; direct connections (local dev) leave it absent — those keys
-/// collapse onto a shared `unknown` bucket. Spoof resistance is the limiter's
-/// job (per-key bucket, max-keys eviction); we do not validate the trust
-/// chain here.
+/// Extract client IP from Render's proxy headers. Render sets the rightmost
+/// hop in X-Forwarded-For; we take the last entry to prevent spoofing via
+/// prepended hops. Falls back to X-Real-Ip if available.
 pub(crate) fn client_ip(headers: &HeaderMap) -> Option<String> {
+    if let Some(real) = headers.get("x-real-ip").and_then(|v| v.to_str().ok()) {
+        let trimmed = real.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
     let raw = headers.get("x-forwarded-for")?.to_str().ok()?;
-    let first = raw.split(',').next()?.trim();
-    if first.is_empty() {
+    let last = raw.rsplit(',').next()?.trim();
+    if last.is_empty() {
         return None;
     }
-    Some(first.to_string())
+    Some(last.to_string())
 }
 
 async fn rate_limit_mw(req: Request<Body>, next: Next) -> axum::response::Response {
