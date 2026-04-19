@@ -61,6 +61,20 @@
 //! short-circuits still record on the request counter / duration histogram.
 //! Authenticated per-`sub` + per-socket WS limiting deferred (spec §Rate-limits
 //! L226 — needs Rust SIWS + WS scaffold respectively).
+//!
+//! Cycle-107 scope (task #15): production hardening pass.
+//!   - `sort` query param on `/agents` (`reputation_desc|recent_desc`) and
+//!     `/tasks` (`created_desc|deadline_asc|reward_desc`) with matching keyset
+//!     cursor pagination per sort mode.
+//!   - Pagination on `list_capabilities` (LIMIT + cursor, was unbounded).
+//!   - `/v1/discovery/agents/:did/streams` stub endpoint (spec §Agents row 4;
+//!     returns empty until `stream_nonce` lands in IDL events).
+//!   - `/v1/discovery/stats` protocol-level aggregate (mirrors Node.js
+//!     `services/discovery/src/server.ts` `/stats` endpoint).
+//!   - `request_id_mw` injects monotonic `x-request-id` header on every
+//!     response for observability correlation.
+//!   - `ApiError` enriched with `detail` field; error responses now carry
+//!     `{error: code, detail?: string}` per spec §Error-taxonomy.
 
 use axum::{
     extract::{Path, Query, State},
@@ -77,10 +91,19 @@ use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sql_types::{BigInt, Bytea, Int2, Int4, Jsonb, Text, Timestamptz};
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 use crate::api::{ApiError, ApiState};
 use crate::{metrics, rate_limit};
+
+static REQUEST_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+/// Generate a monotonic request ID for observability. Format: `disc-<seq>`.
+fn next_request_id() -> String {
+    let seq = REQUEST_COUNTER.fetch_add(1, Ordering::Relaxed);
+    format!("disc-{seq}")
+}
 
 const DEFAULT_LIMIT: i64 = 50;
 const MAX_LIMIT: i64 = 200;
@@ -95,6 +118,10 @@ pub fn router(state: ApiState) -> Router {
             "/v1/discovery/agents/:did/reputation",
             get(agent_reputation),
         )
+        .route(
+            "/v1/discovery/agents/:did/streams",
+            get(agent_streams),
+        )
         .route("/v1/discovery/tasks", get(list_tasks))
         .route("/v1/discovery/tasks/:task_id_hex", get(task_detail))
         .route(
@@ -105,6 +132,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/v1/discovery/capabilities/:bit", get(capability_detail))
         .route("/v1/discovery/treasury/:did", get(treasury_detail))
         .route("/v1/discovery/treasury/:did/vaults", get(treasury_vaults))
+        .route("/v1/discovery/stats", get(protocol_stats))
+        .layer(middleware::from_fn(request_id_mw))
         .layer(middleware::from_fn(rate_limit_mw))
         .layer(middleware::from_fn(metrics_mw))
         .with_state(state)
@@ -124,6 +153,7 @@ pub(crate) fn endpoint_class(path: &str) -> &'static str {
         "tasks" => "tasks",
         "treasury" => "treasury",
         "capabilities" => "capabilities",
+        "stats" => "catch_all",
         _ => "catch_all",
     }
 }
@@ -135,6 +165,19 @@ async fn metrics_mw(req: Request<Body>, next: Next) -> axum::response::Response 
     timer.observe_duration();
     let status = resp.status().as_u16();
     metrics::inc_discovery_request(class, &status.to_string());
+    resp
+}
+
+/// Inject a monotonic `x-request-id` header into every response.
+async fn request_id_mw(req: Request<Body>, next: Next) -> axum::response::Response {
+    let rid = next_request_id();
+    let mut resp = next.run(req).await;
+    resp.headers_mut().insert(
+        "x-request-id",
+        axum::http::HeaderValue::from_str(&rid).unwrap_or_else(|_| {
+            axum::http::HeaderValue::from_static("unknown")
+        }),
+    );
     resp
 }
 
@@ -188,12 +231,19 @@ async fn rate_limit_mw(req: Request<Body>, next: Next) -> axum::response::Respon
 const CAPABILITY_REGISTRY_PROGRAM_ID: &str = "GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F";
 const TREASURY_STANDARD_PROGRAM_ID: &str = "6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ";
 
+/// Validated sort modes for agent listings. Default: `reputation_desc`.
+const AGENT_SORTS: &[&str] = &["reputation_desc", "recent_desc"];
+
+/// Validated sort modes for task listings. Default: `created_desc`.
+const TASK_SORTS: &[&str] = &["created_desc", "deadline_asc", "reward_desc"];
+
 #[derive(Debug, Deserialize)]
 pub struct AgentsQuery {
     pub capability_mask: Option<String>,
     pub min_reputation: Option<i32>,
     pub status: Option<String>,
     pub operator: Option<String>,
+    pub sort: Option<String>,
     pub limit: Option<i64>,
     pub cursor: Option<String>,
 }
@@ -244,6 +294,12 @@ pub async fn list_agents(
             "status must be active|slashed|paused|suspended",
         ));
     }
+    let sort = q.sort.as_deref().unwrap_or("reputation_desc");
+    if !AGENT_SORTS.contains(&sort) {
+        return Err(ApiError::bad_request(
+            "sort must be reputation_desc|recent_desc",
+        ));
+    }
     let cap_mask_text = match q.capability_mask.as_deref() {
         Some(s) => Some(parse_hex_to_decimal(s).map_err(ApiError::bad_request)?),
         None => None,
@@ -253,6 +309,7 @@ pub async fn list_agents(
         None => None,
     };
 
+    let sort_owned = sort.to_string();
     let qtimer = metrics::time_discovery_query("discovery.list_agents");
     let rows = tokio::task::spawn_blocking(move || -> Result<Vec<RawAgentRow>, ApiError> {
         let mut conn = state.pool.get().map_err(ApiError::internal)?;
@@ -267,7 +324,7 @@ pub async fn list_agents(
         let mut cap_pos: Option<u32> = None;
         let mut min_rep_pos: Option<u32> = None;
         let mut op_pos: Option<u32> = None;
-        let mut cur_score_pos: Option<u32> = None;
+        let mut cur_sort_pos: Option<u32> = None;
         let mut cur_did_pos: Option<u32> = None;
 
         if cap_mask_text.is_some() {
@@ -288,24 +345,32 @@ pub async fn list_agents(
             op_pos = Some(next);
             next += 1;
         }
+
+        // Keyset pagination varies by sort mode.
+        let (order_clause, cursor_clause) = match sort_owned.as_str() {
+            "recent_desc" => (
+                "last_active_unix DESC, agent_did ASC",
+                "(last_active_unix < ${} OR (last_active_unix = ${} AND agent_did > ${}))",
+            ),
+            // reputation_desc (default)
+            _ => (
+                "reputation_composite DESC, agent_did ASC",
+                "(reputation_composite < ${} OR (reputation_composite = ${} AND agent_did > ${}))",
+            ),
+        };
+
         if cursor.is_some() {
-            // Sort: reputation_composite DESC, agent_did ASC.
-            // Keyset: (rep < cur_rep) OR (rep = cur_rep AND did > cur_did).
-            sql.push_str(&format!(
-                " AND (reputation_composite < ${} \
-                       OR (reputation_composite = ${} AND agent_did > ${}))",
-                next,
-                next,
-                next + 1
-            ));
-            cur_score_pos = Some(next);
+            let c = cursor_clause
+                .replacen("${}", &format!("${}", next), 1)
+                .replacen("${}", &format!("${}", next), 1)
+                .replacen("${}", &format!("${}", next + 1), 1);
+            sql.push_str(" AND ");
+            sql.push_str(&c);
+            cur_sort_pos = Some(next);
             cur_did_pos = Some(next + 1);
             next += 2;
         }
-        sql.push_str(&format!(
-            " ORDER BY reputation_composite DESC, agent_did ASC LIMIT ${}",
-            next
-        ));
+        sql.push_str(&format!(" ORDER BY {} LIMIT ${}", order_clause, next));
 
         let mut qb = sql_query(sql).into_boxed::<diesel::pg::Pg>();
         qb = qb.bind::<Text, _>(status);
@@ -318,15 +383,24 @@ pub async fn list_agents(
         if op_pos.is_some() {
             qb = qb.bind::<Text, _>(q.operator.clone().unwrap());
         }
-        if let (Some(_), Some(_)) = (cur_score_pos, cur_did_pos) {
+        if let (Some(_), Some(_)) = (cur_sort_pos, cur_did_pos) {
             let c = cursor.as_ref().unwrap();
-            let score: i32 = c
-                .sort_value
-                .parse()
-                .map_err(|_| ApiError::bad_request("cursor sort_value invalid"))?;
-            let did = hex::decode(&c.last_id)
-                .map_err(|_| ApiError::bad_request("cursor last_id invalid"))?;
-            qb = qb.bind::<Int4, _>(score).bind::<Bytea, _>(did);
+            match sort_owned.as_str() {
+                "recent_desc" => {
+                    let t: i64 = c.sort_value.parse()
+                        .map_err(|_| ApiError::bad_request("cursor sort_value invalid"))?;
+                    let did = hex::decode(&c.last_id)
+                        .map_err(|_| ApiError::bad_request("cursor last_id invalid"))?;
+                    qb = qb.bind::<BigInt, _>(t).bind::<Bytea, _>(did);
+                }
+                _ => {
+                    let score: i32 = c.sort_value.parse()
+                        .map_err(|_| ApiError::bad_request("cursor sort_value invalid"))?;
+                    let did = hex::decode(&c.last_id)
+                        .map_err(|_| ApiError::bad_request("cursor last_id invalid"))?;
+                    qb = qb.bind::<Int4, _>(score).bind::<Bytea, _>(did);
+                }
+            }
         }
         qb = qb.bind::<BigInt, _>(limit + 1);
         qb.load::<RawAgentRow>(&mut conn).map_err(ApiError::internal)
@@ -352,8 +426,12 @@ pub async fn list_agents(
 
     let cursor = if has_more {
         items.last().map(|last| {
+            let sv = match sort {
+                "recent_desc" => last.last_active_unix.to_string(),
+                _ => last.reputation_composite.to_string(),
+            };
             Cursor {
-                sort_value: last.reputation_composite.to_string(),
+                sort_value: sv,
                 last_id: last.did_hex.clone(),
             }
             .encode()
@@ -372,6 +450,7 @@ pub struct TasksQuery {
     pub agent_did: Option<String>,
     pub created_after: Option<i64>,
     pub created_before: Option<i64>,
+    pub sort: Option<String>,
     pub limit: Option<i64>,
     pub cursor: Option<String>,
 }
@@ -430,6 +509,12 @@ pub async fn list_tasks(
     Query(q): Query<TasksQuery>,
 ) -> Result<Json<TasksPage>, ApiError> {
     let limit = q.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
+    let sort = q.sort.as_deref().unwrap_or("created_desc");
+    if !TASK_SORTS.contains(&sort) {
+        return Err(ApiError::bad_request(
+            "sort must be created_desc|deadline_asc|reward_desc",
+        ));
+    }
     let statuses: Option<Vec<String>> = match q.status.as_deref() {
         Some(s) => {
             let parts: Vec<String> = s.split(',').map(|p| p.trim().to_string()).collect();
@@ -451,6 +536,7 @@ pub async fn list_tasks(
         None => None,
     };
 
+    let sort_owned = sort.to_string();
     let qtimer = metrics::time_discovery_query("discovery.list_tasks");
     let rows = tokio::task::spawn_blocking(move || -> Result<Vec<RawTaskRow>, ApiError> {
         let mut conn = state.pool.get().map_err(ApiError::internal)?;
@@ -466,7 +552,7 @@ pub async fn list_tasks(
         let mut did_pos: Option<u32> = None;
         let mut after_pos: Option<u32> = None;
         let mut before_pos: Option<u32> = None;
-        let mut cur_t_pos: Option<u32> = None;
+        let mut cur_sort_pos: Option<u32> = None;
         let mut cur_id_pos: Option<u32> = None;
 
         if statuses.is_some() {
@@ -494,23 +580,36 @@ pub async fn list_tasks(
             before_pos = Some(next);
             next += 1;
         }
+
+        // Sort + keyset pagination varies by sort mode.
+        let (order_clause, cursor_tpl) = match sort_owned.as_str() {
+            "deadline_asc" => (
+                "deadline_unix ASC, task_id ASC",
+                "(deadline_unix > ${} OR (deadline_unix = ${} AND task_id > ${}))",
+            ),
+            "reward_desc" => (
+                "reward_lamports DESC NULLS LAST, task_id ASC",
+                "(reward_lamports < ${}::numeric OR (reward_lamports = ${}::numeric AND task_id > ${}))",
+            ),
+            // created_desc (default)
+            _ => (
+                "created_at_unix DESC, task_id ASC",
+                "(created_at_unix < ${} OR (created_at_unix = ${} AND task_id > ${}))",
+            ),
+        };
+
         if cursor.is_some() {
-            // Sort: created_at_unix DESC, task_id ASC.
-            sql.push_str(&format!(
-                " AND (created_at_unix < ${} \
-                       OR (created_at_unix = ${} AND task_id > ${}))",
-                next,
-                next,
-                next + 1
-            ));
-            cur_t_pos = Some(next);
+            let c = cursor_tpl
+                .replacen("${}", &format!("${}", next), 1)
+                .replacen("${}", &format!("${}", next), 1)
+                .replacen("${}", &format!("${}", next + 1), 1);
+            sql.push_str(" AND ");
+            sql.push_str(&c);
+            cur_sort_pos = Some(next);
             cur_id_pos = Some(next + 1);
             next += 2;
         }
-        sql.push_str(&format!(
-            " ORDER BY created_at_unix DESC, task_id ASC LIMIT ${}",
-            next
-        ));
+        sql.push_str(&format!(" ORDER BY {} LIMIT ${}", order_clause, next));
 
         let mut qb = sql_query(sql).into_boxed::<diesel::pg::Pg>();
         if status_pos.is_some() {
@@ -528,15 +627,20 @@ pub async fn list_tasks(
         if before_pos.is_some() {
             qb = qb.bind::<BigInt, _>(q.created_before.unwrap());
         }
-        if let (Some(_), Some(_)) = (cur_t_pos, cur_id_pos) {
+        if let (Some(_), Some(_)) = (cur_sort_pos, cur_id_pos) {
             let c = cursor.as_ref().unwrap();
-            let t: i64 = c
-                .sort_value
-                .parse()
-                .map_err(|_| ApiError::bad_request("cursor sort_value invalid"))?;
             let id = hex::decode(&c.last_id)
                 .map_err(|_| ApiError::bad_request("cursor last_id invalid"))?;
-            qb = qb.bind::<BigInt, _>(t).bind::<Bytea, _>(id);
+            match sort_owned.as_str() {
+                "reward_desc" => {
+                    qb = qb.bind::<Text, _>(c.sort_value.clone()).bind::<Bytea, _>(id);
+                }
+                _ => {
+                    let t: i64 = c.sort_value.parse()
+                        .map_err(|_| ApiError::bad_request("cursor sort_value invalid"))?;
+                    qb = qb.bind::<BigInt, _>(t).bind::<Bytea, _>(id);
+                }
+            }
         }
         qb = qb.bind::<BigInt, _>(limit + 1);
         qb.load::<RawTaskRow>(&mut conn).map_err(ApiError::internal)
@@ -563,8 +667,13 @@ pub async fn list_tasks(
 
     let cursor = if has_more {
         items.last().map(|last| {
+            let sv = match sort {
+                "deadline_asc" => last.deadline_unix.to_string(),
+                "reward_desc" => last.reward_lamports.clone().unwrap_or_default(),
+                _ => last.created_at_unix.to_string(),
+            };
             Cursor {
-                sort_value: last.created_at_unix.to_string(),
+                sort_value: sv,
                 last_id: last.task_id_hex.clone(),
             }
             .encode()
@@ -582,6 +691,7 @@ pub struct AgentTasksQuery {
     pub creator: Option<String>,
     pub created_after: Option<i64>,
     pub created_before: Option<i64>,
+    pub sort: Option<String>,
     pub limit: Option<i64>,
     pub cursor: Option<String>,
 }
@@ -598,6 +708,7 @@ pub async fn agent_tasks(
         agent_did: Some(did_hex),
         created_after: q.created_after,
         created_before: q.created_before,
+        sort: q.sort,
         limit: q.limit,
         cursor: q.cursor,
     };
@@ -1049,6 +1160,8 @@ struct CountRow {
 #[derive(Debug, Deserialize)]
 pub struct CapabilitiesQuery {
     pub include_retired: Option<bool>,
+    pub limit: Option<i64>,
+    pub cursor: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -1061,8 +1174,9 @@ pub struct Capability {
 }
 
 #[derive(Debug, Serialize)]
-pub struct CapabilitiesList {
+pub struct CapabilitiesPage {
     pub items: Vec<Capability>,
+    pub cursor: Option<String>,
 }
 
 #[derive(QueryableByName)]
@@ -1107,8 +1221,17 @@ WITH latest_approved AS ( \
 pub async fn list_capabilities(
     State(state): State<ApiState>,
     Query(q): Query<CapabilitiesQuery>,
-) -> Result<Json<CapabilitiesList>, ApiError> {
+) -> Result<Json<CapabilitiesPage>, ApiError> {
     let include_retired = q.include_retired.unwrap_or(false);
+    let limit = q.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
+    let after_bit: Option<i32> = match q.cursor.as_deref() {
+        Some(s) => {
+            let c = Cursor::decode(s).map_err(ApiError::bad_request)?;
+            Some(c.sort_value.parse::<i32>()
+                .map_err(|_| ApiError::bad_request("cursor sort_value invalid"))?)
+        }
+        None => None,
+    };
 
     let qtimer = metrics::time_discovery_query("discovery.list_capabilities");
     let rows = tokio::task::spawn_blocking(move || -> Result<Vec<RawCapabilityRow>, ApiError> {
@@ -1120,10 +1243,18 @@ pub async fn list_capabilities(
               FROM latest_approved a \
               LEFT JOIN latest_state ls ON ls.bit = a.bit",
         );
+        let mut conditions = Vec::new();
         if !include_retired {
-            sql.push_str(" WHERE ls.event_name = 'TagApproved'");
+            conditions.push("ls.event_name = 'TagApproved'".to_string());
         }
-        sql.push_str(" ORDER BY a.bit ASC");
+        if let Some(ab) = after_bit {
+            conditions.push(format!("a.bit > {ab}"));
+        }
+        if !conditions.is_empty() {
+            sql.push_str(" WHERE ");
+            sql.push_str(&conditions.join(" AND "));
+        }
+        sql.push_str(&format!(" ORDER BY a.bit ASC LIMIT {}", limit + 1));
         sql_query(sql)
             .bind::<Text, _>(CAPABILITY_REGISTRY_PROGRAM_ID)
             .load::<RawCapabilityRow>(&mut conn)
@@ -1133,8 +1264,26 @@ pub async fn list_capabilities(
     .map_err(ApiError::internal)??;
     qtimer.observe_duration();
 
-    let items = rows.into_iter().map(row_to_capability).collect();
-    Ok(Json(CapabilitiesList { items }))
+    let has_more = rows.len() as i64 > limit;
+    let items: Vec<Capability> = rows
+        .into_iter()
+        .take(limit as usize)
+        .map(row_to_capability)
+        .collect();
+
+    let cursor = if has_more {
+        items.last().map(|last| {
+            Cursor {
+                sort_value: last.bit.to_string(),
+                last_id: last.bit.to_string(),
+            }
+            .encode()
+        })
+    } else {
+        None
+    };
+
+    Ok(Json(CapabilitiesPage { items, cursor }))
 }
 
 pub async fn capability_detail(
@@ -1401,6 +1550,147 @@ pub async fn treasury_vaults(
     Ok(Json(TreasuryVaults { did_hex, vaults }))
 }
 
+// ---- Agent streams (spec §Agents, row 4) ----
+
+#[derive(Debug, Deserialize)]
+pub struct StreamsQuery {
+    pub status: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StreamSummary {
+    pub stream_id_hex: String,
+    pub from: String,
+    pub to: String,
+    pub mint: String,
+    pub rate_per_sec: String,
+    pub start_unix: i64,
+    pub end_unix: Option<i64>,
+    pub total_paid: String,
+    pub status: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StreamsList {
+    pub items: Vec<StreamSummary>,
+}
+
+/// Stub: `stream_nonce` is not carried in the current IDL events (see
+/// cycle-103 notes). Returns the agent's streams once
+/// `StreamInitialized` / `StreamClosed` events carry per-stream state.
+pub async fn agent_streams(
+    State(state): State<ApiState>,
+    Path(did_hex): Path<String>,
+    Query(q): Query<StreamsQuery>,
+) -> Result<Json<StreamsList>, ApiError> {
+    let did_bytes = parse_hex_32(&did_hex).map_err(ApiError::bad_request)?;
+    let status_filter = q.status.as_deref().unwrap_or("open");
+    if !matches!(status_filter, "open" | "closed") {
+        return Err(ApiError::bad_request("status must be open|closed"));
+    }
+
+    // Verify agent exists.
+    let qtimer = metrics::time_discovery_query("discovery.agent_streams");
+    let exists = tokio::task::spawn_blocking(move || -> Result<bool, ApiError> {
+        let mut conn = state.pool.get().map_err(ApiError::internal)?;
+        let row: CountRow =
+            sql_query("SELECT COUNT(*)::bigint AS n FROM agent_directory WHERE agent_did = $1")
+                .bind::<Bytea, _>(did_bytes)
+                .get_result::<CountRow>(&mut conn)
+                .map_err(ApiError::internal)?;
+        Ok(row.n > 0)
+    })
+    .await
+    .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
+
+    if !exists {
+        return Err(ApiError::not_found("agent not found"));
+    }
+
+    // Streams require `stream_nonce` in the IDL events — not yet available.
+    // Return empty until the program event payload extends.
+    Ok(Json(StreamsList { items: Vec::new() }))
+}
+
+// ---- Protocol stats (mirrors Node.js /stats) ----
+
+#[derive(Debug, Serialize)]
+pub struct ProtocolStats {
+    pub total_agents: i64,
+    pub total_tasks: i64,
+    pub total_value_locked_lamports: String,
+    pub active_streams: i64,
+    pub burn_rate: BurnRate,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BurnRate {
+    pub total_protocol_fees_lamports: String,
+    pub last_24h_lamports: String,
+}
+
+#[derive(QueryableByName)]
+struct RawStatsRow {
+    #[diesel(sql_type = BigInt)]
+    total_agents: i64,
+    #[diesel(sql_type = BigInt)]
+    total_tasks: i64,
+    #[diesel(sql_type = Text)]
+    volume_lamports: String,
+    #[diesel(sql_type = BigInt)]
+    active_streams: i64,
+    #[diesel(sql_type = Text)]
+    protocol_fees_lamports: String,
+    #[diesel(sql_type = Text)]
+    last_24h_fees_lamports: String,
+}
+
+pub async fn protocol_stats(
+    State(state): State<ApiState>,
+) -> Result<Json<ProtocolStats>, ApiError> {
+    let qtimer = metrics::time_discovery_query("discovery.protocol_stats");
+    let row = tokio::task::spawn_blocking(move || -> Result<RawStatsRow, ApiError> {
+        let mut conn = state.pool.get().map_err(ApiError::internal)?;
+        sql_query(
+            "SELECT \
+               (SELECT count(*)::bigint FROM agent_directory) AS total_agents, \
+               (SELECT count(*)::bigint FROM task_directory) AS total_tasks, \
+               COALESCE((SELECT sum((data->>'agent_payout')::numeric) \
+                         FROM program_events WHERE event_name='TaskReleased'), 0)::text \
+                 AS volume_lamports, \
+               GREATEST( \
+                 (SELECT count(*) FROM program_events WHERE event_name='StreamInitialized') \
+                 - (SELECT count(*) FROM program_events WHERE event_name='StreamClosed'), \
+                 0 \
+               )::bigint AS active_streams, \
+               COALESCE((SELECT sum((data->>'protocol_fee')::numeric) \
+                         FROM program_events WHERE event_name='TaskReleased'), 0)::text \
+                 AS protocol_fees_lamports, \
+               COALESCE((SELECT sum(CASE WHEN ingested_at >= now() - interval '24 hours' \
+                                         THEN (data->>'protocol_fee')::numeric ELSE 0 END) \
+                         FROM program_events WHERE event_name='TaskReleased'), 0)::text \
+                 AS last_24h_fees_lamports",
+        )
+        .get_result::<RawStatsRow>(&mut conn)
+        .map_err(ApiError::internal)
+    })
+    .await
+    .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
+
+    Ok(Json(ProtocolStats {
+        total_agents: row.total_agents,
+        total_tasks: row.total_tasks,
+        total_value_locked_lamports: row.volume_lamports,
+        active_streams: row.active_streams,
+        burn_rate: BurnRate {
+            total_protocol_fees_lamports: row.protocol_fees_lamports,
+            last_24h_lamports: row.last_24h_fees_lamports,
+        },
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1522,6 +1812,7 @@ mod tests {
             creator: None,
             created_after: None,
             created_before: None,
+            sort: None,
             limit: Some(10),
             cursor: None,
         };
@@ -1532,6 +1823,7 @@ mod tests {
             agent_did: Some(path_did.clone()),
             created_after: q.created_after,
             created_before: q.created_before,
+            sort: q.sort,
             limit: q.limit,
             cursor: q.cursor,
         };
@@ -1661,7 +1953,7 @@ mod tests {
 
     #[test]
     fn endpoint_class_maps_every_registered_route() {
-        // Five classes from spec §Rate-limits; must cover the 11 landed routes.
+        // Five classes from spec §Rate-limits; must cover the 14 landed routes.
         assert_eq!(endpoint_class("/v1/discovery/agents"), "agents");
         assert_eq!(
             endpoint_class("/v1/discovery/agents/deadbeef"),
@@ -1673,6 +1965,10 @@ mod tests {
         );
         assert_eq!(
             endpoint_class("/v1/discovery/agents/deadbeef/reputation"),
+            "agents"
+        );
+        assert_eq!(
+            endpoint_class("/v1/discovery/agents/deadbeef/streams"),
             "agents"
         );
         assert_eq!(endpoint_class("/v1/discovery/tasks"), "tasks");
@@ -1699,6 +1995,10 @@ mod tests {
         assert_eq!(
             endpoint_class("/v1/discovery/treasury/deadbeef/vaults"),
             "treasury"
+        );
+        assert_eq!(
+            endpoint_class("/v1/discovery/stats"),
+            "catch_all"
         );
         assert_eq!(endpoint_class("/v1/discovery/unknown"), "catch_all");
         assert_eq!(endpoint_class("/unrelated"), "catch_all");
@@ -1816,5 +2116,89 @@ mod tests {
             "expected a 429 within 200 requests, last status was {}",
             last_status
         );
+    }
+
+    #[test]
+    fn agent_sort_validation() {
+        assert!(AGENT_SORTS.contains(&"reputation_desc"));
+        assert!(AGENT_SORTS.contains(&"recent_desc"));
+        assert!(!AGENT_SORTS.contains(&"bogus"));
+    }
+
+    #[test]
+    fn task_sort_validation() {
+        assert!(TASK_SORTS.contains(&"created_desc"));
+        assert!(TASK_SORTS.contains(&"deadline_asc"));
+        assert!(TASK_SORTS.contains(&"reward_desc"));
+        assert!(!TASK_SORTS.contains(&"bogus"));
+    }
+
+    #[test]
+    fn protocol_stats_response_shape() {
+        let s = ProtocolStats {
+            total_agents: 42,
+            total_tasks: 100,
+            total_value_locked_lamports: "5000000000".into(),
+            active_streams: 7,
+            burn_rate: BurnRate {
+                total_protocol_fees_lamports: "100000000".into(),
+                last_24h_lamports: "5000000".into(),
+            },
+        };
+        let j = serde_json::to_value(&s).unwrap();
+        assert_eq!(j["total_agents"], 42);
+        assert_eq!(j["total_tasks"], 100);
+        assert_eq!(j["total_value_locked_lamports"], "5000000000");
+        assert_eq!(j["active_streams"], 7);
+        assert_eq!(j["burn_rate"]["total_protocol_fees_lamports"], "100000000");
+        assert_eq!(j["burn_rate"]["last_24h_lamports"], "5000000");
+    }
+
+    #[test]
+    fn stream_summary_response_shape() {
+        let s = StreamSummary {
+            stream_id_hex: "ab".repeat(32),
+            from: "Alice".into(),
+            to: "Bob".into(),
+            mint: "So11111111111111111111111111111111111111112".into(),
+            rate_per_sec: "1000".into(),
+            start_unix: 1_700_000_000,
+            end_unix: Some(1_700_100_000),
+            total_paid: "100000".into(),
+            status: "open".into(),
+        };
+        let j = serde_json::to_value(&s).unwrap();
+        for field in [
+            "stream_id_hex", "from", "to", "mint", "rate_per_sec",
+            "start_unix", "end_unix", "total_paid", "status",
+        ] {
+            assert!(j.get(field).is_some(), "missing field {field}");
+        }
+    }
+
+    #[test]
+    fn capabilities_page_includes_cursor() {
+        let page = CapabilitiesPage {
+            items: vec![Capability {
+                bit: 3,
+                slug: "oracle".into(),
+                added_by: None,
+                approved_at_unix: Some(1_700_000_000),
+                retired: false,
+            }],
+            cursor: Some("next_page".into()),
+        };
+        let j = serde_json::to_value(&page).unwrap();
+        assert_eq!(j["items"].as_array().unwrap().len(), 1);
+        assert_eq!(j["cursor"], "next_page");
+    }
+
+    #[test]
+    fn request_id_is_monotonic() {
+        let a = next_request_id();
+        let b = next_request_id();
+        assert_ne!(a, b);
+        assert!(a.starts_with("disc-"));
+        assert!(b.starts_with("disc-"));
     }
 }

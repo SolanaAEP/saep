@@ -420,6 +420,7 @@ pub async fn task_bids(
 pub struct ApiError {
     status: StatusCode,
     message: String,
+    detail: Option<String>,
 }
 
 impl ApiError {
@@ -428,24 +429,39 @@ impl ApiError {
         Self {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             message: "internal error".into(),
+            detail: None,
         }
     }
     pub(crate) fn bad_request(msg: impl Into<String>) -> Self {
+        let m: String = msg.into();
         Self {
             status: StatusCode::BAD_REQUEST,
-            message: msg.into(),
+            detail: Some(m.clone()),
+            message: "invalid_param".into(),
         }
     }
     pub(crate) fn not_found(msg: impl Into<String>) -> Self {
         Self {
             status: StatusCode::NOT_FOUND,
-            message: msg.into(),
+            detail: Some(msg.into()),
+            message: "not_found".into(),
+        }
+    }
+    pub(crate) fn rate_limited(retry_after_ms: u64) -> Self {
+        Self {
+            status: StatusCode::TOO_MANY_REQUESTS,
+            message: "rate_limit".into(),
+            detail: Some(format!("retry after {retry_after_ms}ms")),
         }
     }
 }
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
-        (self.status, Json(serde_json::json!({ "error": self.message }))).into_response()
+        let mut body = serde_json::json!({ "error": self.message });
+        if let Some(d) = &self.detail {
+            body["detail"] = serde_json::json!(d);
+        }
+        (self.status, Json(body)).into_response()
     }
 }
