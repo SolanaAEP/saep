@@ -10,6 +10,9 @@ pub mod state;
 #[cfg(test)]
 mod fuzz;
 
+#[cfg(test)]
+mod svm_fuzz;
+
 use instructions::*;
 use state::{TaskPayload, ALLOWED_MINTS_LEN};
 
