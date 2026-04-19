@@ -278,7 +278,22 @@ Invariant: illegal transitions rejected by status gate. Round 2 tally is final.
 ### `begin_withdraw() / complete_withdraw()`
 - Two-step arbitrator exit. `begin_withdraw` sets `status = Withdrawing`, `withdraw_unlock_slot = now + round2_window_secs`. Arbitrator is excluded from future pool snapshots immediately but stays bound for any already-selected case. `complete_withdraw` closes `ArbitratorAccount` after the unlock slot; stake becomes unlockable via NXSStaking.
 
-### `set_params`, `set_paused`, authority two-step — standard governance surface.
+### `set_params`, `set_paused` — standard governance surface.
+
+### Guard-admin block — reentrancy-guard + CPI-caller allowlist admin.
+
+- `init_guard(initial_callers: Vec<Pubkey>)` — one-shot init. Creates `ReentrancyGuard` + `AllowedCallers` PDAs. Signer = `authority` (config-bound).
+- `set_allowed_callers(callers: Vec<Pubkey>)` — governance setter. Caps at `MAX_ALLOWED_CALLERS`. Signer = `authority`.
+- `propose_guard_reset()` — opens 24h timelock window for admin-reset. Sets `admin_reset_proposed_at = now`. Signer = `authority`.
+- `admin_reset_guard()` — executes the timelock-elapsed reset. Validation: `now >= admin_reset_proposed_at + ADMIN_RESET_TIMELOCK_SECS` (24h). Effect: clears `ReentrancyGuard.active`, resets `admin_reset_proposed_at = 0`. Signer = `authority`.
+- All 4 live in `programs/dispute_arbitration/src/instructions/guard_admin.rs` alongside `initialize_handler` (the `init_config` impl). No events emitted by any guard-admin ix at M1 — indexer-side, guard-admin state is visible only via post-emit account reads on the 2 guard PDAs. Cross-spec parity with `treasury_standard`'s guard-admin block (cycle 163 spec callout) and `task_market`'s (cycle 164); contrast with `agent_registry`'s `GuardInitialized` / `GuardAdminReset` / `AllowedCallersUpdated` live-emit trio (cycle 161 spec) — guard-vocabulary normalization is a deferred cross-spec cycle.
+
+### Scaffold-vs-spec deltas (reconciliation notes against `programs/dispute_arbitration/src/instructions/*.rs`).
+
+- Spec `init_config(...)` → code `initialize_handler(params: InitConfigParams)`. Signature packs the 6 deployer args (`task_market`, `agent_registry`, `nxs_staking`, `switchboard_program`, `stake_mint`, `params`) into a single `InitConfigParams` struct. Name drift intentional; IDL emits `initialize`.
+- Spec `slash_arbitrator(task_id, arbitrator, reason_code)` → code `slash_arbitrator_handler(reason_code: u8)`. `task_id` is derived from the `dispute_case` PDA account (via `case_id`); `arbitrator` is the `ArbitratorAccount` PDA (seeds on operator pubkey). Only `reason_code: u8` is a true ix arg.
+- No `transfer_authority` / `accept_authority` handlers in the scaffold — the pre-cycle-166 line "authority two-step — standard governance surface" was spec-ahead-of-code. Two-step authority transfer is deferred to an M2+ governance sweep alongside the other 8 programs' governance surfaces; not in this scaffold.
+- Scaffold ix-module count: 7 files (`arbitrator.rs`, `dispute.rs`, `guard_admin.rs`, `params.rs`, `resolution.rs`, `slashing.rs`, `voting.rs`) + `mod.rs`, 23 `pub fn *_handler` total. Spec §Instructions enumerates 17 headings (pre-cycle 166: 16, counting the bundled `begin_withdraw / complete_withdraw` as one); +4 guard-admin block this cycle closes the delta.
 
 ## Events
 
