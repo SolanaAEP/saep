@@ -282,6 +282,20 @@ pub mod nxs_staking {
         Ok(())
     }
 
+    pub fn migrate_apy_authority(
+        _ctx: Context<MigrateApyAuthority>,
+        old_mint: Pubkey,
+        new_mint: Pubkey,
+    ) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        emit!(events::ApyAuthorityMigrated {
+            old_mint,
+            new_mint,
+            attested_at: now,
+        });
+        Ok(())
+    }
+
     pub fn snapshot_epoch(
         ctx: Context<SnapshotEpoch>,
         total_voting_power: u128,
@@ -553,6 +567,18 @@ pub struct UnfreezeDeposits<'info> {
         has_one = authority @ NxsStakingError::Unauthorized,
     )]
     pub pool: Box<Account<'info, StakingPool>>,
+
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct MigrateApyAuthority<'info> {
+    #[account(
+        seeds = [SEED_STAKING_CONFIG],
+        bump = config.bump,
+        has_one = authority @ NxsStakingError::Unauthorized,
+    )]
+    pub config: Account<'info, StakingConfig>,
 
     pub authority: Signer<'info>,
 }
