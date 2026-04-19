@@ -161,7 +161,7 @@ Rehearsal sequence (assumes rows 3-5 of token2022 §Done-checklist complete):
 - [ ] Devnet `amount_to_ui_amount` test shows ~5% growth over simulated 1y horizon
 - [ ] `close_pool(pool_v1)` passes after total_staked drains
 - [ ] Rollback drill: `unfreeze_deposits(pool_v1)` restores deposit path mid-rehearsal
-- [ ] Bankrun test `tests/nxs_m3_migration.ts` covers: set_apy fail-loud pre-M3, freeze + withdraw + close_pool happy path, apy_authority PDA drift rejection
+- [~] Bankrun test `tests/bankrun_nxs_m3_migration.ts` covers: set_apy fail-loud pre-M3, freeze + withdraw + close_pool happy path, apy_authority PDA drift rejection (scaffold landed `a55d5ef` — 2 live cases + 12 `it.skip` gated on the 4 M3 ixs)
 - [ ] Appfact off-chain swap ledger design reviewed + scripted (`scripts/migration/swap-ledger.ts`) + idempotent
 - [ ] Residual staker policy ratified (Open-Q #1) + documented in ops runbook
 - [ ] IACP topic `stake.migration.*` added to `specs/08-iacp-bus.md` OR deferred with runbook fallback
