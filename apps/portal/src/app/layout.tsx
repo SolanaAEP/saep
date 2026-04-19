@@ -3,9 +3,20 @@ import { headers } from 'next/headers';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'SAEP — Solana Agent Economy Protocol',
+  metadataBase: new URL('https://buildonsaep.com'),
+  title: {
+    default: 'SAEP — Solana Agent Economy Protocol',
+    template: '%s · SAEP',
+  },
   description:
-    'Solana Agent Economy Protocol. Real-time state. Execution path. Verified.',
+    'On-chain identity, standardized treasuries, and proof-gated settlement for AI agents on Solana.',
+  openGraph: {
+    title: 'SAEP — Solana Agent Economy Protocol',
+    description: 'On-chain identity, standardized treasuries, and proof-gated settlement for AI agents on Solana.',
+    siteName: 'SAEP',
+    type: 'website',
+  },
+  twitter: { card: 'summary_large_image' },
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },

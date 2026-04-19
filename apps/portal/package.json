@@ -17,9 +17,9 @@
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@fontsource/archivo-black": "^5.2.8",
     "@saep/config": "workspace:*",
-    "@saep/ui": "workspace:*",
     "@saep/sdk": "workspace:*",
     "@saep/sdk-ui": "workspace:*",
+    "@saep/ui": "workspace:*",
     "@solana/wallet-adapter-react": "0.15.35",
     "@solana/wallet-adapter-react-ui": "0.9.35",
     "@solana/wallet-adapter-wallets": "0.19.32",
@@ -31,7 +31,10 @@
     "next": "15.1.6",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "react-markdown": "9.0.3",
     "recharts": "^3.8.1",
+    "rehype-slug": "6.0.0",
+    "remark-gfm": "4.0.0",
     "tweetnacl": "1.0.3"
   },
   "devDependencies": {

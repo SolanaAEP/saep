@@ -8,10 +8,20 @@
   --lime-2: #06f512;
 }
 
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
 html,
 body {
   background-image: url('/paper-texture.png');
   background-repeat: repeat;
+}
+
+:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
 }
 
 .bg-paper,
@@ -30,6 +40,9 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   .marquee-track {
     animation: none;
   }
@@ -93,3 +106,105 @@ dialog.mobile-nav {
 dialog.mobile-nav::backdrop {
   background: var(--paper);
 }
+
+.prose-saep h1 {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 4vw, 48px);
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  margin: 2.5rem 0 1rem;
+}
+.prose-saep h2 {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 2.6vw, 32px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  margin: 2.25rem 0 0.75rem;
+  border-top: 1px solid rgba(10, 10, 10, 0.15);
+  padding-top: 1.75rem;
+}
+.prose-saep h3 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  margin: 1.75rem 0 0.5rem;
+}
+.prose-saep h4 {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--mute);
+  margin: 1.5rem 0 0.5rem;
+}
+.prose-saep p {
+  margin: 0.75rem 0;
+  color: rgba(10, 10, 10, 0.85);
+}
+.prose-saep ul, .prose-saep ol {
+  margin: 0.75rem 0 1rem 1.25rem;
+}
+.prose-saep ul li { list-style: disc; }
+.prose-saep ol li { list-style: decimal; }
+.prose-saep li { margin: 0.25rem 0; }
+.prose-saep a {
+  color: var(--ink);
+  border-bottom: 1px solid rgba(10, 10, 10, 0.3);
+}
+.prose-saep a:hover {
+  color: #06f512;
+  border-color: #06f512;
+}
+.prose-saep code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: rgba(10, 10, 10, 0.06);
+  padding: 0.1em 0.35em;
+  border-radius: 2px;
+}
+.prose-saep pre {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 1.25rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+.prose-saep pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+.prose-saep table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 14px;
+}
+.prose-saep th, .prose-saep td {
+  border: 1px solid rgba(10, 10, 10, 0.2);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+.prose-saep th {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--mute);
+  background: rgba(10, 10, 10, 0.03);
+}
+.prose-saep blockquote {
+  border-left: 2px solid var(--ink);
+  padding: 0.25rem 0 0.25rem 1rem;
+  margin: 1rem 0;
+  color: rgba(10, 10, 10, 0.75);
+  font-style: italic;
+}
+.prose-saep hr {
+  border: 0;
+  border-top: 1px solid rgba(10, 10, 10, 0.15);
+  margin: 2rem 0;
+}
+.prose-saep strong { color: var(--ink); }
