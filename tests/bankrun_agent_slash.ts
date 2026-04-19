@@ -4,17 +4,13 @@ import { startAnchor, BankrunProvider } from 'anchor-bankrun';
 import { ProgramTestContext } from 'solana-bankrun';
 import { setBankrunClock, warpClockBy } from './helpers/bankrun';
 import {
-  Keypair, PublicKey, SystemProgram, Transaction,
+  createATA, createToken2022Mint, getTokenBalance, mintTokens, sendTx,
+} from './helpers/token';
+import {
+  Keypair, PublicKey, SystemProgram,
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
-import {
-  TOKEN_2022_PROGRAM_ID,
-  createInitializeMint2Instruction,
-  createAssociatedTokenAccountInstruction,
-  createMintToInstruction,
-  getAssociatedTokenAddressSync,
-  getMintLen,
-} from '@solana/spl-token';
+import { TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect } from 'chai';
@@ -43,79 +39,6 @@ function padBytes(s: string, len: number): number[] {
   const buf = Buffer.alloc(len, 0);
   Buffer.from(s, 'utf8').copy(buf);
   return Array.from(buf);
-}
-
-async function sendTx(
-  ctx: ProgramTestContext,
-  tx: Transaction,
-  signers: Keypair[],
-): Promise<void> {
-  tx.recentBlockhash = ctx.lastBlockhash;
-  tx.feePayer = signers[0]!.publicKey;
-  tx.sign(...signers);
-  await ctx.banksClient.processTransaction(tx);
-}
-
-async function createToken2022Mint(
-  ctx: ProgramTestContext,
-  payer: Keypair,
-  mintAuthority: PublicKey,
-  decimals: number,
-): Promise<PublicKey> {
-  const mintKeypair = Keypair.generate();
-  const space = getMintLen([]);
-  const rent = await ctx.banksClient.getRent();
-  const lamports = Number(rent.minimumBalance(BigInt(space)));
-  const tx = new Transaction().add(
-    SystemProgram.createAccount({
-      fromPubkey: payer.publicKey,
-      newAccountPubkey: mintKeypair.publicKey,
-      space,
-      lamports,
-      programId: TOKEN_2022_PROGRAM_ID,
-    }),
-    createInitializeMint2Instruction(
-      mintKeypair.publicKey, decimals, mintAuthority, null, TOKEN_2022_PROGRAM_ID,
-    ),
-  );
-  await sendTx(ctx, tx, [payer, mintKeypair]);
-  return mintKeypair.publicKey;
-}
-
-async function createATA(
-  ctx: ProgramTestContext,
-  payer: Keypair,
-  mint: PublicKey,
-  owner: PublicKey,
-): Promise<PublicKey> {
-  const ata = getAssociatedTokenAddressSync(mint, owner, true, TOKEN_2022_PROGRAM_ID);
-  const tx = new Transaction().add(
-    createAssociatedTokenAccountInstruction(
-      payer.publicKey, ata, owner, mint, TOKEN_2022_PROGRAM_ID,
-    ),
-  );
-  await sendTx(ctx, tx, [payer]);
-  return ata;
-}
-
-async function mintTokens(
-  ctx: ProgramTestContext,
-  payer: Keypair,
-  mint: PublicKey,
-  dest: PublicKey,
-  authority: Keypair,
-  amount: number,
-): Promise<void> {
-  const tx = new Transaction().add(
-    createMintToInstruction(mint, dest, authority.publicKey, amount, [], TOKEN_2022_PROGRAM_ID),
-  );
-  await sendTx(ctx, tx, [payer, authority]);
-}
-
-async function getTokenBalance(ctx: ProgramTestContext, ata: PublicKey): Promise<bigint> {
-  const acct = await ctx.banksClient.getAccount(ata);
-  if (!acct) return 0n;
-  return Buffer.from(acct.data).readBigUInt64LE(64);
 }
 
 const capRegPdas = {
