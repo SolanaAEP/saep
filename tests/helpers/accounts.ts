@@ -1,16 +1,15 @@
 import { PublicKey } from '@solana/web3.js';
 
-// Program IDs (mirror Anchor.toml [programs.localnet]).
 export const PROGRAM_IDS = {
   capability_registry: new PublicKey('GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F'),
   agent_registry: new PublicKey('EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu'),
   treasury_standard: new PublicKey('6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ'),
   task_market: new PublicKey('HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w'),
   proof_verifier: new PublicKey('DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe'),
+  fee_collector: new PublicKey('4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu'),
 } as const;
 
-// capability_registry PDAs
-export const capReg = {
+export const capRegPdas = {
   config: (): [PublicKey, number] =>
     PublicKey.findProgramAddressSync([Buffer.from('config')], PROGRAM_IDS.capability_registry),
   tag: (bitIndex: number): [PublicKey, number] =>
@@ -20,8 +19,7 @@ export const capReg = {
     ),
 };
 
-// agent_registry PDAs
-export const agentReg = {
+export const agentRegPdas = {
   global: (): [PublicKey, number] =>
     PublicKey.findProgramAddressSync([Buffer.from('global')], PROGRAM_IDS.agent_registry),
   agent: (operator: PublicKey, agentId: Uint8Array): [PublicKey, number] =>
@@ -34,10 +32,11 @@ export const agentReg = {
       [Buffer.from('stake'), agent.toBuffer()],
       PROGRAM_IDS.agent_registry,
     ),
+  guard: (): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync([Buffer.from('guard')], PROGRAM_IDS.agent_registry),
 };
 
-// treasury_standard PDAs
-export const treasury = {
+export const treasuryPdas = {
   global: (): [PublicKey, number] =>
     PublicKey.findProgramAddressSync(
       [Buffer.from('treasury_global')],
@@ -58,15 +57,26 @@ export const treasury = {
       [Buffer.from('vault'), Buffer.from(agentDid), mint.toBuffer()],
       PROGRAM_IDS.treasury_standard,
     ),
+  stream: (did: Uint8Array, client: PublicKey, nonce: Uint8Array): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync(
+      [Buffer.from('stream'), Buffer.from(did), client.toBuffer(), Buffer.from(nonce)],
+      PROGRAM_IDS.treasury_standard,
+    ),
   streamEscrow: (stream: PublicKey): [PublicKey, number] =>
     PublicKey.findProgramAddressSync(
       [Buffer.from('stream_escrow'), stream.toBuffer()],
       PROGRAM_IDS.treasury_standard,
     ),
+  guard: (): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync([Buffer.from('guard')], PROGRAM_IDS.treasury_standard),
+  allowedCallers: (): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync(
+      [Buffer.from('allowed_callers')],
+      PROGRAM_IDS.treasury_standard,
+    ),
 };
 
-// task_market PDAs
-export const taskMarket = {
+export const taskMarketPdas = {
   global: (): [PublicKey, number] =>
     PublicKey.findProgramAddressSync(
       [Buffer.from('market_global')],
@@ -77,7 +87,7 @@ export const taskMarket = {
       [Buffer.from('task'), client.toBuffer(), Buffer.from(taskNonce)],
       PROGRAM_IDS.task_market,
     ),
-  taskEscrow: (task: PublicKey): [PublicKey, number] =>
+  escrow: (task: PublicKey): [PublicKey, number] =>
     PublicKey.findProgramAddressSync(
       [Buffer.from('task_escrow'), task.toBuffer()],
       PROGRAM_IDS.task_market,
@@ -97,10 +107,11 @@ export const taskMarket = {
       [Buffer.from('bond_escrow'), Buffer.from(taskId)],
       PROGRAM_IDS.task_market,
     ),
+  guard: (): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync([Buffer.from('guard')], PROGRAM_IDS.task_market),
 };
 
-// proof_verifier PDAs
-export const proofVerifier = {
+export const proofVerifierPdas = {
   config: (): [PublicKey, number] =>
     PublicKey.findProgramAddressSync(
       [Buffer.from('verifier_config')],
@@ -114,3 +125,10 @@ export const proofVerifier = {
       PROGRAM_IDS.proof_verifier,
     ),
 };
+
+// Backwards-compat aliases for files that import the old names.
+export { capRegPdas as capReg };
+export { agentRegPdas as agentReg };
+export { treasuryPdas as treasury };
+export { taskMarketPdas as taskMarket };
+export { proofVerifierPdas as proofVerifier };

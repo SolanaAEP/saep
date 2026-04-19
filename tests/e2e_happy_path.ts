@@ -8,6 +8,9 @@ import {
   createATA, createToken2022Mint, getTokenBalance, mintTokens, sendTx,
 } from './helpers/token';
 import {
+  PROGRAM_IDS, capRegPdas, agentRegPdas, taskMarketPdas, proofVerifierPdas,
+} from './helpers/accounts';
+import {
   Keypair, PublicKey, SystemProgram,
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
@@ -26,33 +29,21 @@ import type { TaskMarket } from '../target/types/task_market';
 import type { ProofVerifier } from '../target/types/proof_verifier';
 import { computeVkId, fieldElementToBytes, g1ToBytes, g2ToBytes, registerDevVk } from './helpers/vk';
 
-// Constants
-const PROGRAM_IDS = {
-  capability_registry: new PublicKey('GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F'),
-  agent_registry: new PublicKey('EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu'),
-  task_market: new PublicKey('HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w'),
-  proof_verifier: new PublicKey('DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe'),
-  treasury_standard: new PublicKey('6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ'),
-  fee_collector: new PublicKey('4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu'),
-};
-
 const CIRCUIT_LABEL = 'task_completion_v1';
 const DISPUTE_WINDOW_SECS = 10;
-const MAX_DEADLINE_SECS = 86_400 * 365; // 1 year
-const PAYMENT_AMOUNT = 1_000_000; // 1 USDC (6 decimals)
-const PROTOCOL_FEE_BPS = 100; // 1%
-const SOLREP_FEE_BPS = 50; // 0.5%
+const MAX_DEADLINE_SECS = 86_400 * 365;
+const PAYMENT_AMOUNT = 1_000_000;
+const PROTOCOL_FEE_BPS = 100;
+const SOLREP_FEE_BPS = 50;
 const MIN_STAKE = 1_000_000;
 const DEADLINE = 1_800_000_000;
 
-// Clock timeline for deterministic testing
 const T0 = 1_700_000_000n;
-const T_VK_ACTIVE = T0 + 604_801n; // 7 days + 1s after T0
+const T_VK_ACTIVE = T0 + 604_801n;
 const T_CREATE = 1_798_000_000n;
 const T_SUBMIT = 1_799_000_000n;
 const T_RELEASE = BigInt(DEADLINE + DISPUTE_WINDOW_SECS + 1);
 
-// ZK fixtures
 function loadFixture() {
   const base = resolve(process.cwd(), 'circuits/task_completion');
   const proof = JSON.parse(readFileSync(resolve(base, 'build/proof.json'), 'utf8'));
@@ -60,61 +51,6 @@ function loadFixture() {
   const vk = JSON.parse(readFileSync(resolve(base, 'build/verification_key.json'), 'utf8'));
   return { proof, publicSignals, vk };
 }
-
-// PDA helpers
-const capRegPdas = {
-  config: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('config')], PROGRAM_IDS.capability_registry,
-  ),
-  tag: (bit: number) => PublicKey.findProgramAddressSync(
-    [Buffer.from('tag'), Buffer.from([bit])], PROGRAM_IDS.capability_registry,
-  ),
-};
-
-const agentRegPdas = {
-  global: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('global')], PROGRAM_IDS.agent_registry,
-  ),
-  agent: (operator: PublicKey, agentId: Uint8Array) => PublicKey.findProgramAddressSync(
-    [Buffer.from('agent'), operator.toBuffer(), Buffer.from(agentId)],
-    PROGRAM_IDS.agent_registry,
-  ),
-  stake: (agent: PublicKey) => PublicKey.findProgramAddressSync(
-    [Buffer.from('stake'), agent.toBuffer()], PROGRAM_IDS.agent_registry,
-  ),
-};
-
-const taskMarketPdas = {
-  global: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('market_global')], PROGRAM_IDS.task_market,
-  ),
-  task: (client: PublicKey, nonce: Uint8Array) => PublicKey.findProgramAddressSync(
-    [Buffer.from('task'), client.toBuffer(), Buffer.from(nonce)],
-    PROGRAM_IDS.task_market,
-  ),
-  escrow: (task: PublicKey) => PublicKey.findProgramAddressSync(
-    [Buffer.from('task_escrow'), task.toBuffer()], PROGRAM_IDS.task_market,
-  ),
-  guard: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('guard')], PROGRAM_IDS.task_market,
-  ),
-};
-
-const agentRegGuardPda = () => PublicKey.findProgramAddressSync(
-  [Buffer.from('guard')], PROGRAM_IDS.agent_registry,
-);
-
-const proofVerifierPdas = {
-  config: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('verifier_config')], PROGRAM_IDS.proof_verifier,
-  ),
-  mode: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('mode')], PROGRAM_IDS.proof_verifier,
-  ),
-  vk: (vkId: Uint8Array) => PublicKey.findProgramAddressSync(
-    [Buffer.from('vk'), Buffer.from(vkId)], PROGRAM_IDS.proof_verifier,
-  ),
-};
 
 function patchTaskVerified(
   data: Buffer,
@@ -327,7 +263,7 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
         operatorTokenAccount: operatorStakeAta,
         operator: operator.publicKey,
         personhoodAttestation: null,
-        guard: agentRegGuardPda()[0],
+        guard: agentRegPdas.guard()[0],
         tokenProgram: TOKEN_2022_PROGRAM_ID,
       })
       .signers([operator])

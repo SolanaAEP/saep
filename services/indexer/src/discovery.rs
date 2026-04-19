@@ -1,80 +1,29 @@
 //! Discovery API — server-side filter + sort over `agent_directory` and
-//! `task_directory` matviews (cycle-96 migration). Replaces browser-originated
-//! `getProgramAccounts` memcmp scans for the portal `/marketplace` and `/tasks`
-//! list views per `specs/discovery-api.md`.
+//! `task_directory` matviews. Replaces browser-originated `getProgramAccounts`
+//! memcmp scans for the portal list views per `specs/discovery-api.md`.
 //!
-//! Cycle-98 scope: 2 GET endpoints (`/v1/discovery/agents`, `/v1/discovery/tasks`)
-//! with default sort + opaque base64-JSON cursor pagination.
+//! Endpoints:
+//!   - `/v1/discovery/agents` + `/:did` + `/:did/tasks` + `/:did/reputation` + `/:did/streams`
+//!   - `/v1/discovery/tasks` + `/:task_id_hex` + `/:task_id_hex/timeline`
+//!   - `/v1/discovery/capabilities` + `/:bit`
+//!   - `/v1/discovery/treasury/:did` + `/:did/vaults`
+//!   - `/v1/discovery/stats`
 //!
-//! Cycle-99 scope: 3 detail GETs (`/v1/discovery/agents/:did`,
-//! `/v1/discovery/tasks/:task_id_hex`, `/v1/discovery/tasks/:task_id_hex/timeline`).
+//! Middleware stack (outermost → innermost):
+//!   `metrics_mw` → `request_id_mw` → `rate_limit_mw` → handler
 //!
-//! Cycle-100 scope: capabilities surface (`/v1/discovery/capabilities`,
-//! `/v1/discovery/capabilities/:bit`) folding over capability_registry
-//! TagApproved/TagRetired events.
+//! Rate limiting: anonymous per-IP token bucket (`rate_limit::ANONYMOUS_LIMITER`),
+//! keyed on `{ip}:{endpoint_class}`. Client IP from first `X-Forwarded-For` hop
+//! (Render terminates TLS). Authenticated per-`sub` limiting deferred until a
+//! Rust SIWS verifier exists; per-socket WS limiting deferred until WS scaffold.
 //!
-//! Cycle-101 scope: `/v1/discovery/agents/:did/tasks` — thin wrapper over
-//! `list_tasks` with the `agent_did` filter pinned from the path.
+//! Treasury events use direct event folds (no matview) — per-agent volume is
+//! bounded. Stream endpoints return empty until `stream_nonce` lands in IDL
+//! event payloads.
 //!
-//! Cycle-102 scope: `/v1/discovery/agents/:did/reputation` — alias surface for
-//! the per-bit current-state `reputation_rollup` query that `api::agent_reputation`
-//! already exposes under the legacy `/api/` namespace. Spec §4.1 lists the path
-//! under `/v1/discovery/` for namespace parity; day/week-bucketed 90d time-series
-//! enhancement is deferred (see INBOX).
-//!
-//! Cycle-103 scope: `/v1/discovery/treasury/:did` + `/v1/discovery/treasury/:did/vaults`
-//! — direct fold over treasury_standard `TreasuryCreated` / `LimitsUpdated` /
-//! `TreasuryFunded` / `TreasuryWithdraw` events. No matview: per-agent event
-//! volume is bounded (one TreasuryCreated, few LimitsUpdated, per-mint
-//! funded/withdraw pairs) and the existing event_name + program_id indexes
-//! narrow well. Stream events require `stream_nonce` for per-stream state
-//! (not carried in current IDL — deferred pending program event-payload
-//! extension; same class of spec↔IDL drift as cycle-96 INBOX item (5)).
-//! Remaining (agent streams, WS, rate-limiter, cache) land in subsequent cycles.
-//!
-//! Cycle-104 scope: Prometheus metrics per `specs/discovery-api.md` §Metrics.
-//! `metrics_mw` is layered over the sub-router — per-request timer +
-//! class-bucketed counter keyed on the 5 endpoint classes from spec
-//! §Rate-limits (`agents` / `tasks` / `treasury` / `capabilities` / `catch_all`).
-//! `time_discovery_query` timer wraps the top SQL call in each list/detail
-//! handler so `saep_discovery_db_query_duration_seconds` carries real data
-//! for the read-heavy paths; cache + rate-limit + WS series are registered
-//! but stay zero until those layers land.
-//!
-//! Cycle-105 scope: extended `time_discovery_query` coverage from 4 → 10 handler
-//! sites — `agent_reputation`, `task_timeline`, `list_capabilities`,
-//! `capability_detail`, `treasury_detail`, `treasury_vaults` all carry per-query
-//! labels now. `agent_tasks` intentionally excluded: it delegates to `list_tasks`
-//! with an injected `agent_did` filter, so its SQL is already attributed to
-//! `discovery.list_tasks`. The `{query}` label reflects SQL pathway, not HTTP
-//! endpoint.
-//!
-//! Cycle-106 scope: anonymous per-IP rate limiter wired in front of the
-//! discovery router via `rate_limit_mw`. Token bucket lives in
-//! `rate_limit::ANONYMOUS_LIMITER` (singleton, env-tunable). Key shape =
-//! `format!("{ip}:{class}")`; client IP read from the first `X-Forwarded-For`
-//! hop (Render terminates TLS), falling back to a shared `unknown` key when
-//! absent (local dev / direct connections). Rejected requests return 429
-//! with `Retry-After`; counter `saep_discovery_rate_limited_total{scope=ip,
-//! endpoint=class}` increments on each rejection. Layer ordering: rate-limit
-//! is added first → innermost; metrics added last → outermost so that 429
-//! short-circuits still record on the request counter / duration histogram.
-//! Authenticated per-`sub` + per-socket WS limiting deferred (spec §Rate-limits
-//! L226 — needs Rust SIWS + WS scaffold respectively).
-//!
-//! Cycle-107 scope (task #15): production hardening pass.
-//!   - `sort` query param on `/agents` (`reputation_desc|recent_desc`) and
-//!     `/tasks` (`created_desc|deadline_asc|reward_desc`) with matching keyset
-//!     cursor pagination per sort mode.
-//!   - Pagination on `list_capabilities` (LIMIT + cursor, was unbounded).
-//!   - `/v1/discovery/agents/:did/streams` stub endpoint (spec §Agents row 4;
-//!     returns empty until `stream_nonce` lands in IDL events).
-//!   - `/v1/discovery/stats` protocol-level aggregate (mirrors Node.js
-//!     `services/discovery/src/server.ts` `/stats` endpoint).
-//!   - `request_id_mw` injects monotonic `x-request-id` header on every
-//!     response for observability correlation.
-//!   - `ApiError` enriched with `detail` field; error responses now carry
-//!     `{error: code, detail?: string}` per spec §Error-taxonomy.
+//! `time_discovery_query` wraps the top SQL call in each handler. The `{query}`
+//! label reflects SQL pathway, not HTTP endpoint — `agent_tasks` delegates to
+//! `list_tasks` so its SQL is attributed there.
 
 use axum::{
     extract::{Path, Query, State},
@@ -1550,7 +1499,6 @@ pub async fn treasury_vaults(
     Ok(Json(TreasuryVaults { did_hex, vaults }))
 }
 
-// ---- Agent streams (spec §Agents, row 4) ----
 
 #[derive(Debug, Deserialize)]
 pub struct StreamsQuery {
@@ -1575,9 +1523,7 @@ pub struct StreamsList {
     pub items: Vec<StreamSummary>,
 }
 
-/// Stub: `stream_nonce` is not carried in the current IDL events (see
-/// cycle-103 notes). Returns the agent's streams once
-/// `StreamInitialized` / `StreamClosed` events carry per-stream state.
+/// [STUB] Returns empty until `stream_nonce` lands in IDL event payloads.
 pub async fn agent_streams(
     State(state): State<ApiState>,
     Path(did_hex): Path<String>,
@@ -1608,12 +1554,9 @@ pub async fn agent_streams(
         return Err(ApiError::not_found("agent not found"));
     }
 
-    // Streams require `stream_nonce` in the IDL events — not yet available.
-    // Return empty until the program event payload extends.
     Ok(Json(StreamsList { items: Vec::new() }))
 }
 
-// ---- Protocol stats (mirrors Node.js /stats) ----
 
 #[derive(Debug, Serialize)]
 pub struct ProtocolStats {
