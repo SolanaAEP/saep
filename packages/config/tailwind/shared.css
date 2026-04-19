@@ -294,17 +294,18 @@ dialog.mobile-nav::backdrop {
   font-family: var(--font-mono) !important;
   font-size: var(--text-label) !important;
   text-transform: uppercase !important;
-  letter-spacing: var(--tracking-wide) !important;
+  letter-spacing: var(--tracking-wider) !important;
   background: transparent !important;
-  border: 1px solid var(--lime) !important;
-  color: var(--lime) !important;
+  border: 1px solid var(--ink) !important;
+  color: var(--ink) !important;
   border-radius: var(--radius-none) !important;
-  height: 40px !important;
-  padding: 0 20px !important;
-  transition: background var(--duration-normal), color var(--duration-normal) !important;
+  height: 42px !important;
+  padding: 0 1.5rem !important;
+  transition: border-color var(--duration-fast), background var(--duration-fast) !important;
 }
 .wallet-adapter-button:hover {
-  background: var(--lime) !important;
+  border-color: var(--lime) !important;
+  background: transparent !important;
   color: var(--ink) !important;
 }
 .wallet-adapter-button-trigger {
