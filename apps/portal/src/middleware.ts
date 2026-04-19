@@ -20,6 +20,14 @@ function cspHeader(nonce: string): string {
 }
 
 export function middleware(req: NextRequest) {
+  const host = req.headers.get('host') ?? '';
+  if (host.startsWith('app.')) {
+    const url = req.nextUrl.clone();
+    url.host = host.replace(/^app\./, '');
+    url.port = '';
+    return NextResponse.redirect(url, 301);
+  }
+
   const nonce = crypto.randomUUID().replace(/-/g, '');
   const csp = cspHeader(nonce);
 
