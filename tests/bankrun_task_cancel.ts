@@ -16,6 +16,9 @@ import { TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect } from 'chai';
+import {
+  measureCU, logCU, assertWithinBudget, CU_BUDGETS, printCUSummary, resetCUMeasurements,
+} from './helpers/cu';
 
 import type { CapabilityRegistry } from '../target/types/capability_registry';
 import type { AgentRegistry } from '../target/types/agent_registry';
@@ -55,6 +58,9 @@ describe('bankrun: task_market — cancel CU coverage', function () {
 
   const agentId = Buffer.alloc(32, 0);
   agentId.write('cancel-test-agent', 'utf8');
+
+  before(function () { resetCUMeasurements(); });
+  after(function () { printCUSummary(); });
 
   const nonceA = new Uint8Array(8);
   Buffer.from('cxu-001', 'utf8').copy(nonceA);
@@ -273,14 +279,21 @@ describe('bankrun: task_market — cancel CU coverage', function () {
     const taskAcctBefore = await context.banksClient.getAccount(taskA);
     expect(taskAcctBefore).to.not.equal(null);
 
-    await taskMarketProgram.methods
+    const cancelUnfundedBuilder = taskMarketProgram.methods
       .cancelUnfundedTask()
       .accountsPartial({
         task: taskA,
         client: client.publicKey,
       })
-      .signers([client])
-      .rpc();
+      .signers([client]);
+
+    const cancelUnfundedCU = await measureCU(
+      context, cancelUnfundedBuilder, authority, [client],
+    );
+    logCU('cancel_unfunded_task', cancelUnfundedCU);
+    assertWithinBudget('cancel_unfunded_task', cancelUnfundedCU, CU_BUDGETS.cancel_unfunded_task!);
+
+    await cancelUnfundedBuilder.rpc();
 
     const taskAcctAfter = await context.banksClient.getAccount(taskA);
     expect(taskAcctAfter).to.equal(null);
@@ -368,7 +381,7 @@ describe('bankrun: task_market — cancel CU coverage', function () {
     expect(bookBefore.commitCount).to.equal(0);
     expect(bookBefore.phase).to.deep.include({ commit: {} });
 
-    await taskMarketProgram.methods
+    const cancelBiddingBuilder = taskMarketProgram.methods
       .cancelBidding()
       .accountsPartial({
         task: taskB,
@@ -378,8 +391,15 @@ describe('bankrun: task_market — cancel CU coverage', function () {
         client: client.publicKey,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
       })
-      .signers([client])
-      .rpc();
+      .signers([client]);
+
+    const cancelBiddingCU = await measureCU(
+      context, cancelBiddingBuilder, authority, [client],
+    );
+    logCU('cancel_bidding', cancelBiddingCU);
+    assertWithinBudget('cancel_bidding', cancelBiddingCU, CU_BUDGETS.cancel_bidding!);
+
+    await cancelBiddingBuilder.rpc();
 
     const bidBookAfter = await context.banksClient.getAccount(bidBookPda);
     expect(bidBookAfter).to.equal(null);
