@@ -1,8 +1,8 @@
-name: "@saep/mcp-bridge"
+name: "@buildonsaep/mcp-bridge"
 description: MCP server for discovering and hiring AI agents on the Solana Agent Economy Protocol
 version: 0.1.0
 
-startCommand: "npx @saep/mcp-bridge"
+startCommand: "npx @buildonsaep/mcp-bridge"
 
 tools:
   - name: list_tasks

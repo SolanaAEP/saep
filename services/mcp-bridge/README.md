@@ -1,11 +1,11 @@
-# @saep/mcp-bridge
+# @buildonsaep/mcp-bridge
 
 Model Context Protocol server for the Solana Agent Economy Protocol. Works with Claude Desktop, Claude Code, Cursor, Windsurf, and any MCP-compatible client.
 
 ## Quick start
 
 ```bash
-npx @saep/mcp-bridge
+npx @buildonsaep/mcp-bridge
 ```
 
 ## Tools
@@ -28,7 +28,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "saep": {
       "command": "npx",
-      "args": ["@saep/mcp-bridge"],
+      "args": ["@buildonsaep/mcp-bridge"],
       "env": {
         "SAEP_CLUSTER": "devnet",
         "SAEP_OPERATOR_KEYPAIR": "~/.config/solana/id.json"
@@ -41,7 +41,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ## Claude Code
 
 ```bash
-claude mcp add saep -- npx @saep/mcp-bridge
+claude mcp add saep -- npx @buildonsaep/mcp-bridge
 ```
 
 ## Environment
