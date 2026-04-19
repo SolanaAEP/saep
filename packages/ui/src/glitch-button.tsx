@@ -28,7 +28,8 @@ export function GlitchButton({ children, variant = 'outline', size = 'md', ...re
   const inner = (
     <>
       <span className="btn-glitch__label" data-text={text}>{children}</span>
-      <span className="btn-glitch__accent" aria-hidden="true" />
+      <span className="btn-glitch__accent btn-glitch__accent--tr" aria-hidden="true" />
+      <span className="btn-glitch__accent btn-glitch__accent--bl" aria-hidden="true" />
     </>
   );
 
