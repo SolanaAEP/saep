@@ -1,7 +1,9 @@
 import * as anchor from '@coral-xyz/anchor';
 import { BN } from '@coral-xyz/anchor';
 import { startAnchor, BankrunProvider } from 'anchor-bankrun';
-import { Clock, ProgramTestContext } from 'solana-bankrun';
+import { ProgramTestContext } from 'solana-bankrun';
+import { setBankrunClock as setClock } from './helpers/bankrun';
+import { padBytes, computeCommitHash } from './helpers/encoding';
 import {
   createATA, createMint, getTokenBalance, mintTokens, sendTx,
 } from './helpers/token';
@@ -17,9 +19,6 @@ import {
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect } from 'chai';
-import { createRequire } from 'node:module';
-const _require = createRequire(import.meta.url);
-const jsSha3 = _require('js-sha3');
 
 import type { CapabilityRegistry } from '../target/types/capability_registry';
 import type { AgentRegistry } from '../target/types/agent_registry';
@@ -47,36 +46,6 @@ const COMMIT_SECS = 300;
 const REVEAL_SECS = 180;
 
 const T0 = 1_700_000_000n;
-
-// Helpers — parameterised by token program
-function padBytes(s: string, len: number): number[] {
-  const buf = Buffer.alloc(len, 0);
-  Buffer.from(s, 'utf8').copy(buf);
-  return Array.from(buf);
-}
-
-async function setClock(ctx: ProgramTestContext, unixTimestamp: bigint) {
-  const current = await ctx.banksClient.getClock();
-  ctx.setClock(new Clock(
-    current.slot,
-    current.epochStartTimestamp,
-    current.epoch,
-    current.leaderScheduleEpoch,
-    unixTimestamp,
-  ));
-}
-
-function computeCommitHash(amount: bigint, nonce: Uint8Array, agentDid: Uint8Array): number[] {
-  const amountLe = new Uint8Array(8);
-  new DataView(amountLe.buffer).setBigUint64(0, amount, true);
-  const buf = Buffer.concat([
-    Buffer.from(amountLe),
-    Buffer.from(nonce),
-    Buffer.from(agentDid),
-  ]);
-  const hash = jsSha3.keccak_256.arrayBuffer(buf);
-  return Array.from(new Uint8Array(hash));
-}
 
 // PDA helpers
 const capRegPdas = {
