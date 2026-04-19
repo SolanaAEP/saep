@@ -7,6 +7,7 @@ import { padBytes } from './helpers/encoding';
 import {
   createATA, createToken2022Mint, getTokenBalance, mintTokens, sendTx,
 } from './helpers/token';
+import { PROGRAM_IDS, capRegPdas, agentRegPdas, taskMarketPdas } from './helpers/accounts';
 import {
   Keypair, PublicKey, SystemProgram,
   LAMPORTS_PER_SOL,
@@ -20,15 +21,6 @@ import type { CapabilityRegistry } from '../target/types/capability_registry';
 import type { AgentRegistry } from '../target/types/agent_registry';
 import type { TaskMarket } from '../target/types/task_market';
 
-const PROGRAM_IDS = {
-  capability_registry: new PublicKey('GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F'),
-  agent_registry: new PublicKey('EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu'),
-  treasury_standard: new PublicKey('6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ'),
-  task_market: new PublicKey('HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w'),
-  proof_verifier: new PublicKey('DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe'),
-  fee_collector: new PublicKey('4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu'),
-};
-
 const MIN_STAKE = 1_000_000;
 const PAYMENT_AMOUNT = 5_000_000;
 const PROTOCOL_FEE_BPS = 100;
@@ -38,47 +30,6 @@ const MAX_DEADLINE_SECS = 86_400 * 365;
 const EXPIRE_GRACE_SECS = 3_600;
 const T0 = 1_700_000_000n;
 const DEADLINE_OFFSET_SECS = 600;
-
-const capRegPdas = {
-  config: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('config')], PROGRAM_IDS.capability_registry,
-  ),
-  tag: (bit: number) => PublicKey.findProgramAddressSync(
-    [Buffer.from('tag'), Buffer.from([bit])], PROGRAM_IDS.capability_registry,
-  ),
-};
-
-const agentRegPdas = {
-  global: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('global')], PROGRAM_IDS.agent_registry,
-  ),
-  agent: (operator: PublicKey, agentId: Uint8Array) => PublicKey.findProgramAddressSync(
-    [Buffer.from('agent'), operator.toBuffer(), Buffer.from(agentId)],
-    PROGRAM_IDS.agent_registry,
-  ),
-  stake: (agent: PublicKey) => PublicKey.findProgramAddressSync(
-    [Buffer.from('stake'), agent.toBuffer()], PROGRAM_IDS.agent_registry,
-  ),
-  guard: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('guard')], PROGRAM_IDS.agent_registry,
-  ),
-};
-
-const taskMarketPdas = {
-  global: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('market_global')], PROGRAM_IDS.task_market,
-  ),
-  task: (client: PublicKey, nonce: Uint8Array) => PublicKey.findProgramAddressSync(
-    [Buffer.from('task'), client.toBuffer(), Buffer.from(nonce)],
-    PROGRAM_IDS.task_market,
-  ),
-  escrow: (task: PublicKey) => PublicKey.findProgramAddressSync(
-    [Buffer.from('task_escrow'), task.toBuffer()], PROGRAM_IDS.task_market,
-  ),
-  guard: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('guard')], PROGRAM_IDS.task_market,
-  ),
-};
 
 describe('bankrun: task_market — expire CU coverage', function () {
   this.timeout(60_000);

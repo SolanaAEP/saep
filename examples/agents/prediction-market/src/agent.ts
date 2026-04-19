@@ -40,27 +40,15 @@ import { readFileSync } from 'node:fs';
 import { createHash, randomBytes } from 'node:crypto';
 import { loadConfig, type AgentConfig } from './config.js';
 
-// ---------------------------------------------------------------------------
-// Keypair loader
-// ---------------------------------------------------------------------------
-
 function loadKeypair(path: string): Keypair {
   const raw = JSON.parse(readFileSync(path, 'utf-8'));
   return Keypair.fromSecretKey(Uint8Array.from(raw));
 }
 
-// ---------------------------------------------------------------------------
-// Provider / program setup
-// ---------------------------------------------------------------------------
-
 function buildProvider(connection: Connection, keypair: Keypair): AnchorProvider {
   const wallet = new Wallet(keypair);
   return new AnchorProvider(connection, wallet, { commitment: 'confirmed' });
 }
-
-// ---------------------------------------------------------------------------
-// Registration (idempotent)
-// ---------------------------------------------------------------------------
 
 async function ensureRegistered(
   registry: Program<AgentRegistry>,
@@ -101,10 +89,6 @@ async function ensureRegistered(
   return agentPda;
 }
 
-// ---------------------------------------------------------------------------
-// Task polling (mock — in production, use the indexer / IACP websocket)
-// ---------------------------------------------------------------------------
-
 interface PendingTask {
   pubkey: PublicKey;
   taskId: Uint8Array;
@@ -121,22 +105,21 @@ async function pollTasks(
   try {
     const accounts = await market.account.task.all();
     return accounts
-      .filter((a: any) => a.account.status?.awaitingBids || a.account.status?.open)
+      .filter((a) => {
+        const status = a.account.status as Record<string, Record<string, never>> | undefined;
+        return status && ('awaitingBids' in status || 'open' in status);
+      })
       .slice(0, 5)
-      .map((a: any) => ({
+      .map((a) => ({
         pubkey: a.publicKey,
-        taskId: Uint8Array.from(a.account.taskId ?? new Uint8Array(32)),
-        paymentMint: a.account.paymentMint ?? PublicKey.default,
+        taskId: Uint8Array.from((a.account.taskId as number[] | undefined) ?? new Uint8Array(32)),
+        paymentMint: (a.account.paymentMint as PublicKey | undefined) ?? PublicKey.default,
       }));
   } catch {
     // no tasks found or program not initialised on this cluster
     return [];
   }
 }
-
-// ---------------------------------------------------------------------------
-// Commit-reveal bid
-// ---------------------------------------------------------------------------
 
 function computeCommitHash(amount: bigint, nonce: Uint8Array): Uint8Array {
   const buf = Buffer.alloc(8);
@@ -198,10 +181,6 @@ async function revealBid(
   console.log(`bid revealed for task ${task.pubkey.toBase58()}`);
 }
 
-// ---------------------------------------------------------------------------
-// Prediction market execution (mock)
-// ---------------------------------------------------------------------------
-
 async function fetchBtcPrice(apiBase: string): Promise<number> {
   const url = `${apiBase}/simple/price?ids=bitcoin&vs_currencies=usd`;
   const res = await fetch(url);
@@ -234,10 +213,6 @@ async function executePrediction(apiBase: string): Promise<PredictionResult> {
   return { priceBefore, priceAfter, predictedUp, correct };
 }
 
-// ---------------------------------------------------------------------------
-// Result submission
-// ---------------------------------------------------------------------------
-
 async function submitResult(
   market: Program<TaskMarket>,
   config: AgentConfig,
@@ -266,10 +241,6 @@ async function submitResult(
   await sendAndConfirmTransaction(market.provider.connection, tx, [operator]);
   console.log(`result submitted for task ${task.pubkey.toBase58()}`);
 }
-
-// ---------------------------------------------------------------------------
-// Main loop
-// ---------------------------------------------------------------------------
 
 async function main() {
   const config = loadConfig();

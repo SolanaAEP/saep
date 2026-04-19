@@ -1,14 +1,8 @@
-//! In-memory token-bucket rate limiter ported from IACP's
-//! `services/iacp/src/rate_limit.ts`. Single-process scope; cross-replica
-//! coordination is out of scope at M1 (Render runs the discovery surface
-//! single-instance). Spec `discovery-api.md` §Rate-limits L225 mandates
-//! "anonymous 100 req/min/IP per endpoint class"; defaults live in
-//! `LimiterConfig::anonymous_default`.
-//!
-//! Cycle 106 scope: substrate + globally-shared anonymous limiter.
-//! Authenticated per-`sub` limiting (spec §Rate-limits L226) lands once
-//! a Rust SIWS verifier exists in this service. Per-socket WS limiting
-//! lives with the WS scaffold cycle.
+//! In-memory token-bucket rate limiter. Single-process scope; cross-replica
+//! coordination is out of scope at M1 (Render runs single-instance).
+//! Spec `discovery-api.md` §Rate-limits L225: "anonymous 100 req/min/IP
+//! per endpoint class"; defaults in `LimiterConfig::anonymous_default`.
+//! Authenticated per-`sub` limiting deferred until Rust SIWS verifier exists.
 
 use once_cell::sync::Lazy;
 use std::collections::{HashMap, VecDeque};

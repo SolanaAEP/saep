@@ -7,6 +7,7 @@ import { padBytes } from './helpers/encoding';
 import {
   createATA, createToken2022Mint, getTokenBalance, mintTokens, sendTx,
 } from './helpers/token';
+import { PROGRAM_IDS, capRegPdas, agentRegPdas, treasuryPdas } from './helpers/accounts';
 import {
   Keypair, PublicKey, SystemProgram,
   LAMPORTS_PER_SOL, SYSVAR_RENT_PUBKEY,
@@ -20,14 +21,6 @@ import type { CapabilityRegistry } from '../target/types/capability_registry';
 import type { AgentRegistry } from '../target/types/agent_registry';
 import type { TreasuryStandard } from '../target/types/treasury_standard';
 
-const PROGRAM_IDS = {
-  capability_registry: new PublicKey('GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F'),
-  agent_registry: new PublicKey('EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu'),
-  treasury_standard: new PublicKey('6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ'),
-  task_market: new PublicKey('HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w'),
-  proof_verifier: new PublicKey('DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe'),
-};
-
 const MIN_STAKE = 1_000_000;
 const SLASH_TIMELOCK_SECS = 10;
 const INITIAL_BALANCE = 10_000_000;
@@ -38,61 +31,6 @@ const DAILY_LIMIT = 2_000_000;
 const WEEKLY_LIMIT = 5_000_000;
 const MAX_DAILY_LIMIT = 10_000_000;
 const DEFAULT_DAILY_LIMIT = 500_000;
-
-const capRegPdas = {
-  config: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('config')], PROGRAM_IDS.capability_registry,
-  ),
-  tag: (bit: number) => PublicKey.findProgramAddressSync(
-    [Buffer.from('tag'), Buffer.from([bit])], PROGRAM_IDS.capability_registry,
-  ),
-};
-
-const agentRegPdas = {
-  global: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('global')], PROGRAM_IDS.agent_registry,
-  ),
-  agent: (operator: PublicKey, agentId: Uint8Array) => PublicKey.findProgramAddressSync(
-    [Buffer.from('agent'), operator.toBuffer(), Buffer.from(agentId)],
-    PROGRAM_IDS.agent_registry,
-  ),
-  stake: (agent: PublicKey) => PublicKey.findProgramAddressSync(
-    [Buffer.from('stake'), agent.toBuffer()], PROGRAM_IDS.agent_registry,
-  ),
-  guard: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('guard')], PROGRAM_IDS.agent_registry,
-  ),
-};
-
-const treasuryPdas = {
-  global: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('treasury_global')], PROGRAM_IDS.treasury_standard,
-  ),
-  allowedMints: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('allowed_mints')], PROGRAM_IDS.treasury_standard,
-  ),
-  treasury: (did: Uint8Array) => PublicKey.findProgramAddressSync(
-    [Buffer.from('treasury'), Buffer.from(did)], PROGRAM_IDS.treasury_standard,
-  ),
-  vault: (did: Uint8Array, mint: PublicKey) => PublicKey.findProgramAddressSync(
-    [Buffer.from('vault'), Buffer.from(did), mint.toBuffer()],
-    PROGRAM_IDS.treasury_standard,
-  ),
-  stream: (did: Uint8Array, client: PublicKey, nonce: Uint8Array) =>
-    PublicKey.findProgramAddressSync(
-      [Buffer.from('stream'), Buffer.from(did), client.toBuffer(), Buffer.from(nonce)],
-      PROGRAM_IDS.treasury_standard,
-    ),
-  streamEscrow: (stream: PublicKey) => PublicKey.findProgramAddressSync(
-    [Buffer.from('stream_escrow'), stream.toBuffer()], PROGRAM_IDS.treasury_standard,
-  ),
-  guard: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('guard')], PROGRAM_IDS.treasury_standard,
-  ),
-  allowedCallers: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('allowed_callers')], PROGRAM_IDS.treasury_standard,
-  ),
-};
 
 describe('bankrun: treasury_standard — init + fund + withdraw + stream CU coverage', function () {
   this.timeout(60_000);

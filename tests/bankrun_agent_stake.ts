@@ -7,6 +7,7 @@ import { padBytes } from './helpers/encoding';
 import {
   createATA, createToken2022Mint, getTokenBalance, mintTokens, sendTx,
 } from './helpers/token';
+import { PROGRAM_IDS, capRegPdas, agentRegPdas } from './helpers/accounts';
 import {
   Keypair, PublicKey, SystemProgram,
   LAMPORTS_PER_SOL,
@@ -22,42 +23,10 @@ import {
 import type { CapabilityRegistry } from '../target/types/capability_registry';
 import type { AgentRegistry } from '../target/types/agent_registry';
 
-const PROGRAM_IDS = {
-  capability_registry: new PublicKey('GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F'),
-  agent_registry: new PublicKey('EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu'),
-  task_market: new PublicKey('HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w'),
-  proof_verifier: new PublicKey('DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe'),
-};
-
 const MIN_STAKE = 1_000_000;
 const SLASH_TIMELOCK_SECS = 10;
 const INITIAL_BALANCE = 10_000_000;
 const T0 = 1_700_000_000n;
-
-const capRegPdas = {
-  config: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('config')], PROGRAM_IDS.capability_registry,
-  ),
-  tag: (bit: number) => PublicKey.findProgramAddressSync(
-    [Buffer.from('tag'), Buffer.from([bit])], PROGRAM_IDS.capability_registry,
-  ),
-};
-
-const agentRegPdas = {
-  global: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('global')], PROGRAM_IDS.agent_registry,
-  ),
-  agent: (operator: PublicKey, agentId: Uint8Array) => PublicKey.findProgramAddressSync(
-    [Buffer.from('agent'), operator.toBuffer(), Buffer.from(agentId)],
-    PROGRAM_IDS.agent_registry,
-  ),
-  stake: (agent: PublicKey) => PublicKey.findProgramAddressSync(
-    [Buffer.from('stake'), agent.toBuffer()], PROGRAM_IDS.agent_registry,
-  ),
-  guard: () => PublicKey.findProgramAddressSync(
-    [Buffer.from('guard')], PROGRAM_IDS.agent_registry,
-  ),
-};
 
 describe('bankrun: agent_registry — stake_increase + stake_withdraw CU coverage', function () {
   this.timeout(60_000);

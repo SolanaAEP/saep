@@ -1,22 +1,15 @@
 //! Periodic sweeper for the discovery rate limiter.
 //!
-//! Cycle 106 landed `ANONYMOUS_LIMITER` as a process-scoped singleton backing
-//! the per-IP throttle on `/v1/discovery/*`. The limiter's `max_keys` cap
-//! (default 10_000) bounds worst-case memory, but a steady trickle of
-//! unique-IP traffic would keep the map at the cap indefinitely. The sweeper
-//! reclaims buckets that have (a) refilled to full capacity and (b) sat idle
-//! past the configured `idle_secs` window, matching IACP's
-//! `services/iacp/src/rate_limit.ts` sweep semantics.
+//! `ANONYMOUS_LIMITER` is a process-scoped singleton backing the per-IP
+//! throttle on `/v1/discovery/*`. The `max_keys` cap (default 10_000) bounds
+//! worst-case memory, but steady unique-IP traffic keeps the map at cap.
+//! The sweeper reclaims buckets that have refilled to full capacity and sat
+//! idle past `idle_secs`.
 //!
-//! Also publishes `saep_discovery_rate_limiter_buckets{scope}` as an
-//! operational gauge so Grafana can chart active bucket count over time
-//! without scraping limiter internals, and
-//! `saep_discovery_rate_limiter_sweeps_total{scope}` as a cumulative counter
-//! of reclaimed buckets so long-horizon churn (bucket-drops per hour, e.g.)
-//! is queryable via `rate()` without relying on gauge deltas.
+//! Publishes `saep_discovery_rate_limiter_buckets{scope}` (gauge) and
+//! `saep_discovery_rate_limiter_sweeps_total{scope}` (counter) for Grafana.
 //!
-//! Cross-replica coordination is out of scope at M1 (Render runs the
-//! discovery surface single-instance).
+//! Cross-replica coordination out of scope at M1 (single-instance).
 
 use std::time::{Duration, Instant};
 

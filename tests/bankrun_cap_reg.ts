@@ -2,14 +2,14 @@ import * as anchor from '@coral-xyz/anchor';
 import { expect } from 'chai';
 
 import { capReg, PROGRAM_IDS } from './helpers/accounts';
-import { padRight } from './helpers/setup';
+import { padBytes } from './helpers/encoding';
 import { startBankrun, loadBankrunProgram, BankrunEnv } from './helpers/bankrun';
 import type { CapabilityRegistry } from '../target/types/capability_registry';
 
 type Program = anchor.Program<CapabilityRegistry>;
 
-const slug = (s: string) => Array.from(padRight(s, 32)) as number[];
-const uri = (s: string) => Array.from(padRight(s, 96)) as number[];
+const slug = (s: string) => padBytes(s, 32) as unknown as number[];
+const uri = (s: string) => padBytes(s, 96) as unknown as number[];
 
 async function expectError(fn: () => Promise<unknown>, code: string | RegExp): Promise<void> {
   try {

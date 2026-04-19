@@ -5,11 +5,8 @@
 //! `RegistryConfig` and `CapabilityTag` and asserts `try_deserialize`
 //! rejects rather than returning garbage.
 //!
-//! Out of scope: instruction-level owner / signer fuzz needs an SVM
-//! (mollusk-svm + the solana CLI) and is tracked under the BACKLOG
-//! "Owner/signer/discriminator fuzz tests" item — this module covers the
-//! deserialize layer; the SVM-driven layer lands in a follow-up cycle once
-//! the toolchain is wired.
+//! Instruction-level owner/signer fuzz (mollusk-svm) is out of scope here;
+//! this module covers only the deserialization layer.
 
 use anchor_lang::prelude::*;
 use anchor_lang::{AccountDeserialize, AccountSerialize, Discriminator};
