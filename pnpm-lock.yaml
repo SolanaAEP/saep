@@ -211,9 +211,18 @@ importers:
       react-dom:
         specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
+      react-markdown:
+        specifier: 9.0.3
+        version: 9.0.3(@types/react@19.0.8)(react@19.0.0)
       recharts:
         specifier: ^3.8.1
         version: 3.8.1(@types/react@19.0.8)(react-dom@19.0.0(react@19.0.0))(react-is@18.3.1)(react@19.0.0)(redux@5.0.1)
+      rehype-slug:
+        specifier: 6.0.0
+        version: 6.0.0
+      remark-gfm:
+        specifier: 4.0.0
+        version: 4.0.0
       tweetnacl:
         specifier: 1.0.3
         version: 1.0.3
