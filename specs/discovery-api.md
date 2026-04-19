@@ -19,9 +19,9 @@ Replace browser-originated `getProgramAccounts` memcmp scans (current pattern ac
 
 ## Service placement
 
-Discovery lives **inside the indexer binary** (`services/indexer/src/api/discovery.rs`), not a new service. Rationale: it reads exclusively from the same Postgres + Redis the indexer owns, shares connection pools, and would otherwise double the connection-pool footprint + add a second deploy target. The existing `stats::router()` pattern is the template — same `ApiState`, same `axum::Router` composition in `main.rs`, same metrics registry.
+Discovery lives as a **standalone TS service** at `services/discovery/` (fastify 5 + @fastify/websocket + pg + zod) serving `/v1/discovery/*`. The indexer binary retains a legacy `/api/*` alias in `services/indexer/src/discovery.rs` (Rust shim over the same matviews) until portal callers migrate off `useAgentReputation` et al., at which point the shim retires. Both paths read the same Postgres matviews (`agent_directory` / `task_directory` / `reputation_rollup`); no schema divergence.
 
-Trade-off considered: a separate `services/discovery/` crate would let the read path scale independently of the ingest path. Rejected at M1 because (a) indexer ingest is I/O-bound on RPC polling, not CPU-bound — spare headroom is plentiful; (b) doubling the deploy target doubles the ops surface pre-mainnet for marginal performance benefit; (c) splitting later is a file-move + `main.rs` edit, not a schema migration. Revisit at M3 if Postgres becomes the bottleneck.
+The original M1 plan (cycle 106) was to land discovery inside the indexer binary as `services/indexer/src/api/discovery.rs` on the `stats::router()` pattern — rationale was shared PG + Redis pools, one deploy target, no connection-pool doubling. The standalone-TS path landed instead (public `47e29c9`) to let the read path evolve on the TS/zod/fastify stack the rest of the web tier already uses; the editorial drift is tracked in `INBOX.md`. Matview access works identically over a separate PG connection pool at M1 scale; re-fold into the indexer binary is a file-move + `main.rs` edit, not a schema migration, if the connection-pool footprint becomes load-bearing at M3.
 
 ## Surface — REST
 
