@@ -6,6 +6,7 @@ import { AgentFleetGrid } from './agent-fleet-grid';
 import { TreasuryOverviewPanel } from './treasury-overview-panel';
 import { FleetActivityFeed } from './fleet-activity-feed';
 import { GovernanceAlerts } from './governance-alerts';
+import { BuybackStats } from './buyback-stats';
 
 const YELLOWSTONE_ENDPOINT = process.env.NEXT_PUBLIC_YELLOWSTONE_ENDPOINT ?? null;
 
@@ -25,6 +26,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
+      <BuybackStats />
       <GovernanceAlerts />
 
       {error && (
