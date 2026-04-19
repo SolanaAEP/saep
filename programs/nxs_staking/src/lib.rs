@@ -94,6 +94,8 @@ pub mod nxs_staking {
         pool.epoch_start_time = now;
         pool.reward_rate_per_epoch = reward_rate_per_epoch;
         pool.paused = false;
+        pool.pause_new_stakes = false;
+        pool.pause_new_stakes_at = 0;
         pool.bump = ctx.bumps.pool;
 
         emit!(events::PoolInitialized {
@@ -107,6 +109,10 @@ pub mod nxs_staking {
 
     pub fn stake(ctx: Context<StakeTokens>, amount: u64, lockup_duration_secs: i64) -> Result<()> {
         require!(!ctx.accounts.pool.paused, NxsStakingError::Paused);
+        require!(
+            !ctx.accounts.pool.pause_new_stakes,
+            NxsStakingError::DepositsFrozen,
+        );
         require!(amount > 0, NxsStakingError::ZeroAmount);
         require!(
             lockup_duration_secs >= MIN_LOCKUP_SECS && lockup_duration_secs <= MAX_LOCKUP_SECS,
@@ -240,6 +246,37 @@ pub mod nxs_staking {
         emit!(events::Withdrawn {
             owner: ctx.accounts.owner.key(),
             amount,
+            timestamp: now,
+        });
+        Ok(())
+    }
+
+    pub fn freeze_deposits(ctx: Context<FreezeDeposits>) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        let pool = &mut ctx.accounts.pool;
+        require!(!pool.pause_new_stakes, NxsStakingError::DepositsFrozen);
+        pool.pause_new_stakes = true;
+        pool.pause_new_stakes_at = now;
+
+        emit!(events::DepositsFrozen {
+            pool: pool.key(),
+            authority: ctx.accounts.authority.key(),
+            pause_new_stakes_at: now,
+            timestamp: now,
+        });
+        Ok(())
+    }
+
+    pub fn unfreeze_deposits(ctx: Context<UnfreezeDeposits>) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        let pool = &mut ctx.accounts.pool;
+        require!(pool.pause_new_stakes, NxsStakingError::DepositsNotFrozen);
+        pool.pause_new_stakes = false;
+        pool.pause_new_stakes_at = 0;
+
+        emit!(events::DepositsUnfrozen {
+            pool: pool.key(),
+            authority: ctx.accounts.authority.key(),
             timestamp: now,
         });
         Ok(())
@@ -492,6 +529,32 @@ pub struct WithdrawStake<'info> {
 
     pub owner: Signer<'info>,
     pub token_program: Interface<'info, TokenInterface>,
+}
+
+#[derive(Accounts)]
+pub struct FreezeDeposits<'info> {
+    #[account(
+        mut,
+        seeds = [b"staking_pool"],
+        bump = pool.bump,
+        has_one = authority @ NxsStakingError::Unauthorized,
+    )]
+    pub pool: Box<Account<'info, StakingPool>>,
+
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct UnfreezeDeposits<'info> {
+    #[account(
+        mut,
+        seeds = [b"staking_pool"],
+        bump = pool.bump,
+        has_one = authority @ NxsStakingError::Unauthorized,
+    )]
+    pub pool: Box<Account<'info, StakingPool>>,
+
+    pub authority: Signer<'info>,
 }
 
 #[derive(Accounts)]

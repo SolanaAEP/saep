@@ -111,6 +111,8 @@ proptest! {
         epoch_start in any::<i64>(),
         reward_rate in any::<u64>(),
         paused in any::<bool>(),
+        pause_new_stakes in any::<bool>(),
+        pause_new_stakes_at in any::<i64>(),
         bump in any::<u8>(),
     ) {
         let mut buf = vec![0u8; 8];
@@ -127,6 +129,8 @@ proptest! {
         buf.extend_from_slice(&epoch_start.to_le_bytes());
         buf.extend_from_slice(&reward_rate.to_le_bytes());
         buf.push(paused as u8);
+        buf.push(pause_new_stakes as u8);
+        buf.extend_from_slice(&pause_new_stakes_at.to_le_bytes());
         buf.push(bump);
         let mut slice = &buf[8..];
         let parsed = StakingPool::deserialize(&mut slice);

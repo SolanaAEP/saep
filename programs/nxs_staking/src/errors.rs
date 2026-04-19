@@ -36,4 +36,8 @@ pub enum NxsStakingError {
     ArithmeticOverflow,
     #[msg("epoch has not ended yet")]
     EpochNotEnded,
+    #[msg("deposits are frozen for this pool (migration window)")]
+    DepositsFrozen,
+    #[msg("deposits are not frozen; nothing to unfreeze")]
+    DepositsNotFrozen,
 }
