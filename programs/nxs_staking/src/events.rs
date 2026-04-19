@@ -90,3 +90,10 @@ pub struct DepositsUnfrozen {
     pub authority: Pubkey,
     pub timestamp: i64,
 }
+
+#[event]
+pub struct ApyAuthorityMigrated {
+    pub old_mint: Pubkey,
+    pub new_mint: Pubkey,
+    pub attested_at: i64,
+}
