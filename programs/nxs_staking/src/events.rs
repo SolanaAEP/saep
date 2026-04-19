@@ -75,3 +75,18 @@ pub struct EpochSnapshotted {
     pub staker_count: u32,
     pub timestamp: i64,
 }
+
+#[event]
+pub struct DepositsFrozen {
+    pub pool: Pubkey,
+    pub authority: Pubkey,
+    pub pause_new_stakes_at: i64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct DepositsUnfrozen {
+    pub pool: Pubkey,
+    pub authority: Pubkey,
+    pub timestamp: i64,
+}

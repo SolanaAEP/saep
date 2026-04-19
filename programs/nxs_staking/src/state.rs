@@ -18,6 +18,8 @@ pub struct StakingPool {
     pub epoch_start_time: i64,
     pub reward_rate_per_epoch: u64,
     pub paused: bool,
+    pub pause_new_stakes: bool,
+    pub pause_new_stakes_at: i64,
     pub bump: u8,
 }
 
