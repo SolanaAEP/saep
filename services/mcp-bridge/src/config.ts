@@ -24,6 +24,10 @@ const EnvSchema = z.object({
     .regex(/^\d+$/)
     .default('10')
     .transform((v) => Number(v)),
+  SAEP_ALLOWED_TOOLS: z
+    .string()
+    .optional()
+    .transform((v) => (v ? new Set(v.split(',').map((s) => s.trim()).filter(Boolean)) : null)),
 });
 
 export type { SaepCluster };
@@ -35,6 +39,7 @@ export type Config = {
   autoSign: boolean;
   autoSignMaxLamports: number;
   autoSignVelocityLimit: number;
+  allowedTools: Set<string> | null;
   keypair: Keypair | null;
   connection: Connection;
   provider: AnchorProvider;
@@ -81,6 +86,7 @@ export function loadConfig(
     autoSign: parsed.SAEP_AUTO_SIGN,
     autoSignMaxLamports: parsed.SAEP_AUTO_SIGN_MAX_LAMPORTS,
     autoSignVelocityLimit: parsed.SAEP_AUTO_SIGN_VELOCITY_LIMIT,
+    allowedTools: parsed.SAEP_ALLOWED_TOOLS,
     keypair,
     connection,
     provider,

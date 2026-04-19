@@ -139,7 +139,7 @@ const A2AOrchestrationPayload = z.object({
   msg_type: z.literal(MessageType.A2AOrchestration),
   task_id: taskIdHex,
   sub_task_id: z.string().regex(/^[0-9a-f]{64}$/).optional(),
-  task_ttl_ms: z.number().int().positive().optional(),
+  task_ttl_ms: z.number().int().positive().max(86_400_000).optional(),
 });
 
 export const TypedPayloadSchema = z.discriminatedUnion('msg_type', [

@@ -59,6 +59,7 @@ export function vaultPda(
   agentDid: Uint8Array,
   mint: PublicKey,
 ): [PublicKey, number] {
+  if (agentDid.length !== 32) throw new Error('agentDid must be 32 bytes');
   return PublicKey.findProgramAddressSync(
     [enc('vault'), agentDid, mint.toBuffer()],
     programId,

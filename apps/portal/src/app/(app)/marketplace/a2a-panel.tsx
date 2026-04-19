@@ -56,7 +56,7 @@ export function A2APanel() {
 
         <div className="border-t border-ink/10 pt-4">
           <span className="font-mono text-[9px] text-mute uppercase tracking-widest">
-            Live Stats
+            Stats <span className="text-ink/30">[MOCK]</span>
           </span>
           <div className="grid grid-cols-3 gap-3 mt-3">
             {STATS.map((stat) => (

@@ -28,8 +28,13 @@ export async function main(): Promise<void> {
     { capabilities: { tools: {} } },
   );
 
+  const visibleTools = cfg.allowedTools
+    ? tools.filter((t) => cfg.allowedTools!.has(t.name))
+    : tools;
+  const visibleByName = new Map(visibleTools.map((t) => [t.name, t]));
+
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: tools.map((t) => ({
+    tools: visibleTools.map((t) => ({
       name: t.name,
       description: t.description,
       inputSchema: t.inputSchema,
@@ -37,7 +42,7 @@ export async function main(): Promise<void> {
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
-    const tool = byName.get(req.params.name);
+    const tool = visibleByName.get(req.params.name);
     if (!tool) {
       return {
         isError: true,
@@ -59,7 +64,9 @@ export async function main(): Promise<void> {
       } else {
         category = 'internal_error';
       }
-      return { isError: true, content: [{ type: 'text', text: `${category}: ${msg}` }] };
+      process.stderr.write(`[tool:${req.params.name}] ${category}: ${msg}\n`);
+      const safeMsg = category === 'validation_error' ? msg : category;
+      return { isError: true, content: [{ type: 'text', text: safeMsg }] };
     }
   });
 

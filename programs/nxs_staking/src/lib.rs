@@ -468,6 +468,13 @@ pub struct AdminResetGuard<'info> {
 #[derive(Accounts)]
 pub struct InitPool<'info> {
     #[account(
+        seeds = [SEED_STAKING_CONFIG],
+        bump = config.bump,
+        has_one = authority @ NxsStakingError::Unauthorized,
+    )]
+    pub config: Account<'info, StakingConfig>,
+
+    #[account(
         init,
         payer = authority,
         space = 8 + StakingPool::INIT_SPACE,
@@ -632,6 +639,13 @@ pub struct MigrateApyAuthority<'info> {
 #[derive(Accounts)]
 pub struct SnapshotEpoch<'info> {
     #[account(
+        seeds = [SEED_STAKING_CONFIG],
+        bump = config.bump,
+        has_one = authority @ NxsStakingError::Unauthorized,
+    )]
+    pub config: Account<'info, StakingConfig>,
+
+    #[account(
         mut,
         seeds = [b"staking_pool"],
         bump = pool.bump,
@@ -640,7 +654,7 @@ pub struct SnapshotEpoch<'info> {
 
     #[account(
         init,
-        payer = cranker,
+        payer = authority,
         space = 8 + VotingPowerSnapshot::INIT_SPACE,
         seeds = [b"epoch_snapshot", pool.current_epoch.to_le_bytes().as_ref()],
         bump,
@@ -648,7 +662,7 @@ pub struct SnapshotEpoch<'info> {
     pub snapshot: Box<Account<'info, VotingPowerSnapshot>>,
 
     #[account(mut)]
-    pub cranker: Signer<'info>,
+    pub authority: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 }

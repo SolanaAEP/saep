@@ -69,7 +69,11 @@ async function resolveAgent(authHeader: string | undefined): Promise<{ agent_did
   if (!token) return null;
   try {
     const secret = getSessionKey();
-    const { payload } = await jwtVerify(token, secret, { issuer: SESSION_ISSUER });
+    const { payload } = await jwtVerify(token, secret, {
+      issuer: SESSION_ISSUER,
+      algorithms: ['HS256'],
+      audience: 'saep:proof-gen',
+    });
     const address = payload.sub;
     if (typeof address !== 'string') return null;
     return { agent_did: address };
@@ -81,6 +85,13 @@ async function resolveAgent(authHeader: string | undefined): Promise<{ agent_did
 const BURST_LIMIT = 10;
 const WINDOW_MS = 60_000;
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of rateBuckets) {
+    if (now >= bucket.resetAt) rateBuckets.delete(key);
+  }
+}, WINDOW_MS);
 
 function checkRateLimit(agentDid: string): { ok: true } | { ok: false; retry_after: number } {
   const now = Date.now();

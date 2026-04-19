@@ -130,14 +130,17 @@ export function VotingModal({ proposal, config, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
-        className="bg-background border border-ink/10 p-6 w-full max-w-lg flex flex-col gap-5"
+        className="bg-paper border border-ink/10 p-6 w-full max-w-lg flex flex-col gap-5"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="vote-modal-title"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between">
-          <h2 className="text-sm font-medium">
+          <h2 id="vote-modal-title" className="text-sm font-medium">
             Vote on Proposal #{proposal.proposalId.toString()}
           </h2>
-          <button onClick={onClose} className="text-ink/50 hover:text-ink text-lg leading-none">
+          <button onClick={onClose} aria-label="Close" className="text-ink/50 hover:text-ink text-lg leading-none">
             &times;
           </button>
         </header>

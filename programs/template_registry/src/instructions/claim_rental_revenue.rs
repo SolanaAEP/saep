@@ -34,10 +34,18 @@ pub struct ClaimRentalRevenue<'info> {
     )]
     pub escrow: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(mut, token::mint = mint)]
+    #[account(
+        mut,
+        token::mint = mint,
+        constraint = author_token_account.owner == template.author @ TemplateRegistryError::Unauthorized,
+    )]
     pub author_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(mut, token::mint = mint)]
+    #[account(
+        mut,
+        token::mint = mint,
+        constraint = fee_collector_token_account.key() == global.fee_collector @ TemplateRegistryError::Unauthorized,
+    )]
     pub fee_collector_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub cranker: Signer<'info>,

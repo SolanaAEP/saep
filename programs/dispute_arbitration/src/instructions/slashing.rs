@@ -6,7 +6,7 @@ use crate::state::*;
 
 #[derive(Accounts)]
 pub struct SlashArbitrator<'info> {
-    #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump)]
+    #[account(seeds = [SEED_DISPUTE_CONFIG], bump = config.bump, has_one = authority)]
     pub config: Box<Account<'info, DisputeConfig>>,
 
     #[account(
@@ -24,7 +24,7 @@ pub struct SlashArbitrator<'info> {
 
     #[account(
         init,
-        payer = proposer,
+        payer = authority,
         space = 8 + PendingSlash::INIT_SPACE,
         seeds = [SEED_PENDING_SLASH, arbitrator.operator.as_ref()],
         bump,
@@ -32,7 +32,7 @@ pub struct SlashArbitrator<'info> {
     pub pending_slash: Box<Account<'info, PendingSlash>>,
 
     #[account(mut)]
-    pub proposer: Signer<'info>,
+    pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 

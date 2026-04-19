@@ -248,6 +248,10 @@ export class WsGateway {
 
         const start = performance.now();
         const publishTopic = this.resolvePublishTopic(env);
+        if (publishTopic === null) {
+          ws.send(JSON.stringify({ type: 'error', code: 'self_route', msg: 'cannot route message to self' }));
+          return;
+        }
         await this.bus.ensureGroup(publishTopic);
         const envToPublish = publishTopic !== env.topic ? { ...env, topic: publishTopic } : env;
         await this.bus.publish(envToPublish);
@@ -280,10 +284,11 @@ export class WsGateway {
     return true;
   }
 
-  private resolvePublishTopic(env: Envelope): string {
+  private resolvePublishTopic(env: Envelope): string | null {
     if (!env.msg_type) return env.topic;
     const mode = routingMode(env.msg_type as MessageType);
     if (mode === 'direct' && env.to_agent) {
+      if (env.from_agent === env.to_agent) return null;
       return `agent.${env.to_agent}.inbox`;
     }
     return env.topic;
