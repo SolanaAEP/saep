@@ -1,10 +1,10 @@
-// Scaffold — all cases `it.skip` until the 4 M3 migration ixs land in
-// programs/nxs_staking/src/lib.rs. Structure mirrors specs/nxs-m3-migration.md
-// §Devnet-bring-up + §Security-checks. Unblock order:
-//   1. land `freeze_deposits` + `unfreeze_deposits` + `close_pool` + `set_apy`
-//      + `migrate_apy_authority` in the program (spec §New-instruction-surface).
-//   2. extend `StakingPool` state with `pause_new_stakes` + `pause_new_stakes_at`
-//      + `closed` flags (spec §freeze_deposits, §close_pool).
+// Scaffold — some cases `it.skip` until the remaining M3 migration ixs land
+// in programs/nxs_staking/src/lib.rs. Structure mirrors
+// specs/nxs-m3-migration.md §Devnet-bring-up + §Security-checks. Unblock order:
+//   1. land `close_pool` + `set_apy` + `migrate_apy_authority` in the program
+//      (spec §New-instruction-surface; `freeze_deposits` + `unfreeze_deposits`
+//      landed cycle 202).
+//   2. extend `StakingPool` state with `closed` flag (spec §close_pool).
 //   3. add `b"apy_authority"` singleton PDA derivation to IDL accounts.
 //   4. shift the per-`it.skip` → `it` + fill bodies.
 //
@@ -14,12 +14,19 @@
 // PDA seeds to `[b"staking_pool", stake_mint.as_ref()]` (spec §Spec-drift).
 
 import * as anchor from '@coral-xyz/anchor';
+import { BN } from '@coral-xyz/anchor';
 import { startAnchor, BankrunProvider } from 'anchor-bankrun';
 import type { ProgramTestContext } from 'solana-bankrun';
-import { Keypair, PublicKey } from '@solana/web3.js';
+import {
+  Keypair, PublicKey, SystemProgram, LAMPORTS_PER_SOL,
+} from '@solana/web3.js';
+import { TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { expect } from 'chai';
 
-import { setBankrunClock } from './helpers/bankrun';
+import { setBankrunClock, warpClockBy } from './helpers/bankrun';
+import { createATA, createToken2022Mint, mintTokens } from './helpers/token';
 import type { NxsStaking } from '../target/types/nxs_staking';
 
 const NXS_STAKING_PROGRAM_ID = new PublicKey(
@@ -28,11 +35,10 @@ const NXS_STAKING_PROGRAM_ID = new PublicKey(
 
 const T0 = 1_800_000_000n;
 const DAY_SECS = 86_400n;
-const MIGRATION_WINDOW_SECS = 180n * DAY_SECS;
+const MIN_LOCKUP_SECS = 7n * DAY_SECS;
+const INITIAL_BALANCE = 10_000_000;
+const STAKE_AMOUNT = 100_000;
 
-// PDA helpers — apyAuthority is spec-defined (singleton). stakingPoolForMint is
-// the post-migration widened shape (see header); stakingPoolSingleton is current
-// scaffold shape, kept here so the pre-impl assertion reads honestly.
 const pdas = {
   apyAuthority: (): [PublicKey, number] =>
     PublicKey.findProgramAddressSync(
@@ -49,6 +55,11 @@ const pdas = {
       [Buffer.from('staking_pool'), stakeMint.toBuffer()],
       NXS_STAKING_PROGRAM_ID,
     ),
+  stakeAccount: (pool: PublicKey, owner: PublicKey): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync(
+      [Buffer.from('stake'), pool.toBuffer(), owner.toBuffer()],
+      NXS_STAKING_PROGRAM_ID,
+    ),
 };
 
 describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.md)', function () {
@@ -56,17 +67,70 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
 
   let context: ProgramTestContext;
   let provider: BankrunProvider;
+  let program: anchor.Program<NxsStaking>;
+
+  let authority: Keypair;
+  const owner1 = Keypair.generate();
+  const owner2 = Keypair.generate();
+  const mintAuthority = Keypair.generate();
+
+  let stakeMint: PublicKey;
+  let owner1Ata: PublicKey;
+  let owner2Ata: PublicKey;
+  let poolPda: PublicKey;
+  let owner1StakePda: PublicKey;
 
   before(async () => {
     context = await startAnchor('.', [], []);
     provider = new BankrunProvider(context);
     anchor.setProvider(provider);
+    authority = context.payer;
+
+    const idl = JSON.parse(
+      readFileSync(resolve(process.cwd(), 'target/idl/nxs_staking.json'), 'utf8'),
+    );
+    program = new anchor.Program<NxsStaking>(idl, provider);
+
+    for (const kp of [owner1, owner2, mintAuthority]) {
+      context.setAccount(kp.publicKey, {
+        lamports: 100 * LAMPORTS_PER_SOL,
+        data: Buffer.alloc(0),
+        owner: SystemProgram.programId,
+        executable: false,
+      });
+    }
+
     await setBankrunClock(context, T0);
+
+    stakeMint = await createToken2022Mint(context, authority, mintAuthority.publicKey, 6);
+    owner1Ata = await createATA(context, authority, stakeMint, owner1.publicKey);
+    owner2Ata = await createATA(context, authority, stakeMint, owner2.publicKey);
+    await mintTokens(context, authority, stakeMint, owner1Ata, mintAuthority, INITIAL_BALANCE);
+    await mintTokens(context, authority, stakeMint, owner2Ata, mintAuthority, INITIAL_BALANCE);
+
+    [poolPda] = pdas.stakingPoolSingleton();
+    await program.methods
+      .initPool(stakeMint, new BN(86_400), new BN(0))
+      .accountsPartial({ authority: authority.publicKey })
+      .rpc();
+
+    // owner1 seed stake — exercises step 3's withdraw-path-remains-open assertion
+    // once clock warps past lockup_end.
+    [owner1StakePda] = pdas.stakeAccount(poolPda, owner1.publicKey);
+    await program.methods
+      .stake(new BN(STAKE_AMOUNT), new BN(MIN_LOCKUP_SECS))
+      .accountsPartial({
+        pool: poolPda,
+        owner: owner1.publicKey,
+        stakeMint,
+        ownerTokenAccount: owner1Ata,
+        tokenProgram: TOKEN_2022_PROGRAM_ID,
+      })
+      .signers([owner1])
+      .rpc();
   });
 
   it('program id matches Anchor.toml', () => {
-    // No IDL load — this assertion stays live so a program_id drift surfaces
-    // even while the rest of the suite is skipped.
     expect(NXS_STAKING_PROGRAM_ID.toBase58()).to.equal(
       'GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z',
     );
@@ -92,12 +156,62 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
       // Reject with InterestBearingAuthorityMismatch otherwise (spec §Security-checks #1).
     });
 
-    it.skip('step 3: freeze_deposits(pool_v1) sets pause_new_stakes; stake(pool_v1) now rejects', async () => {
-      // Happy-path: call freeze_deposits as pool authority. Read pool state,
-      // assert pause_new_stakes == true and pause_new_stakes_at == now.
-      // Then call stake(pool_v1, amount, lockup) and expect DepositsFrozen.
-      // Withdraw path must remain open — call begin_unstake on a pre-existing
-      // Active stake and assert no DepositsFrozen raise.
+    it('step 3: freeze_deposits(pool_v1) sets pause_new_stakes; stake(pool_v1) rejects; withdraw path stays open', async () => {
+      await program.methods
+        .freezeDeposits()
+        .accountsPartial({ pool: poolPda, authority: authority.publicKey })
+        .rpc();
+
+      const poolAfterFreeze = await program.account.stakingPool.fetch(poolPda);
+      expect(poolAfterFreeze.pauseNewStakes).to.equal(true);
+      expect(poolAfterFreeze.pauseNewStakesAt.toNumber()).to.be.greaterThan(0);
+
+      // Entry path rejects while the pool is frozen.
+      let stakeErr: unknown;
+      try {
+        await program.methods
+          .stake(new BN(STAKE_AMOUNT), new BN(MIN_LOCKUP_SECS))
+          .accountsPartial({
+            pool: poolPda,
+            owner: owner2.publicKey,
+            stakeMint,
+            ownerTokenAccount: owner2Ata,
+            tokenProgram: TOKEN_2022_PROGRAM_ID,
+          })
+          .signers([owner2])
+          .rpc();
+      } catch (e) {
+        stakeErr = e;
+      }
+      expect(String(stakeErr)).to.match(/DepositsFrozen/);
+
+      // Re-freeze fail-loud against already-frozen pool (spec §Invariants row 4).
+      let refreezeErr: unknown;
+      try {
+        await program.methods
+          .freezeDeposits()
+          .accountsPartial({ pool: poolPda, authority: authority.publicKey })
+          .rpc();
+      } catch (e) {
+        refreezeErr = e;
+      }
+      expect(String(refreezeErr)).to.match(/DepositsFrozen/);
+
+      // Exit path unaffected by the entry-only freeze — spec §Security-checks #5.
+      // Warp past owner1's lockup_end first so the begin_unstake lockup guard passes.
+      await warpClockBy(context, MIN_LOCKUP_SECS + 1n);
+      await program.methods
+        .beginUnstake()
+        .accountsPartial({
+          pool: poolPda,
+          stakeAccount: owner1StakePda,
+          owner: owner1.publicKey,
+        })
+        .signers([owner1])
+        .rpc();
+
+      const owner1StakeAfter = await program.account.stakeAccount.fetch(owner1StakePda);
+      expect(owner1StakeAfter.status).to.deep.equal({ cooldown: {} });
     });
 
     it.skip('step 4: migration flow — begin_unstake → warp cooldown → withdraw → re-stake in pool_v2', async () => {
@@ -126,11 +240,47 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
       //   (c) neither — close_pool rejects with MigrationWindowActive.
     });
 
-    it.skip('step 7: rollback — unfreeze_deposits(pool_v1) restores stake entry-point', async () => {
-      // Drill for incident-response if mainnet migration aborts mid-flight.
-      // Assert stake(pool_v1) succeeds after unfreeze_deposits.
-      // Also assert unfreeze_deposits rejects if close_pool already ran —
-      // spec §Open-Q #6 default: no reopen path.
+    it('step 7: rollback — unfreeze_deposits(pool_v1) restores stake entry-point + re-unfreeze fails loud', async () => {
+      // Continuation of step-3 state: pool is frozen; owner2 unstaked; clock past T0 + 7d.
+      await program.methods
+        .unfreezeDeposits()
+        .accountsPartial({ pool: poolPda, authority: authority.publicKey })
+        .rpc();
+
+      const poolAfterThaw = await program.account.stakingPool.fetch(poolPda);
+      expect(poolAfterThaw.pauseNewStakes).to.equal(false);
+      expect(poolAfterThaw.pauseNewStakesAt.toNumber()).to.equal(0);
+
+      await program.methods
+        .stake(new BN(STAKE_AMOUNT), new BN(MIN_LOCKUP_SECS))
+        .accountsPartial({
+          pool: poolPda,
+          owner: owner2.publicKey,
+          stakeMint,
+          ownerTokenAccount: owner2Ata,
+          tokenProgram: TOKEN_2022_PROGRAM_ID,
+        })
+        .signers([owner2])
+        .rpc();
+
+      const [owner2Stake] = pdas.stakeAccount(poolPda, owner2.publicKey);
+      const owner2StakeAcc = await program.account.stakeAccount.fetch(owner2Stake);
+      expect(owner2StakeAcc.amount.toNumber()).to.equal(STAKE_AMOUNT);
+      expect(owner2StakeAcc.status).to.deep.equal({ active: {} });
+
+      // Spec §Open-Q #6 default: no reopen path for a close_pool'd pool. Re-unfreeze
+      // on an already-thawed pool rejects as fail-loud idempotency (same pattern
+      // as re-freeze above). Covers the "no-op hides a bug" class of spec §set_apy row 67.
+      let rethawErr: unknown;
+      try {
+        await program.methods
+          .unfreezeDeposits()
+          .accountsPartial({ pool: poolPda, authority: authority.publicKey })
+          .rpc();
+      } catch (e) {
+        rethawErr = e;
+      }
+      expect(String(rethawErr)).to.match(/DepositsNotFrozen/);
     });
   });
 
