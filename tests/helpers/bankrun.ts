@@ -47,3 +47,37 @@ export async function warpClockBy(
   context.setClock(next);
   return next;
 }
+
+export async function warpClockTo(
+  context: ProgramTestContext,
+  unixTimestamp: bigint,
+): Promise<Clock> {
+  const current = await context.banksClient.getClock();
+  const nextSlot = current.slot + 1n;
+  context.warpToSlot(nextSlot);
+  const next = new Clock(
+    nextSlot,
+    current.epochStartTimestamp,
+    current.epoch,
+    current.leaderScheduleEpoch,
+    unixTimestamp,
+  );
+  context.setClock(next);
+  return next;
+}
+
+export async function setBankrunClock(
+  context: ProgramTestContext,
+  unixTimestamp: bigint,
+): Promise<void> {
+  const current = await context.banksClient.getClock();
+  context.setClock(
+    new Clock(
+      current.slot,
+      current.epochStartTimestamp,
+      current.epoch,
+      current.leaderScheduleEpoch,
+      unixTimestamp,
+    ),
+  );
+}
