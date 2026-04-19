@@ -31,7 +31,7 @@ Every transition is signed, seeded, and event-logged so the indexer can replay a
   - `appeal_collateral_bps: u16` — extra collateral multiplier for appeal (default 15000 = 1.5× the losing-side stake-sum)
   - `max_slash_bps: u16` — 1000 (10% per §2.5)
   - `slash_timelock_secs: i64` — `30 * 86400` (mirrors AgentRegistry §5.1 Slashing Safety)
-  - `vrf_stale_slots: u64` — VRF result rejected if older than this (default 2000 slots ≈ 13 min)
+  - `vrf_stale_slots: u64` — VRF result rejected if older than this (default 150 slots ≈ 60s)
   - `paused: bool`
   - `bump: u8`
 
@@ -125,6 +125,10 @@ Spec §State above is the pre-scaffold intent document. Scaffold (`programs/disp
 - **Module-level constants (16 absent):** 7 `SEED_*` constants (`:3-11`) + `MAX_ALLOWED_CALLERS = 8` + `MAX_CPI_STACK_HEIGHT = 3` + `ADMIN_RESET_TIMELOCK_SECS = 24h` + `MAX_POOL_SIZE = 256` + `MAX_ROUND2_ARBITRATORS = 5` + `MAX_ROUND1_ARBITRATORS = 3` + `DEFAULT_COMMIT_WINDOW_SECS = 86_400` + `DEFAULT_REVEAL_WINDOW_SECS = 86_400` + `DEFAULT_APPEAL_WINDOW_SECS = 86_400` + `DEFAULT_APPEAL_COLLATERAL_BPS = 15_000` + `DEFAULT_MAX_SLASH_BPS = 1_000` + `DEFAULT_SLASH_TIMELOCK_SECS = 30d` + `DEFAULT_VRF_STALE_SLOTS = 150` + `DEFAULT_BAD_FAITH_THRESHOLD = 3` + `DEFAULT_BAD_FAITH_LOOKBACK = 10` + `BPS_DENOMINATOR = 10_000`. **Drift surfaced (not patched here):** `DEFAULT_VRF_STALE_SLOTS = 150` vs spec line 34 `default 2000 slots ≈ 13 min` — order-of-magnitude tighter (150 slots ≈ 60s). Held for value-reconciliation cycle.
 - **Helper fns (2 absent from spec):** `compute_commit_hash` at `:202-211` (format drift flagged above); `weighted_select` at `:213-257` (cumulative-stake walk for VRF arbitrator draw — takes `vrf_bytes` + `cumulative_stakes` + `count` + `offset`; binary-search seek + linear-probe collision resolution; load-bearing for round-1 + round-2 selection per spec §State machine).
 - **Did NOT patch:** commit-hash format drift, VRF-stale-slots magnitude drift, `PendingSlash.proposed_at` absence, cross-program task_id width consistency. Each warrants its own cycle per single-section discipline.
+
+### §State-intro-refresh (cycle 185, 2026-04-19)
+
+Reconciles the `vrf_stale_slots` default magnitude drift surfaced in the cycle-177 deltas block (line above, `DEFAULT_VRF_STALE_SLOTS = 150` vs spec-prior `default 2000 slots ≈ 13 min`). Spec §State line 34 now reads `default 150 slots ≈ 60s` to match scaffold `state.rs:25`. The tighter default reflects the scaffold author's threat-model pick: a VRF callback that hasn't landed inside a ~1-minute window is stale enough that a permissionless `cancel_stale_vrf` crank refunds the client rather than trapping funds against a possibly-manipulated randomness seed; §Open-questions-for-reviewer line 389 VRF-replacement-path open-Q carries the production-tuning decision forward, including whether 150 slots is too tight for Switchboard's empirical callback latency at M2 launch and should ratchet via `set_params` governance. This refresh is editorial — no scaffold edit, no program source change, no audit-scope adjustment; the `set_params` surface already permits governance to widen the default if Neodyme flags it. Remaining cycle-177 held drifts (commit-hash format keccak-vs-sha256, `PendingSlash.proposed_at` absence, cross-program `task_id` width) unchanged this cycle — security-relevant and multi-part, warrant their own supervised cycles.
 
 ## Enums
 
