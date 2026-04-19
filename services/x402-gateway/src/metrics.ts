@@ -23,10 +23,3 @@ export const facilitateVerifyTotal = new Counter({
   labelNames: ['result'],
   registers: [registry],
 });
-
-export const cctpFallbackTotal = new Counter({
-  name: 'x402_cctp_fallback_total',
-  help: 'cctp cross-chain fallback attempts',
-  labelNames: ['result'],
-  registers: [registry],
-});

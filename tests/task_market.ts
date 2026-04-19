@@ -4,8 +4,6 @@ import { getProvider } from './helpers/setup';
 import { taskMarket, PROGRAM_IDS } from './helpers/accounts';
 import type { TaskMarket } from '../target/types/task_market';
 
-// CU-MEASURE-PENDING
-
 describe('task_market', () => {
   const provider = getProvider();
   // eslint-disable-next-line @typescript-eslint/no-require-imports

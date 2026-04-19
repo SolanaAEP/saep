@@ -1,7 +1,8 @@
 import * as anchor from '@coral-xyz/anchor';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { expect } from 'chai';
-import { airdrop, fundedKeypair, getProvider, padRight } from './helpers/setup';
+import { airdrop, fundedKeypair, getProvider } from './helpers/setup';
+import { padBytes } from './helpers/encoding';
 import { capReg, PROGRAM_IDS } from './helpers/accounts';
 import type { CapabilityRegistry } from '../target/types/capability_registry';
 
@@ -72,8 +73,8 @@ describe('capability_registry', () => {
     authority = provider.wallet as anchor.Wallet;
   });
 
-  const slug = (s: string) => Array.from(padRight(s, 32)) as number[];
-  const uri = (s: string) => Array.from(padRight(s, 96)) as number[];
+  const slug = (s: string) => padBytes(s, 32) as unknown as number[];
+  const uri = (s: string) => padBytes(s, 96) as unknown as number[];
 
   describe('initialize', () => {
     it('creates registry config with authority, mask=0, paused=false', async () => {

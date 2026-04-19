@@ -7,7 +7,6 @@ export function Sidebar() {
   const ops = specs.filter((s) => s.group === 'ops');
   return (
     <aside className="font-mono text-[12px]">
-      {/* SEARCH-STUB: Nextra default search deferred; wire Algolia DocSearch or Pagefind later. */}
       <Section title="Protocol" items={protocol} />
       <Section title="Ops" items={ops} />
     </aside>

@@ -10,8 +10,6 @@ import {
 } from './helpers/vk';
 import type { ProofVerifier } from '../target/types/proof_verifier';
 
-// CU-MEASURE-PENDING
-
 const CIRCUIT_LABEL = DEFAULT_CIRCUIT_LABEL;
 
 describe('proof_verifier', () => {

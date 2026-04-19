@@ -4,8 +4,6 @@ import { getProvider } from './helpers/setup';
 import { treasury, PROGRAM_IDS } from './helpers/accounts';
 import type { TreasuryStandard } from '../target/types/treasury_standard';
 
-// CU-MEASURE-PENDING
-
 describe('treasury_standard', () => {
   const provider = getProvider();
   // eslint-disable-next-line @typescript-eslint/no-require-imports
