@@ -1,8 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { PublicKey, SystemProgram } from '@solana/web3.js';
+import { PublicKey, SystemProgram, SYSVAR_INSTRUCTIONS_PUBKEY } from '@solana/web3.js';
 import idl from '../../idl/proof_verifier.json' with { type: 'json' };
 import type { ProofVerifier } from '../../generated/proof_verifier.js';
-import { verifierConfigPda, verifierKeyPda, verifierModePda } from '../../pda/index.js';
+import {
+  proofVerifierAllowedCallersPda,
+  proofVerifierGuardPda,
+  verifierConfigPda,
+  verifierKeyPda,
+  verifierModePda,
+} from '../../pda/index.js';
 import {
   buildRegisterVkIx,
   buildProposeVkActivationIx,
@@ -129,5 +135,61 @@ describe('buildExecuteVkActivationIx', () => {
 });
 
 describe('buildVerifyProofIx', () => {
-  it.skip('IDL requires self_guard/allowed_callers/caller_guard/instructions accounts — needs localnet', () => {});
+  const vk = PublicKey.unique();
+  const callerGuard = PublicKey.unique();
+  const proofA = new Uint8Array(64).fill(0xaa);
+  const proofB = new Uint8Array(128).fill(0xbb);
+  const proofC = new Uint8Array(64).fill(0xcc);
+  const publicInputs = [
+    new Uint8Array(32).fill(0x01),
+    new Uint8Array(32).fill(0x02),
+  ];
+
+  it('returns ix with all 7 F-2026-04 accounts in IDL order', async () => {
+    const ix = await buildVerifyProofIx(program, {
+      vk,
+      proofA,
+      proofB,
+      proofC,
+      publicInputs,
+      callerGuard,
+    });
+    expect(ix.programId.equals(PROG)).toBe(true);
+    expect(Array.from(ix.data.subarray(0, 8))).toEqual(
+      expectedDiscriminator(idl as never, 'verify_proof'),
+    );
+    const [config] = verifierConfigPda(PROG);
+    const [mode] = verifierModePda(PROG);
+    const [selfGuard] = proofVerifierGuardPda(PROG);
+    const [allowedCallers] = proofVerifierAllowedCallersPda(PROG);
+    expect(accountKeys(ix)).toEqual([
+      config.toBase58(),
+      vk.toBase58(),
+      mode.toBase58(),
+      selfGuard.toBase58(),
+      allowedCallers.toBase58(),
+      callerGuard.toBase58(),
+      SYSVAR_INSTRUCTIONS_PUBKEY.toBase58(),
+    ]);
+    expect(ix.keys.every((k) => !k.isSigner)).toBe(true);
+    expect(ix.keys.every((k) => !k.isWritable)).toBe(true);
+  });
+
+  it('round-trips proof + public_inputs via BorshInstructionCoder', async () => {
+    const ix = await buildVerifyProofIx(program, {
+      vk,
+      proofA,
+      proofB,
+      proofC,
+      publicInputs,
+      callerGuard,
+    });
+    const decoded = decodeIx(idl as Record<string, unknown>, ix);
+    expect(decoded.name).toBe('verify_proof');
+    const data = decoded.data as Record<string, unknown>;
+    expect(data.proof_a).toEqual(Array.from(proofA));
+    expect(data.proof_b).toEqual(Array.from(proofB));
+    expect(data.proof_c).toEqual(Array.from(proofC));
+    expect(data.public_inputs).toEqual(publicInputs.map((x) => Array.from(x)));
+  });
 });

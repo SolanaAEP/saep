@@ -1,7 +1,18 @@
 import { BN, Program } from '@coral-xyz/anchor';
-import { PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
+import {
+  PublicKey,
+  SystemProgram,
+  SYSVAR_INSTRUCTIONS_PUBKEY,
+  TransactionInstruction,
+} from '@solana/web3.js';
 import type { ProofVerifier } from '../generated/proof_verifier.js';
-import { verifierConfigPda, verifierKeyPda, verifierModePda } from '../pda/index.js';
+import {
+  proofVerifierAllowedCallersPda,
+  proofVerifierGuardPda,
+  verifierConfigPda,
+  verifierKeyPda,
+  verifierModePda,
+} from '../pda/index.js';
 
 export interface RegisterVkInput {
   authority: PublicKey;
@@ -94,6 +105,10 @@ export interface VerifyProofInput {
   proofB: Uint8Array;
   proofC: Uint8Array;
   publicInputs: Uint8Array[];
+  // Caller program's reentrancy guard PDA (`[guard]` under the caller program).
+  // Foreign-owned, so the SDK can't derive it without the caller program id;
+  // surface it as an explicit input. F-2026-04 caller-identity hardening.
+  callerGuard: PublicKey;
 }
 
 export async function buildVerifyProofIx(
@@ -102,6 +117,8 @@ export async function buildVerifyProofIx(
 ): Promise<TransactionInstruction> {
   const [config] = verifierConfigPda(program.programId);
   const [mode] = verifierModePda(program.programId);
+  const [selfGuard] = proofVerifierGuardPda(program.programId);
+  const [allowedCallers] = proofVerifierAllowedCallersPda(program.programId);
 
   return program.methods
     .verifyProof(
@@ -114,6 +131,10 @@ export async function buildVerifyProofIx(
       config,
       vk: input.vk,
       mode,
+      selfGuard,
+      allowedCallers,
+      callerGuard: input.callerGuard,
+      instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
     } as never)
     .instruction();
 }
