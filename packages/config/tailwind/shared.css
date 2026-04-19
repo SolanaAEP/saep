@@ -74,15 +74,14 @@ dialog.mobile-nav::backdrop {
   letter-spacing: var(--tracking-wider);
   color: var(--_ink);
   background: var(--_bg);
-  overflow: hidden;
+  overflow: visible;
   cursor: pointer;
   transition:
-    border-color var(--duration-fast),
-    background var(--duration-fast),
-    color var(--duration-fast);
+    border-color var(--duration-normal) var(--ease-default),
+    background var(--duration-normal) var(--ease-default),
+    color var(--duration-normal) var(--ease-default);
   text-decoration: none;
   isolation: isolate;
-  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
 }
 
 /* ── Sizes ──────────────────────────────────────── */
@@ -97,23 +96,25 @@ dialog.mobile-nav::backdrop {
   font-size: var(--text-caption);
 }
 
-/* ── Lime accent pips — corner squares, visible on hover ── */
+/* ── Corner-cut accents — paper triangles that turn lime on hover ── */
 .btn-glitch__accent {
   position: absolute;
-  width: 4px;
-  height: 4px;
-  background: var(--_accent);
+  width: 8px;
+  height: 8px;
+  background: var(--paper);
   z-index: 3;
-  opacity: 0;
-  transition: opacity var(--duration-fast);
+  transition: background var(--duration-normal) var(--ease-default);
+  pointer-events: none;
 }
 .btn-glitch__accent--tr {
-  top: 0;
-  right: 6px;
+  top: -1px;
+  right: -1px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
 .btn-glitch__accent--bl {
-  bottom: 0;
-  left: 6px;
+  bottom: -1px;
+  left: -1px;
+  clip-path: polygon(0 0, 100% 100%, 0 100%);
 }
 
 /* ── Halftone dot overlay — from GlitchComposition's dot patterns ── */
@@ -182,8 +183,7 @@ dialog.mobile-nav::backdrop {
   animation: glitch-ghost 0.7s steps(2) infinite;
 }
 .btn-glitch:hover .btn-glitch__accent {
-  opacity: 1;
-  animation: glitch-pip 1.2s steps(1) infinite;
+  background: var(--_accent);
 }
 
 /* ── Solid variant — lime wire, fills on hover ── */
@@ -311,29 +311,30 @@ dialog.mobile-nav::backdrop {
   border-radius: var(--radius-none) !important;
   height: 42px !important;
   padding: 0 1.5rem !important;
-  transition: border-color var(--duration-fast), background var(--duration-fast), color var(--duration-fast) !important;
+  transition: border-color var(--duration-normal) var(--ease-default), background var(--duration-normal) var(--ease-default), color var(--duration-normal) var(--ease-default) !important;
   position: relative !important;
-  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)) !important;
+  overflow: visible !important;
 }
 .wallet-adapter-button::before,
 .wallet-adapter-button::after {
   content: '' !important;
   position: absolute !important;
-  width: 4px !important;
-  height: 4px !important;
-  background: var(--lime) !important;
-  opacity: 0 !important;
-  transition: opacity var(--duration-fast) !important;
+  width: 8px !important;
+  height: 8px !important;
+  background: var(--paper) !important;
   z-index: 3 !important;
   pointer-events: none !important;
+  transition: background var(--duration-normal) var(--ease-default) !important;
 }
 .wallet-adapter-button::before {
-  top: 0 !important;
-  right: 6px !important;
+  top: -1px !important;
+  right: -1px !important;
+  clip-path: polygon(0 0, 100% 0, 100% 100%) !important;
 }
 .wallet-adapter-button::after {
-  bottom: 0 !important;
-  left: 6px !important;
+  bottom: -1px !important;
+  left: -1px !important;
+  clip-path: polygon(0 0, 100% 100%, 0 100%) !important;
 }
 .wallet-adapter-button:hover {
   border-color: var(--lime) !important;
@@ -342,13 +343,10 @@ dialog.mobile-nav::backdrop {
 }
 .wallet-adapter-button:hover::before,
 .wallet-adapter-button:hover::after {
-  opacity: 1 !important;
+  background: var(--lime) !important;
 }
 .wallet-adapter-button-trigger {
   background: transparent !important;
-}
-.wallet-adapter-modal-list .wallet-adapter-button {
-  clip-path: none !important;
 }
 .wallet-adapter-modal-list .wallet-adapter-button::before,
 .wallet-adapter-modal-list .wallet-adapter-button::after {
