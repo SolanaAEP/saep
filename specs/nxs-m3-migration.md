@@ -153,7 +153,7 @@ Rehearsal sequence (assumes rows 3-5 of token2022 §Done-checklist complete):
 ## Done-checklist
 
 - [ ] `freeze_deposits` + `unfreeze_deposits` + `close_pool` + `set_apy` + `migrate_apy_authority` ixs landed in `programs/nxs_staking`; fuzz harness extended for new surfaces
-- [ ] `apy_authority` PDA derivation helper added to `@saep/sdk/programs/nxs-staking`
+- [x] `apy_authority` PDA derivation helper added to `@saep/sdk/pda/index.ts` (singleton seeds `[b"apy_authority"]`; public `f5bc876`, cycle 198)
 - [ ] Devnet rehearsal mint init succeeds with InterestBearing rate_authority = apy_authority PDA (drift-detect asserted)
 - [ ] Devnet pool_v2 init succeeds against rehearsal mint; `init_pool` drift-detect passes
 - [ ] Devnet migration exercise: 3 rehearsal wallets complete begin_unstake → withdraw → re-stake in pool_v2
