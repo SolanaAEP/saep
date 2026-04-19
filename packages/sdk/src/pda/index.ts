@@ -292,6 +292,10 @@ export function stakeVaultPda(programId: PublicKey, stakeAccount: PublicKey): [P
   return PublicKey.findProgramAddressSync([enc('stake_vault'), stakeAccount.toBuffer()], programId);
 }
 
+export function apyAuthorityPda(programId: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([enc('apy_authority')], programId);
+}
+
 // template_registry PDAs
 
 export function templateGlobalPda(programId: PublicKey): [PublicKey, number] {
