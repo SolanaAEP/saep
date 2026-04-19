@@ -23,7 +23,7 @@ Backend §2.2 shows AgentRegistry will CPI-read the registry during `register_ag
   - `paused: bool` — emergency pause
   - `bump: u8`
 
-### `CapabilityTag` PDA — one per tag, immutable after init
+### `CapabilityTag` PDA — one per tag; fixed-layout, mutation paths enumerated in §Instructions
 - **Seeds:** `[b"tag", &[bit_index]]`
 - **Fields:**
   - `bit_index: u8` — 0..127
@@ -45,6 +45,10 @@ Account size fixed. No `String` on-chain; everything is fixed-width for rent det
 - **Intent-drift surfaced inline — "immutable after init" claim is stale.** Pre-edit spec line 26 heading `CapabilityTag` PDA — one per tag, **immutable after init** was accurate at cycles 155-171 (only `retired: bool` flip via `retire_tag` + `manifest_uri` overwrite via `update_manifest_uri` mutated the struct post-init; both already-documented exceptions). Post-`b435db7` the claim is false: `min_personhood_tier` is field-level mutable via `set_tag_personhood`, and the header claim would otherwise mislead a reviewer reading the §State block in isolation. Not patched in this cycle's scope (header edit is a §State-intro-rewrite, not a deltas-append, and cycles 155-173 have established the append-only convention for reconciliation); flagged as a single-line follow-up candidate for the §State-intro-refresh cycle that eventually lands the "post-M1 tier-ladder expansion" callout alongside.
 - **Guard-admin parity (no change from cycle 172):** capability_registry has no `GuardConfig` / `AllowedCallers` / `ReentrancyGuard` PDAs by design (no CPI-out surface beyond `validate_mask` readonly view). 5-program guard-state-vocabulary matrix row = `N/A`, consistent with the cycle-172 guard-ix-vocabulary row. Unlike the 4 sister M1-in-scope programs (treasury / dispute / task-market / agent-registry / proof-verifier §State blocks — each carries the 3-PDA guard-state triplet absent from their pre-edit §State enumeration), capability_registry's §State scope is fully reconciled by this 1-field + 3-constant addition.
 - **M1 §State arc state post-cycle:** 1-of-5 M1-in-scope programs reconciled (capability_registry this cycle). Remaining 4 candidates queued per cycle 174's (al-3) + (al-6) framing plus implied (al-2) treasury_standard + (al-4) task_market + (al-7) dispute_arbitration follow-ons — each has guard-state-triplet absent blocks that cycles 163/166/167 surfaced inline when landing their §Instructions reconciliations. Smallest delta landed first per cycles 172 discipline; larger multi-PDA sweeps carry forward.
+
+### §State-intro-refresh (cycle 183, 2026-04-19)
+
+Clears the cycle-175 intent-drift held at line 45 above. Pre-edit header at line 26 read `CapabilityTag` PDA — one per tag, **immutable after init**; post-edit reads `CapabilityTag` PDA — one per tag; fixed-layout, mutation paths enumerated in §Instructions. Three post-init mutation paths exist in-scaffold: `retire_tag.rs` flips `retired: bool`, `update_manifest_uri.rs` overwrites `manifest_uri: [u8; 96]`, `set_tag_personhood.rs` writes `min_personhood_tier: u8` (cycle-175 absent-field landing). "Fixed-layout" preserves the original intent — account size + field offsets are rent-deterministic + indexer-decode-stable — without the false "immutable" claim. §Instructions subsections already enumerate each mutation path; reviewer cross-reading the header lands on the right section rather than bouncing between the stale claim and the documented exceptions.
 
 ## Instructions
 
