@@ -4,16 +4,21 @@ import { keccak_256 } from '@noble/hashes/sha3.js';
 import {
   agentRegistryProgram,
   taskMarketProgram,
+  treasuryStandardProgram,
   makeProvider,
   resolveCluster,
   buildRegisterAgentIx,
   buildSubmitResultIx,
   buildCommitBidIx,
   buildRevealBidIx,
+  buildWithdrawIx,
   encodeAgentId,
   fetchAgentsByOperator,
   fetchAgentByDid,
   fetchTasksByAgent,
+  fetchTreasury,
+  fetchVaultBalances,
+  fetchAllowedMints,
 } from '@saep/sdk';
 import type { Action, SaepPluginOptions, SakAgentLike, SakCluster, SakWallet } from './types.js';
 
@@ -62,7 +67,7 @@ const autoSignTimestamps: number[] = [];
 function checkVelocity(limit: number): boolean {
   const now = Date.now();
   const windowStart = now - 60_000;
-  while (autoSignTimestamps.length > 0 && autoSignTimestamps[0] < windowStart) {
+  while (autoSignTimestamps.length > 0 && autoSignTimestamps[0]! < windowStart) {
     autoSignTimestamps.shift();
   }
   return autoSignTimestamps.length < limit;
@@ -314,7 +319,7 @@ export function saepBidAction(cluster: SakCluster, opts?: SaepPluginOptions): Ac
       const nonce = randomNonce();
       const hash = commitHash(amount, nonce, agentDid);
 
-      const ix = await buildCommitBidIx(tm, {
+      const ix = await buildCommitBidIx(tm, config, {
         bidder: agent.wallet.publicKey,
         task: taskPk,
         taskId,
@@ -430,7 +435,7 @@ export function saepSubmitResultAction(cluster: SakCluster, opts?: SaepPluginOpt
         };
       }
 
-      const ix = await buildSubmitResultIx(tm, {
+      const ix = await buildSubmitResultIx(tm, config, {
         operator: agent.wallet.publicKey,
         task: taskPk,
         agentAccount: agentAcc.address,
@@ -445,12 +450,140 @@ export function saepSubmitResultAction(cluster: SakCluster, opts?: SaepPluginOpt
   };
 }
 
+export function saepCheckReputationAction(cluster: SakCluster, _opts?: SaepPluginOptions): Action {
+  const schema = z.object({
+    agent_did_hex: Hex32.optional(),
+  });
+  return {
+    name: 'SAEP_CHECK_REPUTATION',
+    similes: [
+      'check my saep reputation',
+      'what is my agent score',
+      'show agent reputation',
+      'how am i performing on saep',
+    ],
+    description:
+      'Check reputation and treasury status for an agent. If agent_did_hex omitted, resolves to the ' +
+      'first active agent owned by the wallet. Returns on-chain agent status, capability mask, stake, ' +
+      'treasury limits, and vault balances.',
+    examples: [
+      { input: 'Check my reputation', output: 'SAEP_CHECK_REPUTATION {}' },
+      { input: 'Check agent 4af3...', output: 'SAEP_CHECK_REPUTATION { agent_did_hex: "4af3..." }' },
+    ],
+    schema,
+    handler: async (agent, input) => {
+      const { config, provider } = contextFor(agent, cluster);
+      const ar = agentRegistryProgram(provider, config);
+      const ts = treasuryStandardProgram(provider, config);
+
+      let didHex = input.agent_did_hex;
+      let agentAcc;
+      if (didHex) {
+        agentAcc = await fetchAgentByDid(ar, didHex);
+      } else {
+        const mine = await fetchAgentsByOperator(ar, agent.wallet.publicKey);
+        agentAcc = mine.find((a) => a.status === 'active') ?? mine[0];
+        if (agentAcc) didHex = bytesToHex(agentAcc.did);
+      }
+
+      if (!agentAcc || !didHex) {
+        return { cluster, error: 'agent_not_found' };
+      }
+
+      const treasury = await fetchTreasury(ts, agentAcc.did);
+      const mints = await fetchAllowedMints(ts);
+      const vaults = mints.length > 0
+        ? await fetchVaultBalances(ts, agentAcc.did, mints)
+        : [];
+
+      return {
+        cluster,
+        agent_did_hex: didHex,
+        agent_address: agentAcc.address.toBase58(),
+        operator: agentAcc.operator.toBase58(),
+        status: agentAcc.status,
+        capability_mask: agentAcc.capabilityMask.toString(),
+        stake_amount: agentAcc.stakeAmount?.toString() ?? '0',
+        treasury: treasury ? {
+          daily_spend_limit: treasury.dailySpendLimit.toString(),
+          per_tx_limit: treasury.perTxLimit.toString(),
+          weekly_limit: treasury.weeklyLimit.toString(),
+          spent_today: treasury.spentToday.toString(),
+          spent_this_week: treasury.spentThisWeek.toString(),
+          streaming_active: treasury.streamingActive,
+        } : null,
+        vaults: vaults.filter((v) => v.exists).map((v) => ({
+          mint: v.mint.toBase58(),
+          amount: v.amount.toString(),
+        })),
+      };
+    },
+  };
+}
+
+export function saepWithdrawAction(cluster: SakCluster, opts?: SaepPluginOptions): Action {
+  const schema = z.object({
+    agent_did_hex: Hex32,
+    mint: Base58,
+    destination: Base58,
+    amount: z.string().regex(/^\d+$/),
+    price_feed: Base58.optional(),
+  });
+  return {
+    name: 'SAEP_WITHDRAW',
+    similes: [
+      'withdraw my saep earnings',
+      'cash out from saep',
+      'take my money out',
+      'withdraw from agent treasury',
+    ],
+    description:
+      'Withdraw funds from the agent treasury vault. Requires operator to be the wallet signer. ' +
+      'Amount is in raw token units (micro-USDC for USDC). Optional price_feed for cross-mint limit enforcement. ' +
+      'Args: { agent_did_hex, mint, destination, amount, price_feed? }.',
+    examples: [
+      {
+        input: 'Withdraw 10 USDC from my agent treasury',
+        output:
+          'SAEP_WITHDRAW { agent_did_hex: "4af3...", mint: "EPjFWdd...", ' +
+          'destination: "9ATA...", amount: "10000000" }',
+      },
+    ],
+    schema,
+    handler: async (agent, input) => {
+      const { config, provider } = contextFor(agent, cluster);
+      const ts = treasuryStandardProgram(provider, config);
+
+      const ix = await buildWithdrawIx(ts, {
+        operator: agent.wallet.publicKey,
+        agentDid: hexToBytes(input.agent_did_hex),
+        mint: new PublicKey(input.mint),
+        destination: new PublicKey(input.destination),
+        amount: BigInt(input.amount),
+        priceFeed: input.price_feed ? new PublicKey(input.price_feed) : undefined,
+      });
+      const tx = new Transaction().add(ix);
+      enforceGuardrails(opts);
+      const signature = await provider.sendAndConfirm(tx);
+      return {
+        cluster,
+        signature,
+        agent_did_hex: input.agent_did_hex,
+        mint: input.mint,
+        amount: input.amount,
+      };
+    },
+  };
+}
+
 export function saepPlugin(cluster: SakCluster = 'devnet', opts?: SaepPluginOptions): Action[] {
   return [
     saepRegisterAgentAction(cluster, opts),
     saepListTasksAction(cluster, opts),
+    saepCheckReputationAction(cluster, opts),
     saepBidAction(cluster, opts),
     saepRevealBidAction(cluster, opts),
     saepSubmitResultAction(cluster, opts),
+    saepWithdrawAction(cluster, opts),
   ];
 }
