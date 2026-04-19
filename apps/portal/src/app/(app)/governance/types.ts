@@ -1,13 +1,17 @@
 import type { PublicKey } from '@solana/web3.js';
 
+// Anchor decodes Rust enums as `{ variantName: {} }`. Once @saep/sdk is rebuilt,
+// import `AnchorEnum` from there instead.
+export type AnchorEnum<K extends string = string> = { [key in K]?: Record<string, never> };
+
 export interface ProposalRow {
   address: PublicKey;
   proposalId: bigint;
   proposer: PublicKey;
-  category: Record<string, unknown>;
+  category: AnchorEnum;
   targetProgram: PublicKey;
   metadataUri: Uint8Array;
-  status: Record<string, unknown>;
+  status: AnchorEnum;
   createdAt: number;
   voteStart: number;
   voteEnd: number;
@@ -74,15 +78,15 @@ export const FILTER_TYPES = [
   { value: 'Meta', label: 'Slashing parameter' },
 ] as const;
 
-export function categoryKey(cat: Record<string, unknown>): ProposalCategory {
+export function categoryKey(cat: AnchorEnum): ProposalCategory {
   return (Object.keys(cat)[0] as ProposalCategory) ?? 'ParameterChange';
 }
 
-export function statusKey(status: Record<string, unknown>): string {
+export function statusKey(status: AnchorEnum): string {
   return Object.keys(status)[0]?.toLowerCase() ?? 'unknown';
 }
 
-export function statusLabel(status: Record<string, unknown>): string {
+export function statusLabel(status: AnchorEnum): string {
   const key = statusKey(status);
   const labels: Record<string, string> = {
     voting: 'Voting',
@@ -97,7 +101,7 @@ export function statusLabel(status: Record<string, unknown>): string {
   return labels[key] ?? key;
 }
 
-export function statusColor(status: Record<string, unknown>): string {
+export function statusColor(status: AnchorEnum): string {
   const key = statusKey(status);
   const colors: Record<string, string> = {
     voting: 'text-lime/70',
@@ -118,9 +122,5 @@ export function truncateKey(key: PublicKey): string {
 }
 
 export function decodeMetadataUri(raw: Uint8Array): string {
-  try {
-    return new TextDecoder().decode(raw).replace(/\0+$/, '');
-  } catch {
-    return '';
-  }
+  return new TextDecoder().decode(raw).replace(/\0+$/, '');
 }

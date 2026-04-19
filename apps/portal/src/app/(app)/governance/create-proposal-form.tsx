@@ -106,7 +106,7 @@ export function CreateProposalForm({ config, walletConnected }: Props) {
 
       const metadataBytes = Buffer.from(metadataUri, 'utf-8');
 
-      // placeholder snapshot -- real impl reads from staking snapshot oracle
+      // [STUB] zeroed until staking snapshot oracle is wired
       const snapshot = {
         totalEligibleWeight: 0n as unknown as number,
         snapshotSlot: 0n as unknown as number,

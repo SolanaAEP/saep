@@ -26,5 +26,5 @@ export type Action<S extends z.ZodTypeAny = z.ZodTypeAny> = {
   description: string;
   examples: Array<{ input: string; output: string }>;
   schema: S;
-  handler: (agent: SakAgentLike, input: z.infer<S>) => Promise<unknown>;
+  handler: (agent: SakAgentLike, input: z.infer<S>) => Promise<Record<string, unknown>>;
 };

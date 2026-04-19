@@ -5,6 +5,8 @@ import {
 } from '@solana/web3.js';
 import bs58 from 'bs58';
 
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
 export interface JitoSubmitterConfig {
   blockEngineUrl: string;
   authToken?: string;
@@ -140,7 +142,7 @@ export class JitoBundleSubmitter {
     return (res ?? []).map((pubkey) => ({ pubkey }));
   }
 
-  private async rpc<T>(method: string, params: unknown[]): Promise<T> {
+  private async rpc<T>(method: string, params: JsonValue[]): Promise<T> {
     const headers: Record<string, string> = { 'content-type': 'application/json' };
     if (this.authToken) headers['x-jito-auth'] = this.authToken;
 

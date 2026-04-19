@@ -9,7 +9,7 @@ import { ActiveProposalsGrid } from './proposals-grid';
 import { VotingModal } from './voting-modal';
 import { ProposalHistory } from './proposal-history';
 import { CreateProposalForm } from './create-proposal-form';
-import type { ProposalRow, GovernanceConfigData } from './types';
+import type { ProposalRow, GovernanceConfigData, AnchorEnum } from './types';
 
 const GOVERNANCE_CONFIG_SEED = Buffer.from('governance_config');
 
@@ -47,7 +47,8 @@ function useAllProposals() {
     enabled: Boolean(program),
     staleTime: 15_000,
     queryFn: async () => {
-      const account = program!.account as Record<string, { all: () => Promise<Array<{ publicKey: PublicKey; account: Record<string, unknown> }>> }>;
+      type ProposalAccessor = { all: () => Promise<Array<{ publicKey: PublicKey; account: Record<string, unknown> }>> };
+      const account = program!.account as Record<string, ProposalAccessor>;
       const accessor = account['proposalAccount'] ?? account['ProposalAccount'];
       if (!accessor) return [];
       const raw = await accessor.all();
@@ -55,10 +56,10 @@ function useAllProposals() {
         address: r.publicKey,
         proposalId: r.account.proposalId as bigint,
         proposer: r.account.proposer as PublicKey,
-        category: r.account.category as Record<string, unknown>,
+        category: r.account.category as AnchorEnum,
         targetProgram: r.account.targetProgram as PublicKey,
         metadataUri: r.account.metadataUri as Uint8Array,
-        status: r.account.status as Record<string, unknown>,
+        status: r.account.status as AnchorEnum,
         createdAt: Number(r.account.createdAt as bigint),
         voteStart: Number(r.account.voteStart as bigint),
         voteEnd: Number(r.account.voteEnd as bigint),
@@ -165,6 +166,6 @@ export default function GovernancePage() {
   );
 }
 
-function statusKey(status: Record<string, unknown>): string {
+function statusKey(status: AnchorEnum): string {
   return Object.keys(status)[0]?.toLowerCase() ?? 'unknown';
 }

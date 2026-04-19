@@ -113,11 +113,12 @@ export function useAnchorAccount<T extends Idl>(
     enabled: Boolean(key && program),
     staleTime,
     queryFn: async () => {
-      const account = (program!.account as Record<string, { fetchNullable: (addr: PublicKey) => Promise<unknown> }>);
+      type AnchorAccountAccessor = { fetchNullable: (addr: PublicKey) => Promise<Record<string, unknown> | null> };
+      const account = program!.account as Record<string, AnchorAccountAccessor>;
       const camelName = accountName.charAt(0).toLowerCase() + accountName.slice(1);
       const accessor = account[camelName] ?? account[accountName];
       if (!accessor) throw new Error(`Unknown account type: ${accountName}`);
-      return (await accessor.fetchNullable(new PublicKey(key!))) as Record<string, unknown> | null;
+      return accessor.fetchNullable(new PublicKey(key!));
     },
   });
 }

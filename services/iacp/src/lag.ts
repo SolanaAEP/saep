@@ -16,7 +16,7 @@ export interface LagSamplerOptions {
 // Narrow shape we need — avoids depending on ioredis's overload soup, and
 // lets tests pass a plain fake without `as unknown as Redis`.
 export interface PendingClient {
-  xpending(topic: string, group: string): Promise<unknown>;
+  xpending(topic: string, group: string): Promise<unknown[] | null>;
 }
 
 // Polls XPENDING per known topic, parses the oldest pending entry id
@@ -78,7 +78,7 @@ export class LagSampler {
   }
 
   private async sampleTopic(topic: string, now: number): Promise<number | null> {
-    let summary: unknown;
+    let summary: unknown[] | null;
     try {
       summary = await this.redis.xpending(topic, this.group);
     } catch (err) {
@@ -88,7 +88,7 @@ export class LagSampler {
       this.log.warn({ err: msg, topic }, 'xpending failed');
       return null;
     }
-    if (!Array.isArray(summary) || summary.length < 2) return 0;
+    if (!summary || summary.length < 2) return 0;
     const count = Number(summary[0]);
     if (!Number.isFinite(count) || count === 0) return 0;
     const minId = summary[1];

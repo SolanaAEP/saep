@@ -6,6 +6,24 @@ import type { TaskMarket } from '../generated/task_market.js';
 import type { ProofVerifier } from '../generated/proof_verifier.js';
 import type { CapabilityRegistry } from '../generated/capability_registry.js';
 import { agentAccountPda, treasuryPda, taskPda, verifierConfigPda, verifierKeyPda, capabilityConfigPda, treasuryAllowedMintsPda, vaultPda, bidBookPda, bidPda, categoryReputationPda } from '../pda/index.js';
+import type {
+  AnchorEnum,
+  AgentStatusEnum,
+  StreamStatusEnum,
+  TaskStatusEnum,
+  BidPhaseEnum,
+  DecodedAgentAccount,
+  DecodedPaymentStream,
+  DecodedTaskContract,
+  DecodedTaskPayload as DecodedTaskPayloadRaw,
+  DecodedBidBook,
+  DecodedBid,
+  DecodedVerifierConfig,
+  DecodedVerifierKey,
+  DecodedCategoryReputation,
+  DecodedRegistryConfig,
+  DecodedReputationScore,
+} from './anchor-decoded.js';
 
 export interface AgentSummary {
   address: PublicKey;
@@ -28,7 +46,7 @@ const decodeUri = (bytes: number[]): string => {
   return new TextDecoder().decode(Uint8Array.from(slice));
 };
 
-const statusFromEnum = (s: Record<string, unknown>): AgentSummary['status'] => {
+const statusFromEnum = (s: AnchorEnum): AgentSummary['status'] => {
   if ('active' in s) return 'active';
   if ('paused' in s) return 'paused';
   if ('suspended' in s) return 'suspended';
@@ -42,20 +60,27 @@ export async function fetchAgentsByOperator(
   const accounts = await program.account.agentAccount.all([
     { memcmp: { offset: 8, bytes: operator.toBase58() } },
   ]);
-  return accounts.map(({ publicKey, account }) => ({
-    address: publicKey,
-    operator: account.operator,
-    agentId: Uint8Array.from(account.agentId as number[]),
-    did: Uint8Array.from(account.did as number[]),
-    manifestUri: decodeUri(account.manifestUri as number[]),
-    capabilityMask: BigInt((account.capabilityMask as BN).toString()),
-    priceLamports: BigInt((account.priceLamports as BN).toString()),
-    streamRate: BigInt((account.streamRate as BN).toString()),
-    stakeAmount: BigInt((account.stakeAmount as BN).toString()),
-    status: statusFromEnum(account.status as Record<string, unknown>),
-    jobsCompleted: BigInt((account.jobsCompleted as BN).toString()),
-    registeredAt: (account.registeredAt as BN).toNumber(),
-  }));
+  return accounts.map(({ publicKey, account }) => {
+    const a = account as DecodedAgentAccount;
+    return toAgentSummary(publicKey, a);
+  });
+}
+
+function toAgentSummary(address: PublicKey, a: DecodedAgentAccount): AgentSummary {
+  return {
+    address,
+    operator: a.operator,
+    agentId: Uint8Array.from(a.agentId),
+    did: Uint8Array.from(a.did),
+    manifestUri: decodeUri(a.manifestUri),
+    capabilityMask: BigInt(a.capabilityMask.toString()),
+    priceLamports: BigInt(a.priceLamports.toString()),
+    streamRate: BigInt(a.streamRate.toString()),
+    stakeAmount: BigInt(a.stakeAmount.toString()),
+    status: statusFromEnum(a.status),
+    jobsCompleted: BigInt(a.jobsCompleted.toString()),
+    registeredAt: a.registeredAt.toNumber(),
+  };
 }
 
 export async function fetchAgent(
@@ -66,20 +91,8 @@ export async function fetchAgent(
   const [addr] = agentAccountPda(program.programId, operator, agentId);
   const raw = await program.account.agentAccount.fetchNullable(addr);
   if (!raw) return null;
-  return {
-    address: addr,
-    operator: raw.operator,
-    agentId: Uint8Array.from(raw.agentId as number[]),
-    did: Uint8Array.from(raw.did as number[]),
-    manifestUri: decodeUri(raw.manifestUri as number[]),
-    capabilityMask: BigInt((raw.capabilityMask as BN).toString()),
-    priceLamports: BigInt((raw.priceLamports as BN).toString()),
-    streamRate: BigInt((raw.streamRate as BN).toString()),
-    stakeAmount: BigInt((raw.stakeAmount as BN).toString()),
-    status: statusFromEnum(raw.status as Record<string, unknown>),
-    jobsCompleted: BigInt((raw.jobsCompleted as BN).toString()),
-    registeredAt: (raw.registeredAt as BN).toNumber(),
-  };
+  const a = raw as DecodedAgentAccount;
+  return toAgentSummary(addr, a);
 }
 
 export interface TreasurySummary {
@@ -125,7 +138,7 @@ export async function fetchTreasury(
   };
 }
 
-const streamStatusFromEnum = (s: Record<string, unknown>): StreamSummary['status'] => {
+const streamStatusFromEnum = (s: AnchorEnum): StreamSummary['status'] => {
   if ('active' in s) return 'active';
   if ('paused' in s) return 'paused';
   if ('closed' in s) return 'closed';
@@ -155,20 +168,23 @@ export async function fetchStreamsByAgent(
   const accounts = await program.account.paymentStream.all([
     { memcmp: { offset: 8, bytes: didKey.toBase58() } },
   ]);
-  return accounts.map(({ publicKey, account }) => ({
-    address: publicKey,
-    agentDid: Uint8Array.from(account.agentDid as number[]),
-    client: account.client as PublicKey,
-    payerMint: account.payerMint as PublicKey,
-    payoutMint: account.payoutMint as PublicKey,
-    ratePerSec: BigInt((account.ratePerSec as BN).toString()),
-    startTime: (account.startTime as BN).toNumber(),
-    maxDuration: (account.maxDuration as BN).toNumber(),
-    depositTotal: BigInt((account.depositTotal as BN).toString()),
-    withdrawn: BigInt((account.withdrawn as BN).toString()),
-    status: streamStatusFromEnum(account.status as Record<string, unknown>),
-    streamNonce: Uint8Array.from(account.streamNonce as number[]),
-  }));
+  return accounts.map(({ publicKey, account }) => {
+    const s = account as DecodedPaymentStream;
+    return {
+      address: publicKey,
+      agentDid: Uint8Array.from(s.agentDid),
+      client: s.client,
+      payerMint: s.payerMint,
+      payoutMint: s.payoutMint,
+      ratePerSec: BigInt(s.ratePerSec.toString()),
+      startTime: s.startTime.toNumber(),
+      maxDuration: s.maxDuration.toNumber(),
+      depositTotal: BigInt(s.depositTotal.toString()),
+      withdrawn: BigInt(s.withdrawn.toString()),
+      status: streamStatusFromEnum(s.status),
+      streamNonce: Uint8Array.from(s.streamNonce),
+    };
+  });
 }
 
 export async function fetchAllowedMints(
@@ -207,7 +223,7 @@ export async function fetchVaultBalances(
 
 // task_market fetchers
 
-const taskStatusFromEnum = (s: Record<string, unknown>): string => {
+const taskStatusFromEnum = (s: AnchorEnum): string => {
   if ('created' in s) return 'created';
   if ('funded' in s) return 'funded';
   if ('inExecution' in s) return 'inExecution';
@@ -241,18 +257,23 @@ export async function fetchTask(
   const [addr] = taskPda(program.programId, client, taskNonce);
   const raw = await program.account.taskContract.fetchNullable(addr);
   if (!raw) return null;
+  const t = raw as DecodedTaskContract;
+  return toTaskSummary(addr, t);
+}
+
+function toTaskSummary(address: PublicKey, t: DecodedTaskContract): TaskSummary {
   return {
-    address: addr,
-    taskId: Uint8Array.from(raw.taskId as number[]),
-    client: raw.client,
-    agentDid: Uint8Array.from(raw.agentDid as number[]),
-    taskNonce: Uint8Array.from(raw.taskNonce as number[]),
-    paymentMint: raw.paymentMint,
-    paymentAmount: BigInt((raw.paymentAmount as BN).toString()),
-    status: taskStatusFromEnum(raw.status as Record<string, unknown>),
-    deadline: (raw.deadline as BN).toNumber(),
-    verified: raw.verified as boolean,
-    createdAt: (raw.createdAt as BN).toNumber(),
+    address,
+    taskId: Uint8Array.from(t.taskId),
+    client: t.client,
+    agentDid: Uint8Array.from(t.agentDid),
+    taskNonce: Uint8Array.from(t.taskNonce),
+    paymentMint: t.paymentMint,
+    paymentAmount: BigInt(t.paymentAmount.toString()),
+    status: taskStatusFromEnum(t.status),
+    deadline: t.deadline.toNumber(),
+    verified: t.verified,
+    createdAt: t.createdAt.toNumber(),
   };
 }
 
@@ -263,19 +284,7 @@ export async function fetchTasksByClient(
   const accounts = await program.account.taskContract.all([
     { memcmp: { offset: 8 + 32, bytes: client.toBase58() } },
   ]);
-  return accounts.map(({ publicKey, account }) => ({
-    address: publicKey,
-    taskId: Uint8Array.from(account.taskId as number[]),
-    client: account.client,
-    agentDid: Uint8Array.from(account.agentDid as number[]),
-    taskNonce: Uint8Array.from(account.taskNonce as number[]),
-    paymentMint: account.paymentMint,
-    paymentAmount: BigInt((account.paymentAmount as BN).toString()),
-    status: taskStatusFromEnum(account.status as Record<string, unknown>),
-    deadline: (account.deadline as BN).toNumber(),
-    verified: account.verified as boolean,
-    createdAt: (account.createdAt as BN).toNumber(),
-  }));
+  return accounts.map(({ publicKey, account }) => toTaskSummary(publicKey, account as DecodedTaskContract));
 }
 
 export type TaskPayloadKind =
@@ -297,52 +306,52 @@ export interface TaskPayload {
   criteria: Uint8Array;
 }
 
-const decodeTaskPayload = (raw: Record<string, unknown>): TaskPayload => {
-  const kindRaw = raw.kind as Record<string, unknown>;
+const decodeTaskPayload = (raw: DecodedTaskPayloadRaw): TaskPayload => {
+  const kindRaw = raw.kind;
   let kind: TaskPayloadKind;
   if ('swapExact' in kindRaw) {
-    const k = kindRaw.swapExact as Record<string, unknown>;
+    const k = kindRaw.swapExact!;
     kind = {
       type: 'swapExact',
-      inMint: k.inMint as PublicKey,
-      outMint: k.outMint as PublicKey,
-      amountIn: BigInt((k.amountIn as BN).toString()),
-      minOut: BigInt((k.minOut as BN).toString()),
+      inMint: k.inMint,
+      outMint: k.outMint,
+      amountIn: BigInt(k.amountIn.toString()),
+      minOut: BigInt(k.minOut.toString()),
     };
   } else if ('transfer' in kindRaw) {
-    const k = kindRaw.transfer as Record<string, unknown>;
+    const k = kindRaw.transfer!;
     kind = {
       type: 'transfer',
-      mint: k.mint as PublicKey,
-      to: k.to as PublicKey,
-      amount: BigInt((k.amount as BN).toString()),
+      mint: k.mint,
+      to: k.to,
+      amount: BigInt(k.amount.toString()),
     };
   } else if ('dataFetch' in kindRaw) {
-    const k = kindRaw.dataFetch as Record<string, unknown>;
+    const k = kindRaw.dataFetch!;
     kind = {
       type: 'dataFetch',
-      urlHash: Uint8Array.from(k.urlHash as number[]),
-      expectedHash: Uint8Array.from(k.expectedHash as number[]),
+      urlHash: Uint8Array.from(k.urlHash),
+      expectedHash: Uint8Array.from(k.expectedHash),
     };
   } else if ('compute' in kindRaw) {
-    const k = kindRaw.compute as Record<string, unknown>;
+    const k = kindRaw.compute!;
     kind = {
       type: 'compute',
-      circuitId: Uint8Array.from(k.circuitId as number[]),
-      publicInputsHash: Uint8Array.from(k.publicInputsHash as number[]),
+      circuitId: Uint8Array.from(k.circuitId),
+      publicInputsHash: Uint8Array.from(k.publicInputsHash),
     };
   } else {
-    const k = kindRaw.generic as Record<string, unknown>;
+    const k = (kindRaw as Extract<typeof kindRaw, { generic: unknown }>).generic;
     kind = {
       type: 'generic',
-      capabilityBit: k.capabilityBit as number,
-      argsHash: Uint8Array.from(k.argsHash as number[]),
+      capabilityBit: k.capabilityBit,
+      argsHash: Uint8Array.from(k.argsHash),
     };
   }
   return {
     kind,
-    capabilityBit: raw.capabilityBit as number,
-    criteria: Uint8Array.from(raw.criteria as number[]),
+    capabilityBit: raw.capabilityBit,
+    criteria: Uint8Array.from(raw.criteria),
   };
 };
 
@@ -361,30 +370,30 @@ export interface TaskDetail extends TaskSummary {
   payload: TaskPayload;
 }
 
-const toTaskDetail = (address: PublicKey, raw: Record<string, unknown>): TaskDetail => ({
+const toTaskDetail = (address: PublicKey, raw: DecodedTaskContract): TaskDetail => ({
   address,
-  taskId: Uint8Array.from(raw.taskId as number[]),
-  client: raw.client as PublicKey,
-  agentDid: Uint8Array.from(raw.agentDid as number[]),
-  taskNonce: Uint8Array.from(raw.taskNonce as number[]),
-  paymentMint: raw.paymentMint as PublicKey,
-  paymentAmount: BigInt((raw.paymentAmount as BN).toString()),
-  status: taskStatusFromEnum(raw.status as Record<string, unknown>),
-  deadline: (raw.deadline as BN).toNumber(),
-  verified: raw.verified as boolean,
-  createdAt: (raw.createdAt as BN).toNumber(),
-  taskHash: Uint8Array.from(raw.taskHash as number[]),
-  resultHash: Uint8Array.from(raw.resultHash as number[]),
-  proofKey: Uint8Array.from(raw.proofKey as number[]),
-  criteriaRoot: Uint8Array.from(raw.criteriaRoot as number[]),
-  protocolFee: BigInt((raw.protocolFee as BN).toString()),
-  solrepFee: BigInt((raw.solrepFee as BN).toString()),
-  milestoneCount: raw.milestoneCount as number,
-  milestonesComplete: raw.milestonesComplete as number,
-  fundedAt: (raw.fundedAt as BN).toNumber(),
-  submittedAt: (raw.submittedAt as BN).toNumber(),
-  disputeWindowEnd: (raw.disputeWindowEnd as BN).toNumber(),
-  payload: decodeTaskPayload(raw.payload as Record<string, unknown>),
+  taskId: Uint8Array.from(raw.taskId),
+  client: raw.client,
+  agentDid: Uint8Array.from(raw.agentDid),
+  taskNonce: Uint8Array.from(raw.taskNonce),
+  paymentMint: raw.paymentMint,
+  paymentAmount: BigInt(raw.paymentAmount.toString()),
+  status: taskStatusFromEnum(raw.status),
+  deadline: raw.deadline.toNumber(),
+  verified: raw.verified,
+  createdAt: raw.createdAt.toNumber(),
+  taskHash: Uint8Array.from(raw.taskHash),
+  resultHash: Uint8Array.from(raw.resultHash),
+  proofKey: Uint8Array.from(raw.proofKey),
+  criteriaRoot: Uint8Array.from(raw.criteriaRoot),
+  protocolFee: BigInt(raw.protocolFee.toString()),
+  solrepFee: BigInt(raw.solrepFee.toString()),
+  milestoneCount: raw.milestoneCount,
+  milestonesComplete: raw.milestonesComplete,
+  fundedAt: raw.fundedAt.toNumber(),
+  submittedAt: raw.submittedAt.toNumber(),
+  disputeWindowEnd: raw.disputeWindowEnd.toNumber(),
+  payload: decodeTaskPayload(raw.payload),
 });
 
 export async function fetchTaskById(
@@ -400,14 +409,14 @@ export async function fetchTaskById(
   ]);
   const first = accounts[0];
   if (!first) return null;
-  return toTaskDetail(first.publicKey, first.account as unknown as Record<string, unknown>);
+  return toTaskDetail(first.publicKey, first.account as DecodedTaskContract);
 }
 
 // bid_book / bid fetchers
 
 export type BidPhase = 'commit' | 'reveal' | 'settled' | 'cancelled';
 
-const bidPhaseFromEnum = (s: Record<string, unknown>): BidPhase => {
+const bidPhaseFromEnum = (s: AnchorEnum): BidPhase => {
   if ('commit' in s) return 'commit';
   if ('reveal' in s) return 'reveal';
   if ('settled' in s) return 'settled';
@@ -435,24 +444,22 @@ export async function fetchBidBook(
   taskId: Uint8Array,
 ): Promise<BidBookSummary | null> {
   const [addr] = bidBookPda(program.programId, taskId);
-  const raw = (await program.account.bidBook.fetchNullable(addr)) as
-    | Record<string, unknown>
-    | null;
+  const raw = (await program.account.bidBook.fetchNullable(addr)) as DecodedBidBook | null;
   if (!raw) return null;
   return {
     address: addr,
-    taskId: Uint8Array.from(raw.taskId as number[]),
-    commitStart: (raw.commitStart as BN).toNumber(),
-    commitEnd: (raw.commitEnd as BN).toNumber(),
-    revealEnd: (raw.revealEnd as BN).toNumber(),
-    bondAmount: BigInt((raw.bondAmount as BN).toString()),
-    bondMint: raw.bondMint as PublicKey,
-    commitCount: raw.commitCount as number,
-    revealCount: raw.revealCount as number,
-    winnerAgent: (raw.winnerAgent as PublicKey | null) ?? null,
-    winnerBidder: (raw.winnerBidder as PublicKey | null) ?? null,
-    winnerAmount: BigInt((raw.winnerAmount as BN).toString()),
-    phase: bidPhaseFromEnum(raw.phase as Record<string, unknown>),
+    taskId: Uint8Array.from(raw.taskId),
+    commitStart: raw.commitStart.toNumber(),
+    commitEnd: raw.commitEnd.toNumber(),
+    revealEnd: raw.revealEnd.toNumber(),
+    bondAmount: BigInt(raw.bondAmount.toString()),
+    bondMint: raw.bondMint,
+    commitCount: raw.commitCount,
+    revealCount: raw.revealCount,
+    winnerAgent: raw.winnerAgent ?? null,
+    winnerBidder: raw.winnerBidder ?? null,
+    winnerAmount: BigInt(raw.winnerAmount.toString()),
+    phase: bidPhaseFromEnum(raw.phase),
   };
 }
 
@@ -469,17 +476,17 @@ export interface BidSummary {
   slashed: boolean;
 }
 
-const toBidSummary = (address: PublicKey, raw: Record<string, unknown>): BidSummary => ({
+const toBidSummary = (address: PublicKey, raw: DecodedBid): BidSummary => ({
   address,
-  taskId: Uint8Array.from(raw.taskId as number[]),
-  agentDid: Uint8Array.from(raw.agentDid as number[]),
-  bidder: raw.bidder as PublicKey,
-  commitHash: Uint8Array.from(raw.commitHash as number[]),
-  bondPaid: BigInt((raw.bondPaid as BN).toString()),
-  revealedAmount: BigInt((raw.revealedAmount as BN).toString()),
-  revealed: raw.revealed as boolean,
-  refunded: raw.refunded as boolean,
-  slashed: raw.slashed as boolean,
+  taskId: Uint8Array.from(raw.taskId),
+  agentDid: Uint8Array.from(raw.agentDid),
+  bidder: raw.bidder,
+  commitHash: Uint8Array.from(raw.commitHash),
+  bondPaid: BigInt(raw.bondPaid.toString()),
+  revealedAmount: BigInt(raw.revealedAmount.toString()),
+  revealed: raw.revealed,
+  refunded: raw.refunded,
+  slashed: raw.slashed,
 });
 
 export async function fetchBid(
@@ -488,9 +495,7 @@ export async function fetchBid(
   bidder: PublicKey,
 ): Promise<BidSummary | null> {
   const [addr] = bidPda(program.programId, taskId, bidder);
-  const raw = (await program.account.bid.fetchNullable(addr)) as
-    | Record<string, unknown>
-    | null;
+  const raw = (await program.account.bid.fetchNullable(addr)) as DecodedBid | null;
   if (!raw) return null;
   return toBidSummary(addr, raw);
 }
@@ -504,7 +509,7 @@ export async function fetchBidsForTask(
     { memcmp: { offset: 8, bytes: taskIdKey.toBase58() } },
   ]);
   return accounts.map(({ publicKey, account }) =>
-    toBidSummary(publicKey, account as unknown as Record<string, unknown>),
+    toBidSummary(publicKey, account as DecodedBid),
   );
 }
 
@@ -525,13 +530,14 @@ export async function fetchVerifierConfig(
   const [addr] = verifierConfigPda(program.programId);
   const raw = await program.account.verifierConfig.fetchNullable(addr);
   if (!raw) return null;
+  const vc = raw as DecodedVerifierConfig;
   return {
     address: addr,
-    authority: raw.authority,
-    activeVk: raw.activeVk,
-    pendingVk: (raw.pendingVk as PublicKey | null) ?? null,
-    pendingActivatesAt: (raw.pendingActivatesAt as BN).toNumber(),
-    paused: raw.paused as boolean,
+    authority: vc.authority,
+    activeVk: vc.activeVk,
+    pendingVk: vc.pendingVk ?? null,
+    pendingActivatesAt: vc.pendingActivatesAt.toNumber(),
+    paused: vc.paused,
   };
 }
 
@@ -552,14 +558,15 @@ export async function fetchVerifierKey(
   const [addr] = verifierKeyPda(program.programId, vkId);
   const raw = await program.account.verifierKey.fetchNullable(addr);
   if (!raw) return null;
+  const vk = raw as DecodedVerifierKey;
   return {
     address: addr,
-    vkId: Uint8Array.from(raw.vkId as number[]),
-    circuitLabel: Uint8Array.from(raw.circuitLabel as number[]),
-    isProduction: raw.isProduction as boolean,
-    numPublicInputs: raw.numPublicInputs as number,
-    registeredAt: (raw.registeredAt as BN).toNumber(),
-    registeredBy: raw.registeredBy,
+    vkId: Uint8Array.from(vk.vkId),
+    circuitLabel: Uint8Array.from(vk.circuitLabel),
+    isProduction: vk.isProduction,
+    numPublicInputs: vk.numPublicInputs,
+    registeredAt: vk.registeredAt.toNumber(),
+    registeredBy: vk.registeredBy,
   };
 }
 
@@ -584,35 +591,35 @@ export interface AgentDetail extends AgentSummary {
   delegate: PublicKey | null;
 }
 
-const toDetail = (address: PublicKey, raw: Record<string, unknown>): AgentDetail => {
-  const rep = raw.reputation as Record<string, unknown>;
+const toDetail = (address: PublicKey, raw: DecodedAgentAccount): AgentDetail => {
+  const rep = raw.reputation;
   return {
     address,
-    operator: raw.operator as PublicKey,
-    agentId: Uint8Array.from(raw.agentId as number[]),
-    did: Uint8Array.from(raw.did as number[]),
-    manifestUri: decodeUri(raw.manifestUri as number[]),
-    capabilityMask: BigInt((raw.capabilityMask as BN).toString()),
-    priceLamports: BigInt((raw.priceLamports as BN).toString()),
-    streamRate: BigInt((raw.streamRate as BN).toString()),
-    stakeAmount: BigInt((raw.stakeAmount as BN).toString()),
-    status: statusFromEnum(raw.status as Record<string, unknown>),
-    jobsCompleted: BigInt((raw.jobsCompleted as BN).toString()),
-    registeredAt: (raw.registeredAt as BN).toNumber(),
+    operator: raw.operator,
+    agentId: Uint8Array.from(raw.agentId),
+    did: Uint8Array.from(raw.did),
+    manifestUri: decodeUri(raw.manifestUri),
+    capabilityMask: BigInt(raw.capabilityMask.toString()),
+    priceLamports: BigInt(raw.priceLamports.toString()),
+    streamRate: BigInt(raw.streamRate.toString()),
+    stakeAmount: BigInt(raw.stakeAmount.toString()),
+    status: statusFromEnum(raw.status),
+    jobsCompleted: BigInt(raw.jobsCompleted.toString()),
+    registeredAt: raw.registeredAt.toNumber(),
     reputation: {
-      quality: rep.quality as number,
-      timeliness: rep.timeliness as number,
-      availability: rep.availability as number,
-      costEfficiency: rep.costEfficiency as number,
-      honesty: rep.honesty as number,
-      volume: rep.volume as number,
-      sampleCount: rep.sampleCount as number,
-      lastUpdate: (rep.lastUpdate as BN).toNumber(),
+      quality: rep.quality,
+      timeliness: rep.timeliness,
+      availability: rep.availability,
+      costEfficiency: rep.costEfficiency,
+      honesty: rep.honesty,
+      volume: rep.volume,
+      sampleCount: rep.sampleCount,
+      lastUpdate: rep.lastUpdate.toNumber(),
     },
-    jobsDisputed: raw.jobsDisputed as number,
-    version: raw.version as number,
-    lastActive: (raw.lastActive as BN).toNumber(),
-    delegate: (raw.delegate as PublicKey | null) ?? null,
+    jobsDisputed: raw.jobsDisputed,
+    version: raw.version,
+    lastActive: raw.lastActive.toNumber(),
+    delegate: raw.delegate ?? null,
   };
 };
 
@@ -630,7 +637,7 @@ export async function fetchAgentByDid(
   ]);
   const first = accounts[0];
   if (!first) return null;
-  return toDetail(first.publicKey, first.account as unknown as Record<string, unknown>);
+  return toDetail(first.publicKey, first.account as DecodedAgentAccount);
 }
 
 export async function fetchTasksByAgent(
@@ -645,19 +652,7 @@ export async function fetchTasksByAgent(
   const accounts = await program.account.taskContract.all([
     { memcmp: { offset: 72, bytes: didKey.toBase58() } },
   ]);
-  return accounts.map(({ publicKey, account }) => ({
-    address: publicKey,
-    taskId: Uint8Array.from(account.taskId as number[]),
-    client: account.client,
-    agentDid: Uint8Array.from(account.agentDid as number[]),
-    taskNonce: Uint8Array.from(account.taskNonce as number[]),
-    paymentMint: account.paymentMint,
-    paymentAmount: BigInt((account.paymentAmount as BN).toString()),
-    status: taskStatusFromEnum(account.status as Record<string, unknown>),
-    deadline: (account.deadline as BN).toNumber(),
-    verified: account.verified as boolean,
-    createdAt: (account.createdAt as BN).toNumber(),
-  }));
+  return accounts.map(({ publicKey, account }) => toTaskSummary(publicKey, account as DecodedTaskContract));
 }
 
 // all agents (marketplace)
@@ -666,20 +661,7 @@ export async function fetchAllAgents(
   program: Program<AgentRegistry>,
 ): Promise<AgentSummary[]> {
   const accounts = await program.account.agentAccount.all();
-  return accounts.map(({ publicKey, account }) => ({
-    address: publicKey,
-    operator: account.operator,
-    agentId: Uint8Array.from(account.agentId as number[]),
-    did: Uint8Array.from(account.did as number[]),
-    manifestUri: decodeUri(account.manifestUri as number[]),
-    capabilityMask: BigInt((account.capabilityMask as BN).toString()),
-    priceLamports: BigInt((account.priceLamports as BN).toString()),
-    streamRate: BigInt((account.streamRate as BN).toString()),
-    stakeAmount: BigInt((account.stakeAmount as BN).toString()),
-    status: statusFromEnum(account.status as Record<string, unknown>),
-    jobsCompleted: BigInt((account.jobsCompleted as BN).toString()),
-    registeredAt: (account.registeredAt as BN).toNumber(),
-  }));
+  return accounts.map(({ publicKey, account }) => toAgentSummary(publicKey, account as DecodedAgentAccount));
 }
 
 export async function fetchAllAgentsDetailed(
@@ -687,7 +669,7 @@ export async function fetchAllAgentsDetailed(
 ): Promise<AgentDetail[]> {
   const accounts = await program.account.agentAccount.all();
   return accounts.map(({ publicKey, account }) =>
-    toDetail(publicKey, account as unknown as Record<string, unknown>),
+    toDetail(publicKey, account as DecodedAgentAccount),
   );
 }
 
@@ -714,26 +696,26 @@ export interface CategoryReputationSummary {
 
 const toCategoryRep = (
   address: PublicKey,
-  raw: Record<string, unknown>,
+  raw: DecodedCategoryReputation,
 ): CategoryReputationSummary => {
-  const score = raw.score as Record<string, unknown>;
+  const score = raw.score;
   return {
     address,
-    agentDid: Uint8Array.from(raw.agentDid as number[]),
-    capabilityBit: raw.capabilityBit as number,
-    quality: score.quality as number,
-    timeliness: score.timeliness as number,
-    availability: score.availability as number,
-    costEfficiency: score.costEfficiency as number,
-    honesty: score.honesty as number,
-    volume: score.volume as number,
-    sampleCount: score.sampleCount as number,
-    lastUpdate: (score.lastUpdate as BN).toNumber(),
-    jobsCompleted: raw.jobsCompleted as number,
-    jobsDisputed: raw.jobsDisputed as number,
-    lastProofKey: Uint8Array.from(raw.lastProofKey as number[]),
-    lastTaskId: Uint8Array.from(raw.lastTaskId as number[]),
-    version: raw.version as number,
+    agentDid: Uint8Array.from(raw.agentDid),
+    capabilityBit: raw.capabilityBit,
+    quality: score.quality,
+    timeliness: score.timeliness,
+    availability: score.availability,
+    costEfficiency: score.costEfficiency,
+    honesty: score.honesty,
+    volume: score.volume,
+    sampleCount: score.sampleCount,
+    lastUpdate: score.lastUpdate.toNumber(),
+    jobsCompleted: raw.jobsCompleted,
+    jobsDisputed: raw.jobsDisputed,
+    lastProofKey: Uint8Array.from(raw.lastProofKey),
+    lastTaskId: Uint8Array.from(raw.lastTaskId),
+    version: raw.version,
   };
 };
 
@@ -743,9 +725,7 @@ export async function fetchCategoryReputation(
   capabilityBit: number,
 ): Promise<CategoryReputationSummary | null> {
   const [addr] = categoryReputationPda(program.programId, agentDid, capabilityBit);
-  const raw = (await program.account.categoryReputation.fetchNullable(addr)) as
-    | Record<string, unknown>
-    | null;
+  const raw = (await program.account.categoryReputation.fetchNullable(addr)) as DecodedCategoryReputation | null;
   if (!raw) return null;
   return toCategoryRep(addr, raw);
 }
@@ -759,7 +739,7 @@ export async function fetchCategoryReputationsByAgent(
     { memcmp: { offset: 8, bytes: didKey.toBase58() } },
   ]);
   return accounts.map(({ publicKey, account }) =>
-    toCategoryRep(publicKey, account as unknown as Record<string, unknown>),
+    toCategoryRep(publicKey, account as DecodedCategoryReputation),
   );
 }
 
@@ -779,11 +759,33 @@ export async function fetchRegistryConfig(
   const [addr] = capabilityConfigPda(program.programId);
   const raw = await program.account.registryConfig.fetchNullable(addr);
   if (!raw) return null;
+  const rc = raw as DecodedRegistryConfig;
   return {
     address: addr,
-    authority: raw.authority,
-    approvedMask: BigInt((raw.approvedMask as BN).toString()),
-    tagCount: raw.tagCount as number,
-    paused: raw.paused as boolean,
+    authority: rc.authority,
+    approvedMask: BigInt(rc.approvedMask.toString()),
+    tagCount: rc.tagCount,
+    paused: rc.paused,
   };
 }
+
+export type {
+  AnchorEnum,
+  AgentStatusEnum,
+  StreamStatusEnum,
+  TaskStatusEnum,
+  BidPhaseEnum,
+  DecodedAgentAccount,
+  DecodedPaymentStream,
+  DecodedTaskContract,
+  DecodedBidBook,
+  DecodedBid,
+  DecodedVerifierConfig,
+  DecodedVerifierKey,
+  DecodedCategoryReputation,
+  DecodedRegistryConfig,
+  DecodedReputationScore,
+  ProposalCategoryEnum,
+  ProposalStatusEnum,
+  DecodedProposal,
+} from './anchor-decoded.js';

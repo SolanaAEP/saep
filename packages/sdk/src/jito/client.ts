@@ -6,6 +6,8 @@ import {
 } from '@solana/web3.js';
 import bs58 from 'bs58';
 
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
 export interface JitoConfig {
   blockEngineUrl: string;
   connection: Connection;
@@ -100,7 +102,7 @@ export class JitoBundleClient {
     }
   }
 
-  private async rpcCall<T>(method: string, params: unknown[]): Promise<T> {
+  private async rpcCall<T>(method: string, params: JsonValue[]): Promise<T> {
     const res = await fetch(`${this.url}/api/v1/bundles`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
