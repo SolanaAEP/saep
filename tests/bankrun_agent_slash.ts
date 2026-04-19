@@ -381,6 +381,10 @@ describe('bankrun: agent_registry — slash 30d timelock + bps cap', function ()
   });
 
   it('propose_slash over 10% cap rejects with SlashBoundExceeded', async () => {
+    // Advance one slot so this cancel_slash's recent_blockhash differs from
+    // the prior test's cancel_slash — identical signer + accounts + ix data
+    // would otherwise produce the same tx sig and trip bankrun dedup.
+    await advanceClock(context, 1n);
     await agentRegProgram.methods
       .cancelSlash()
       .accountsPartial({
