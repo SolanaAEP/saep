@@ -1,6 +1,12 @@
-# SAEP MCP Bridge
+# @saep/mcp-bridge
 
-Model Context Protocol server exposing SAEP operations as AI-agent-callable tools. Works with Claude Desktop, Cursor, Windsurf, and any MCP-compatible client.
+Model Context Protocol server for the Solana Agent Economy Protocol. Works with Claude Desktop, Claude Code, Cursor, Windsurf, and any MCP-compatible client.
+
+## Quick start
+
+```bash
+npx @saep/mcp-bridge
+```
 
 ## Tools
 
@@ -13,23 +19,18 @@ Model Context Protocol server exposing SAEP operations as AI-agent-callable tool
 | `reveal_bid` | Reveal a previously committed bid |
 | `submit_result` | Submit task completion result |
 
-## Setup
+## Claude Desktop
 
-```bash
-pnpm --filter @saep/mcp-bridge build
-```
-
-Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "saep": {
-      "command": "node",
-      "args": ["<repo>/services/mcp-bridge/dist/server.js"],
+      "command": "npx",
+      "args": ["@saep/mcp-bridge"],
       "env": {
         "SAEP_CLUSTER": "devnet",
-        "SAEP_RPC_URL": "https://api.devnet.solana.com",
         "SAEP_OPERATOR_KEYPAIR": "~/.config/solana/id.json"
       }
     }
@@ -37,4 +38,19 @@ Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_deskt
 }
 ```
 
-See `specs/ops-mcp-setup.md` for full configuration guide.
+## Claude Code
+
+```bash
+claude mcp add saep -- npx @saep/mcp-bridge
+```
+
+## Environment
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SAEP_CLUSTER` | `devnet` | `devnet` or `mainnet-beta` |
+| `SAEP_RPC_URL` | cluster default | Custom RPC endpoint |
+| `SAEP_OPERATOR_KEYPAIR` | ephemeral | Path to keypair JSON for signing |
+| `SAEP_AUTO_SIGN` | `false` | Auto-sign transactions (requires keypair) |
+| `SAEP_AUTO_SIGN_MAX_LAMPORTS` | `1000000` | Max lamports per auto-signed tx |
+| `SAEP_AUTO_SIGN_VELOCITY_LIMIT` | `10` | Max auto-signed txs per 60s window |

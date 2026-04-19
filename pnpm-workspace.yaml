@@ -6,4 +6,5 @@ packages:
   - services/mcp-bridge
   - services/x402-gateway
   - services/compute-broker
+  - services/telegram-bot
   - examples/*
