@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/server.js",
   "bin": {
-    "saep-mcp": "dist/server.js"
+    "saep-mcp": "./dist/server.js"
   },
   "keywords": ["mcp", "solana", "agent", "saep", "ai-agent"],
   "license": "MIT",

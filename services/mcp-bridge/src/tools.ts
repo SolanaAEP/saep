@@ -321,7 +321,7 @@ export function buildTools(): Tool[] {
         const commitHash = computeCommitHash(amount, nonce, agentDid);
         const taskId = Uint8Array.from(task.taskId);
 
-        const ix = await buildCommitBidIx(tm, {
+        const ix = await buildCommitBidIx(tm, config, {
           bidder,
           task: taskPk,
           taskId,
@@ -399,7 +399,7 @@ export function buildTools(): Tool[] {
         }
 
         const operator = cfg.keypair?.publicKey ?? cfg.provider.wallet.publicKey;
-        const ix = await buildSubmitResultIx(tm, {
+        const ix = await buildSubmitResultIx(tm, config, {
           operator,
           task: taskPk,
           agentAccount: agentAcc.address,
