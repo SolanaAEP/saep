@@ -1,5 +1,6 @@
 'use client';
 
+import { GlitchButton } from '@saep/ui';
 import {
   type ProposalRow,
   type GovernanceConfigData,
@@ -113,13 +114,7 @@ export function ActiveProposalsGrid({ proposals, config, onVote, walletConnected
             <VoteTally proposal={p} />
             <QuorumBar proposal={p} config={config} />
 
-            <button
-              onClick={() => onVote(p)}
-              disabled={!walletConnected}
-              className="mt-auto text-xs font-medium px-4 py-2 border border-lime text-lime hover:bg-lime/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              {walletConnected ? 'Vote' : 'Connect wallet to vote'}
-            </button>
+            <GlitchButton variant="solid" size="sm" onClick={() => onVote(p)} disabled={!walletConnected} className="mt-auto">{walletConnected ? 'Vote' : 'Connect wallet to vote'}</GlitchButton>
           </div>
         );
       })}

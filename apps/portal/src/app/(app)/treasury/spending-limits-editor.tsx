@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { GlitchButton } from '@saep/ui';
 import type { AgentSummary } from '@saep/sdk';
 import { useTreasury, useSetLimits } from '@saep/sdk-ui';
 
@@ -87,14 +88,7 @@ export function SpendingLimitsEditor({ agent }: { agent: AgentSummary }) {
       {status && <p className="text-[11px] text-lime">{status}</p>}
 
       <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={submit}
-          disabled={!dirty || invalid || isPending}
-          className="text-xs px-4 py-2 border border-lime text-lime disabled:opacity-40 disabled:cursor-not-allowed hover:bg-lime/10 transition-colors"
-        >
-          {isPending ? 'Updating…' : 'Save limits'}
-        </button>
+        <GlitchButton variant="solid" size="sm" onClick={submit} disabled={!dirty || invalid || isPending}>{isPending ? 'Updating…' : 'Save limits'}</GlitchButton>
       </div>
     </div>
   );

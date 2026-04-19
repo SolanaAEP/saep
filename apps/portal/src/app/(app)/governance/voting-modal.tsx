@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { useGovernanceProgram, useSendTransaction } from '@saep/sdk-ui';
+import { GlitchButton } from '@saep/ui';
 import type { ProposalRow, GovernanceConfigData } from './types';
 import {
   categoryKey,
@@ -177,19 +178,8 @@ export function VotingModal({ proposal, config, onClose }: Props) {
         )}
 
         <div className="flex gap-2 justify-end pt-1">
-          <button
-            onClick={onClose}
-            className="text-xs px-3 py-1.5 border border-ink/20 text-ink/70 hover:border-ink/40"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleVote}
-            disabled={!choice || isPending}
-            className="text-xs font-medium px-4 py-1.5 border border-lime text-lime hover:bg-lime/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            {isPending ? 'Submitting...' : 'Cast vote'}
-          </button>
+          <GlitchButton variant="ghost" size="sm" onClick={onClose}>Cancel</GlitchButton>
+          <GlitchButton variant="solid" size="sm" onClick={handleVote} disabled={!choice || isPending}>{isPending ? 'Submitting...' : 'Cast vote'}</GlitchButton>
         </div>
       </div>
     </div>

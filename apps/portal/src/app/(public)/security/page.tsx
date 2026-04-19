@@ -78,13 +78,13 @@ export default function SecurityPage() {
           <div className="mt-4 flex flex-col md:flex-row gap-4 md:gap-10">
             <a
               href="mailto:security@buildonsaep.com"
-              className="font-display text-[24px] md:text-[28px] tracking-[-0.01em] border-b border-ink hover:text-[#06f512] hover:border-[#06f512]"
+              className="font-display text-[24px] md:text-[28px] tracking-[-0.01em] border-b border-ink hover:text-lime hover:border-lime"
             >
               security@buildonsaep.com
             </a>
             <a
               href="/SECURITY-PGP-PUBLIC.asc"
-              className="font-mono uppercase text-[11px] tracking-[0.08em] text-ink border-b border-ink/60 hover:text-[#06f512] hover:border-[#06f512] self-start md:self-center"
+              className="font-mono uppercase text-[11px] tracking-[0.08em] text-ink border-b border-ink/60 hover:text-lime hover:border-lime self-start md:self-center"
             >
               PGP public key →
             </a>

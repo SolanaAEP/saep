@@ -4,6 +4,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useSession, useSiwsSignIn, useSignOut } from '@saep/sdk-ui';
 import { useState } from 'react';
+import { GlitchButton } from '@saep/ui';
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { connected, publicKey } = useWallet();
@@ -28,8 +29,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           </p>
           <WalletMultiButton />
           {connected && publicKey ? (
-            <button
-              type="button"
+            <GlitchButton
               disabled={busy}
               onClick={async () => {
                 setBusy(true);
@@ -42,10 +42,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                   setBusy(false);
                 }
               }}
-              className="font-mono text-[11px] font-medium h-10 px-5 border border-ink text-ink hover:bg-ink hover:text-paper disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
             >
-              {busy ? 'Signing…' : 'Sign message to continue'}
-            </button>
+              {busy ? 'Signing\u2026' : 'Sign message to continue'}
+            </GlitchButton>
           ) : null}
           {error ? <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">ERR: {error}</div> : null}
         </div>

@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { useGovernanceProgram, useSendTransaction } from '@saep/sdk-ui';
+import { GlitchButton } from '@saep/ui';
 import type { GovernanceConfigData, ProposalCategory } from './types';
 import { PROPOSAL_CATEGORIES, CATEGORY_LABELS } from './types';
 
@@ -228,13 +229,7 @@ export function CreateProposalForm({ config, walletConnected }: Props) {
       )}
 
       <div className="flex gap-2 justify-end pt-1">
-        <button
-          onClick={handleSubmit}
-          disabled={!valid || isPending}
-          className="text-xs font-medium px-4 py-2 border border-lime text-lime hover:bg-lime/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-        >
-          {isPending ? 'Submitting...' : 'Submit proposal'}
-        </button>
+        <GlitchButton variant="solid" size="sm" onClick={handleSubmit} disabled={!valid || isPending}>{isPending ? 'Submitting...' : 'Submit proposal'}</GlitchButton>
       </div>
     </div>
   );

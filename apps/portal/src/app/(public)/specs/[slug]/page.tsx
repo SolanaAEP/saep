@@ -50,12 +50,12 @@ export default async function SpecPage({
     >
       <Markdown source={body} />
       <div className="mt-20 border-t border-ink/15 pt-8 flex flex-wrap gap-6 font-mono uppercase text-[11px] tracking-[0.08em]">
-        <a href="/specs" className="border-b border-ink hover:text-[#06f512] hover:border-[#06f512]">
+        <a href="/specs" className="border-b border-ink hover:text-lime hover:border-lime">
           ← All specs
         </a>
         <a
           href={`https://github.com/SolanaAEP/saep/blob/main/apps/portal/src/content/specs/${entry.file}`}
-          className="border-b border-ink hover:text-[#06f512] hover:border-[#06f512]"
+          className="border-b border-ink hover:text-lime hover:border-lime"
         >
           Edit on GitHub →
         </a>

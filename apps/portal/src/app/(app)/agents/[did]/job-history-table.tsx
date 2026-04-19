@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { GlitchButton } from '@saep/ui';
 import type { SerializedTask } from '@/lib/agent-serializer';
 
 const PAGE_SIZE = 10;
@@ -82,23 +83,11 @@ export function JobHistoryTable({ tasks }: { tasks: SerializedTask[] }) {
 
           {pageCount > 1 && (
             <div className="flex items-center justify-between text-xs text-ink/50">
-              <button
-                disabled={page === 0}
-                onClick={() => setPage((p) => p - 1)}
-                className="px-2 py-1 hover:bg-ink/5 disabled:opacity-30"
-              >
-                Prev
-              </button>
+              <GlitchButton variant="ghost" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Prev</GlitchButton>
               <span>
                 {page + 1} / {pageCount}
               </span>
-              <button
-                disabled={page >= pageCount - 1}
-                onClick={() => setPage((p) => p + 1)}
-                className="px-2 py-1 hover:bg-ink/5 disabled:opacity-30"
-              >
-                Next
-              </button>
+              <GlitchButton variant="ghost" size="sm" disabled={page >= pageCount - 1} onClick={() => setPage((p) => p + 1)}>Next</GlitchButton>
             </div>
           )}
         </>

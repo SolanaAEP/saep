@@ -7,10 +7,11 @@
     ".": "./index.js",
     "./tailwind.js": "./tailwind.js",
     "./tailwind/tokens.css": "./tailwind/tokens.css",
+    "./tailwind/shared.css": "./tailwind/shared.css",
     "./eslint.js": "./eslint.js",
     "./tsconfig.base.json": "./tsconfig.base.json"
   },
-  "files": ["tsconfig.base.json", "eslint.js", "tailwind.js", "tailwind/tokens.css", "index.js"],
+  "files": ["tsconfig.base.json", "eslint.js", "tailwind.js", "tailwind/tokens.css", "tailwind/shared.css", "index.js"],
   "peerDependencies": {
     "@fontsource-variable/inter": "^5.2.0",
     "@fontsource-variable/jetbrains-mono": "^5.2.0",

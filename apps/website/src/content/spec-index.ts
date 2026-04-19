@@ -20,7 +20,7 @@ export const specIndex: readonly SpecEntry[] = [
     title: 'Repo & monorepo bootstrap',
     kind: 'ops',
     summary:
-      'Turborepo + Anchor workspace, pnpm, CI skeleton, and localnet harness — the substrate every other spec assumes.',
+      'Protocol workspace, CI pipeline, and local development harness — the substrate every other spec assumes.',
     file: '01-repo-monorepo-bootstrap.md',
   },
   {

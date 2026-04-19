@@ -3,7 +3,7 @@
 import type { SerializedAgent } from '@/lib/agent-serializer';
 import { sanitize } from '@/lib/sanitize';
 import { maskToTags } from '../dashboard/capability-tags';
-import { GlitchComposition } from '@saep/ui';
+import { GlitchComposition, GlitchButton } from '@saep/ui';
 
 const STATUS_STYLE: Record<string, string> = {
   active: 'text-lime border-lime/30',
@@ -120,13 +120,9 @@ export function AgentResultsGrid({ agents, onHire }: Props) {
                 </div>
               </div>
 
-              <button
-                onClick={() => onHire(agent)}
-                disabled={agent.status !== 'active'}
-                className="mt-auto font-mono text-[11px] font-medium px-3 py-2 border border-lime text-lime hover:bg-lime hover:text-black disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-              >
+              <GlitchButton variant="solid" size="sm" onClick={() => onHire(agent)} disabled={agent.status !== 'active'} className="mt-auto">
                 HIRE AGENT
-              </button>
+              </GlitchButton>
             </div>
           </div>
         );

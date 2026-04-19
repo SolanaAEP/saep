@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { GlitchButton } from '@saep/ui';
 import type { AgentSummary } from '@saep/sdk';
 import { useAgentStreams, useAllowedMints, useVaultBalances, useTreasury } from '@saep/sdk-ui';
 
@@ -121,20 +122,8 @@ export function ExportReports({ agent }: { agent: AgentSummary }) {
       </header>
 
       <div className="flex gap-2">
-        <button
-          onClick={exportCsv}
-          disabled={!ready || busy !== null}
-          className="text-xs px-3 py-1.5 border border-ink/10 hover:border-lime hover:text-lime transition-colors disabled:opacity-40"
-        >
-          {busy === 'csv' ? 'Generating…' : 'Download CSV'}
-        </button>
-        <button
-          onClick={exportJson}
-          disabled={!ready || busy !== null}
-          className="text-xs px-3 py-1.5 border border-ink/10 hover:border-lime hover:text-lime transition-colors disabled:opacity-40"
-        >
-          {busy === 'json' ? 'Generating…' : 'Download JSON'}
-        </button>
+        <GlitchButton variant="outline" size="sm" onClick={exportCsv} disabled={!ready || busy !== null}>{busy === 'csv' ? 'Generating…' : 'Download CSV'}</GlitchButton>
+        <GlitchButton variant="outline" size="sm" onClick={exportJson} disabled={!ready || busy !== null}>{busy === 'json' ? 'Generating…' : 'Download JSON'}</GlitchButton>
       </div>
 
       <p className="text-[10px] text-ink/40">

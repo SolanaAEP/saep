@@ -8,8 +8,8 @@ import { MobileNav } from './mobile-nav';
 import { SlicedHeroImage } from './sliced-hero-image';
 import { secondaryNav } from './nav-items';
 
-const BUILD_SHA = (process.env.NEXT_PUBLIC_BUILD_SHA ?? 'devnet-local').slice(0, 7);
-const BUILD_TIME = process.env.NEXT_PUBLIC_BUILD_TIME ?? '2026-04-14 00:00 UTC';
+const BUILD_SHA = (process.env.NEXT_PUBLIC_BUILD_SHA ?? '').slice(0, 7);
+const BUILD_TIME = process.env.NEXT_PUBLIC_BUILD_TIME ?? '';
 
 export function Hero() {
   const [navHovered, setNavHovered] = useState(false);
@@ -42,12 +42,12 @@ export function Hero() {
       <div
         aria-hidden="true"
         className="absolute pointer-events-none border z-20"
-        style={{ inset: 'clamp(6px,0.8vw,14px)', borderColor: '#ccc' }}
+        style={{ inset: 'clamp(6px,0.8vw,14px)', borderColor: 'var(--mute-3)' }}
       />
       <div
         aria-hidden="true"
         className="absolute pointer-events-none border z-20"
-        style={{ inset: 'clamp(14px,1.8vw,28px)', borderColor: '#ccc' }}
+        style={{ inset: 'clamp(14px,1.8vw,28px)', borderColor: 'var(--mute-3)' }}
       />
 
       <div className="absolute inset-0 px-[clamp(20px,4vw,64px)] py-[clamp(20px,3vw,40px)] pointer-events-none z-30">
@@ -101,7 +101,7 @@ export function Hero() {
             <div>V.2.0.0 // PROTOCOL LIVE</div>
             <div>ALL SYSTEMS NOMINAL</div>
           </div>
-          <div className="hidden font-mono text-[10px] text-mute">{BUILD_SHA} · {BUILD_TIME}</div>
+          {BUILD_SHA && <div className="hidden font-mono text-[10px] text-mute">{BUILD_SHA} · {BUILD_TIME}</div>}
         </div>
       </div>
 
@@ -111,7 +111,7 @@ export function Hero() {
             <a
               key={s.href}
               href={s.href}
-              className="font-mono uppercase text-[11px] tracking-[0.08em] text-ink hover:text-[#06f512] transition-colors"
+              className="font-mono uppercase text-[11px] tracking-[0.08em] text-ink hover:text-lime transition-colors"
             >
               {s.label}
             </a>
@@ -121,10 +121,10 @@ export function Hero() {
       </header>
 
       <div className="relative z-10 hidden md:block" style={{ minHeight: '100svh' }}>
-        <div className="absolute left-0 top-0 bottom-0 w-[20%] pl-[clamp(20px,4vw,64px)] pt-40 pb-40 border-r" style={{ borderColor: '#ccc' }}>
+        <div className="absolute left-0 top-0 bottom-0 w-[20%] pl-[clamp(20px,4vw,64px)] pt-40 pb-40 border-r" style={{ borderColor: 'var(--mute-3)' }}>
           <TickerStack />
         </div>
-        <div className="absolute right-0 top-0 bottom-0 hidden lg:block w-[6%] border-l py-24" style={{ borderColor: '#ccc' }}>
+        <div className="absolute right-0 top-0 bottom-0 hidden lg:block w-[6%] border-l py-24" style={{ borderColor: 'var(--mute-3)' }}>
           <WordmarkSpine />
         </div>
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">

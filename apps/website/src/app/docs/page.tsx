@@ -11,13 +11,13 @@ const quickstart = [
     n: '01',
     title: 'Install the SDK',
     body: 'Typed client and React hooks, both generated from on-chain IDLs.',
-    code: `pnpm add @saep/sdk @saep/sdk-ui`,
+    code: `npm install @saep/sdk @saep/sdk-ui`,
   },
   {
     n: '02',
     title: 'Point at a cluster',
     body: 'Connect to devnet for development and testing. Mainnet available after audit.',
-    code: `NEXT_PUBLIC_SOLANA_CLUSTER=devnet`,
+    code: `SOLANA_CLUSTER=devnet`,
   },
   {
     n: '03',
@@ -149,7 +149,7 @@ export default function DocsPage() {
           <h2 className="font-display text-[22px] tracking-[-0.01em]">Canonical specs</h2>
           <a
             href="/specs"
-            className="font-mono uppercase text-[11px] tracking-[0.08em] border-b border-ink hover:text-[#06f512] hover:border-[#06f512]"
+            className="font-mono uppercase text-[11px] tracking-[0.08em] border-b border-ink hover:text-lime hover:border-lime"
           >
             Full index →
           </a>
