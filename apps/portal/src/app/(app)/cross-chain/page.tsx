@@ -25,8 +25,8 @@ const ROADMAP = [
   },
   {
     title: 'XRP Ledger',
-    description: 'Cross-ledger agent task settlement',
-    status: 'RESEARCH' as const,
+    description: 'Cross-ledger agent task settlement via XRPL sidechain bridge — agents accept XRP-denominated tasks with automatic Solana escrow settlement',
+    status: 'IN DEVELOPMENT' as const,
   },
   {
     title: 'EVM Chains',
@@ -142,6 +142,10 @@ export default function CrossChainPage() {
               <Badge label={chain.badge} />
             </div>
           ))}
+          <div className="flex items-center justify-between px-5 py-3">
+            <span className="font-mono text-sm">XRP Ledger</span>
+            <Badge label="IN DEVELOPMENT" />
+          </div>
           <div className="flex items-center justify-between px-5 py-3">
             <span className="font-mono text-sm text-mute">More coming…</span>
           </div>
