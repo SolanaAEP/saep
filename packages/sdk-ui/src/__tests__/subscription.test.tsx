@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { PublicKey } from '@solana/web3.js';
 import { useYellowstoneSubscription } from '../hooks/subscription.js';
-import { createWrapper, MOCK_PUBKEY, MOCK_PUBKEY_2 } from './helpers.js';
+import { createQueryClient, createWrapper, MOCK_PUBKEY, MOCK_PUBKEY_2 } from './helpers.js';
 
 type WsListener = Record<string, Function>;
 
@@ -165,6 +165,36 @@ describe('useYellowstoneSubscription', () => {
 
     act(() => { result.current.unsubscribe(); });
     expect(ws.closed).toBe(true);
+  });
+
+  it('invalidates anchor-account queries whose queryKey[3] matches the updated pubkey', async () => {
+    const qc = createQueryClient();
+    const matchKey = ['anchor-account', 'program', 'AccountType', MOCK_PUBKEY.toBase58()] as const;
+    const otherKey = ['anchor-account', 'program', 'AccountType', MOCK_PUBKEY_2.toBase58()] as const;
+    qc.setQueryData(matchKey, { stale: false });
+    qc.setQueryData(otherKey, { stale: false });
+
+    renderHook(
+      () => useYellowstoneSubscription({ config, accounts: [MOCK_PUBKEY] }),
+      { wrapper: createWrapper(qc) },
+    );
+
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const ws = MockWebSocket.instances[0];
+
+    act(() => {
+      ws.simulateMessage({
+        account: {
+          pubkey: MOCK_PUBKEY.toBase58(),
+          data: btoa(''),
+          lamports: '0',
+        },
+        slot: '1',
+      });
+    });
+
+    expect(qc.getQueryState(matchKey)?.isInvalidated).toBe(true);
+    expect(qc.getQueryState(otherKey)?.isInvalidated).toBe(false);
   });
 
   it('handles malformed messages gracefully', async () => {
