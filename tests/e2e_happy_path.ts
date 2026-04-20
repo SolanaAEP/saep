@@ -28,6 +28,7 @@ import type { AgentRegistry } from '../target/types/agent_registry';
 import type { TaskMarket } from '../target/types/task_market';
 import type { ProofVerifier } from '../target/types/proof_verifier';
 import { computeVkId, fieldElementToBytes, g1ToBytes, g2ToBytes, registerDevVk } from './helpers/vk';
+import { measureCU, logCU, assertWithinBudget, CU_BUDGETS } from './helpers/cu';
 
 const CIRCUIT_LABEL = 'task_completion_v1';
 const DISPUTE_WINDOW_SECS = 10;
@@ -410,6 +411,16 @@ describe('e2e: task_market → proof-gen → proof_verifier happy path', functio
     expect(task.status).to.deep.include({ verified: {} });
     expect(task.verified).to.equal(true);
     expect(task.disputeWindowEnd.toNumber()).to.equal(DEADLINE + DISPUTE_WINDOW_SECS);
+  });
+
+  it('measures raise_dispute CU budget (simulation only, non-mutating)', async () => {
+    const ix = await taskMarketProgram.methods
+      .raiseDispute()
+      .accountsPartial({ task: taskPda, client: client.publicKey })
+      .instruction();
+    const cu = await measureCU(context, ix, client);
+    logCU('raise_dispute', cu);
+    assertWithinBudget('raise_dispute', cu, CU_BUDGETS.raise_dispute);
   });
 
   it('releases payment after dispute window', async () => {

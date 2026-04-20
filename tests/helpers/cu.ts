@@ -36,6 +36,7 @@ export const CU_BUDGETS: Record<string, number> = {
   reveal_bid: 200_000,
   accept_bid: 200_000,
   submit_proof: 300_000,
+  raise_dispute: 200_000,
   dispute_open: 200_000,
   dispute_resolve: 250_000,
   init_treasury: 60_000,
