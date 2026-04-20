@@ -16,8 +16,7 @@ import { useTaskMarketProgram, useAgentRegistryProgram } from './program.js';
 import { useCluster } from './cluster.js';
 
 function hexToBytes(hex: string): Uint8Array {
-  const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
-  return Uint8Array.from(clean.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
+  return Uint8Array.from(hex.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
 }
 
 export type BiddingPhase = 'commit' | 'reveal' | 'settled' | 'slashed' | 'unknown';
