@@ -306,6 +306,62 @@ describe('useSendTransaction', () => {
     serializeSpy.mockRestore();
   });
 
+  it('parseSimulation defaults logs to empty array when missing', async () => {
+    mockConnection({
+      simulateTransaction: vi.fn().mockResolvedValue({
+        value: { err: null, unitsConsumed: 123, logs: undefined },
+      }),
+    });
+    mockWallet();
+    const onSimulated = vi.fn();
+    const wrapper = createWrapper();
+
+    const { result } = renderHook(
+      () =>
+        useSendTransaction({
+          buildInstruction: async () => dummyIx,
+          onSimulated,
+        }),
+      { wrapper },
+    );
+
+    act(() => {
+      result.current.mutate(undefined as any);
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(onSimulated).toHaveBeenCalledWith(
+      { slot: 0, unitsConsumed: 123, logs: [] },
+      undefined,
+    );
+  });
+
+  it('SimulationError defaults logs to empty string when simulate has no logs', async () => {
+    mockConnection({
+      simulateTransaction: vi.fn().mockResolvedValue({
+        value: { err: { InstructionError: [0, 'Custom'] }, logs: undefined },
+      }),
+    });
+    mockWallet();
+    const wrapper = createWrapper();
+
+    const { result } = renderHook(
+      () =>
+        useSendTransaction({
+          buildInstruction: async () => dummyIx,
+        }),
+      { wrapper },
+    );
+
+    act(() => {
+      result.current.mutate(undefined as any);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(SimulationError);
+    expect((result.current.error as SimulationError).logs).toBe('');
+  });
+
   it('auto priority fee skips estimate when connection has no rpc endpoint', async () => {
     mockConnection({ _rpcEndpoint: undefined });
     mockWallet();
