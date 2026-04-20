@@ -6,11 +6,17 @@ import { useState } from 'react';
 
 type SpecItem = { slug: string; title: string; group: string };
 
+const GROUPS: { key: string; label: string }[] = [
+  { key: 'protocol', label: 'Protocol' },
+  { key: 'infrastructure', label: 'Infrastructure' },
+  { key: 'integrations', label: 'Integrations' },
+  { key: 'security', label: 'Security' },
+  { key: 'ops', label: 'Operations' },
+];
+
 export function Sidebar({ specs }: { specs: SpecItem[] }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const protocol = specs.filter((s) => s.group === 'protocol');
-  const ops = specs.filter((s) => s.group === 'ops');
 
   return (
     <aside className="font-mono text-[12px]">
@@ -23,8 +29,11 @@ export function Sidebar({ specs }: { specs: SpecItem[] }) {
         <span className="text-mute">{open ? '−' : '+'}</span>
       </button>
       <nav className={`${open ? 'block' : 'hidden'} md:block mt-2 md:mt-0`}>
-        <Section title="Protocol" items={protocol} pathname={pathname} />
-        <Section title="Ops" items={ops} pathname={pathname} />
+        {GROUPS.map((g) => {
+          const items = specs.filter((s) => s.group === g.key);
+          if (items.length === 0) return null;
+          return <Section key={g.key} title={g.label} items={items} pathname={pathname} />;
+        })}
         <div className="mt-6 border-t border-ink/10 pt-4">
           <Link href="/" className={`block hover:text-mute ${pathname === '/' ? 'text-lime' : ''}`}>
             ← All specs
