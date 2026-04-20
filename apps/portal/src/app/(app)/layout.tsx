@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { AppProviders } from '../providers';
 import { AuthGate } from './auth-gate';
+import { AnnouncementBanner } from './announcement-banner';
 import { AppMobileNav } from './app-mobile-nav';
 
 export const dynamic = 'force-dynamic';
@@ -106,6 +107,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </aside>
 
           <main className="p-4 md:p-8 overflow-auto">
+            <AnnouncementBanner
+              text="SAEP token is live on pump.fun"
+              href="https://pump.fun"
+              id="launch-v1"
+            />
             <AuthGate>{children}</AuthGate>
           </main>
         </div>
