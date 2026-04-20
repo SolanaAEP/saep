@@ -306,6 +306,30 @@ describe('useSendTransaction', () => {
     serializeSpy.mockRestore();
   });
 
+  it('auto priority fee skips estimate when connection has no rpc endpoint', async () => {
+    mockConnection({ _rpcEndpoint: undefined });
+    mockWallet();
+    const wrapper = createWrapper();
+
+    const { result } = renderHook(
+      () =>
+        useSendTransaction({
+          buildInstruction: async () => dummyIx,
+          priorityFee: 'auto',
+        }),
+      { wrapper },
+    );
+
+    act(() => {
+      result.current.mutate(undefined as any);
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(getHeliusPriorityFeeEstimate).not.toHaveBeenCalled();
+    expect(clampPriorityFee).not.toHaveBeenCalled();
+    expect(withPriorityFee).not.toHaveBeenCalled();
+  });
+
   it('forwards mutation callbacks', async () => {
     mockConnection();
     mockWallet();
