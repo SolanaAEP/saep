@@ -197,6 +197,49 @@ describe('useYellowstoneSubscription', () => {
     expect(qc.getQueryState(otherKey)?.isInvalidated).toBe(false);
   });
 
+  it('ignores messages without an account field', async () => {
+    const onUpdate = vi.fn();
+
+    renderHook(
+      () => useYellowstoneSubscription({ config, accounts: [MOCK_PUBKEY], onUpdate }),
+      { wrapper: createWrapper() },
+    );
+
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const ws = MockWebSocket.instances[0];
+
+    act(() => {
+      ws.simulateMessage({ slot: '7' });
+    });
+
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+
+  it('defaults slot and lamports to 0 when fields are absent', async () => {
+    const onUpdate = vi.fn();
+
+    renderHook(
+      () => useYellowstoneSubscription({ config, accounts: [MOCK_PUBKEY], onUpdate }),
+      { wrapper: createWrapper() },
+    );
+
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const ws = MockWebSocket.instances[0];
+
+    act(() => {
+      ws.simulateMessage({
+        account: { pubkey: MOCK_PUBKEY.toBase58(), data: btoa('') },
+      });
+    });
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      expect.any(PublicKey),
+      expect.any(Uint8Array),
+      0,
+      0,
+    );
+  });
+
   it('handles malformed messages gracefully', async () => {
     const consoleSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
