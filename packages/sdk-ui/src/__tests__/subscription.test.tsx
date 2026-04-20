@@ -240,6 +240,20 @@ describe('useYellowstoneSubscription', () => {
     );
   });
 
+  it('marks disconnected when the socket errors', async () => {
+    const { result } = renderHook(
+      () => useYellowstoneSubscription({ config, accounts: [MOCK_PUBKEY] }),
+      { wrapper: createWrapper() },
+    );
+
+    await vi.waitFor(() => expect(result.current.connected).toBe(true));
+    const ws = MockWebSocket.instances[0];
+
+    act(() => { ws.listeners.onerror?.(); });
+
+    expect(result.current.connected).toBe(false);
+  });
+
   it('handles malformed messages gracefully', async () => {
     const consoleSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
