@@ -12,7 +12,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],
-      all: false,
+
       include: ['src/app/api/auth/**/*.ts'],
       exclude: ['src/**/__tests__/**', 'src/**/*.test.ts'],
       thresholds: {
