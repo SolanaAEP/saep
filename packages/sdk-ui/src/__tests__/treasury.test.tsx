@@ -156,4 +156,23 @@ describe('useSetLimits', () => {
       }),
     ).rejects.toThrow('Wallet not connected');
   });
+
+  it('throws when publicKey is missing', async () => {
+    mockWallet({ publicKey: null });
+
+    const { result } = renderHook(() => useSetLimits(), {
+      wrapper: createWrapper(),
+    });
+
+    await expect(
+      result.current.mutateAsync({
+        agentDid: new Uint8Array(32),
+        mint: MOCK_PUBKEY,
+        daily: BigInt(0),
+        perTx: BigInt(0),
+        weekly: BigInt(0),
+      }),
+    ).rejects.toThrow('Missing wallet publicKey');
+    expect(buildSetLimitsIx).not.toHaveBeenCalled();
+  });
 });
