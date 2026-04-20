@@ -131,4 +131,20 @@ describe('useRaiseDispute', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
   });
+
+  it('errors when program is available but wallet publicKey is missing', async () => {
+    mockWallet({ publicKey: null });
+
+    const { result } = renderHook(() => useRaiseDispute(), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.mutate(MOCK_PUBKEY);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toBe('Missing wallet publicKey');
+    expect(buildRaiseDisputeIx).not.toHaveBeenCalled();
+  });
 });
