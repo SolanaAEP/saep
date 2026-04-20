@@ -20,6 +20,7 @@ const NAV = [
   { href: '/security', label: 'Security', tag: '10' },
   { href: '/cross-chain', label: 'Cross-Chain', tag: '11' },
   { href: '/developers', label: 'Developers', tag: '12' },
+  { href: '/staking', label: 'Staking', tag: '13' },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
