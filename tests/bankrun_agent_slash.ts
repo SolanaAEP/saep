@@ -9,6 +9,14 @@ import {
 } from './helpers/token';
 import { PROGRAM_IDS, capRegPdas, agentRegPdas } from './helpers/accounts';
 import {
+  CU_BUDGETS,
+  assertWithinBudget,
+  logCU,
+  measureCU,
+  printCUSummary,
+  resetCUMeasurements,
+} from './helpers/cu';
+import {
   Keypair, PublicKey, SystemProgram,
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
@@ -32,6 +40,9 @@ const T0 = 1_700_000_000n;
 
 describe('bankrun: agent_registry — slash 30d timelock + bps cap', function () {
   this.timeout(60_000);
+
+  before(function () { resetCUMeasurements(); });
+  after(function () { printCUSummary(); });
 
   let context: ProgramTestContext;
   let provider: BankrunProvider;
@@ -174,15 +185,20 @@ describe('bankrun: agent_registry — slash 30d timelock + bps cap', function ()
 
   it('propose_slash at 10% cap populates pending_slash with 30d executable_at', async () => {
     const reasonCode = 42;
-    await agentRegProgram.methods
+    const builder = agentRegProgram.methods
       .proposeSlash(new BN(SLASH_AMOUNT), reasonCode)
       .accountsPartial({
         global: agentRegPdas.global()[0],
         agent: agentPda,
         authority: authority.publicKey,
       })
-      .signers([authority])
-      .rpc();
+      .signers([authority]);
+
+    const cu = await measureCU(context, builder, authority);
+    logCU('propose_slash', cu);
+    assertWithinBudget('propose_slash', cu, CU_BUDGETS.propose_slash);
+
+    await builder.rpc();
 
     const agent = await agentRegProgram.account.agentAccount.fetch(agentPda);
     expect(agent.pendingSlash).to.not.equal(null);
@@ -217,15 +233,20 @@ describe('bankrun: agent_registry — slash 30d timelock + bps cap', function ()
   });
 
   it('cancel_slash clears pending_slash so we can re-propose', async () => {
-    await agentRegProgram.methods
+    const cancelBuilder = agentRegProgram.methods
       .cancelSlash()
       .accountsPartial({
         global: agentRegPdas.global()[0],
         agent: agentPda,
         authority: authority.publicKey,
       })
-      .signers([authority])
-      .rpc();
+      .signers([authority]);
+
+    const cu = await measureCU(context, cancelBuilder, authority);
+    logCU('cancel_slash', cu);
+    assertWithinBudget('cancel_slash', cu, CU_BUDGETS.cancel_slash);
+
+    await cancelBuilder.rpc();
 
     const cleared = await agentRegProgram.account.agentAccount.fetch(agentPda);
     expect(cleared.pendingSlash).to.equal(null);
@@ -294,7 +315,7 @@ describe('bankrun: agent_registry — slash 30d timelock + bps cap', function ()
     const agentBefore = await agentRegProgram.account.agentAccount.fetch(agentPda);
     const stakeBefore = agentBefore.stakeAmount.toNumber();
 
-    await agentRegProgram.methods
+    const builder = agentRegProgram.methods
       .executeSlash()
       .accountsPartial({
         global: agentRegPdas.global()[0],
@@ -305,8 +326,13 @@ describe('bankrun: agent_registry — slash 30d timelock + bps cap', function ()
         cranker: authority.publicKey,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
       })
-      .signers([authority])
-      .rpc();
+      .signers([authority]);
+
+    const cu = await measureCU(context, builder, authority);
+    logCU('execute_slash', cu);
+    assertWithinBudget('execute_slash', cu, CU_BUDGETS.execute_slash);
+
+    await builder.rpc();
 
     const agent = await agentRegProgram.account.agentAccount.fetch(agentPda);
     expect(agent.pendingSlash).to.equal(null);
