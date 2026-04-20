@@ -7,4 +7,5 @@ packages:
   - services/x402-gateway
   - services/compute-broker
   - services/telegram-bot
+  - services/xrpl-bridge
   - examples/*
