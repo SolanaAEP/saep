@@ -24,6 +24,13 @@ services:
         value: devnet
       - key: HELIUS_API_KEY
         sync: false
+      # When set, the worker switches from JSON-RPC polling to Yellowstone gRPC
+      # streaming (src/grpc_stream.rs). Unset = falls back to polling. Both vars
+      # are sync:false so they're configured in the Render dashboard, not here.
+      - key: YELLOWSTONE_ENDPOINT
+        sync: false
+      - key: YELLOWSTONE_TOKEN
+        sync: false
       - key: POLL_INTERVAL_MS
         value: "2000"
       - key: RPC_PAGE_LIMIT
