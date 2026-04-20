@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "saep-sdk"
+version = "0.1.0a1"
+description = "Python SDK for the Solana Agent Economy Protocol"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [{ name = "SolanaAEP", email = "dev@solanaep.com" }]
+keywords = ["solana", "agents", "depin", "autonomous-economy"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "solders>=0.21",
+    "anchorpy>=0.20",
+    "httpx>=0.27",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+langchain = ["langchain-core>=0.2"]
+crewai = ["crewai>=0.60"]
+
+[project.urls]
+Homepage = "https://github.com/SolanaAEP/saep"
+Documentation = "https://docs.solanaep.com/sdk/python"
+Repository = "https://github.com/SolanaAEP/saep/tree/main/packages/sdk-python"
