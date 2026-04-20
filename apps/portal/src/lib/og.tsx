@@ -17,7 +17,7 @@ export function generateOgImage({ title, subtitle, tag }: OgOptions) {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: '#faefc9',
+          backgroundColor: '#f2f0e8',
           padding: '48px',
           fontFamily: 'system-ui, -apple-system, sans-serif',
           position: 'relative',

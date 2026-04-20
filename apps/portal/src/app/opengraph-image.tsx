@@ -27,7 +27,7 @@ export default async function Image() {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: '#faefc9',
+          backgroundColor: '#f2f0e8',
           fontFamily: 'system-ui, -apple-system, sans-serif',
           position: 'relative',
           overflow: 'hidden',
