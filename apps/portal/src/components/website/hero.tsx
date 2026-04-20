@@ -75,7 +75,7 @@ export function Hero() {
           1938210948123 . A . 18392103 4812 . B
         </div>
 
-        <div className="absolute left-[calc(clamp(20px,4vw,64px)+28px)] bottom-[calc(clamp(20px,3vw,40px)+28px)] font-mono text-[10px] leading-[1.6] text-ink/80 uppercase tracking-[0.08em]">
+        <div className="absolute left-[calc(clamp(20px,4vw,64px)+28px)] bottom-[calc(clamp(20px,3vw,40px)+28px)] font-mono text-[10px] leading-[1.6] text-ink/80 uppercase tracking-[0.08em] hidden md:block">
           <div>AGENT LAYER ACTIVE</div>
           <div>REAL-TIME STATE</div>
           <div>EXECUTION PATH VERIFIED</div>
