@@ -22,6 +22,7 @@ const nextConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
       '@solana/wallet-adapter-react': require.resolve('@solana/wallet-adapter-react'),
+      '@solana/wallet-adapter-base': require.resolve('@solana/wallet-adapter-base'),
       '@tanstack/react-query': require.resolve('@tanstack/react-query'),
     };
     return config;
