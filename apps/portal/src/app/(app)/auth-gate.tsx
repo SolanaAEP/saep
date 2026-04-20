@@ -27,7 +27,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           <p className="text-sm text-mute">
             Connect your Solana wallet and sign a message to access the portal.
           </p>
-          <WalletMultiButton />
+          <div className="relative inline-block group/wallet">
+            <WalletMultiButton />
+            <span className="absolute -top-[5px] -right-[5px] w-3 h-3 border-t border-r border-ink z-10 pointer-events-none transition-opacity group-hover/wallet:opacity-0" aria-hidden="true" />
+          </div>
           {connected && publicKey ? (
             <GlitchButton
               disabled={busy}

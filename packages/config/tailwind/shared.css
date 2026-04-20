@@ -117,6 +117,24 @@ dialog.mobile-nav::backdrop {
   clip-path: polygon(0 0, 100% 100%, 0 100%);
 }
 
+/* ── Corner border — black L-shape connecting top-right, fades on hover ── */
+.btn-glitch__corner {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 12px;
+  height: 12px;
+  border-top: 1px solid var(--ink);
+  border-right: 1px solid var(--ink);
+  z-index: 4;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity var(--duration-normal) var(--ease-default);
+}
+.btn-glitch:hover .btn-glitch__corner {
+  opacity: 0;
+}
+
 /* ── Halftone dot overlay — from GlitchComposition's dot patterns ── */
 .btn-glitch::before {
   content: '';

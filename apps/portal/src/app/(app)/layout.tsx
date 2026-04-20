@@ -40,7 +40,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Top-left system label */}
         <div
           aria-hidden="true"
-          className="fixed left-[calc(clamp(20px,2.5vw,36px)+16px)] top-[calc(clamp(20px,2.5vw,36px)+8px)] font-mono text-[10px] text-ink/60 uppercase tracking-[0.08em] z-20 pointer-events-none"
+          className="fixed left-[calc(220px+clamp(20px,2.5vw,36px)+24px)] top-[calc(clamp(20px,2.5vw,36px)+8px)] font-mono text-[10px] text-ink/60 uppercase tracking-[0.08em] z-20 pointer-events-none"
         >
           SAEP PROTOCOL // OPERATOR CONSOLE
         </div>
@@ -59,7 +59,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* App grid */}
         <div className="grid grid-cols-[220px_1fr] min-h-[calc(100vh-clamp(40px,5vw,72px))]">
-          <aside className="border-r border-ink/10 p-5 flex flex-col gap-5">
+          <aside className="border-r p-5 flex flex-col gap-5" style={{ borderColor: 'var(--mute-3)', minHeight: '100vh', marginTop: 'calc(-1 * clamp(20px,2.5vw,36px))', marginBottom: 'calc(-1 * clamp(20px,2.5vw,36px))', paddingTop: 'clamp(20px,2.5vw,36px)' }}>
             <Link href="/" className="flex items-center gap-2 font-display text-lg tracking-tight">
               <img src="/logomark-bw.svg" alt="" aria-hidden="true" className="h-5 w-5" />
               SAEP

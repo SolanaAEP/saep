@@ -9,6 +9,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "e2e": "npx playwright test",
+    "e2e:headed": "npx playwright test --headed",
     "clean": "rm -rf .next",
     "analyze": "ANALYZE=true next build"
   },
@@ -40,6 +42,7 @@
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^15.5.15",
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "4.1.14",
     "@types/d3-force": "^3.0.10",
     "@types/dompurify": "^3.2.0",

@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 function cspHeader(nonce: string): string {
   const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL ?? '';
+  const evalDirective = isDev ? ` 'unsafe-eval'` : '';
 
   const directives = [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${evalDirective}`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob:`,
     `font-src 'self'`,

@@ -23,6 +23,9 @@ scripts/commit-as.sh
 CLAUDE.md
 .claude/agents/
 
+playwright-report/
+test-results/
+
 .DS_Store
 *.log
 .idea/
