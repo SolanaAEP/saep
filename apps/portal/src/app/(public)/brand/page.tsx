@@ -131,20 +131,20 @@ export default function BrandPage() {
         <div className="flex items-baseline justify-between border-b border-ink/15 pb-3 mb-8">
           <h2 className="font-display text-[22px] tracking-[-0.01em]">All assets</h2>
         </div>
-        <div className="border border-ink/10">
-          <div className="grid grid-cols-12 font-mono uppercase text-[11px] tracking-[0.08em] text-mute border-b border-ink/10 bg-ink/[0.03]">
-            <div className="col-span-3 p-3">File</div>
-            <div className="col-span-6 p-3">Description</div>
-            <div className="col-span-3 p-3">Download</div>
+        <div className="border border-ink/10 overflow-x-auto">
+          <div className="grid grid-cols-[1fr_2fr_1fr] md:grid-cols-12 font-mono uppercase text-[11px] tracking-[0.08em] text-mute border-b border-ink/10 bg-ink/[0.03] min-w-[400px]">
+            <div className="md:col-span-3 p-3">File</div>
+            <div className="md:col-span-6 p-3 hidden md:block">Description</div>
+            <div className="md:col-span-3 p-3">Download</div>
           </div>
           {assets.map((a, i) => (
             <div
               key={a.file}
-              className={`grid grid-cols-12 items-center ${i < assets.length - 1 ? 'border-b border-ink/5' : ''}`}
+              className={`grid grid-cols-[1fr_2fr_1fr] md:grid-cols-12 items-center min-w-[400px] ${i < assets.length - 1 ? 'border-b border-ink/5' : ''}`}
             >
-              <div className="col-span-3 p-3 font-mono text-[12px]">{a.file}</div>
-              <div className="col-span-6 p-3 text-[14px] text-ink/80">{a.desc}</div>
-              <div className="col-span-3 p-3">
+              <div className="md:col-span-3 p-3 font-mono text-[12px]">{a.file}</div>
+              <div className="md:col-span-6 p-3 text-[14px] text-ink/80 hidden md:block">{a.desc}</div>
+              <div className="md:col-span-3 p-3">
                 <a
                   href={a.href}
                   download={`saep-${a.file}`}
@@ -166,7 +166,7 @@ export default function BrandPage() {
             Design tokens
           </span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {colors.map((c) => (
             <div key={c.token} className="flex flex-col">
               <div
@@ -295,7 +295,7 @@ export default function BrandPage() {
         </div>
         <div className="grid md:grid-cols-2 gap-6">
           {rules.map((r, i) => (
-            <div key={i} className="grid grid-cols-2 gap-4">
+            <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="border-t-2 border-lime pt-4">
                 <div className="font-mono uppercase text-[10px] tracking-[0.08em] text-lime mb-2">Do</div>
                 <p className="text-[14px] text-ink/80 leading-relaxed">{r.do}</p>

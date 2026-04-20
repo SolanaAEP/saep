@@ -141,21 +141,16 @@ export default function SecurityPage() {
           </span>
         </div>
         <div className="border border-ink/70">
-          <div className="grid grid-cols-12 font-mono uppercase text-[11px] tracking-[0.08em] text-mute border-b border-ink/30">
-            <div className="col-span-3 p-4">Severity</div>
-            <div className="col-span-3 p-4">Range</div>
-            <div className="col-span-6 p-4">Examples</div>
-          </div>
           {rewards.map((r, i) => (
             <div
               key={r.sev}
-              className={`grid grid-cols-12 ${i < rewards.length - 1 ? 'border-b border-ink/20' : ''}`}
+              className={`flex flex-col md:grid md:grid-cols-12 ${i < rewards.length - 1 ? 'border-b border-ink/20' : ''}`}
             >
-              <div className="col-span-3 p-4 font-display text-lg tracking-[-0.01em]">{r.sev}</div>
-              <div className="col-span-3 p-4 font-mono text-[13px] tracking-[0.02em] text-ink">
+              <div className="md:col-span-3 px-4 pt-4 md:py-4 font-display text-lg tracking-[-0.01em]">{r.sev}</div>
+              <div className="md:col-span-3 px-4 py-1 md:py-4 font-mono text-[13px] tracking-[0.02em] text-ink">
                 {r.range}
               </div>
-              <div className="col-span-6 p-4 text-[14px] text-ink/80 leading-relaxed">
+              <div className="md:col-span-6 px-4 pb-4 md:py-4 text-[14px] text-ink/80 leading-relaxed">
                 {r.note}
               </div>
             </div>

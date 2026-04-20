@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { AppProviders } from '../providers';
 import { AuthGate } from './auth-gate';
+import { AppMobileNav } from './app-mobile-nav';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Top-left system label */}
         <div
           aria-hidden="true"
-          className="fixed left-[calc(220px+clamp(20px,2.5vw,36px)+24px)] top-[calc(clamp(20px,2.5vw,36px)+8px)] font-mono text-[10px] text-ink/60 uppercase tracking-[0.08em] z-20 pointer-events-none"
+          className="hidden md:block fixed left-[calc(220px+clamp(20px,2.5vw,36px)+24px)] top-[calc(clamp(20px,2.5vw,36px)+8px)] font-mono text-[10px] text-ink/60 uppercase tracking-[0.08em] z-20 pointer-events-none"
         >
           SAEP PROTOCOL // OPERATOR CONSOLE
         </div>
@@ -48,7 +49,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Bottom-right status + barcode */}
         <div
           aria-hidden="true"
-          className="fixed right-[calc(clamp(20px,2.5vw,36px)+16px)] bottom-[calc(clamp(20px,2.5vw,36px)+8px)] flex items-end gap-4 z-20 pointer-events-none"
+          className="hidden md:flex fixed right-[calc(clamp(20px,2.5vw,36px)+16px)] bottom-[calc(clamp(20px,2.5vw,36px)+8px)] items-end gap-4 z-20 pointer-events-none"
         >
           <div className="font-mono text-[10px] text-ink/60 uppercase tracking-[0.08em] text-right leading-relaxed">
             <div>CLUSTER: {process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? 'devnet'}</div>
@@ -57,9 +58,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <img src="/barcode-ink.svg" alt="" aria-hidden="true" className="h-10 w-auto opacity-40" />
         </div>
 
+        {/* Mobile header */}
+        <div className="md:hidden flex items-center justify-between pb-4 border-b border-ink/10 mb-4">
+          <Link href="/" className="flex items-center gap-2 font-display text-lg tracking-tight">
+            <img src="/logomark-bw.svg" alt="" aria-hidden="true" className="h-5 w-5" />
+            SAEP
+          </Link>
+          <AppMobileNav items={NAV} />
+        </div>
+
         {/* App grid */}
-        <div className="grid grid-cols-[220px_1fr] min-h-[calc(100vh-clamp(40px,5vw,72px))]">
-          <aside className="border-r p-5 flex flex-col gap-5" style={{ borderColor: 'var(--mute-3)', minHeight: '100vh', marginTop: 'calc(-1 * clamp(20px,2.5vw,36px))', marginBottom: 'calc(-1 * clamp(20px,2.5vw,36px))', paddingTop: 'clamp(20px,2.5vw,36px)' }}>
+        <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] min-h-[calc(100vh-clamp(40px,5vw,72px))]">
+          <aside className="hidden md:flex border-r p-5 flex-col gap-5" style={{ borderColor: 'var(--mute-3)', minHeight: '100vh', marginTop: 'calc(-1 * clamp(20px,2.5vw,36px))', marginBottom: 'calc(-1 * clamp(20px,2.5vw,36px))', paddingTop: 'clamp(20px,2.5vw,36px)' }}>
             <Link href="/" className="flex items-center gap-2 font-display text-lg tracking-tight">
               <img src="/logomark-bw.svg" alt="" aria-hidden="true" className="h-5 w-5" />
               SAEP
@@ -79,7 +89,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </nav>
           </aside>
 
-          <main className="p-8 overflow-auto">
+          <main className="p-4 md:p-8 overflow-auto">
             <AuthGate>{children}</AuthGate>
           </main>
         </div>

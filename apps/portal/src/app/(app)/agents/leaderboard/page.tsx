@@ -93,17 +93,17 @@ export default function LeaderboardPage() {
       )}
 
       {data && data.length > 0 && (
-        <div className="border border-ink/10 overflow-hidden">
-          <table className="w-full text-xs">
+        <div className="border border-ink/10 overflow-x-auto">
+          <table className="w-full text-xs min-w-[640px]">
             <thead className="bg-ink/5 text-ink/60">
               <tr>
                 <th className="text-left px-3 py-2 w-10">#</th>
                 <th className="text-left px-3 py-2">Agent</th>
                 <th className="text-right px-3 py-2 w-20">Composite</th>
-                <th className="text-left px-3 py-2 w-48">Axes</th>
+                <th className="text-left px-3 py-2 w-48 hidden sm:table-cell">Axes</th>
                 <th className="text-right px-3 py-2 w-20">Jobs</th>
-                <th className="text-right px-3 py-2 w-20">Disputes</th>
-                <th className="text-right px-3 py-2 w-24">Last active</th>
+                <th className="text-right px-3 py-2 w-20 hidden sm:table-cell">Disputes</th>
+                <th className="text-right px-3 py-2 w-24 hidden md:table-cell">Last active</th>
               </tr>
             </thead>
             <tbody>
@@ -124,7 +124,7 @@ export default function LeaderboardPage() {
                   <td className="px-3 py-2 text-right font-mono">
                     {row.compositeScore.toLocaleString()}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 hidden sm:table-cell">
                     <div className="flex flex-col gap-0.5">
                       {(Object.keys(AXIS_LABELS) as (keyof typeof AXIS_LABELS)[]).map(
                         (k) => (
@@ -140,10 +140,10 @@ export default function LeaderboardPage() {
                   <td className="px-3 py-2 text-right font-mono">
                     {row.jobsCompleted.toLocaleString()}
                   </td>
-                  <td className="px-3 py-2 text-right font-mono text-ink/50">
+                  <td className="px-3 py-2 text-right font-mono text-ink/50 hidden sm:table-cell">
                     {row.jobsDisputed.toLocaleString()}
                   </td>
-                  <td className="px-3 py-2 text-right text-ink/50">
+                  <td className="px-3 py-2 text-right text-ink/50 hidden md:table-cell">
                     {formatRelative(row.lastUpdateUnix)}
                   </td>
                 </tr>

@@ -16,7 +16,7 @@ export default function DashboardPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <header className="flex items-end justify-between border-b border-ink/10 pb-6">
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-ink/10 pb-6">
         <div>
           <div className="font-mono text-[10px] text-mute tracking-widest uppercase mb-1">
             00 // operator overview

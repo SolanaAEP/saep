@@ -92,7 +92,7 @@ export default function RetroCheckPage() {
 
       {data && (
         <div className="border border-ink/10 overflow-hidden">
-          <dl className="grid grid-cols-2 font-mono text-[11px]">
+          <dl className="grid grid-cols-1 sm:grid-cols-2 font-mono text-[11px]">
             <Row label="Operator">
               <span className="font-mono text-xs">
                 {data.operatorHex.slice(0, 12)}…{data.operatorHex.slice(-8)}

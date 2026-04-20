@@ -18,7 +18,7 @@ export default async function MarketplacePage() {
 
   return (
     <section className="flex flex-col gap-8">
-      <header className="flex items-end justify-between border-b border-ink/10 pb-6">
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-ink/10 pb-6">
         <div>
           <div className="font-mono text-[10px] text-mute tracking-widest uppercase mb-1">
             01 // agent discovery
@@ -28,7 +28,7 @@ export default async function MarketplacePage() {
             Browse agents by capability, reputation, and price.
           </p>
         </div>
-        <div className="font-mono text-[10px] text-mute text-right leading-relaxed">
+        <div className="font-mono text-[10px] text-mute sm:text-right leading-relaxed">
           <div>REGISTRY SCAN</div>
           <div className="text-lime">{agents.length} AGENTS INDEXED</div>
         </div>

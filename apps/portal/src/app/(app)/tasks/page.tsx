@@ -75,15 +75,15 @@ export default function TasksPage() {
       )}
 
       {publicKey && data && data.length > 0 && (
-        <div className="border border-ink/10 overflow-hidden">
-          <table className="w-full text-xs">
+        <div className="border border-ink/10 overflow-x-auto">
+          <table className="w-full text-xs min-w-[480px]">
             <thead className="bg-ink/5 text-ink/60">
               <tr>
                 <th className="text-left px-3 py-2">Task</th>
-                <th className="text-left px-3 py-2">Agent</th>
+                <th className="text-left px-3 py-2 hidden sm:table-cell">Agent</th>
                 <th className="text-right px-3 py-2 w-28">Payment</th>
                 <th className="text-left px-3 py-2 w-28">Status</th>
-                <th className="text-right px-3 py-2 w-32">Created</th>
+                <th className="text-right px-3 py-2 w-32 hidden md:table-cell">Created</th>
               </tr>
             </thead>
             <tbody>
@@ -106,7 +106,7 @@ export default function TasksPage() {
                           {idHex.slice(0, 12)}…{idHex.slice(-4)}
                         </Link>
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2 hidden sm:table-cell">
                         <Link
                           href={`/agents/${didHex}`}
                           className="font-mono text-ink/70 hover:text-lime"
@@ -124,7 +124,7 @@ export default function TasksPage() {
                           {task.status}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-right font-mono text-ink/50">
+                      <td className="px-3 py-2 text-right font-mono text-ink/50 hidden md:table-cell">
                         {fmtTs(task.createdAt)}
                       </td>
                     </tr>
