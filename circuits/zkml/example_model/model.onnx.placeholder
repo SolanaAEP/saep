@@ -1,0 +1,3 @@
+# Placeholder for ONNX model file.
+# Replace with a real .onnx model exported from PyTorch/TensorFlow/scikit-learn.
+# Example: a small 5-input, 2-output MLP classifier for EZKL proof-of-concept.
