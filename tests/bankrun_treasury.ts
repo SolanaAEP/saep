@@ -7,6 +7,9 @@ import { padBytes } from './helpers/encoding';
 import {
   createATA, createToken2022Mint, getTokenBalance, mintTokens, sendTx,
 } from './helpers/token';
+import {
+  CU_BUDGETS, assertWithinBudget, logCU, measureCU, printCUSummary, resetCUMeasurements,
+} from './helpers/cu';
 import { PROGRAM_IDS, capRegPdas, agentRegPdas, treasuryPdas } from './helpers/accounts';
 import {
   Keypair, PublicKey, SystemProgram,
@@ -189,6 +192,9 @@ describe('bankrun: treasury_standard — init + fund + withdraw + stream CU cove
       .rpc();
   });
 
+  before(function () { resetCUMeasurements(); });
+  after(function () { printCUSummary(); });
+
   it('program id matches Anchor.toml', () => {
     expect(treasuryProgram.programId.toBase58()).to.equal(
       PROGRAM_IDS.treasury_standard.toBase58(),
@@ -197,7 +203,7 @@ describe('bankrun: treasury_standard — init + fund + withdraw + stream CU cove
 
   it('init_treasury creates AgentTreasury bound to registered agent', async () => {
     const [treasuryPda] = treasuryPdas.treasury(agentDid);
-    await treasuryProgram.methods
+    const builder = treasuryProgram.methods
       .initTreasury(
         Array.from(agentDid) as unknown as number[],
         new BN(DAILY_LIMIT),
@@ -212,8 +218,12 @@ describe('bankrun: treasury_standard — init + fund + withdraw + stream CU cove
         registryGlobal: agentRegPdas.global()[0],
         agentAccount: agentPda,
       })
-      .signers([operator])
-      .rpc();
+      .signers([operator]);
+
+    const cu = await measureCU(context, builder, authority, [operator]);
+    logCU('init_treasury', cu);
+    assertWithinBudget('init_treasury', cu, CU_BUDGETS.init_treasury);
+    await builder.rpc();
 
     const t = await treasuryProgram.account.agentTreasury.fetch(treasuryPda);
     expect(Buffer.from(t.agentDid).equals(Buffer.from(agentDid))).to.equal(true);
@@ -230,7 +240,7 @@ describe('bankrun: treasury_standard — init + fund + withdraw + stream CU cove
     const [vaultPda] = treasuryPdas.vault(agentDid, mint);
     const opBefore = await getTokenBalance(context, operatorAta);
 
-    await treasuryProgram.methods
+    const builder = treasuryProgram.methods
       .fundTreasury(new BN(amount))
       .accountsPartial({
         global: treasuryPdas.global()[0],
@@ -245,8 +255,12 @@ describe('bankrun: treasury_standard — init + fund + withdraw + stream CU cove
         funder: operator.publicKey,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
       })
-      .signers([operator])
-      .rpc();
+      .signers([operator]);
+
+    const cu = await measureCU(context, builder, authority, [operator]);
+    logCU('fund_treasury', cu);
+    assertWithinBudget('fund_treasury', cu, CU_BUDGETS.fund_treasury);
+    await builder.rpc();
 
     const vaultAfter = await getTokenBalance(context, vaultPda);
     const opAfter = await getTokenBalance(context, operatorAta);
@@ -261,7 +275,7 @@ describe('bankrun: treasury_standard — init + fund + withdraw + stream CU cove
     const vaultBefore = await getTokenBalance(context, vaultPda);
     const opBefore = await getTokenBalance(context, operatorAta);
 
-    await treasuryProgram.methods
+    const builder = treasuryProgram.methods
       .withdraw(new BN(amount))
       .accountsPartial({
         global: treasuryPdas.global()[0],
@@ -276,8 +290,12 @@ describe('bankrun: treasury_standard — init + fund + withdraw + stream CU cove
         operator: operator.publicKey,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
       })
-      .signers([operator])
-      .rpc();
+      .signers([operator]);
+
+    const cu = await measureCU(context, builder, authority, [operator]);
+    logCU('withdraw', cu);
+    assertWithinBudget('withdraw', cu, CU_BUDGETS.withdraw);
+    await builder.rpc();
 
     const vaultAfter = await getTokenBalance(context, vaultPda);
     const opAfter = await getTokenBalance(context, operatorAta);
@@ -301,7 +319,7 @@ describe('bankrun: treasury_standard — init + fund + withdraw + stream CU cove
     const [escrowPda] = treasuryPdas.streamEscrow(streamPda);
     const opBefore = await getTokenBalance(context, operatorAta);
 
-    await treasuryProgram.methods
+    const builder = treasuryProgram.methods
       .initStream(
         Array.from(nonce) as unknown as number[],
         new BN(rate),
@@ -323,8 +341,12 @@ describe('bankrun: treasury_standard — init + fund + withdraw + stream CU cove
         tokenProgram: TOKEN_2022_PROGRAM_ID,
         rent: SYSVAR_RENT_PUBKEY,
       })
-      .signers([operator])
-      .rpc();
+      .signers([operator]);
+
+    const cu = await measureCU(context, builder, authority, [operator]);
+    logCU('init_stream', cu);
+    assertWithinBudget('init_stream', cu, CU_BUDGETS.init_stream);
+    await builder.rpc();
 
     const escrowAfter = await getTokenBalance(context, escrowPda);
     const opAfter = await getTokenBalance(context, operatorAta);

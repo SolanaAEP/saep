@@ -38,8 +38,10 @@ export const CU_BUDGETS: Record<string, number> = {
   submit_proof: 300_000,
   dispute_open: 200_000,
   dispute_resolve: 250_000,
-  treasury_deposit: 150_000,
-  treasury_withdraw: 150_000,
+  init_treasury: 60_000,
+  fund_treasury: 100_000,
+  withdraw: 80_000,
+  init_stream: 120_000,
 };
 
 export async function measureCU(
