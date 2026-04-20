@@ -23,25 +23,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Protocol frame — outer borders */}
         <div
           aria-hidden="true"
-          className="fixed pointer-events-none border z-20"
+          className="fixed pointer-events-none border z-10"
           style={{ inset: 'clamp(6px,0.8vw,14px)', borderColor: 'var(--mute-3)' }}
         />
         <div
           aria-hidden="true"
-          className="fixed pointer-events-none border z-20"
+          className="fixed pointer-events-none border z-10"
           style={{ inset: 'clamp(14px,1.8vw,28px)', borderColor: 'var(--mute-3)' }}
         />
 
         {/* Corner brackets */}
-        <div aria-hidden="true" className="fixed left-[clamp(14px,1.5vw,22px)] top-[clamp(14px,1.5vw,22px)] h-3 w-3 border-t border-l border-ink/55 z-20" />
-        <div aria-hidden="true" className="fixed right-[clamp(14px,1.5vw,22px)] top-[clamp(14px,1.5vw,22px)] h-3 w-3 border-t border-r border-ink/55 z-20" />
-        <div aria-hidden="true" className="fixed left-[clamp(14px,1.5vw,22px)] bottom-[clamp(14px,1.5vw,22px)] h-3 w-3 border-b border-l border-ink/55 z-20" />
-        <div aria-hidden="true" className="fixed right-[clamp(14px,1.5vw,22px)] bottom-[clamp(14px,1.5vw,22px)] h-3 w-3 border-b border-r border-ink/55 z-20" />
+        <div aria-hidden="true" className="fixed left-[clamp(14px,1.5vw,22px)] top-[clamp(14px,1.5vw,22px)] h-3 w-3 border-t border-l border-ink/55 z-10" />
+        <div aria-hidden="true" className="fixed right-[clamp(14px,1.5vw,22px)] top-[clamp(14px,1.5vw,22px)] h-3 w-3 border-t border-r border-ink/55 z-10" />
+        <div aria-hidden="true" className="fixed left-[clamp(14px,1.5vw,22px)] bottom-[clamp(14px,1.5vw,22px)] h-3 w-3 border-b border-l border-ink/55 z-10" />
+        <div aria-hidden="true" className="fixed right-[clamp(14px,1.5vw,22px)] bottom-[clamp(14px,1.5vw,22px)] h-3 w-3 border-b border-r border-ink/55 z-10" />
 
         {/* Top-left system label */}
         <div
           aria-hidden="true"
-          className="hidden md:block fixed left-[calc(220px+clamp(20px,2.5vw,36px)+24px)] top-[calc(clamp(20px,2.5vw,36px)+8px)] font-mono text-[10px] text-ink/60 uppercase tracking-[0.08em] z-20 pointer-events-none"
+          className="hidden md:block fixed left-[calc(220px+clamp(20px,2.5vw,36px)+24px)] top-[calc(clamp(20px,2.5vw,36px)+8px)] font-mono text-[10px] text-ink/60 uppercase tracking-[0.08em] z-10 pointer-events-none"
         >
           SAEP PROTOCOL // OPERATOR CONSOLE
         </div>
@@ -49,7 +49,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Bottom-right status + barcode */}
         <div
           aria-hidden="true"
-          className="hidden md:flex fixed right-[calc(clamp(20px,2.5vw,36px)+16px)] bottom-[calc(clamp(20px,2.5vw,36px)+8px)] items-end gap-4 z-20 pointer-events-none"
+          className="hidden md:flex fixed right-[calc(clamp(20px,2.5vw,36px)+16px)] bottom-[calc(clamp(20px,2.5vw,36px)+8px)] items-end gap-4 z-10 pointer-events-none"
         >
           <div className="font-mono text-[10px] text-ink/60 uppercase tracking-[0.08em] text-right leading-relaxed">
             <div>CLUSTER: {process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? 'devnet'}</div>

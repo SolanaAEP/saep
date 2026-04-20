@@ -41,9 +41,11 @@ export default function DashboardPage() {
         <>
           <TreasuryOverviewPanel agents={agents} />
 
-          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+          <div className={`grid gap-6 ${YELLOWSTONE_ENDPOINT ? 'lg:grid-cols-[1fr_320px]' : ''}`}>
             <AgentFleetGrid agents={agents} />
-            <FleetActivityFeed agents={agents} yellowstoneEndpoint={YELLOWSTONE_ENDPOINT} />
+            {YELLOWSTONE_ENDPOINT && (
+              <FleetActivityFeed agents={agents} yellowstoneEndpoint={YELLOWSTONE_ENDPOINT} />
+            )}
           </div>
         </>
       )}
