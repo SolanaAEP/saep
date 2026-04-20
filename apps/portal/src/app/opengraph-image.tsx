@@ -1,11 +1,24 @@
 import { ImageResponse } from 'next/og';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
-export const runtime = 'edge';
 export const alt = 'SAEP — Solana Agent Economy Protocol';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
 export default async function Image() {
+  const [heroBytes, archivoBytes, jbMonoBytes] = await Promise.all([
+    readFile(join(process.cwd(), 'public', 'hero-bg.jpg')),
+    readFile(join(process.cwd(), 'public', 'fonts', 'archivo-black-latin-400-normal.woff')),
+    readFile(join(process.cwd(), 'public', 'fonts', 'JetBrainsMono-Regular.ttf')),
+  ]);
+  const heroBase64 = `data:image/jpeg;base64,${heroBytes.toString('base64')}`;
+
+  const barcodeWidths = [
+    3,1,2,1,3,2,1,1,3,1,2,3,1,1,2,1,3,1,1,2,3,1,2,1,1,3,2,1,1,3,
+    1,2,1,3,2,1,1,2,3,1,2,1,3,1,1,2,1,3,2,1,1,3,1,2,3,1,1,2,1,3,
+  ];
+
   return new ImageResponse(
     (
       <div
@@ -15,329 +28,213 @@ export default async function Image() {
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: '#f2f0e8',
-          padding: '48px',
           fontFamily: 'system-ui, -apple-system, sans-serif',
           position: 'relative',
           overflow: 'hidden',
         }}
       >
-        {/* Dot grid pattern */}
+        {/* Double border frame — matches homepage */}
         <div
           style={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            top: 8,
+            left: 8,
+            right: 8,
+            bottom: 8,
+            border: '1px solid #c8c4bc',
             display: 'flex',
-            flexWrap: 'wrap',
-            opacity: 0.07,
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            top: 18,
+            left: 18,
+            right: 18,
+            bottom: 18,
+            border: '1px solid #c8c4bc',
+            display: 'flex',
+          }}
+        />
+
+        {/* Corner brackets */}
+        <div style={{ position: 'absolute', top: 14, left: 14, width: 12, height: 12, borderTop: '1px solid rgba(10,10,10,0.55)', borderLeft: '1px solid rgba(10,10,10,0.55)', display: 'flex' }} />
+        <div style={{ position: 'absolute', top: 14, right: 14, width: 12, height: 12, borderTop: '1px solid rgba(10,10,10,0.55)', borderRight: '1px solid rgba(10,10,10,0.55)', display: 'flex' }} />
+        <div style={{ position: 'absolute', bottom: 14, left: 14, width: 12, height: 12, borderBottom: '1px solid rgba(10,10,10,0.55)', borderLeft: '1px solid rgba(10,10,10,0.55)', display: 'flex' }} />
+        <div style={{ position: 'absolute', bottom: 14, right: 14, width: 12, height: 12, borderBottom: '1px solid rgba(10,10,10,0.55)', borderRight: '1px solid rgba(10,10,10,0.55)', display: 'flex' }} />
+
+        {/* Top-left: SYS labels — matches homepage */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 40,
+            left: 44,
+            display: 'flex',
+            gap: 24,
+            fontFamily: 'JetBrains Mono',
+            fontSize: 10,
+            color: 'rgba(10,10,10,0.8)',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase' as const,
           }}
         >
-          {Array.from({ length: 600 }).map((_, i) => (
-            <div
-              key={i}
-              style={{
-                width: '40px',
-                height: '40px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <div
-                style={{
-                  width: '3px',
-                  height: '3px',
-                  borderRadius: '50%',
-                  backgroundColor: '#1a1a1a',
-                }}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Corner brackets - top left */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '24px',
-            left: '24px',
-            width: '40px',
-            height: '40px',
-            borderTop: '3px solid #1a1a1a',
-            borderLeft: '3px solid #1a1a1a',
-            display: 'flex',
-          }}
-        />
-        {/* Corner brackets - top right */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '24px',
-            right: '24px',
-            width: '40px',
-            height: '40px',
-            borderTop: '3px solid #1a1a1a',
-            borderRight: '3px solid #1a1a1a',
-            display: 'flex',
-          }}
-        />
-        {/* Corner brackets - bottom left */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '24px',
-            left: '24px',
-            width: '40px',
-            height: '40px',
-            borderBottom: '3px solid #1a1a1a',
-            borderLeft: '3px solid #1a1a1a',
-            display: 'flex',
-          }}
-        />
-        {/* Corner brackets - bottom right */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '24px',
-            right: '24px',
-            width: '40px',
-            height: '40px',
-            borderBottom: '3px solid #1a1a1a',
-            borderRight: '3px solid #1a1a1a',
-            display: 'flex',
-          }}
-        />
-
-        {/* Lime accent square top-left */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '24px',
-            left: '80px',
-            width: '10px',
-            height: '10px',
-            backgroundColor: '#06f512',
-            display: 'flex',
-          }}
-        />
-
-        {/* Lime accent line left side */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '200px',
-            left: '24px',
-            width: '3px',
-            height: '60px',
-            backgroundColor: '#06f512',
-            display: 'flex',
-          }}
-        />
-
-        {/* Header row */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            width: '100%',
-            zIndex: 1,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-            }}
-          >
-            <div
-              style={{
-                fontSize: '24px',
-                fontWeight: 900,
-                letterSpacing: '-1px',
-                color: '#1a1a1a',
-              }}
-            >
-              SAEP
-            </div>
-            <div
-              style={{
-                width: '6px',
-                height: '6px',
-                backgroundColor: '#06f512',
-                borderRadius: '50%',
-                display: 'flex',
-              }}
-            />
-            <div
-              style={{
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                color: '#888',
-                letterSpacing: '1px',
-              }}
-            >
-              v0.1
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span>SYS.OP.01</span>
+            <span>SEQ.994.2</span>
           </div>
-
-          <div
-            style={{
-              fontSize: '11px',
-              fontFamily: 'monospace',
-              color: '#666',
-              letterSpacing: '1px',
-              textAlign: 'right',
-            }}
-          >
-            SOLANA AGENT ECONOMY PROTOCOL
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span>INTENT → AGENT →</span>
+            <span>STRATEGY → EXECUTE →</span>
+            <span>LIVE</span>
           </div>
         </div>
 
-        {/* Center content */}
+        {/* Center — hero image above heading */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'center',
             alignItems: 'center',
+            justifyContent: 'center',
             flex: 1,
-            zIndex: 1,
+            position: 'relative',
+            paddingTop: 40,
           }}
         >
+          <img
+            src={heroBase64}
+            alt=""
+            style={{
+              width: '360px',
+              height: '360px',
+              objectFit: 'cover',
+              objectPosition: 'center 20%',
+            }}
+          />
           <div
             style={{
-              fontSize: '120px',
-              fontWeight: 900,
-              color: '#1a1a1a',
-              letterSpacing: '-6px',
-              lineHeight: 1,
+              fontFamily: 'Archivo Black',
+              fontSize: 64,
+              fontWeight: 400,
+              color: '#0a0a0a',
+              letterSpacing: -2,
+              lineHeight: 0.92,
+              marginTop: 8,
             }}
           >
             SAEP
           </div>
           <div
             style={{
-              fontSize: '18px',
-              fontFamily: 'monospace',
-              color: '#555',
-              marginTop: '20px',
-              letterSpacing: '3px',
-              textTransform: 'uppercase',
+              fontFamily: 'JetBrains Mono',
+              fontSize: 11,
+              color: '#7a7772',
+              marginTop: 12,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase' as const,
             }}
           >
-            Autonomous agent infrastructure
-          </div>
-          <div
-            style={{
-              fontSize: '14px',
-              fontFamily: 'monospace',
-              color: '#888',
-              marginTop: '8px',
-              letterSpacing: '1px',
-            }}
-          >
-            register // stake // govern // earn
+            Solana Agent Economy Protocol
           </div>
         </div>
 
-        {/* Bottom section */}
+        {/* Bottom-left: status labels */}
         <div
           style={{
+            position: 'absolute',
+            bottom: 40,
+            left: 44,
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px',
-            zIndex: 1,
+            gap: 2,
+            fontFamily: 'JetBrains Mono',
+            fontSize: 10,
+            color: 'rgba(10,10,10,0.8)',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase' as const,
           }}
         >
-          {/* Barcode-style lines */}
-          <div
-            style={{
-              display: 'flex',
-              gap: '2px',
-              alignItems: 'flex-end',
-              height: '28px',
-            }}
-          >
-            {Array.from({ length: 64 }).map((_, i) => (
+          <span>AGENT LAYER ACTIVE</span>
+          <span>REAL-TIME STATE</span>
+          <span>EXECUTION PATH VERIFIED</span>
+        </div>
+
+        {/* Bottom-right: lime bar + barcode + labels — matches homepage */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 36,
+            right: 40,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            gap: 6,
+          }}
+        >
+          {/* Lime accent bar */}
+          <div style={{ height: 4, width: 64, backgroundColor: '#06f512', display: 'flex' }} />
+
+          {/* Code128-style barcode */}
+          <div style={{ display: 'flex', gap: 0, alignItems: 'flex-end', height: 48 }}>
+            {barcodeWidths.map((w, i) => (
               <div
                 key={i}
                 style={{
-                  width: i % 7 === 0 ? '4px' : '2px',
-                  height: `${10 + ((i * 13) % 18)}px`,
-                  backgroundColor: i % 9 === 0 ? '#06f512' : '#1a1a1a',
-                  opacity: i % 3 === 0 ? 0.9 : 0.35,
+                  width: w,
+                  height: 48,
+                  backgroundColor: i % 2 === 0 ? '#0a0a0a' : 'transparent',
                   display: 'flex',
                 }}
               />
             ))}
           </div>
 
-          {/* Footer row */}
+          <div
+            style={{
+              fontFamily: 'JetBrains Mono',
+              fontSize: 10,
+              color: 'rgba(10,10,10,0.7)',
+              letterSpacing: '0.1em',
+            }}
+          >
+            0101001 / 010001
+          </div>
           <div
             style={{
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              width: '100%',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              gap: 2,
+              fontFamily: 'JetBrains Mono',
+              fontSize: 10,
+              color: 'rgba(10,10,10,0.8)',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase' as const,
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                gap: '24px',
-                alignItems: 'center',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: '11px',
-                  fontFamily: 'monospace',
-                  color: '#06f512',
-                  backgroundColor: '#1a1a1a',
-                  padding: '4px 10px',
-                  borderRadius: '2px',
-                }}
-              >
-                SYS[OK]
-              </div>
-              <div
-                style={{
-                  fontSize: '11px',
-                  fontFamily: 'monospace',
-                  color: '#888',
-                }}
-              >
-                CLUSTER: DEVNET
-              </div>
-              <div
-                style={{
-                  fontSize: '11px',
-                  fontFamily: 'monospace',
-                  color: '#888',
-                }}
-              >
-                EPOCH: 742
-              </div>
-            </div>
-
-            <div
-              style={{
-                fontSize: '14px',
-                fontFamily: 'monospace',
-                color: '#555',
-                letterSpacing: '1px',
-              }}
-            >
-              buildonsaep.com
-            </div>
+            <span>SOLANA AGENT ECONOMY PROTOCOL</span>
+            <span>V.2.0.0 // PROTOCOL LIVE</span>
+            <span>ALL SYSTEMS NOMINAL</span>
           </div>
         </div>
       </div>
     ),
-    { ...size }
+    {
+      ...size,
+      fonts: [
+        {
+          name: 'Archivo Black',
+          data: archivoBytes,
+          style: 'normal' as const,
+          weight: 400 as const,
+        },
+        {
+          name: 'JetBrains Mono',
+          data: jbMonoBytes,
+          style: 'normal' as const,
+          weight: 400 as const,
+        },
+      ],
+    },
   );
 }
