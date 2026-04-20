@@ -7,7 +7,7 @@ import { WordmarkSpine } from './wordmark-spine';
 import { MobileNav } from './mobile-nav';
 import { SlicedHeroImage } from './sliced-hero-image';
 import { secondaryNav } from './nav-items';
-import { SocialIcons } from './social-icons';
+import { NAV_ICONS } from './social-icons';
 
 const BUILD_SHA = (process.env.NEXT_PUBLIC_BUILD_SHA ?? '').slice(0, 7);
 const BUILD_TIME = process.env.NEXT_PUBLIC_BUILD_TIME ?? '';
@@ -108,16 +108,20 @@ export function Hero() {
 
       <header className="absolute top-0 right-0 z-40 px-[clamp(20px,4vw,64px)] py-[clamp(20px,3vw,40px)] flex items-center gap-6">
         <nav className="hidden md:flex items-center gap-5" aria-label="Secondary">
-          {secondaryNav.map((s) => (
-            <a
-              key={s.href}
-              href={s.href}
-              className="font-mono uppercase text-[11px] tracking-[0.08em] text-ink hover:text-lime transition-colors"
-            >
-              {s.label}
-            </a>
-          ))}
-          <SocialIcons className="text-ink hover:text-lime transition-colors" />
+          {secondaryNav.map((s) => {
+            const Icon = s.icon ? NAV_ICONS[s.icon] : null;
+            return (
+              <a
+                key={s.href}
+                href={s.href}
+                className="flex items-center gap-1.5 font-mono uppercase text-[11px] tracking-[0.08em] text-ink hover:text-lime transition-colors"
+                {...(s.href.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              >
+                {Icon && <Icon className="h-3.5 w-3.5" />}
+                {s.label}
+              </a>
+            );
+          })}
         </nav>
         <MobileNav />
       </header>

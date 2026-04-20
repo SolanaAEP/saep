@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { navItems, secondaryNav } from './nav-items';
-import { SocialIcons } from './social-icons';
+import { NAV_ICONS } from './social-icons';
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
@@ -92,19 +92,21 @@ export function MobileNav() {
             ))}
           </ul>
           <ul className="mt-auto flex flex-col gap-3 border-t border-ink/20 pt-6">
-            {secondaryNav.map((s) => (
-              <li key={s.href}>
-                <a
-                  href={s.href}
-                  className="font-mono uppercase text-xs tracking-[0.08em] text-ink"
-                >
-                  {s.label}
-                </a>
-              </li>
-            ))}
-            <li className="flex items-center gap-4 pt-2">
-              <SocialIcons className="text-ink hover:text-lime transition-colors" />
-            </li>
+            {secondaryNav.map((s) => {
+              const Icon = s.icon ? NAV_ICONS[s.icon] : null;
+              return (
+                <li key={s.href}>
+                  <a
+                    href={s.href}
+                    className="flex items-center gap-2 font-mono uppercase text-xs tracking-[0.08em] text-ink"
+                    {...(s.href.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                  >
+                    {Icon && <Icon className="h-4 w-4" />}
+                    {s.label}
+                  </a>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </dialog>

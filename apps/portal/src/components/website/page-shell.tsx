@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { secondaryNav } from './nav-items';
 import { MobileNav } from './mobile-nav';
-import { SocialIcons } from './social-icons';
+import { NAV_ICONS } from './social-icons';
 
 type Crumb = { label: string; href?: string };
 
@@ -30,16 +30,20 @@ export function PageShell({
             SAEP
           </Link>
           <nav className="hidden md:flex items-center gap-6" aria-label="Primary">
-            {secondaryNav.map((s) => (
-              <a
-                key={s.href}
-                href={s.href}
-                className="font-mono uppercase text-[11px] tracking-[0.08em] text-ink hover:text-lime transition-colors"
-              >
-                {s.label}
-              </a>
-            ))}
-            <SocialIcons className="text-ink hover:text-lime transition-colors" />
+            {secondaryNav.map((s) => {
+              const Icon = s.icon ? NAV_ICONS[s.icon] : null;
+              return (
+                <a
+                  key={s.href}
+                  href={s.href}
+                  className="flex items-center gap-1.5 font-mono uppercase text-[11px] tracking-[0.08em] text-ink hover:text-lime transition-colors"
+                  {...(s.href.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                >
+                  {Icon && <Icon className="h-3.5 w-3.5" />}
+                  {s.label}
+                </a>
+              );
+            })}
           </nav>
           <MobileNav />
         </div>
