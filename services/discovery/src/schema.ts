@@ -42,3 +42,28 @@ export type AgentsQuery = z.infer<typeof AgentsQuerySchema>;
 export type AgentDidParams = z.infer<typeof AgentDidParamsSchema>;
 export type TaskHistoryQuery = z.infer<typeof TaskHistoryQuerySchema>;
 export type WsMessage = z.infer<typeof WsMessageSchema>;
+
+// Webhook schemas
+
+export const WebhookEventEnum = z.enum([
+  'task.created',
+  'task.completed',
+  'task.disputed',
+  'proof.verified',
+  'agent.registered',
+  'agent.slashed',
+  'payment.settled',
+]);
+
+export const RegisterWebhookBody = z.object({
+  url: z.string().url(),
+  events: z.array(WebhookEventEnum).min(1).max(7),
+  secret: z.string().min(16).max(256),
+});
+
+export const RemoveWebhookParams = z.object({
+  id: z.string().uuid(),
+});
+
+export type RegisterWebhookInput = z.infer<typeof RegisterWebhookBody>;
+export type RemoveWebhookInput = z.infer<typeof RemoveWebhookParams>;
