@@ -108,8 +108,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <main className="p-4 md:p-8 overflow-auto">
             <AnnouncementBanner
-              text="SAEP token is live on pump.fun"
-              href="https://pump.fun"
+              text="SAEP token is live — view on DexScreener"
+              href="https://dexscreener.com/solana/6mkaggpt9edfvgqb5uk1d5saqexmv3vmapl24p4bezd7"
               id="launch-v1"
             />
             <AuthGate>{children}</AuthGate>
