@@ -5,12 +5,10 @@
 
 html,
 body {
-  background-image: url('/paper-texture.png');
-  background-repeat: repeat;
+  background-color: #faefc9;
 }
 
 .bg-paper,
 .bg-paper-2 {
-  background-image: url('/paper-texture.png');
-  background-repeat: repeat;
+  background-color: #faefc9;
 }

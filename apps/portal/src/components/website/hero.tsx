@@ -148,7 +148,7 @@ export function Hero() {
         <TickerMarquee />
         <div className="relative w-full max-h-[60vh]">
           <img
-            src="/hero-bg.jpg"
+            src="/hero-bg.png"
             alt=""
             aria-hidden="true"
             className="w-full object-cover"

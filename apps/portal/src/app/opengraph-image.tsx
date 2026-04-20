@@ -8,11 +8,11 @@ export const contentType = 'image/png';
 
 export default async function Image() {
   const [heroBytes, archivoBytes, jbMonoBytes] = await Promise.all([
-    readFile(join(process.cwd(), 'public', 'hero-bg.jpg')),
+    readFile(join(process.cwd(), 'public', 'hero-bg.png')),
     readFile(join(process.cwd(), 'public', 'fonts', 'archivo-black-latin-400-normal.woff')),
     readFile(join(process.cwd(), 'public', 'fonts', 'JetBrainsMono-Regular.ttf')),
   ]);
-  const heroBase64 = `data:image/jpeg;base64,${heroBytes.toString('base64')}`;
+  const heroBase64 = `data:image/png;base64,${heroBytes.toString('base64')}`;
 
   const barcodeWidths = [
     3,1,2,1,3,2,1,1,3,1,2,3,1,1,2,1,3,1,1,2,3,1,2,1,1,3,2,1,1,3,
@@ -27,7 +27,7 @@ export default async function Image() {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: '#f2f0e8',
+          backgroundColor: '#faefc9',
           fontFamily: 'system-ui, -apple-system, sans-serif',
           position: 'relative',
           overflow: 'hidden',

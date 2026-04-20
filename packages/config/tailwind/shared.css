@@ -16,8 +16,7 @@ html {
 
 /* ── Paper texture ────────────────────────────────── */
 .bg-paper-texture {
-  background-image: url('/paper-texture.png');
-  background-repeat: repeat;
+  background-color: #faefc9;
 }
 
 /* ── Marquee ──────────────────────────────────────── */

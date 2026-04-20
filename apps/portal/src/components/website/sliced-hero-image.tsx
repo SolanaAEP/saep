@@ -35,7 +35,7 @@ export function SlicedHeroImage({
       aria-hidden="true"
     >
       <img
-        src="/hero-bg.jpg"
+        src="/hero-bg.png"
         alt=""
         className="block h-[min(78vh,720px)] w-auto object-contain invisible select-none pointer-events-none"
         draggable={false}
@@ -46,7 +46,7 @@ export function SlicedHeroImage({
         return (
           <img
             key={i}
-            src="/hero-bg.jpg"
+            src="/hero-bg.png"
             alt=""
             draggable={false}
             className="absolute inset-0 block h-full w-full object-contain select-none pointer-events-none transition-transform duration-[520ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform"

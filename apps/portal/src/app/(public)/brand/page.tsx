@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 const colors = [
-  { token: '--paper',   hex: '#f2f0e8', label: 'Paper',     role: 'Background',      swatch: '#f2f0e8', border: true },
+  { token: '--paper',   hex: '#faefc9', label: 'Paper',     role: 'Background',      swatch: '#faefc9', border: true },
   { token: '--paper-2', hex: '#edebe3', label: 'Paper 2',   role: 'Elevated surface', swatch: '#edebe3', border: true },
   { token: '--ink',     hex: '#0a0a0a', label: 'Ink',       role: 'Primary text',     swatch: '#0a0a0a' },
   { token: '--ink-2',   hex: '#1a1a1a', label: 'Ink 2',     role: 'Secondary text',   swatch: '#1a1a1a' },
