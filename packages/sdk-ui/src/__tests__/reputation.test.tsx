@@ -92,6 +92,23 @@ describe('useLeaderboard', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error?.message).toMatch(/indexer 503: Service Unavailable/);
   });
+
+  it('falls back to statusText when response body throws', async () => {
+    fetchSpy.mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Boom',
+      text: () => Promise.reject(new Error('text fail')),
+    } as any);
+
+    const { result } = renderHook(
+      () => useLeaderboard({ indexerUrl: INDEXER, capabilityBit: 0 }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toMatch(/indexer 500: Boom/);
+  });
 });
 
 describe('useAgentReputation', () => {
@@ -193,6 +210,23 @@ describe('useRetroEligibility', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error?.message).toMatch(/indexer 502: Bad Gateway/);
+  });
+
+  it('falls back to statusText when retro response body throws', async () => {
+    fetchSpy.mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Crash',
+      text: () => Promise.reject(new Error('text fail')),
+    } as any);
+
+    const { result } = renderHook(
+      () => useRetroEligibility({ indexerUrl: INDEXER, operatorHex: validHex }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toMatch(/indexer 500: Crash/);
   });
 
   it('stays disabled for short operator hex', () => {
