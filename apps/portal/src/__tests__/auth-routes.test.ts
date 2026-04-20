@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import nacl from 'tweetnacl';
+import { PublicKey } from '@solana/web3.js';
+import { formatSiwsMessage, type SiwsMessage } from '@saep/sdk';
 
 const cookieStore = new Map<string, string>();
 
@@ -12,6 +15,18 @@ vi.mock('next/headers', () => ({
     delete: (name: string) => cookieStore.delete(name),
   }),
 }));
+
+async function issueNonceFor(address: string): Promise<{ message: SiwsMessage; nonceToken: string }> {
+  const { POST } = await import('../app/api/auth/nonce/route.js');
+  const req = makeRequest('http://localhost:3000/api/auth/nonce', { body: { address } });
+  const res = await POST(req);
+  return res.json();
+}
+
+function signSiws(message: SiwsMessage, secretKey: Uint8Array): string {
+  const bytes = new TextEncoder().encode(formatSiwsMessage(message));
+  return Buffer.from(nacl.sign.detached(bytes, secretKey)).toString('base64');
+}
 
 function makeRequest(url: string, opts: { method?: string; body?: unknown; cookies?: Record<string, string> } = {}) {
   const headers = new Headers({ 'content-type': 'application/json' });
@@ -95,6 +110,102 @@ describe('POST /api/auth/verify', () => {
     expect(res.status).toBe(401);
     const data = await res.json();
     expect(data.error).toMatch(/nonce/i);
+  });
+
+  it('returns 200 + session for valid signature + nonce cookie', async () => {
+    const keypair = nacl.sign.keyPair();
+    const address = new PublicKey(keypair.publicKey).toBase58();
+    const { message, nonceToken } = await issueNonceFor(address);
+    const signature = signSiws(message, keypair.secretKey);
+
+    const { POST } = await import('../app/api/auth/verify/route.js');
+    const req = makeRequest('http://localhost:3000/api/auth/verify', {
+      body: { message, signature },
+      cookies: { saep_nonce: nonceToken },
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.session.address).toBe(address);
+    expect(data.session.expiresAt).toBeGreaterThan(data.session.issuedAt);
+    expect(cookieStore.has('saep_session')).toBe(true);
+  });
+
+  it('returns 401 on nonce/address mismatch (signer differs from nonce-bound address)', async () => {
+    const bound = nacl.sign.keyPair();
+    const attacker = nacl.sign.keyPair();
+    const boundAddr = new PublicKey(bound.publicKey).toBase58();
+    const attackerAddr = new PublicKey(attacker.publicKey).toBase58();
+    const { message, nonceToken } = await issueNonceFor(boundAddr);
+    const tampered = { ...message, address: attackerAddr };
+    const signature = signSiws(tampered, attacker.secretKey);
+
+    const { POST } = await import('../app/api/auth/verify/route.js');
+    const req = makeRequest('http://localhost:3000/api/auth/verify', {
+      body: { message: tampered, signature },
+      cookies: { saep_nonce: nonceToken },
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.error).toMatch(/nonce mismatch/i);
+  });
+
+  it('returns 401 when message expirationTime is in the past', async () => {
+    const keypair = nacl.sign.keyPair();
+    const address = new PublicKey(keypair.publicKey).toBase58();
+    const { message, nonceToken } = await issueNonceFor(address);
+    const expired: SiwsMessage = {
+      ...message,
+      expirationTime: new Date(Date.now() - 60_000).toISOString(),
+    };
+    const signature = signSiws(expired, keypair.secretKey);
+
+    const { POST } = await import('../app/api/auth/verify/route.js');
+    const req = makeRequest('http://localhost:3000/api/auth/verify', {
+      body: { message: expired, signature },
+      cookies: { saep_nonce: nonceToken },
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.error).toMatch(/expired/i);
+  });
+
+  it('returns 401 on domain mismatch', async () => {
+    const keypair = nacl.sign.keyPair();
+    const address = new PublicKey(keypair.publicKey).toBase58();
+    const { message, nonceToken } = await issueNonceFor(address);
+    const wrongDomain: SiwsMessage = { ...message, domain: 'evil.example.com' };
+    const signature = signSiws(wrongDomain, keypair.secretKey);
+
+    const { POST } = await import('../app/api/auth/verify/route.js');
+    const req = makeRequest('http://localhost:3000/api/auth/verify', {
+      body: { message: wrongDomain, signature },
+      cookies: { saep_nonce: nonceToken },
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.error).toMatch(/domain mismatch/i);
+  });
+
+  it('returns 401 on bad signature (wrong signer)', async () => {
+    const bound = nacl.sign.keyPair();
+    const attacker = nacl.sign.keyPair();
+    const boundAddr = new PublicKey(bound.publicKey).toBase58();
+    const { message, nonceToken } = await issueNonceFor(boundAddr);
+    const signature = signSiws(message, attacker.secretKey);
+
+    const { POST } = await import('../app/api/auth/verify/route.js');
+    const req = makeRequest('http://localhost:3000/api/auth/verify', {
+      body: { message, signature },
+      cookies: { saep_nonce: nonceToken },
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.error).toMatch(/bad signature/i);
   });
 });
 
