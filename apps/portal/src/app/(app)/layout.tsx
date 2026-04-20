@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { AppProviders } from '../providers';
 import { AuthGate } from './auth-gate';
-import { AnnouncementBanner } from './announcement-banner';
+
 import { AppMobileNav } from './app-mobile-nav';
 
 export const dynamic = 'force-dynamic';
@@ -107,11 +107,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </aside>
 
           <main className="p-4 md:p-8 overflow-auto">
-            <AnnouncementBanner
-              text="SAEP token is live — view on DexScreener"
-              href="https://dexscreener.com/solana/6mkaggpt9edfvgqb5uk1d5saqexmv3vmapl24p4bezd7"
-              id="launch-v1"
-            />
             <AuthGate>{children}</AuthGate>
           </main>
         </div>

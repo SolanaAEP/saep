@@ -396,6 +396,7 @@ export function Footer() {
           links={[
             { label: 'Docs', href: '/docs' },
             { label: 'All specs', href: '/specs' },
+            { label: 'Tokenomics', href: '/tokenomics' },
             { label: 'Roadmap', href: '/roadmap' },
             { label: 'Brand kit', href: '/brand' },
             { label: 'GitHub', href: 'https://github.com/SolanaAEP/saep' },
