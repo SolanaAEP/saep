@@ -22,6 +22,7 @@ reports/
 scripts/commit-as.sh
 CLAUDE.md
 .claude/
+backlog/
 
 playwright-report/
 test-results/
