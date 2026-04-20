@@ -14,6 +14,7 @@ const NAV = [
   { href: '/governance', label: 'Governance', tag: '05' },
   { href: '/retro/check', label: 'Retro eligibility', tag: '06' },
   { href: '/analytics', label: 'Analytics', tag: '07' },
+  { href: '/security', label: 'Security', tag: '11' },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
