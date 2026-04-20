@@ -28,7 +28,7 @@ function signSiws(message: SiwsMessage, secretKey: Uint8Array): string {
   return Buffer.from(nacl.sign.detached(bytes, secretKey)).toString('base64');
 }
 
-function makeRequest(url: string, opts: { method?: string; body?: unknown; cookies?: Record<string, string> } = {}) {
+function makeRequest(url: string, opts: { method?: string; body?: unknown; cookies?: Record<string, string>; jsonThrows?: boolean } = {}) {
   const headers = new Headers({ 'content-type': 'application/json' });
   const reqCookies = new Map<string, { name: string; value: string }>();
   if (opts.cookies) {
@@ -41,7 +41,10 @@ function makeRequest(url: string, opts: { method?: string; body?: unknown; cooki
     url,
     method: opts.method ?? 'POST',
     headers,
-    json: async () => opts.body ?? null,
+    json: async () => {
+      if (opts.jsonThrows) throw new SyntaxError('Unexpected token in JSON');
+      return opts.body ?? null;
+    },
     cookies: {
       get: (name: string) => reqCookies.get(name),
     },
@@ -79,6 +82,15 @@ describe('POST /api/auth/nonce', () => {
     expect(data.nonceToken).toBeTruthy();
   });
 
+  it('returns 400 when body is not valid JSON', async () => {
+    const { POST } = await import('../app/api/auth/nonce/route.js');
+    const req = makeRequest('http://localhost:3000/api/auth/nonce', { jsonThrows: true });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toMatch(/address/i);
+  });
+
   it('sets saep_nonce cookie', async () => {
     const { POST } = await import('../app/api/auth/nonce/route.js');
     const req = makeRequest('http://localhost:3000/api/auth/nonce', {
@@ -96,6 +108,15 @@ describe('POST /api/auth/verify', () => {
     const req = makeRequest('http://localhost:3000/api/auth/verify', { body: {} });
     const res = await POST(req);
     expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when body is not valid JSON', async () => {
+    const { POST } = await import('../app/api/auth/verify/route.js');
+    const req = makeRequest('http://localhost:3000/api/auth/verify', { jsonThrows: true });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toMatch(/message/i);
   });
 
   it('returns 401 without nonce cookie', async () => {
@@ -206,6 +227,35 @@ describe('POST /api/auth/verify', () => {
     expect(res.status).toBe(401);
     const data = await res.json();
     expect(data.error).toMatch(/bad signature/i);
+  });
+
+  it('returns 401 on malformed nonce cookie', async () => {
+    const { POST } = await import('../app/api/auth/verify/route.js');
+    const req = makeRequest('http://localhost:3000/api/auth/verify', {
+      body: {
+        message: { nonce: 'x', address: 'y', domain: 'z', expirationTime: new Date().toISOString() },
+        signature: 'dGVzdA==',
+      },
+      cookies: { saep_nonce: 'not-a-jwt' },
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.error).toMatch(/invalid nonce/i);
+  });
+
+  it('returns 400 on invalid base58 address', async () => {
+    const badAddress = 'not-a-valid-base58-pubkey';
+    const { message, nonceToken } = await issueNonceFor(badAddress);
+    const { POST } = await import('../app/api/auth/verify/route.js');
+    const req = makeRequest('http://localhost:3000/api/auth/verify', {
+      body: { message, signature: 'dGVzdA==' },
+      cookies: { saep_nonce: nonceToken },
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toMatch(/invalid address/i);
   });
 });
 
