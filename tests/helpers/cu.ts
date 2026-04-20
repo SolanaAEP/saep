@@ -42,6 +42,10 @@ export const CU_BUDGETS: Record<string, number> = {
   fund_treasury: 100_000,
   withdraw: 80_000,
   init_stream: 120_000,
+  init_config: 50_000,
+  propose_vk_activation: 50_000,
+  execute_vk_activation: 50_000,
+  cancel_vk_activation: 30_000,
 };
 
 export async function measureCU(

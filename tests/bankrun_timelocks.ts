@@ -3,6 +3,9 @@ import { expect } from 'chai';
 
 import { proofVerifier, PROGRAM_IDS } from './helpers/accounts';
 import { startBankrun, loadBankrunProgram, warpClockBy, BankrunEnv } from './helpers/bankrun';
+import {
+  CU_BUDGETS, assertWithinBudget, logCU, measureCU, printCUSummary, resetCUMeasurements,
+} from './helpers/cu';
 import { computeVkId, registerDevVk, DEFAULT_CIRCUIT_LABEL } from './helpers/vk';
 import type { ProofVerifier } from '../target/types/proof_verifier';
 
@@ -13,6 +16,9 @@ describe('bankrun: proof_verifier VK rotation timelock', () => {
   let env: BankrunEnv;
   let program: anchor.Program<ProofVerifier>;
   let authority: anchor.web3.PublicKey;
+
+  before(resetCUMeasurements);
+  after(printCUSummary);
 
   beforeEach(async () => {
     env = await startBankrun();
@@ -30,13 +36,26 @@ describe('bankrun: proof_verifier VK rotation timelock', () => {
     const [cfgPda] = proofVerifier.config();
     const [modePda] = proofVerifier.mode();
 
-    await program.methods.initConfig(authority, false).accountsPartial({ payer: authority }).rpc();
+    const initConfigBuilder = program.methods
+      .initConfig(authority, false)
+      .accountsPartial({ payer: authority });
+    {
+      const cu = await measureCU(env.context, initConfigBuilder, env.context.payer);
+      logCU('init_config', cu);
+      assertWithinBudget('init_config', cu, CU_BUDGETS.init_config);
+    }
+    await initConfigBuilder.rpc();
     await registerDevVk(program, authority, vkId);
 
-    await program.methods
+    const proposeBuilder = program.methods
       .proposeVkActivation()
-      .accountsPartial({ vk: vkPda, mode: modePda, authority })
-      .rpc();
+      .accountsPartial({ vk: vkPda, mode: modePda, authority });
+    {
+      const cu = await measureCU(env.context, proposeBuilder, env.context.payer);
+      logCU('propose_vk_activation', cu);
+      assertWithinBudget('propose_vk_activation', cu, CU_BUDGETS.propose_vk_activation);
+    }
+    await proposeBuilder.rpc();
 
     const afterPropose = await program.account.verifierConfig.fetch(cfgPda);
     expect(afterPropose.pendingVk?.toBase58()).to.equal(vkPda.toBase58());
@@ -56,7 +75,13 @@ describe('bankrun: proof_verifier VK rotation timelock', () => {
 
     await warpClockBy(env.context, SEVEN_DAYS_SECS + 1);
 
-    await program.methods.executeVkActivation().accountsPartial({ vk: vkPda }).rpc();
+    const executeBuilder = program.methods.executeVkActivation().accountsPartial({ vk: vkPda });
+    {
+      const cu = await measureCU(env.context, executeBuilder, env.context.payer);
+      logCU('execute_vk_activation', cu);
+      assertWithinBudget('execute_vk_activation', cu, CU_BUDGETS.execute_vk_activation);
+    }
+    await executeBuilder.rpc();
 
     const activated = await program.account.verifierConfig.fetch(cfgPda);
     expect(activated.activeVk.toBase58()).to.equal(vkPda.toBase58());
@@ -78,7 +103,13 @@ describe('bankrun: proof_verifier VK rotation timelock', () => {
       .accountsPartial({ vk: vkPda, mode: modePda, authority })
       .rpc();
 
-    await program.methods.cancelVkActivation().accountsPartial({ authority }).rpc();
+    const cancelBuilder = program.methods.cancelVkActivation().accountsPartial({ authority });
+    {
+      const cu = await measureCU(env.context, cancelBuilder, env.context.payer);
+      logCU('cancel_vk_activation', cu);
+      assertWithinBudget('cancel_vk_activation', cu, CU_BUDGETS.cancel_vk_activation);
+    }
+    await cancelBuilder.rpc();
 
     const cancelled = await program.account.verifierConfig.fetch(cfgPda);
     expect(cancelled.pendingVk).to.equal(null);
