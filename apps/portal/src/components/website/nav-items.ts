@@ -10,7 +10,6 @@ export const navItems = [
 
 export const secondaryNav = [
   { label: 'Docs', href: '/docs' },
-  { label: 'Roadmap', href: '/roadmap' },
   { label: 'Specs', href: '/specs' },
   { label: 'App', href: '/dashboard' },
   { label: 'GitHub', href: 'https://github.com/SolanaAEP/saep' },
