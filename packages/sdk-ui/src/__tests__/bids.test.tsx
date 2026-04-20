@@ -369,6 +369,37 @@ describe('useCommitBid', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error?.message).toContain('not the registered operator');
   });
+
+  it('rejects when program is null (wallet not connected)', async () => {
+    mockWallet();
+    vi.mocked(taskMarketProgram).mockReturnValue(null as any);
+
+    const { result } = renderHook(() => useCommitBid(), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.mutate(commitArgs);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toBe('Wallet not connected');
+  });
+
+  it('rejects when wallet publicKey is missing', async () => {
+    mockWallet({ publicKey: null });
+
+    const { result } = renderHook(() => useCommitBid(), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.mutate(commitArgs);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toBe('Missing wallet publicKey');
+  });
 });
 
 describe('useRevealBid', () => {
@@ -417,6 +448,27 @@ describe('useRevealBid', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error?.message).toBe('Missing wallet publicKey');
   });
+
+  it('rejects when program is null (wallet not connected)', async () => {
+    mockWallet();
+    vi.mocked(taskMarketProgram).mockReturnValue(null as any);
+
+    const { result } = renderHook(() => useRevealBid(), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.mutate({
+        task: MOCK_PUBKEY,
+        taskId: new Uint8Array(32),
+        amount: BigInt(100),
+        nonce: new Uint8Array(16),
+      });
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toBe('Wallet not connected');
+  });
 });
 
 describe('useClaimBond', () => {
@@ -444,5 +496,44 @@ describe('useClaimBond', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(buildClaimBondIx).toHaveBeenCalledTimes(1);
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['bid'] });
+  });
+
+  const claimArgs = {
+    task: MOCK_PUBKEY,
+    taskId: new Uint8Array(32),
+    paymentMint: MOCK_PUBKEY_2,
+    bidderTokenAccount: MOCK_PUBKEY,
+    feeCollectorTokenAccount: MOCK_PUBKEY_2,
+  };
+
+  it('rejects when program is null (wallet not connected)', async () => {
+    mockWallet();
+    vi.mocked(taskMarketProgram).mockReturnValue(null as any);
+
+    const { result } = renderHook(() => useClaimBond(), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.mutate(claimArgs);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toBe('Wallet not connected');
+  });
+
+  it('rejects when wallet publicKey is missing', async () => {
+    mockWallet({ publicKey: null });
+
+    const { result } = renderHook(() => useClaimBond(), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => {
+      result.current.mutate(claimArgs);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toBe('Missing wallet publicKey');
   });
 });
