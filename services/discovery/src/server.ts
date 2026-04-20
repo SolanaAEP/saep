@@ -7,8 +7,11 @@ import {
   AgentDidParamsSchema,
   TaskHistoryQuerySchema,
   WsMessageSchema,
+  RegisterWebhookBody,
+  RemoveWebhookParams,
   type WsMessage,
 } from './schema.js';
+import { WebhookManager, WebhookError } from './webhooks.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info', name: 'discovery' });
 const PORT = Number(process.env.DISCOVERY_PORT ?? 8790);
@@ -307,6 +310,66 @@ async function buildServer() {
         last_24h_lamports: row?.last_24h_fees_lamports ?? '0',
       },
     };
+  });
+
+  // Webhook management
+  const webhooks = new WebhookManager();
+  await webhooks.init();
+
+  function getOperator(req: { headers: Record<string, string | string[] | undefined> }): string | null {
+    const auth = req.headers['x-saep-operator'];
+    if (typeof auth === 'string' && auth.length > 0) return auth;
+    return null;
+  }
+
+  // POST /v1/webhooks — register
+  app.post('/v1/webhooks', async (req, reply) => {
+    const operator = getOperator(req);
+    if (!operator) return reply.code(401).send({ error: 'missing x-saep-operator header' });
+
+    const parsed = RegisterWebhookBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+    }
+
+    try {
+      const hook = await webhooks.registerWebhook(
+        operator,
+        parsed.data.url,
+        parsed.data.events,
+        parsed.data.secret,
+      );
+      return reply.code(201).send(hook);
+    } catch (err) {
+      if (err instanceof WebhookError) {
+        return reply.code(err.statusCode).send({ error: err.message });
+      }
+      throw err;
+    }
+  });
+
+  // DELETE /v1/webhooks/:id — remove
+  app.delete('/v1/webhooks/:id', async (req, reply) => {
+    const operator = getOperator(req);
+    if (!operator) return reply.code(401).send({ error: 'missing x-saep-operator header' });
+
+    const params = RemoveWebhookParams.safeParse(req.params);
+    if (!params.success) {
+      return reply.code(400).send({ error: 'invalid webhook id' });
+    }
+
+    const removed = await webhooks.removeWebhook(params.data.id, operator);
+    if (!removed) return reply.code(404).send({ error: 'webhook_not_found' });
+    return { ok: true };
+  });
+
+  // GET /v1/webhooks — list mine
+  app.get('/v1/webhooks', async (req, reply) => {
+    const operator = getOperator(req);
+    if (!operator) return reply.code(401).send({ error: 'missing x-saep-operator header' });
+
+    const hooks = await webhooks.listWebhooks(operator);
+    return { webhooks: hooks };
   });
 
   // WebSocket /ws — real-time subscriptions
