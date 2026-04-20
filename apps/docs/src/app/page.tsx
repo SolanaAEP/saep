@@ -17,7 +17,7 @@ export default function Page() {
       <ul>
         {specs.map((s) => (
           <li key={s.slug}>
-            <Link href={`/specs/${s.slug}`}>{s.title}</Link>{' '}
+            <Link href={`/specs/${s.slug}/`}>{s.title}</Link>{' '}
             <span className="text-mute">· {s.slug}</span>
           </li>
         ))}
