@@ -159,6 +159,18 @@ describe('useRetroEligibility', () => {
     expect(result.current.data).toBeNull();
   });
 
+  it('propagates non-404 indexer errors with body text', async () => {
+    fetchSpy.mockResolvedValue(new Response('internal error', { status: 500 }));
+
+    const { result } = renderHook(
+      () => useRetroEligibility({ indexerUrl: INDEXER, operatorHex: validHex }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toMatch(/indexer 500: internal error/);
+  });
+
   it('stays disabled for short operator hex', () => {
     const { result } = renderHook(
       () => useRetroEligibility({ indexerUrl: INDEXER, operatorHex: 'short' }),
