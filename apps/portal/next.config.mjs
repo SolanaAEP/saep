@@ -4,6 +4,9 @@ const withBundleAnalyzer =
     ? (await import('@next/bundle-analyzer')).default({ enabled: true })
     : (/** @type {import('next').NextConfig} */ c) => c;
 
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -14,6 +17,14 @@ const nextConfig = {
       '@coral-xyz/anchor',
       'recharts',
     ],
+  },
+  webpack(config) {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@solana/wallet-adapter-react': require.resolve('@solana/wallet-adapter-react'),
+      '@tanstack/react-query': require.resolve('@tanstack/react-query'),
+    };
+    return config;
   },
 };
 
