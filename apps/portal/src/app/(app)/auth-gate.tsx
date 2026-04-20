@@ -2,9 +2,14 @@
 
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { useSession, useSiwsSignIn, useSignOut } from '@saep/sdk-ui';
+import { useSession, useSiwsSignIn, useSignOut, useTokenBalance } from '@saep/sdk-ui';
 import { useState } from 'react';
+import { PublicKey } from '@solana/web3.js';
 import { GlitchButton } from '@saep/ui';
+
+const SAEP_MINT = process.env.NEXT_PUBLIC_SAEP_MINT
+  ? new PublicKey(process.env.NEXT_PUBLIC_SAEP_MINT)
+  : null;
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { connected, publicKey } = useWallet();
@@ -13,6 +18,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const signOut = useSignOut();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { data: tokenBalance } = useTokenBalance(publicKey ?? null, SAEP_MINT);
 
   if (isLoading) return <Centered>Loading session…</Centered>;
 
@@ -59,6 +65,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between font-mono text-[11px] text-mute">
         <span>{session.address.slice(0, 4)}…{session.address.slice(-4)}</span>
+        {SAEP_MINT && tokenBalance && (
+          <span className="font-mono text-[11px] text-ink">
+            {tokenBalance.uiAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} SAEP
+          </span>
+        )}
         <button
           type="button"
           onClick={() => signOut()}

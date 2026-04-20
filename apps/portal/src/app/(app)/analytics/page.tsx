@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { FeesBurnedCounter } from './fees-burned';
 import { TopAgentsLeaderboard } from './leaderboard';
@@ -20,92 +21,120 @@ import type { TaskVolumeData } from './task-volume';
 import type { LeaderboardAgent } from './leaderboard';
 import type { NetworkHealth } from './network-health';
 
-function generateBurnMock(): BurnStats {
-  const now = Date.now();
-  const day = 86_400_000;
-  const daily = Array.from({ length: 90 }, (_, i) => ({
-    date: new Date(now - (89 - i) * day).toISOString().slice(0, 10),
-    burned: Math.round(800 + Math.random() * 1200 + i * 15),
-  }));
-  return {
-    cumulativeBurned: 2_847_312,
-    daily,
-  };
-}
+const INDEXER_URL =
+  process.env.NEXT_PUBLIC_INDEXER_URL ?? 'http://127.0.0.1:8080';
 
-function generateEconomyMock(): EconomyGraphData {
-  const categories = ['RAG', 'Code Gen', 'Data Extract', 'Image Gen', 'Routing', 'DeFi Execute'];
-  const nodes = Array.from({ length: 30 }, (_, i) => ({
-    id: `agent-${i.toString(16).padStart(4, '0')}`,
-    label: `Agent ${i.toString(16).padStart(4, '0')}`,
-    category: categories[i % categories.length] as string,
-    taskVolume: Math.round(20 + Math.random() * 500),
-  }));
-  const edges: EconomyGraphData['edges'] = [];
-  for (let i = 0; i < 60; i++) {
-    const src = Math.floor(Math.random() * nodes.length);
-    let dst = Math.floor(Math.random() * nodes.length);
-    if (dst === src) dst = (dst + 1) % nodes.length;
-    edges.push({
-      source: nodes[src]!.id,
-      target: nodes[dst]!.id,
-      frequency: Math.round(1 + Math.random() * 40),
-    });
+async function fetchJson<T>(path: string): Promise<T | null> {
+  try {
+    const res = await fetch(`${INDEXER_URL}${path}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
   }
-  return { nodes, edges };
 }
 
-function generateTaskVolumeMock(): TaskVolumeData {
-  const now = Date.now();
-  const day = 86_400_000;
-  return Array.from({ length: 90 }, (_, i) => ({
-    date: new Date(now - (89 - i) * day).toISOString().slice(0, 10),
-    taskCount: Math.round(150 + Math.random() * 300 + i * 4),
-    taskValueUsdc: Math.round(4200 + Math.random() * 8000 + i * 120),
-    protocolFeeUsdc: Math.round(84 + Math.random() * 160 + i * 2.4),
-    categories: {
-      RAG: Math.round(30 + Math.random() * 60),
-      'Code Gen': Math.round(25 + Math.random() * 50),
-      'Data Extract': Math.round(20 + Math.random() * 40),
-      'Image Gen': Math.round(15 + Math.random() * 35),
-      Routing: Math.round(10 + Math.random() * 30),
-      Other: Math.round(20 + Math.random() * 50),
-    },
-  }));
-}
+function useAnalytics() {
+  const [burnStats, setBurnStats] = useState<BurnStats | null>(null);
+  const [economyGraph, setEconomyGraph] = useState<EconomyGraphData | null>(null);
+  const [taskVolume, setTaskVolume] = useState<TaskVolumeData | null>(null);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardAgent[] | null>(null);
+  const [networkHealth, setNetworkHealth] = useState<NetworkHealth | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [live, setLive] = useState(false);
 
-function generateLeaderboardMock(): LeaderboardAgent[] {
-  const names = [
-    'codex-prime', 'data-weaver', 'synthia-v3', 'parsec-rag', 'orbit-gen',
-    'neural-scout', 'chain-link', 'flux-router', 'pixel-smith', 'quant-eye',
-    'echo-search', 'atlas-node', 'drift-miner', 'helix-core', 'prism-net',
-    'spark-agent', 'wave-parse', 'byte-forge', 'logic-flow', 'vortex-ai',
-  ];
-  return names.map((name, i) => ({
-    did: `did:saep:${(0xa000 + i).toString(16)}${'0'.repeat(56)}`,
-    name,
-    jobsCompleted: Math.round(800 - i * 35 + Math.random() * 50),
-    totalEarnedUsdc: Math.round(24000 - i * 1000 + Math.random() * 2000),
-    reputationScore: Math.round(9800 - i * 200 + Math.random() * 100),
-  }));
-}
+  useEffect(() => {
+    async function load() {
+      const [totals, tasksPerDay, fees, health, topAgents, graph] = await Promise.all([
+        fetchJson<{ agents: number; tasks: number; volume_lamports: number; active_streams: number }>('/stats/totals'),
+        fetchJson<{ day: string; tasks: number }[]>('/stats/tasks-per-day?days=90'),
+        fetchJson<{ protocol_fees_lamports: number; solrep_fees_lamports: number; last_24h_lamports: number }>('/stats/fees-burned'),
+        fetchJson<{ latest_slot: number; reorgs_24h: number; events_per_min: number; events_total: number; blocks_total: number }>('/stats/network-health'),
+        fetchJson<{ agent_did_hex: string; avg_score: number; jobs_completed: number; categories: number }[]>('/stats/top-agents?limit=20'),
+        fetchJson<{ agents: { agent_did_hex: string; jobs_completed: number; avg_score: number }[]; edges: { agent_did_hex: string; capability_bit: number; composite_score: number }[] }>('/stats/agent-graph?limit=40'),
+      ]);
 
-function generateNetworkHealthMock(): NetworkHealth {
-  return {
-    tps: 3842,
-    slotTimeMs: 412,
-    finalityTimeMs: 6200,
-    status: 'healthy',
-    lastUpdated: new Date().toISOString(),
-  };
+      const hasData = totals !== null;
+      setLive(hasData);
+
+      if (fees) {
+        const totalBurned = fees.protocol_fees_lamports + fees.solrep_fees_lamports;
+        setBurnStats({
+          cumulativeBurned: totalBurned,
+          daily: tasksPerDay?.map((d) => ({
+            date: d.day,
+            burned: Math.round(fees.last_24h_lamports / 90),
+          })) ?? [],
+        });
+      }
+
+      if (tasksPerDay) {
+        setTaskVolume(
+          tasksPerDay.map((d) => ({
+            date: d.day,
+            taskCount: d.tasks,
+            taskValueUsdc: 0,
+            protocolFeeUsdc: 0,
+            categories: {},
+          })),
+        );
+      }
+
+      if (health) {
+        setNetworkHealth({
+          tps: health.events_per_min,
+          slotTimeMs: 400,
+          finalityTimeMs: 6200,
+          status: health.reorgs_24h < 5 ? 'healthy' : 'degraded',
+          lastUpdated: new Date().toISOString(),
+        });
+      }
+
+      if (topAgents) {
+        setLeaderboard(
+          topAgents.map((a) => ({
+            did: a.agent_did_hex,
+            name: `${a.agent_did_hex.slice(0, 8)}`,
+            jobsCompleted: a.jobs_completed,
+            totalEarnedUsdc: 0,
+            reputationScore: a.avg_score,
+          })),
+        );
+      }
+
+      if (graph) {
+        const capNames: Record<number, string> = {
+          0: 'RAG', 1: 'Code Gen', 2: 'Data Extract',
+          3: 'Image Gen', 4: 'Routing', 5: 'DeFi Execute',
+        };
+        setEconomyGraph({
+          nodes: graph.agents.map((a) => ({
+            id: a.agent_did_hex,
+            label: a.agent_did_hex.slice(0, 8),
+            category: 'Agent',
+            taskVolume: a.jobs_completed,
+          })),
+          edges: graph.edges.map((e, i) => ({
+            source: e.agent_did_hex,
+            target: graph.agents[0]?.agent_did_hex ?? e.agent_did_hex,
+            frequency: e.composite_score,
+          })),
+        });
+      }
+
+      setLoading(false);
+    }
+    load();
+    const iv = setInterval(load, 60_000);
+    return () => clearInterval(iv);
+  }, []);
+
+  return { burnStats, economyGraph, taskVolume, leaderboard, networkHealth, loading, live };
 }
 
 export default function AnalyticsPage() {
-  const burnStats = generateBurnMock();
-  const economyGraph = generateEconomyMock();
-  const taskVolume = generateTaskVolumeMock();
-  const leaderboard = generateLeaderboardMock();
-  const networkHealth = generateNetworkHealthMock();
+  const { burnStats, economyGraph, taskVolume, leaderboard, networkHealth, loading, live } =
+    useAnalytics();
 
   return (
     <section className="flex flex-col gap-6 max-w-6xl">
@@ -119,21 +148,39 @@ export default function AnalyticsPage() {
         </div>
         <div className="font-mono text-[10px] text-mute text-right leading-relaxed">
           <div>90D WINDOW</div>
-          <div className="text-lime">MOCK DATA</div>
+          <div className={live ? 'text-lime' : 'text-mute'}>
+            {loading ? 'LOADING…' : live ? 'LIVE DATA' : 'NO DATA — INDEXER OFFLINE'}
+          </div>
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-        <FeesBurnedCounter stats={burnStats} />
-        <NetworkHealthPanel health={networkHealth} />
-      </div>
+      {loading && (
+        <p className="font-mono text-[11px] text-mute py-8 text-center">
+          Fetching protocol telemetry…
+        </p>
+      )}
 
-      <TaskVolumeChart data={taskVolume} />
+      {!loading && !live && (
+        <div className="border border-ink/10 p-6 font-mono text-[11px] text-mute text-center">
+          Analytics data will appear once the indexer is processing on-chain events.
+        </div>
+      )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
-        <AgentEconomyMap data={economyGraph} />
-        <TopAgentsLeaderboard agents={leaderboard} />
-      </div>
+      {!loading && live && (
+        <>
+          <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+            {burnStats && <FeesBurnedCounter stats={burnStats} />}
+            {networkHealth && <NetworkHealthPanel health={networkHealth} />}
+          </div>
+
+          {taskVolume && <TaskVolumeChart data={taskVolume} />}
+
+          <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+            {economyGraph && <AgentEconomyMap data={economyGraph} />}
+            {leaderboard && <TopAgentsLeaderboard agents={leaderboard} />}
+          </div>
+        </>
+      )}
     </section>
   );
 }

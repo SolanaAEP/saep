@@ -87,6 +87,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               ))}
             </nav>
+
+            <div className="mt-auto pt-4">
+              {process.env.NEXT_PUBLIC_SAEP_MINT && (
+                <a
+                  href={`https://jup.ag/swap/SOL-${process.env.NEXT_PUBLIC_SAEP_MINT}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-[10px] text-lime uppercase tracking-widest hover:underline"
+                >
+                  Buy SAEP
+                </a>
+              )}
+            </div>
           </aside>
 
           <main className="p-4 md:p-8 overflow-auto">

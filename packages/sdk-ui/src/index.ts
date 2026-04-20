@@ -65,4 +65,6 @@ export {
   type SettlementBundleResult,
   type UseSettlementBundleOptions,
 } from './hooks/settlement.js';
+export { useTokenBalance, type TokenBalance } from './hooks/token-balance.js';
+export { useTokenPrice, type TokenPrice } from './hooks/token-price.js';
 export { useSession, useSiwsSignIn, useSignOut, type Session } from './auth/session.js';
