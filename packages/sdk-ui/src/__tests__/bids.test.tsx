@@ -16,6 +16,8 @@ import {
   useBidBook,
   useBidsForTask,
   useBid,
+  useBiddingState,
+  useTaskBidsIndexed,
   useCommitBid,
   useRevealBid,
   useClaimBond,
@@ -115,6 +117,183 @@ describe('useBid', () => {
       wrapper: createWrapper(),
     });
 
+    expect(result.current.fetchStatus).toBe('idle');
+  });
+});
+
+describe('useBiddingState', () => {
+  const indexerUrl = 'https://idx.example.com';
+  const rawSnake = {
+    task_id_hex: validHex,
+    phase: 'commit' as const,
+    commit_count: 3,
+    reveal_count: 1,
+    slashed_count: 0,
+    bond_amount: '1000000',
+    commit_end_unix: 1700000000,
+    reveal_end_unix: 1700003600,
+    winner_agent: null,
+    winner_bidder: null,
+    winner_amount: null,
+  };
+
+  it('transforms snake_case indexer payload into camelCase state', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => rawSnake,
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useBiddingState(indexerUrl, validHex), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toBe(`${indexerUrl}/tasks/${validHex}/bidding`);
+    expect(result.current.data).toEqual({
+      taskIdHex: validHex,
+      phase: 'commit',
+      commitCount: 3,
+      revealCount: 1,
+      slashedCount: 0,
+      bondAmount: '1000000',
+      commitEndUnix: 1700000000,
+      revealEndUnix: 1700003600,
+      winnerAgent: null,
+      winnerBidder: null,
+      winnerAmount: null,
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it('strips trailing slash from indexerUrl', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => rawSnake,
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(
+      () => useBiddingState(`${indexerUrl}/`, validHex),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toBe(`${indexerUrl}/tasks/${validHex}/bidding`);
+    vi.unstubAllGlobals();
+  });
+
+  it('surfaces indexer error body on non-ok response', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable',
+      text: async () => 'indexer restarting',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useBiddingState(indexerUrl, validHex), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toBe('indexer 503: indexer restarting');
+    vi.unstubAllGlobals();
+  });
+
+  it('falls back to statusText when response body is empty', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      text: async () => '',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useBiddingState(indexerUrl, validHex), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toBe('indexer 500: Internal Server Error');
+    vi.unstubAllGlobals();
+  });
+
+  it('stays disabled for null task hex', () => {
+    const { result } = renderHook(() => useBiddingState(indexerUrl, null), {
+      wrapper: createWrapper(),
+    });
+    expect(result.current.fetchStatus).toBe('idle');
+  });
+
+  it('stays disabled for short task hex', () => {
+    const { result } = renderHook(() => useBiddingState(indexerUrl, 'abc'), {
+      wrapper: createWrapper(),
+    });
+    expect(result.current.fetchStatus).toBe('idle');
+  });
+});
+
+describe('useTaskBidsIndexed', () => {
+  const indexerUrl = 'https://idx.example.com';
+
+  it('maps raw snake_case bid rows into camelCase records', async () => {
+    const rawRows = [
+      {
+        bidder: MOCK_PUBKEY.toBase58(),
+        bond_paid: '500000',
+        revealed_amount: '2000000',
+        slashed: false,
+      },
+      {
+        bidder: MOCK_PUBKEY_2.toBase58(),
+        bond_paid: null,
+        revealed_amount: null,
+        slashed: true,
+      },
+    ];
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => rawRows,
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(
+      () => useTaskBidsIndexed(indexerUrl, validHex),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toBe(`${indexerUrl}/tasks/${validHex}/bids`);
+    expect(result.current.data).toEqual([
+      {
+        bidder: MOCK_PUBKEY.toBase58(),
+        bondPaid: '500000',
+        revealedAmount: '2000000',
+        slashed: false,
+      },
+      {
+        bidder: MOCK_PUBKEY_2.toBase58(),
+        bondPaid: null,
+        revealedAmount: null,
+        slashed: true,
+      },
+    ]);
+    vi.unstubAllGlobals();
+  });
+
+  it('stays disabled for null task hex', () => {
+    const { result } = renderHook(
+      () => useTaskBidsIndexed(indexerUrl, null),
+      { wrapper: createWrapper() },
+    );
     expect(result.current.fetchStatus).toBe('idle');
   });
 });
