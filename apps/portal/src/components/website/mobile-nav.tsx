@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { navItems, secondaryNav } from './nav-items';
+import { SocialIcons } from './social-icons';
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
@@ -101,6 +102,9 @@ export function MobileNav() {
                 </a>
               </li>
             ))}
+            <li className="flex items-center gap-4 pt-2">
+              <SocialIcons className="text-ink hover:text-lime transition-colors" />
+            </li>
           </ul>
         </div>
       </dialog>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { secondaryNav } from './nav-items';
 import { MobileNav } from './mobile-nav';
+import { SocialIcons } from './social-icons';
 
 type Crumb = { label: string; href?: string };
 
@@ -38,6 +39,7 @@ export function PageShell({
                 {s.label}
               </a>
             ))}
+            <SocialIcons className="text-ink hover:text-lime transition-colors" />
           </nav>
           <MobileNav />
         </div>

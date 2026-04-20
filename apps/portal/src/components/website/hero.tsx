@@ -7,6 +7,7 @@ import { WordmarkSpine } from './wordmark-spine';
 import { MobileNav } from './mobile-nav';
 import { SlicedHeroImage } from './sliced-hero-image';
 import { secondaryNav } from './nav-items';
+import { SocialIcons } from './social-icons';
 
 const BUILD_SHA = (process.env.NEXT_PUBLIC_BUILD_SHA ?? '').slice(0, 7);
 const BUILD_TIME = process.env.NEXT_PUBLIC_BUILD_TIME ?? '';
@@ -116,6 +117,7 @@ export function Hero() {
               {s.label}
             </a>
           ))}
+          <SocialIcons className="text-ink hover:text-lime transition-colors" />
         </nav>
         <MobileNav />
       </header>

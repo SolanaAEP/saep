@@ -9,9 +9,10 @@ export const navItems = [
 ] as const;
 
 export const secondaryNav = [
-  { label: 'Docs', href: '/docs' },
-  { label: 'Specs', href: '/specs' },
   { label: 'App', href: '/dashboard' },
+] as const;
+
+export const iconNav = [
   { label: 'X', href: 'https://x.com/BuildOnSAEP' },
   { label: 'GitHub', href: 'https://github.com/SolanaAEP/saep' },
 ] as const;
