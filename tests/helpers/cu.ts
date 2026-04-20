@@ -46,6 +46,10 @@ export const CU_BUDGETS: Record<string, number> = {
   propose_vk_activation: 50_000,
   execute_vk_activation: 50_000,
   cancel_vk_activation: 30_000,
+  freeze_deposits: 30_000,
+  unfreeze_deposits: 30_000,
+  close_pool: 30_000,
+  migrate_apy_authority: 30_000,
 };
 
 export async function measureCU(

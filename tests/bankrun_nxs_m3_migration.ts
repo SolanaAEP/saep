@@ -27,6 +27,9 @@ import { expect } from 'chai';
 
 import { setBankrunClock, warpClockBy } from './helpers/bankrun';
 import { createATA, createToken2022Mint, mintTokens } from './helpers/token';
+import {
+  CU_BUDGETS, assertWithinBudget, logCU, measureCU, printCUSummary, resetCUMeasurements,
+} from './helpers/cu';
 import type { NxsStaking } from '../target/types/nxs_staking';
 
 const NXS_STAKING_PROGRAM_ID = new PublicKey(
@@ -64,6 +67,9 @@ const pdas = {
 
 describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.md)', function () {
   this.timeout(60_000);
+
+  before(function () { resetCUMeasurements(); });
+  after(function () { printCUSummary(); });
 
   let context: ProgramTestContext;
   let provider: BankrunProvider;
@@ -157,10 +163,13 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
     });
 
     it('step 3: freeze_deposits(pool_v1) sets pause_new_stakes; stake(pool_v1) rejects; withdraw path stays open', async () => {
-      await program.methods
+      const freezeBuilder = program.methods
         .freezeDeposits()
-        .accountsPartial({ pool: poolPda, authority: authority.publicKey })
-        .rpc();
+        .accountsPartial({ pool: poolPda, authority: authority.publicKey });
+      const freezeCu = await measureCU(context, freezeBuilder, authority);
+      logCU('freeze_deposits', freezeCu);
+      assertWithinBudget('freeze_deposits', freezeCu, CU_BUDGETS.freeze_deposits);
+      await freezeBuilder.rpc();
 
       const poolAfterFreeze = await program.account.stakingPool.fetch(poolPda);
       expect(poolAfterFreeze.pauseNewStakes).to.equal(true);
@@ -240,10 +249,13 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
     // cross-reference against `specs/nxs-m3-migration.md` §Devnet-bring-up.
     it('step 7: rollback — unfreeze_deposits(pool_v1) restores stake entry-point + re-unfreeze fails loud', async () => {
       // Continuation of step-3 state: pool is frozen; owner2 unstaked; clock past T0 + 7d.
-      await program.methods
+      const thawBuilder = program.methods
         .unfreezeDeposits()
-        .accountsPartial({ pool: poolPda, authority: authority.publicKey })
-        .rpc();
+        .accountsPartial({ pool: poolPda, authority: authority.publicKey });
+      const thawCu = await measureCU(context, thawBuilder, authority);
+      logCU('unfreeze_deposits', thawCu);
+      assertWithinBudget('unfreeze_deposits', thawCu, CU_BUDGETS.unfreeze_deposits);
+      await thawBuilder.rpc();
 
       const poolAfterThaw = await program.account.stakingPool.fetch(poolPda);
       expect(poolAfterThaw.pauseNewStakes).to.equal(false);
@@ -303,10 +315,13 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
       expect(poolPreClose.closed).to.equal(false);
 
       const nowPreClose = Number((await context.banksClient.getClock()).unixTimestamp);
-      await program.methods
+      const closeBuilder = program.methods
         .closePool()
-        .accountsPartial({ pool: poolPda, authority: authority.publicKey })
-        .rpc();
+        .accountsPartial({ pool: poolPda, authority: authority.publicKey });
+      const closeCu = await measureCU(context, closeBuilder, authority);
+      logCU('close_pool', closeCu);
+      assertWithinBudget('close_pool', closeCu, CU_BUDGETS.close_pool);
+      await closeBuilder.rpc();
 
       const poolPostClose = await program.account.stakingPool.fetch(poolPda);
       expect(poolPostClose.closed).to.equal(true);
@@ -517,10 +532,13 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
         (await context.banksClient.getClock()).unixTimestamp,
       );
 
-      const ix = await program.methods
+      const migrateBuilder = program.methods
         .migrateApyAuthority(oldMint, newMint)
-        .accountsPartial({ authority: authority.publicKey })
-        .instruction();
+        .accountsPartial({ authority: authority.publicKey });
+      const migrateCu = await measureCU(context, migrateBuilder, authority);
+      logCU('migrate_apy_authority', migrateCu);
+      assertWithinBudget('migrate_apy_authority', migrateCu, CU_BUDGETS.migrate_apy_authority);
+      const ix = await migrateBuilder.instruction();
 
       const tx = new anchor.web3.Transaction().add(ix);
       tx.feePayer = authority.publicKey;
