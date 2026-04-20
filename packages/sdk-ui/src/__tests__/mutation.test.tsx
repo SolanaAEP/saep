@@ -272,6 +272,40 @@ describe('useSendTransaction', () => {
     expect(result.current.data?.signature).toBe('mock-sig-abc123');
   });
 
+  it('auto priority fee applies estimate when Helius returns microLamports', async () => {
+    mockConnection();
+    mockWallet();
+    const serializeSpy = vi
+      .spyOn(Transaction.prototype, 'serialize')
+      .mockReturnValue(Buffer.from([1, 2, 3]) as any);
+    vi.mocked(getHeliusPriorityFeeEstimate).mockResolvedValue({ microLamports: 7777 } as any);
+    vi.mocked(clampPriorityFee).mockReturnValue(7777);
+    const wrapper = createWrapper();
+
+    const { result } = renderHook(
+      () =>
+        useSendTransaction({
+          buildInstruction: async () => dummyIx,
+          priorityFee: 'auto',
+        }),
+      { wrapper },
+    );
+
+    act(() => {
+      result.current.mutate(undefined as any);
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(getHeliusPriorityFeeEstimate).toHaveBeenCalledWith(
+      'https://rpc.example.com',
+      expect.anything(),
+      'Medium',
+    );
+    expect(clampPriorityFee).toHaveBeenCalledWith(7777, expect.any(Object));
+    expect(withPriorityFee).toHaveBeenCalled();
+    serializeSpy.mockRestore();
+  });
+
   it('forwards mutation callbacks', async () => {
     mockConnection();
     mockWallet();
