@@ -1,24 +1,24 @@
-'use client';
+import type { NetworkHealth as Health } from '@/lib/analytics';
 
-export interface NetworkHealth {
-  tps: number;
-  slotTimeMs: number;
-  finalityTimeMs: number;
-  status: 'healthy' | 'degraded' | 'down';
-  lastUpdated: string;
-}
+type Status = 'healthy' | 'degraded' | 'idle';
 
-const STATUS_STYLE: Record<NetworkHealth['status'], { dot: string; label: string }> = {
+const STATUS_STYLE: Record<Status, { dot: string; label: string }> = {
   healthy: { dot: 'bg-lime', label: 'Healthy' },
   degraded: { dot: 'bg-yellow-400', label: 'Degraded' },
-  down: { dot: 'bg-danger', label: 'Down' },
+  idle: { dot: 'bg-ink/40', label: 'Idle' },
 };
 
-export function NetworkHealthPanel({ health }: { health: NetworkHealth }) {
-  const { dot, label } = STATUS_STYLE[health.status];
+function deriveStatus(health: Health): Status {
+  if (health.reorgs24h > 5) return 'degraded';
+  if (health.eventsPerMin === 0) return 'idle';
+  return 'healthy';
+}
+
+export function NetworkHealthPanel({ health }: { health: Health }) {
+  const { dot, label } = STATUS_STYLE[deriveStatus(health)];
 
   return (
-    <div className="border border-ink/10 p-5 flex flex-col gap-4">
+    <div className="rounded-lg border border-ink/10 p-5 flex flex-col gap-4">
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium">Network Health</h2>
         <span className="flex items-center gap-1.5 text-[10px] text-ink/60">
@@ -28,14 +28,12 @@ export function NetworkHealthPanel({ health }: { health: NetworkHealth }) {
       </header>
 
       <dl className="grid gap-4 text-xs">
-        <Stat label="Current TPS" value={health.tps.toLocaleString()} />
-        <Stat label="Slot time" value={`${health.slotTimeMs}ms`} />
-        <Stat label="Finality" value={`${(health.finalityTimeMs / 1000).toFixed(1)}s`} />
+        <Stat label="Latest slot" value={health.latestSlot.toLocaleString()} />
+        <Stat label="Reorgs · 24h" value={health.reorgs24h.toLocaleString()} />
+        <Stat label="Events / min" value={health.eventsPerMin.toLocaleString()} />
+        <Stat label="Events · total" value={health.eventsTotal.toLocaleString()} />
+        <Stat label="Blocks · total" value={health.blocksTotal.toLocaleString()} />
       </dl>
-
-      <p className="text-[10px] text-ink/40">
-        Updated {new Date(health.lastUpdated).toLocaleTimeString()}
-      </p>
     </div>
   );
 }
