@@ -123,6 +123,13 @@ function parseDid(input: string): string {
   return toHex(new PublicKey(value).toBytes());
 }
 
+function firstCapabilityBit(mask: bigint): number {
+  for (let bit = 0; bit < 128; bit += 1) {
+    if ((mask & (1n << BigInt(bit))) !== 0n) return bit;
+  }
+  return 0;
+}
+
 function deterministicNonce(slug: string): Uint8Array {
   return createHash('sha256')
     .update(`saep-market-bounty:${slug}`)
@@ -229,10 +236,13 @@ async function main() {
     const agent = resolvedAgents[index % resolvedAgents.length];
     const amount = toBaseUnits(bounty.rewardUi, mintMeta.decimals);
     const deadline = BigInt(Math.floor(Date.now() / 1000) + opts.deadlineHours * 3600);
-    const derivedTaskHash = createHash('sha256').update(bounty.prompt).digest('hex');
+    const promptBytes = new TextEncoder().encode(bounty.prompt);
+    const derivedTaskHash = createHash('sha256').update(promptBytes).digest('hex');
     if (derivedTaskHash !== bounty.taskHash) {
       throw new Error(`catalog hash mismatch for ${bounty.slug}`);
     }
+    const capabilityBit = firstCapabilityBit(agent.capabilityMask);
+    const argsHash = Uint8Array.from(Buffer.from(derivedTaskHash, 'hex'));
 
     console.log(`\n[${index + 1}/${selectedBounties.length}] ${bounty.title}`);
     console.log(`  task: ${taskAddress.toBase58()}`);
@@ -258,7 +268,17 @@ async function main() {
       agentId: agent.agentId,
       paymentMint,
       paymentAmount: amount,
-      taskHash: Uint8Array.from(Buffer.from(bounty.taskHash, 'hex')),
+      payload: {
+        kind: {
+          generic: {
+            capabilityBit,
+            argsHash,
+          },
+        },
+        capabilityBit,
+        criteria: new Uint8Array(0),
+        requiresPersonhood: { none: {} },
+      },
       criteriaRoot: new Uint8Array(32),
       deadline,
       milestoneCount: 0,
