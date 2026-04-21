@@ -36,6 +36,11 @@ import {
   type AgentRegistry,
   type TaskMarket,
 } from '@saep/sdk';
+import {
+  getAssociatedTokenAddressSync,
+  TOKEN_2022_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+} from '@solana/spl-token';
 import { readFileSync } from 'node:fs';
 import { createHash, randomBytes } from 'node:crypto';
 import { loadConfig, type AgentConfig } from './config.js';
@@ -69,6 +74,29 @@ async function ensureRegistered(
   }
 
   console.log('registering agent on-chain...');
+  const registryGlobal = (await registry.account.registryGlobal.all())[0]?.account;
+  if (!registryGlobal) throw new Error('agent registry global not found');
+  const mintInfo = await registry.provider.connection.getAccountInfo(registryGlobal.stakeMint);
+  if (!mintInfo) throw new Error(`stake mint not found: ${registryGlobal.stakeMint.toBase58()}`);
+  const tokenProgramId = mintInfo.owner.equals(TOKEN_2022_PROGRAM_ID)
+    ? TOKEN_2022_PROGRAM_ID
+    : mintInfo.owner.equals(TOKEN_PROGRAM_ID)
+      ? TOKEN_PROGRAM_ID
+      : null;
+  if (!tokenProgramId) {
+    throw new Error(`unsupported stake mint owner: ${mintInfo.owner.toBase58()}`);
+  }
+  const operatorTokenAccount = getAssociatedTokenAddressSync(
+    registryGlobal.stakeMint,
+    operator.publicKey,
+    false,
+    tokenProgramId,
+  );
+  const ataInfo = await registry.provider.connection.getAccountInfo(operatorTokenAccount);
+  if (!ataInfo) {
+    throw new Error(`operator ATA missing for stake mint: ${operatorTokenAccount.toBase58()}`);
+  }
+
   const ix = await buildRegisterAgentIx(registry, {
     operator: operator.publicKey,
     agentId,
@@ -78,9 +106,10 @@ async function ensureRegistered(
     priceLamports: 0n,
     streamRate: 0n,
     stakeAmount: 0n,
-    stakeMint: config.cluster.programIds.agentRegistry, // placeholder — devnet doesn't enforce mint
-    operatorTokenAccount: operator.publicKey,            // placeholder
+    stakeMint: registryGlobal.stakeMint,
+    operatorTokenAccount,
     capabilityRegistryProgramId: config.cluster.programIds.capabilityRegistry,
+    tokenProgramId,
   });
 
   const tx = new Transaction().add(ix);
@@ -103,7 +132,7 @@ async function pollTasks(
   // filters on capability_mask and status == AwaitingBids.
   // For this demo we fetch all task accounts and return a stub list.
   try {
-    const accounts = await market.account.task.all();
+    const accounts = await market.account.taskContract.all();
     return accounts
       .filter((a) => {
         const status = a.account.status as Record<string, Record<string, never>> | undefined;

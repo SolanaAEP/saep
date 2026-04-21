@@ -9,3 +9,4 @@ packages:
   - services/telegram-bot
   - services/xrpl-bridge
   - examples/*
+  - examples/agents/*

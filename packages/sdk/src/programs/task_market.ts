@@ -18,9 +18,15 @@ import {
 
 const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
 
-export type PersonhoodTierInput = 'none' | 'basic' | 'verified';
+export type PersonhoodTierInput =
+  | 'none'
+  | 'basic'
+  | 'verified'
+  | { none: Record<string, never> }
+  | { basic: Record<string, never> }
+  | { verified: Record<string, never> };
 
-export type CreateTaskPayloadKindInput =
+export type LegacyCreateTaskPayloadKindInput =
   | {
       type: 'swapExact';
       inMint: PublicKey;
@@ -50,12 +56,28 @@ export type CreateTaskPayloadKindInput =
       argsHash: Uint8Array;
     };
 
+export type StructuredTaskPayloadKindInput =
+  | {
+      swapExact: {
+        inMint: PublicKey;
+        outMint: PublicKey;
+        amountIn: bigint;
+        minOut: bigint;
+      };
+    }
+  | { transfer: { mint: PublicKey; to: PublicKey; amount: bigint } }
+  | { dataFetch: { urlHash: Uint8Array; expectedHash: Uint8Array } }
+  | { compute: { circuitId: Uint8Array; publicInputsHash: Uint8Array } }
+  | { generic: { capabilityBit: number; argsHash: Uint8Array } };
+
 export interface CreateTaskPayloadInput {
-  kind: CreateTaskPayloadKindInput;
+  kind: LegacyCreateTaskPayloadKindInput | StructuredTaskPayloadKindInput;
   capabilityBit: number;
   criteria: Uint8Array;
   requiresPersonhood?: PersonhoodTierInput;
 }
+
+export type TaskPayloadInput = CreateTaskPayloadInput;
 
 export interface CreateTaskInput {
   client: PublicKey;
@@ -78,66 +100,106 @@ function toByteArray(bytes: Uint8Array, label: string, expectedLength?: number):
   return Array.from(bytes);
 }
 
-function normalizePersonhoodTier(tier: PersonhoodTierInput) {
-  switch (tier) {
-    case 'basic':
-      return { basic: {} };
-    case 'verified':
-      return { verified: {} };
-    default:
-      return { none: {} };
-  }
+function normalizePersonhoodTier(tier: PersonhoodTierInput | undefined) {
+  if (!tier || tier === 'none' || (typeof tier === 'object' && 'none' in tier)) return { none: {} };
+  if (tier === 'basic' || (typeof tier === 'object' && 'basic' in tier)) return { basic: {} };
+  return { verified: {} };
 }
 
-function normalizeTaskKind(kind: CreateTaskPayloadKindInput) {
-  switch (kind.type) {
-    case 'swapExact':
-      return {
-        swapExact: {
-          inMint: kind.inMint,
-          outMint: kind.outMint,
-          amountIn: new BN(kind.amountIn.toString()),
-          minOut: new BN(kind.minOut.toString()),
-        },
-      };
-    case 'transfer':
-      return {
-        transfer: {
-          mint: kind.mint,
-          to: kind.to,
-          amount: new BN(kind.amount.toString()),
-        },
-      };
-    case 'dataFetch':
-      return {
-        dataFetch: {
-          urlHash: toByteArray(kind.urlHash, 'payload.kind.urlHash', 32),
-          expectedHash: toByteArray(kind.expectedHash, 'payload.kind.expectedHash', 32),
-        },
-      };
-    case 'compute':
-      return {
-        compute: {
-          circuitId: toByteArray(kind.circuitId, 'payload.kind.circuitId', 32),
-          publicInputsHash: toByteArray(kind.publicInputsHash, 'payload.kind.publicInputsHash', 32),
-        },
-      };
-    case 'generic':
-      return {
-        generic: {
-          capabilityBit: kind.capabilityBit,
-          argsHash: toByteArray(kind.argsHash, 'payload.kind.argsHash', 32),
-        },
-      };
+function normalizeTaskKind(kind: CreateTaskPayloadInput['kind']) {
+  if ('type' in kind) {
+    switch (kind.type) {
+      case 'swapExact':
+        return {
+          swapExact: {
+            inMint: kind.inMint,
+            outMint: kind.outMint,
+            amountIn: new BN(kind.amountIn.toString()),
+            minOut: new BN(kind.minOut.toString()),
+          },
+        };
+      case 'transfer':
+        return {
+          transfer: {
+            mint: kind.mint,
+            to: kind.to,
+            amount: new BN(kind.amount.toString()),
+          },
+        };
+      case 'dataFetch':
+        return {
+          dataFetch: {
+            urlHash: toByteArray(kind.urlHash, 'payload.kind.urlHash', 32),
+            expectedHash: toByteArray(kind.expectedHash, 'payload.kind.expectedHash', 32),
+          },
+        };
+      case 'compute':
+        return {
+          compute: {
+            circuitId: toByteArray(kind.circuitId, 'payload.kind.circuitId', 32),
+            publicInputsHash: toByteArray(kind.publicInputsHash, 'payload.kind.publicInputsHash', 32),
+          },
+        };
+      case 'generic':
+        return {
+          generic: {
+            capabilityBit: kind.capabilityBit,
+            argsHash: toByteArray(kind.argsHash, 'payload.kind.argsHash', 32),
+          },
+        };
+    }
   }
-}
 
-function normalizeTaskPayload(payload: CreateTaskPayloadInput) {
+  if ('swapExact' in kind) {
+    return {
+      swapExact: {
+        inMint: kind.swapExact.inMint,
+        outMint: kind.swapExact.outMint,
+        amountIn: new BN(kind.swapExact.amountIn.toString()),
+        minOut: new BN(kind.swapExact.minOut.toString()),
+      },
+    };
+  }
+  if ('transfer' in kind) {
+    return {
+      transfer: {
+        mint: kind.transfer.mint,
+        to: kind.transfer.to,
+        amount: new BN(kind.transfer.amount.toString()),
+      },
+    };
+  }
+  if ('dataFetch' in kind) {
+    return {
+      dataFetch: {
+        urlHash: toByteArray(kind.dataFetch.urlHash, 'payload.kind.urlHash', 32),
+        expectedHash: toByteArray(kind.dataFetch.expectedHash, 'payload.kind.expectedHash', 32),
+      },
+    };
+  }
+  if ('compute' in kind) {
+    return {
+      compute: {
+        circuitId: toByteArray(kind.compute.circuitId, 'payload.kind.circuitId', 32),
+        publicInputsHash: toByteArray(kind.compute.publicInputsHash, 'payload.kind.publicInputsHash', 32),
+      },
+    };
+  }
+
   return {
-    kind: normalizeTaskKind(payload.kind),
-    capabilityBit: payload.capabilityBit,
-    criteria: Buffer.from(payload.criteria),
-    requiresPersonhood: normalizePersonhoodTier(payload.requiresPersonhood ?? 'none'),
+    generic: {
+      capabilityBit: kind.generic.capabilityBit,
+      argsHash: toByteArray(kind.generic.argsHash, 'payload.kind.argsHash', 32),
+    },
+  };
+}
+
+function normalizeTaskPayload(input: CreateTaskPayloadInput) {
+  return {
+    kind: normalizeTaskKind(input.kind),
+    capabilityBit: input.capabilityBit,
+    criteria: Buffer.from(input.criteria),
+    requiresPersonhood: normalizePersonhoodTier(input.requiresPersonhood),
   };
 }
 

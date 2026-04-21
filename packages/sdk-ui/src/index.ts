@@ -26,7 +26,7 @@ export {
   useTemplateForks,
   useTemplateRentals,
 } from './hooks/templates.js';
-export { useTask, useTasksByClient, useRaiseDispute } from './hooks/tasks.js';
+export { useTask, useTasksByClient, useRecentTasks, useTaskMarketConfig, useRaiseDispute } from './hooks/tasks.js';
 export {
   useBidBook,
   useBid,

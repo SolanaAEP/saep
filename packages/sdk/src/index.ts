@@ -14,6 +14,7 @@ export * from './programs/fee_collector.js';
 export * from './programs/nxs_staking.js';
 export * from './programs/template_registry.js';
 export * from './accounts/index.js';
+export * from './bounties.js';
 export * from './auth/siws.js';
 export * from './auth/session.js';
 export * from './schemas/index.js';

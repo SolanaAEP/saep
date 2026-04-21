@@ -22,6 +22,10 @@ export function agentStakePda(programId: PublicKey, agent: PublicKey): [PublicKe
   return PublicKey.findProgramAddressSync([enc('stake'), agent.toBuffer()], programId);
 }
 
+export function reentrancyGuardPda(programId: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([enc('guard')], programId);
+}
+
 export function categoryReputationPda(
   programId: PublicKey,
   agentDid: Uint8Array,

@@ -53,17 +53,11 @@ function normalizeDidHex(raw: string): string | null {
   return /^[0-9a-fA-F]{64}$/.test(value) ? value.toLowerCase() : null;
 }
 
-function bytesFromHex(hex: string): Uint8Array {
-  return Uint8Array.from(
-    hex.match(/.{2}/g)!.map((part) => parseInt(part, 16)),
-  );
-}
-
 function firstCapabilityBit(mask: bigint): number {
   for (let bit = 0; bit < 128; bit += 1) {
     if ((mask & (1n << BigInt(bit))) !== 0n) return bit;
   }
-  return 0;
+  throw new Error('agent has no enabled capability bits');
 }
 
 export async function OPTIONS() {
@@ -119,6 +113,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400, headers: HEADERS });
     }
 
+    const taskDescription = descriptionRaw.trim();
+    if (!taskDescription) {
+      return NextResponse.json(
+        { error: 'description must not be empty' },
+        { status: 400, headers: HEADERS },
+      );
+    }
+
     const client = new PublicKey(account);
     const agentDidHex = normalizeDidHex(agentDidRaw);
     if (!agentDidHex) {
@@ -143,20 +145,9 @@ export async function POST(req: NextRequest) {
         { status: 404, headers: HEADERS },
       );
     }
-
-    const taskNonce = randomBytes(8);
-    const taskDescription = descriptionRaw.trim();
-    if (!taskDescription) {
-      return NextResponse.json(
-        { error: 'description must not be empty' },
-        { status: 400, headers: HEADERS },
-      );
+    if (agent.status !== 'active') {
+      return NextResponse.json({ error: 'agent is not active' }, { status: 400, headers: HEADERS });
     }
-
-    const capabilityBit = firstCapabilityBit(agent.capabilityMask);
-    const criteria = new TextEncoder().encode(taskDescription);
-    const argsHash = new Uint8Array(createHash('sha256').update(taskDescription).digest());
-    const criteriaRoot = Buffer.alloc(32);
 
     const configuredPaymentMint = process.env.SAEP_DEFAULT_PAYMENT_MINT?.trim();
     const paymentMint = configuredPaymentMint
@@ -169,26 +160,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const capabilityBit = firstCapabilityBit(agent.capabilityMask);
+    const taskNonce = randomBytes(8);
+    const argsHash = new Uint8Array(createHash('sha256').update(taskDescription).digest());
+    const criteriaRoot = Buffer.alloc(32);
+    const criteria = new TextEncoder().encode(taskDescription);
+
     const input: CreateTaskInput = {
       client,
       taskNonce,
-      agentDid: bytesFromHex(agentDidHex),
+      agentDid: agent.did,
       agentOperator: agent.operator,
       agentId: agent.agentId,
       paymentMint,
-      paymentAmount: BigInt(Math.round(amount * 1e6)),
+      paymentAmount: BigInt(Math.floor(amount * 1e6)),
       payload: {
         kind: {
-          type: 'generic',
-          capabilityBit,
-          argsHash,
+          generic: {
+            capabilityBit,
+            argsHash,
+          },
         },
         capabilityBit,
         criteria,
-        requiresPersonhood: 'none',
+        requiresPersonhood: { none: {} },
       },
       criteriaRoot,
-      deadline: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60), // 7 days
+      deadline: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60),
       milestoneCount: 1,
     };
 

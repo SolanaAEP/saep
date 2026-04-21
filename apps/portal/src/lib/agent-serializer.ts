@@ -30,6 +30,7 @@ export interface SerializedTask {
   client: string;
   agentDid: string;
   taskNonce: string;
+  taskHash: string;
   paymentMint: string;
   paymentAmount: string;
   status: string;
@@ -71,6 +72,7 @@ export function serializeTask(t: TaskSummary): SerializedTask {
     client: t.client.toBase58(),
     agentDid: hexFromBytes(t.agentDid),
     taskNonce: hexFromBytes(t.taskNonce),
+    taskHash: hexFromBytes(t.taskHash),
     paymentMint: t.paymentMint.toBase58(),
     paymentAmount: t.paymentAmount.toString(),
     status: t.status,

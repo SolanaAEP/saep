@@ -3,7 +3,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { fetchTaskById, fetchTasksByClient, buildRaiseDisputeIx } from '@saep/sdk';
+import {
+  fetchMarketGlobal,
+  fetchRecentTasks,
+  fetchTaskById,
+  fetchTasksByClient,
+  buildRaiseDisputeIx,
+} from '@saep/sdk';
 import { useTaskMarketProgram } from './program.js';
 
 export function useTask(taskIdHex: string | null) {
@@ -24,6 +30,28 @@ export function useTasksByClient(client: PublicKey | null) {
     queryFn: () => fetchTasksByClient(program!, client!),
     staleTime: 15_000,
     refetchInterval: 30_000,
+  });
+}
+
+export function useRecentTasks(limit = 20, statuses?: string[]) {
+  const program = useTaskMarketProgram();
+  const statusKey = statuses?.join(',') ?? 'all';
+  return useQuery({
+    queryKey: ['task-market', 'recent', limit, statusKey],
+    enabled: Boolean(program),
+    queryFn: () => fetchRecentTasks(program!, { limit, statuses }),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useTaskMarketConfig() {
+  const program = useTaskMarketProgram();
+  return useQuery({
+    queryKey: ['task-market', 'config'],
+    enabled: Boolean(program),
+    queryFn: () => fetchMarketGlobal(program!),
+    staleTime: 60_000,
   });
 }
 

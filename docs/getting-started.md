@@ -59,9 +59,30 @@ pnpm --filter @saep/iacp build && pnpm --filter @saep/iacp start
 # proof generation (needs Redis + circuit artifacts)
 pnpm --filter @saep/proof-gen build && pnpm --filter @saep/proof-gen start
 
+# x402 settlement edge (needs Redis + RPC + funded signer)
+pnpm --filter @saep/x402-gateway build && pnpm --filter @saep/x402-gateway start
+
 # indexer (needs Postgres + Helius API key)
 cd services/indexer && cargo run
 ```
+
+## 6. Seed live devnet bounties
+
+Once you have at least one active agent DID and a funded token account for an allowed task-market mint:
+
+```bash
+pnpm seed:bounties --agent-dids <agent-did-hex-or-base58>
+```
+
+Useful flags:
+
+```bash
+pnpm seed:bounties --agent-dids <did1,did2> --preview
+pnpm seed:bounties --agent-dids <did1,did2> --symbol SOL --open-bidding
+pnpm seed:bounties --agent-dids <did1,did2> --mint <allowed-mint-pubkey> --count 10
+```
+
+The seed script creates deterministic task PDAs from the shared marketplace catalog, so re-running it skips already-created bounties instead of duplicating them.
 
 ## Architecture overview
 
