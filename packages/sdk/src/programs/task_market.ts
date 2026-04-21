@@ -18,6 +18,30 @@ import {
 
 const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
 
+export type PersonhoodTierInput =
+  | { none: Record<string, never> }
+  | { basic: Record<string, never> }
+  | { verified: Record<string, never> };
+
+export type TaskPayloadInput = {
+  kind:
+    | {
+        swapExact: {
+          inMint: PublicKey;
+          outMint: PublicKey;
+          amountIn: bigint;
+          minOut: bigint;
+        };
+      }
+    | { transfer: { mint: PublicKey; to: PublicKey; amount: bigint } }
+    | { dataFetch: { urlHash: Uint8Array; expectedHash: Uint8Array } }
+    | { compute: { circuitId: Uint8Array; publicInputsHash: Uint8Array } }
+    | { generic: { capabilityBit: number; argsHash: Uint8Array } };
+  capabilityBit: number;
+  criteria: Uint8Array;
+  requiresPersonhood?: PersonhoodTierInput;
+};
+
 export interface CreateTaskInput {
   client: PublicKey;
   taskNonce: Uint8Array;
@@ -26,10 +50,63 @@ export interface CreateTaskInput {
   agentId: Uint8Array;
   paymentMint: PublicKey;
   paymentAmount: bigint;
-  taskHash: Uint8Array;
+  payload: TaskPayloadInput;
   criteriaRoot: Uint8Array;
   deadline: bigint;
   milestoneCount: number;
+}
+
+function normalizeTaskPayload(input: TaskPayloadInput) {
+  const kind = (() => {
+    if ('swapExact' in input.kind) {
+      return {
+        swapExact: {
+          inMint: input.kind.swapExact.inMint,
+          outMint: input.kind.swapExact.outMint,
+          amountIn: new BN(input.kind.swapExact.amountIn.toString()),
+          minOut: new BN(input.kind.swapExact.minOut.toString()),
+        },
+      };
+    }
+    if ('transfer' in input.kind) {
+      return {
+        transfer: {
+          mint: input.kind.transfer.mint,
+          to: input.kind.transfer.to,
+          amount: new BN(input.kind.transfer.amount.toString()),
+        },
+      };
+    }
+    if ('dataFetch' in input.kind) {
+      return {
+        dataFetch: {
+          urlHash: Array.from(input.kind.dataFetch.urlHash),
+          expectedHash: Array.from(input.kind.dataFetch.expectedHash),
+        },
+      };
+    }
+    if ('compute' in input.kind) {
+      return {
+        compute: {
+          circuitId: Array.from(input.kind.compute.circuitId),
+          publicInputsHash: Array.from(input.kind.compute.publicInputsHash),
+        },
+      };
+    }
+    return {
+      generic: {
+        capabilityBit: input.kind.generic.capabilityBit,
+        argsHash: Array.from(input.kind.generic.argsHash),
+      },
+    };
+  })();
+
+  return {
+    kind,
+    capabilityBit: input.capabilityBit,
+    criteria: Buffer.from(input.criteria),
+    requiresPersonhood: input.requiresPersonhood ?? { none: {} },
+  };
 }
 
 export async function buildCreateTaskIx(
@@ -48,7 +125,7 @@ export async function buildCreateTaskIx(
       Array.from(input.agentDid),
       input.paymentMint,
       new BN(input.paymentAmount.toString()),
-      Array.from(input.taskHash),
+      normalizeTaskPayload(input.payload),
       Array.from(input.criteriaRoot),
       new BN(input.deadline.toString()),
       input.milestoneCount,

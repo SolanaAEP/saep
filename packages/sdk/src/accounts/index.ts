@@ -5,7 +5,7 @@ import type { TreasuryStandard } from '../generated/treasury_standard.js';
 import type { TaskMarket } from '../generated/task_market.js';
 import type { ProofVerifier } from '../generated/proof_verifier.js';
 import type { CapabilityRegistry } from '../generated/capability_registry.js';
-import { agentAccountPda, treasuryPda, taskPda, verifierConfigPda, verifierKeyPda, capabilityConfigPda, treasuryAllowedMintsPda, vaultPda, bidBookPda, bidPda, categoryReputationPda } from '../pda/index.js';
+import { agentAccountPda, treasuryPda, taskPda, verifierConfigPda, verifierKeyPda, capabilityConfigPda, treasuryAllowedMintsPda, vaultPda, bidBookPda, bidPda, categoryReputationPda, marketGlobalPda } from '../pda/index.js';
 
 export interface AgentSummary {
   address: PublicKey;
@@ -225,12 +225,99 @@ export interface TaskSummary {
   client: PublicKey;
   agentDid: Uint8Array;
   taskNonce: Uint8Array;
+  taskHash: Uint8Array;
   paymentMint: PublicKey;
   paymentAmount: bigint;
   status: string;
   deadline: number;
   verified: boolean;
   createdAt: number;
+}
+
+export interface MarketGlobalSummary {
+  address: PublicKey;
+  authority: PublicKey;
+  pendingAuthority: PublicKey | null;
+  agentRegistry: PublicKey;
+  treasuryStandard: PublicKey;
+  proofVerifier: PublicKey;
+  feeCollector: PublicKey;
+  solrepPool: PublicKey;
+  protocolFeeBps: number;
+  solrepFeeBps: number;
+  disputeWindowSecs: bigint;
+  maxDeadlineSecs: bigint;
+  allowedPaymentMints: PublicKey[];
+  paused: boolean;
+}
+
+export async function fetchMarketGlobal(
+  program: Program<TaskMarket>,
+): Promise<MarketGlobalSummary | null> {
+  const [addr] = marketGlobalPda(program.programId);
+  const raw = await program.account.marketGlobal.fetchNullable(addr) as
+    | {
+        authority: PublicKey;
+        pendingAuthority: PublicKey | null;
+        agentRegistry: PublicKey;
+        treasuryStandard: PublicKey;
+        proofVerifier: PublicKey;
+        feeCollector: PublicKey;
+        solrepPool: PublicKey;
+        protocolFeeBps: number;
+        solrepFeeBps: number;
+        disputeWindowSecs: BN;
+        maxDeadlineSecs: BN;
+        allowedPaymentMints: PublicKey[];
+        paused: boolean;
+      }
+    | null;
+  if (!raw) return null;
+  return {
+    address: addr,
+    authority: raw.authority,
+    pendingAuthority: raw.pendingAuthority ?? null,
+    agentRegistry: raw.agentRegistry,
+    treasuryStandard: raw.treasuryStandard,
+    proofVerifier: raw.proofVerifier,
+    feeCollector: raw.feeCollector,
+    solrepPool: raw.solrepPool,
+    protocolFeeBps: raw.protocolFeeBps,
+    solrepFeeBps: raw.solrepFeeBps,
+    disputeWindowSecs: BigInt(raw.disputeWindowSecs.toString()),
+    maxDeadlineSecs: BigInt(raw.maxDeadlineSecs.toString()),
+    allowedPaymentMints: raw.allowedPaymentMints.filter((mint) => !mint.equals(PublicKey.default)),
+    paused: raw.paused,
+  };
+}
+
+export async function fetchRecentTasks(
+  program: Program<TaskMarket>,
+  opts?: {
+    limit?: number;
+    statuses?: string[];
+  },
+): Promise<TaskSummary[]> {
+  const accounts = await program.account.taskContract.all();
+  const statuses = opts?.statuses ? new Set(opts.statuses) : null;
+  const sorted = accounts
+    .map(({ publicKey, account }) => ({
+      address: publicKey,
+      taskId: Uint8Array.from(account.taskId as number[]),
+      client: account.client,
+      agentDid: Uint8Array.from(account.agentDid as number[]),
+      taskNonce: Uint8Array.from(account.taskNonce as number[]),
+      taskHash: Uint8Array.from(account.taskHash as number[]),
+      paymentMint: account.paymentMint,
+      paymentAmount: BigInt((account.paymentAmount as BN).toString()),
+      status: taskStatusFromEnum(account.status as Record<string, unknown>),
+      deadline: (account.deadline as BN).toNumber(),
+      verified: account.verified as boolean,
+      createdAt: (account.createdAt as BN).toNumber(),
+    }))
+    .filter((task) => (statuses ? statuses.has(task.status) : true))
+    .sort((a, b) => b.createdAt - a.createdAt);
+  return sorted.slice(0, opts?.limit ?? 20);
 }
 
 export async function fetchTask(
@@ -247,6 +334,7 @@ export async function fetchTask(
     client: raw.client,
     agentDid: Uint8Array.from(raw.agentDid as number[]),
     taskNonce: Uint8Array.from(raw.taskNonce as number[]),
+    taskHash: Uint8Array.from(raw.taskHash as number[]),
     paymentMint: raw.paymentMint,
     paymentAmount: BigInt((raw.paymentAmount as BN).toString()),
     status: taskStatusFromEnum(raw.status as Record<string, unknown>),
@@ -269,6 +357,7 @@ export async function fetchTasksByClient(
     client: account.client,
     agentDid: Uint8Array.from(account.agentDid as number[]),
     taskNonce: Uint8Array.from(account.taskNonce as number[]),
+    taskHash: Uint8Array.from(account.taskHash as number[]),
     paymentMint: account.paymentMint,
     paymentAmount: BigInt((account.paymentAmount as BN).toString()),
     status: taskStatusFromEnum(account.status as Record<string, unknown>),
@@ -367,13 +456,13 @@ const toTaskDetail = (address: PublicKey, raw: Record<string, unknown>): TaskDet
   client: raw.client as PublicKey,
   agentDid: Uint8Array.from(raw.agentDid as number[]),
   taskNonce: Uint8Array.from(raw.taskNonce as number[]),
+  taskHash: Uint8Array.from(raw.taskHash as number[]),
   paymentMint: raw.paymentMint as PublicKey,
   paymentAmount: BigInt((raw.paymentAmount as BN).toString()),
   status: taskStatusFromEnum(raw.status as Record<string, unknown>),
   deadline: (raw.deadline as BN).toNumber(),
   verified: raw.verified as boolean,
   createdAt: (raw.createdAt as BN).toNumber(),
-  taskHash: Uint8Array.from(raw.taskHash as number[]),
   resultHash: Uint8Array.from(raw.resultHash as number[]),
   proofKey: Uint8Array.from(raw.proofKey as number[]),
   criteriaRoot: Uint8Array.from(raw.criteriaRoot as number[]),
@@ -651,6 +740,7 @@ export async function fetchTasksByAgent(
     client: account.client,
     agentDid: Uint8Array.from(account.agentDid as number[]),
     taskNonce: Uint8Array.from(account.taskNonce as number[]),
+    taskHash: Uint8Array.from(account.taskHash as number[]),
     paymentMint: account.paymentMint,
     paymentAmount: BigInt((account.paymentAmount as BN).toString()),
     status: taskStatusFromEnum(account.status as Record<string, unknown>),

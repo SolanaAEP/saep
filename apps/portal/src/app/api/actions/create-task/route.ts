@@ -9,6 +9,8 @@ import {
 import { AnchorProvider, type Wallet } from '@coral-xyz/anchor';
 import {
   resolveCluster,
+  agentRegistryProgram,
+  fetchAgentByDid,
   taskMarketProgram,
   buildCreateTaskIx,
   type CreateTaskInput,
@@ -43,6 +45,13 @@ function readOnlyProvider(config: ClusterConfig) {
     wallet,
     { commitment: 'confirmed' },
   );
+}
+
+function firstCapabilityBit(mask: bigint): number {
+  for (let bit = 0; bit < 128; bit++) {
+    if ((mask & (1n << BigInt(bit))) !== 0n) return bit;
+  }
+  throw new Error('agent has no enabled capability bits');
 }
 
 export async function OPTIONS() {
@@ -101,34 +110,49 @@ export async function POST(req: NextRequest) {
     const client = new PublicKey(account);
     const config = clusterConfig();
     const provider = readOnlyProvider(config);
+    const registry = agentRegistryProgram(provider, config);
     const program = taskMarketProgram(provider, config);
     const connection = new Connection(config.endpoint, 'confirmed');
 
+    const agent = await fetchAgentByDid(registry, agentDidRaw);
+    if (!agent) {
+      return NextResponse.json({ error: 'agent not found' }, { status: 404, headers: HEADERS });
+    }
+    if (agent.status !== 'active') {
+      return NextResponse.json({ error: 'agent is not active' }, { status: 400, headers: HEADERS });
+    }
+
     const taskNonce = randomBytes(8);
-    const agentDidBytes = Buffer.alloc(32);
-    const didEncoded = Buffer.from(agentDidRaw, 'utf-8');
-    didEncoded.copy(agentDidBytes, 0, 0, Math.min(didEncoded.length, 32));
-
-    const taskHash = createHash('sha256').update(descriptionRaw).digest();
+    const argsHash = createHash('sha256').update(descriptionRaw).digest();
     const criteriaRoot = Buffer.alloc(32);
+    const capabilityBit = firstCapabilityBit(agent.capabilityMask);
 
-    // Default: operator = client, agentId = first 16 bytes of DID hash
-    const agentId = createHash('sha256').update(agentDidRaw).digest().subarray(0, 16);
-
-    // Default payment mint = USDC devnet (or override via env)
+    const marketGlobals = await program.account.marketGlobal.all();
+    const allowedMint =
+      marketGlobals[0]?.account.allowedPaymentMints.find((mint) => !mint.equals(PublicKey.default)) ??
+      null;
     const paymentMint = new PublicKey(
-      process.env.SAEP_DEFAULT_PAYMENT_MINT ?? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+      process.env.SAEP_DEFAULT_PAYMENT_MINT ?? allowedMint?.toBase58() ?? PublicKey.default.toBase58(),
     );
 
     const input: CreateTaskInput = {
       client,
       taskNonce,
-      agentDid: agentDidBytes,
-      agentOperator: client,
-      agentId,
+      agentDid: agent.did,
+      agentOperator: agent.operator,
+      agentId: agent.agentId,
       paymentMint,
       paymentAmount: BigInt(Math.floor(amount * 1e6)),
-      taskHash,
+      payload: {
+        kind: {
+          generic: {
+            capabilityBit,
+            argsHash,
+          },
+        },
+        capabilityBit,
+        criteria: new Uint8Array(0),
+      },
       criteriaRoot,
       deadline: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60), // 7 days
       milestoneCount: 1,

@@ -113,7 +113,7 @@ export function VotingModal({ proposal, config, onClose }: Props) {
     if (!choice) return;
     setError(null);
     try {
-      await sendVote();
+      await sendVote!();
       onClose();
     } catch (e) {
       setError((e as Error).message);

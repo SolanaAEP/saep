@@ -18,7 +18,7 @@ export {
   type UseYellowstoneSubscriptionOptions,
 } from './hooks/subscription.js';
 export { useAgentsByOperator, useAgent, useAgentTasks, useAllAgents, useTreasury } from './hooks/agents.js';
-export { useTask, useTasksByClient, useRaiseDispute } from './hooks/tasks.js';
+export { useTask, useTasksByClient, useRecentTasks, useTaskMarketConfig, useRaiseDispute } from './hooks/tasks.js';
 export {
   useBidBook,
   useBid,

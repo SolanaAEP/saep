@@ -30,6 +30,12 @@ const camel = (snake: string) => {
 };
 
 const typeFiles = readdirSync(typesDir).filter((f) => f.endsWith('.ts'));
+if (typeFiles.length === 0) {
+  console.warn(
+    `[sdk:gen] ${typesDir} is empty — skipping regen, using committed artifacts in src/generated, src/idl, src/programs`,
+  );
+  process.exit(0);
+}
 const programs: Array<{ snake: string; pascal: string; camel: string; address: string }> = [];
 
 for (const file of typeFiles) {

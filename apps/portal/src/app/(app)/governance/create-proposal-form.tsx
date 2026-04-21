@@ -133,7 +133,7 @@ export function CreateProposalForm({ config, walletConnected }: Props) {
     setError(null);
     setSuccess(null);
     try {
-      const result = await submitProposal();
+      const result = await submitProposal!();
       setSuccess(`Proposal submitted. Tx: ${result.signature.slice(0, 16)}...`);
       setTargetProgram('');
       setMetadataUri('');

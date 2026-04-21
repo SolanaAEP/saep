@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'node:http';
 import RedisMock from 'ioredis-mock';
 import type { Redis } from 'ioredis';
@@ -46,6 +46,16 @@ async function makeValidProxy(
 
 describe('x402-gateway server', () => {
   const redis = new RedisMock() as unknown as Redis;
+  const settleViaTaskMarket = vi.fn(async () => ({
+    tx_sig: 'settled_tx_sig_1',
+    amount: 100,
+    mint: '11111111111111111111111111111111',
+    task: 'task111111111111111111111111111111111111111',
+  }));
+  const verifySettlement = vi.fn(async (txSig: string) => {
+    if (txSig.startsWith('settled_tx_sig')) return { status: 'confirmed' as const, slot: 42 };
+    return { status: 'not_found' as const, err: 'missing' };
+  });
   let app: FastifyInstance;
   let mockServer: Server | undefined;
 
@@ -55,14 +65,25 @@ describe('x402-gateway server', () => {
     MAX_BUDGET_LAMPORTS: '100000',
     PROXY_TIMEOUT_MS: '5000',
     MAX_402_RETRIES: '1',
+    X402_DEMO_PAYMENT_MINT: '11111111111111111111111111111111',
+    X402_DEMO_PAYMENT_AMOUNT: '100',
+    X402_DEMO_RECIPIENT_DID: '11111111111111111111111111111111',
   });
 
   beforeAll(async () => {
-    app = build({ cfg, redis });
+    app = build({
+      cfg,
+      redis,
+      settlement: {
+        settleViaTaskMarket,
+        verifySettlement,
+      },
+    });
     await app.ready();
   });
 
   afterEach(() => {
+    vi.clearAllMocks();
     if (mockServer) {
       mockServer.close();
       mockServer = undefined;
@@ -155,7 +176,7 @@ describe('x402-gateway server', () => {
 
   it('proxy handles 402 with X-PAYMENT and retries', async () => {
     let callCount = 0;
-    const { server, port } = await startMockUpstream((_req, res) => {
+    const { server, port } = await startMockUpstream((req, res) => {
       callCount++;
       if (callCount === 1) {
         res.writeHead(402, {
@@ -170,6 +191,18 @@ describe('x402-gateway server', () => {
         });
         res.end('payment required');
       } else {
+        const header = req.headers['x-payment'];
+        if (typeof header !== 'string') {
+          res.writeHead(402, { 'content-type': 'text/plain' });
+          res.end('missing receipt');
+          return;
+        }
+        const receipt = JSON.parse(header) as { tx_sig?: string };
+        if (receipt.tx_sig !== 'settled_tx_sig_1') {
+          res.writeHead(402, { 'content-type': 'text/plain' });
+          res.end('invalid receipt');
+          return;
+        }
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ paid: true }));
       }
@@ -183,6 +216,7 @@ describe('x402-gateway server', () => {
     expect(json.payment_receipts.length).toBe(1);
     expect(json.payment_receipts[0].amount).toBe(100);
     expect(callCount).toBe(2);
+    expect(settleViaTaskMarket).toHaveBeenCalledTimes(1);
   });
 
   it('proxy returns 402 when upstream stays 402 after retries', async () => {
@@ -232,17 +266,40 @@ describe('x402-gateway server', () => {
     expect(res.json().error).toContain('missing tx_sig');
   });
 
-  it('facilitate/verify confirms devnet pseudo-sig', async () => {
+  it('demo/paid returns 402 with an x-payment challenge before payment', async () => {
+    const res = await app.inject({ method: 'GET', url: '/demo/paid' });
+    expect(res.statusCode).toBe(402);
+    expect(res.headers['x-payment']).toBeTruthy();
+    expect(res.json().error).toBe('payment_required');
+  });
+
+  it('demo/paid returns content after a confirmed payment receipt', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/demo/paid',
+      headers: {
+        'x-payment': JSON.stringify({ tx_sig: 'settled_tx_sig_demo' }),
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      ok: true,
+      settled_tx_sig: 'settled_tx_sig_demo',
+      message: 'paid access granted',
+    });
+  });
+
+  it('facilitate/verify confirms settled tx', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/facilitate/verify',
       payload: {
-        x_payment: JSON.stringify({ tx_sig: 'devnet_pending_abc12345' }),
+        x_payment: JSON.stringify({ tx_sig: 'settled_tx_sig_abc12345' }),
         resource_ref: 'task:abc',
       },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ ok: true, settled_tx_sig: 'devnet_pending_abc12345' });
+    expect(res.json()).toMatchObject({ ok: true, settled_tx_sig: 'settled_tx_sig_abc12345' });
   });
 
   it('facilitate/verify returns 404 for unknown tx', async () => {
@@ -254,7 +311,7 @@ describe('x402-gateway server', () => {
         resource_ref: 'task:abc',
       },
     });
-    // rpc is unreachable in test, so we get not_found
+    // mocked verification returns not_found for unknown signatures
     expect(res.statusCode).toBe(404);
     expect(res.json().ok).toBe(false);
   });

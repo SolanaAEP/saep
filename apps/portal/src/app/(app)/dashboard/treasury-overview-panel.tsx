@@ -1,10 +1,11 @@
 'use client';
 
+import type { Program } from '@coral-xyz/anchor';
 import type { AgentSummary } from '@saep/sdk';
 import { useTreasury } from '@saep/sdk-ui';
 import { useQueries } from '@tanstack/react-query';
 import { useTreasuryProgram } from '@saep/sdk-ui';
-import { fetchTreasury } from '@saep/sdk';
+import { fetchTreasury, type TreasuryStandard } from '@saep/sdk';
 
 interface AggregatedBalance {
   totalDailyLimit: bigint;
@@ -20,7 +21,7 @@ function fmtSol(v: bigint): string {
 }
 
 function useTreasuryAggregate(agents: AgentSummary[]) {
-  const program = useTreasuryProgram();
+  const program = useTreasuryProgram() as Program<TreasuryStandard> | null;
 
   const queries = useQueries({
     queries: agents.map((agent) => ({

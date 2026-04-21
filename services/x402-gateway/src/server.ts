@@ -16,6 +16,7 @@ import {
   requestHash,
   settleViaTaskMarket,
   verifySettlement,
+  type PaymentDetails,
   type PaymentReceipt,
 } from './settlement.js';
 
@@ -40,11 +41,29 @@ const FacilitateBody = z.object({
 export type BuildOpts = {
   cfg: Config;
   redis?: Redis;
+  settlement?: {
+    settleViaTaskMarket?: (
+      payment: PaymentDetails,
+      requesterDid: string,
+      argsHash: string,
+      budgetLamports: number,
+    ) => Promise<PaymentReceipt>;
+    verifySettlement?: (
+      txSig: string,
+    ) => Promise<{ status: 'confirmed' | 'finalized' | 'not_found' | 'failed'; slot?: number; err?: string }>;
+  };
 };
 
 export function build(opts: BuildOpts) {
   const cfg = opts.cfg;
   const redis = opts.redis ?? new IORedis(cfg.redisUrl);
+  const settlement = {
+    settleViaTaskMarket: opts.settlement?.settleViaTaskMarket ??
+      ((payment: PaymentDetails, requesterDid: string, argsHash: string, budgetLamports: number) =>
+        settleViaTaskMarket(cfg, payment, requesterDid, argsHash, budgetLamports)),
+    verifySettlement: opts.settlement?.verifySettlement ??
+      ((txSig: string) => verifySettlement(cfg.solanaRpcUrl, txSig)),
+  };
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
 
   const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
@@ -71,6 +90,69 @@ export function build(opts: BuildOpts) {
   app.get('/metrics', async (_req, reply) => {
     reply.header('content-type', registry.contentType);
     return registry.metrics();
+  });
+
+  app.get('/demo/paid', async (req, reply) => {
+    if (!cfg.demoPaymentMint || !cfg.demoRecipientDid) {
+      return reply.code(503).send({
+        error: 'demo_not_configured',
+        detail: 'set X402_DEMO_PAYMENT_MINT and X402_DEMO_RECIPIENT_DID to enable /demo/paid',
+      });
+    }
+
+    const challenge = {
+      scheme: 'exact',
+      amount: Number(cfg.demoPaymentAmount),
+      mint: cfg.demoPaymentMint,
+      recipient: cfg.demoRecipientDid,
+      resource: cfg.demoResource,
+    };
+
+    const requirePayment = (detail: string, txSig?: string) => reply
+      .code(402)
+      .header('cache-control', 'no-store')
+      .header('x-payment', JSON.stringify(challenge))
+      .send({
+        error: 'payment_required',
+        detail,
+        resource: cfg.demoResource,
+        tx_sig: txSig ?? null,
+      });
+
+    const xPayment = req.headers['x-payment'];
+    if (typeof xPayment !== 'string') {
+      return requirePayment('missing_x_payment_header');
+    }
+
+    let txSig: string;
+    try {
+      const payload = JSON.parse(xPayment) as { tx_sig?: string };
+      if (!payload.tx_sig) {
+        return requirePayment('x_payment_missing_tx_sig');
+      }
+      txSig = payload.tx_sig;
+    } catch {
+      return requirePayment('x_payment_invalid_json');
+    }
+
+    const verification = await settlement.verifySettlement(txSig);
+    if (verification.status === 'confirmed' || verification.status === 'finalized') {
+      return reply.send({
+        ok: true,
+        resource: cfg.demoResource,
+        settled_tx_sig: txSig,
+        amount: challenge.amount,
+        mint: challenge.mint,
+        slot: verification.slot,
+        message: 'paid access granted',
+      });
+    }
+
+    if (verification.status === 'failed') {
+      return requirePayment(`transaction_failed:${verification.err ?? 'unknown'}`, txSig);
+    }
+
+    return requirePayment(`transaction_not_found:${verification.err ?? 'pending'}`, txSig);
   });
 
   app.post('/proxy', async (req, reply) => {
@@ -118,6 +200,7 @@ export function build(opts: BuildOpts) {
     }
 
     const paymentReceipts: PaymentReceipt[] = [];
+    let latestReceipt: PaymentReceipt | null = null;
     let attempt = 0;
     let lastUpstreamStatus = 0;
     let lastUpstreamBody = '';
@@ -127,9 +210,13 @@ export function build(opts: BuildOpts) {
       attempt++;
       let upstream: Response;
       try {
+        const headers = new Headers(body.headers ?? {});
+        if (latestReceipt) {
+          headers.set('x-payment', JSON.stringify(latestReceipt));
+        }
         upstream = await fetch(body.target_url, {
           method: body.method,
-          headers: body.headers,
+          headers,
           body: body.method !== 'GET' ? body.body : undefined,
           signal: AbortSignal.timeout(cfg.proxyTimeoutMs),
           redirect: 'error',
@@ -158,15 +245,14 @@ export function build(opts: BuildOpts) {
 
       const argsHash = requestHash(body.method, body.target_url, body.body);
       try {
-        const receipt = await settleViaTaskMarket(
-          cfg.solanaRpcUrl,
-          cfg.cluster,
+        const receipt = await settlement.settleViaTaskMarket(
           payment,
           body.agent_did,
           argsHash,
           body.budget_lamports,
         );
         paymentReceipts.push(receipt);
+        latestReceipt = receipt;
       } catch (e) {
         proxyRequests.inc({ status: 'settlement_failed' });
         end({ status: 'settlement_failed' });
@@ -220,7 +306,7 @@ export function build(opts: BuildOpts) {
       return reply.code(400).send({ error: 'x_payment is not valid JSON' });
     }
 
-    const result = await verifySettlement(cfg.solanaRpcUrl, txSig);
+    const result = await settlement.verifySettlement(txSig);
 
     if (result.status === 'confirmed' || result.status === 'finalized') {
       facilitateVerifyTotal.inc({ result: 'settled' });

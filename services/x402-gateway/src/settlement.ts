@@ -1,4 +1,17 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
+import { BN, AnchorProvider, Wallet } from '@coral-xyz/anchor';
+import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from '@solana/spl-token';
+import { Connection, PublicKey, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
+import {
+  agentRegistryProgram,
+  fetchAgentByDid,
+  marketGlobalPda,
+  resolveCluster,
+  taskEscrowPda,
+  taskMarketProgram,
+  taskPda,
+} from '@saep/sdk';
+import type { Config } from './config.js';
 
 export interface PaymentDetails {
   scheme: string;
@@ -13,6 +26,7 @@ export interface PaymentReceipt {
   tx_sig: string;
   amount: number;
   mint: string;
+  task?: string;
 }
 
 export function parseXPaymentHeader(header: string): PaymentDetails | null {
@@ -33,70 +47,203 @@ export interface SettlementResult {
   tx_sig: string;
   amount: number;
   mint: string;
+  task?: string;
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Buffer.from(bytes).toString('hex');
+}
+
+function decodeBase58Key(label: string, value: string): Uint8Array {
+  try {
+    return new PublicKey(value).toBytes();
+  } catch {
+    throw new Error(`${label} must be a valid base58-encoded public key`);
+  }
+}
+
+function firstCapabilityBit(mask: bigint): number {
+  for (let bit = 0; bit < 128; bit++) {
+    if ((mask & (1n << BigInt(bit))) !== 0n) return bit;
+  }
+  throw new Error('recipient agent advertises no capabilities');
+}
+
+function bnToNumber(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'bigint') return Number(value);
+  if (value && typeof value === 'object' && 'toString' in value) {
+    return Number((value as { toString(): string }).toString());
+  }
+  throw new Error('unable to convert value to number');
+}
+
+async function currentClusterTime(connection: Connection): Promise<number> {
+  const slot = await connection.getSlot('confirmed');
+  return (await connection.getBlockTime(slot)) ?? Math.floor(Date.now() / 1000);
+}
+
+async function resolveTokenProgram(
+  connection: Connection,
+  mint: PublicKey,
+): Promise<PublicKey> {
+  const info = await connection.getAccountInfo(mint, 'confirmed');
+  if (!info) throw new Error(`payment mint ${mint.toBase58()} was not found`);
+  if (info.owner.equals(TOKEN_2022_PROGRAM_ID)) return TOKEN_2022_PROGRAM_ID;
+  if (info.owner.equals(TOKEN_PROGRAM_ID)) return TOKEN_PROGRAM_ID;
+  throw new Error(`payment mint ${mint.toBase58()} is not an SPL token mint`);
 }
 
 export async function settleViaTaskMarket(
-  rpcUrl: string,
-  cluster: 'mainnet-beta' | 'devnet' | 'localnet',
+  cfg: Config,
   payment: PaymentDetails,
-  agentDid: string,
+  requesterDid: string,
   argsHash: string,
   budgetLamports: number,
 ): Promise<SettlementResult> {
-  if (cluster === 'mainnet-beta') {
-    throw new Error('real settlement not yet wired — mainnet-beta is blocked until on-chain path is implemented');
-  }
-
   if (payment.amount > budgetLamports) {
     throw new Error(`payment ${payment.amount} exceeds budget ${budgetLamports}`);
   }
-
-  // devnet/localnet: simulate settlement via memo tx
-  // production path: @saep/sdk builders + Jito bundle
-  const txSig = await simulateSettlement(rpcUrl, payment, agentDid, argsHash);
-  return { tx_sig: txSig, amount: payment.amount, mint: payment.mint };
-}
-
-async function simulateSettlement(
-  rpcUrl: string,
-  payment: PaymentDetails,
-  agentDid: string,
-  argsHash: string,
-): Promise<string> {
-  // on devnet/localnet we record intent; real path would construct:
-  // createTask + fundTask + submitResult + release as a Jito bundle
-  const memo = JSON.stringify({
-    kind: 'x402_settlement',
-    agent: agentDid,
-    amount: payment.amount,
-    mint: payment.mint,
-    recipient: payment.recipient,
-    args_hash: argsHash,
-    ts: Date.now(),
-  });
-
-  const res = await fetch(rpcUrl, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'getHealth',
-    }),
-  }).catch(() => null);
-
-  // if RPC is reachable, return a deterministic pseudo-sig for tracking
-  // real implementation submits the bundle and returns the actual signature
-  if (res?.ok) {
-    const h = createHash('sha256');
-    h.update(memo);
-    return h.digest('base64url');
+  if (!cfg.keypair) {
+    throw new Error('SAEP_OPERATOR_KEYPAIR is required for live task_market settlement');
   }
 
-  // offline fallback: return a clearly-marked placeholder
-  const h = createHash('sha256');
-  h.update(memo);
-  return `devnet_pending_${h.digest('hex').slice(0, 16)}`;
+  const clusterConfig = resolveCluster({
+    cluster: cfg.cluster,
+    endpoint: cfg.solanaRpcUrl,
+    programIds: {
+      ...(cfg.taskMarketProgramId ? { taskMarket: cfg.taskMarketProgramId } : {}),
+      ...(cfg.agentRegistryProgramId ? { agentRegistry: cfg.agentRegistryProgramId } : {}),
+    },
+  });
+
+  const connection = new Connection(cfg.solanaRpcUrl, 'confirmed');
+  const provider = new AnchorProvider(connection, new Wallet(cfg.keypair), {
+    commitment: 'confirmed',
+  });
+  const agentRegistry = agentRegistryProgram(provider, clusterConfig);
+  const taskMarket = taskMarketProgram(provider, clusterConfig);
+
+  const recipientDidBytes = decodeBase58Key('payment recipient', payment.recipient);
+  const recipient = await fetchAgentByDid(agentRegistry, bytesToHex(recipientDidBytes));
+  if (!recipient) {
+    throw new Error(`recipient DID ${payment.recipient} is not registered in agent_registry`);
+  }
+  if (recipient.status !== 'active') {
+    throw new Error(`recipient DID ${payment.recipient} is not active`);
+  }
+
+  const requesterDidBytes = decodeBase58Key('requester DID', requesterDid);
+  const paymentMint = new PublicKey(payment.mint);
+  const tokenProgramId = await resolveTokenProgram(connection, paymentMint);
+  const payerTokenAccount = getAssociatedTokenAddressSync(
+    paymentMint,
+    cfg.keypair.publicKey,
+    true,
+    tokenProgramId,
+  );
+  const payerTokenBalance = await connection.getTokenAccountBalance(payerTokenAccount, 'confirmed')
+    .catch(() => null);
+  if (!payerTokenBalance) {
+    throw new Error(
+      `payer token account ${payerTokenAccount.toBase58()} does not exist for mint ${paymentMint.toBase58()}`,
+    );
+  }
+  if (BigInt(payerTokenBalance.value.amount) < BigInt(payment.amount)) {
+    throw new Error(
+      `payer token account ${payerTokenAccount.toBase58()} has insufficient balance for ${payment.amount}`,
+    );
+  }
+
+  const marketGlobalAddress = marketGlobalPda(clusterConfig.programIds.taskMarket)[0];
+  const marketGlobal = await taskMarket.account.marketGlobal.fetch(marketGlobalAddress) as {
+    allowedPaymentMints: PublicKey[];
+    maxDeadlineSecs: { toString(): string };
+  };
+  if (!marketGlobal.allowedPaymentMints.some((mint) => mint.equals(paymentMint))) {
+    throw new Error(`payment mint ${paymentMint.toBase58()} is not allowed by task_market`);
+  }
+
+  const deadlineCeiling = bnToNumber(marketGlobal.maxDeadlineSecs);
+  const deadlineOffset = Math.min(Math.max(120, 300), Math.max(61, deadlineCeiling - 1));
+  if (deadlineOffset <= 60) {
+    throw new Error('task_market maxDeadlineSecs is too small for x402 settlement');
+  }
+  const deadline = (await currentClusterTime(connection)) + deadlineOffset;
+  const taskNonce = randomBytes(8);
+  const capabilityBit = firstCapabilityBit(recipient.capabilityMask);
+  const argsHashBytes = Uint8Array.from(Buffer.from(argsHash, 'hex'));
+  const payload = {
+    kind: { generic: { capabilityBit, argsHash: Array.from(argsHashBytes) } },
+    capabilityBit,
+    criteria: Buffer.from(requesterDidBytes),
+    requiresPersonhood: { none: {} },
+  };
+  const [taskAddress] = taskPda(clusterConfig.programIds.taskMarket, cfg.keypair.publicKey, taskNonce);
+  const [escrowAddress] = taskEscrowPda(clusterConfig.programIds.taskMarket, taskAddress);
+  const [guardAddress] = PublicKey.findProgramAddressSync(
+    [Buffer.from('guard')],
+    clusterConfig.programIds.taskMarket,
+  );
+
+  const createIx = await taskMarket.methods
+    .createTask(
+      Array.from(taskNonce),
+      Array.from(recipient.did),
+      paymentMint,
+      new BN(payment.amount),
+      payload,
+      Array(32).fill(0),
+      new BN(deadline),
+      1,
+    )
+    .accountsPartial({
+      global: marketGlobalAddress,
+      client: cfg.keypair.publicKey,
+      agentRegistryProgram: clusterConfig.programIds.agentRegistry,
+      agentAccount: recipient.address,
+    })
+    .instruction();
+
+  const fundIx = await taskMarket.methods
+    .fundTask()
+    .accountsPartial({
+      global: marketGlobalAddress,
+      task: taskAddress,
+      paymentMint,
+      escrow: escrowAddress,
+      clientTokenAccount: payerTokenAccount,
+      hookAllowlist: null,
+      guard: guardAddress,
+      client: cfg.keypair.publicKey,
+      tokenProgram: tokenProgramId,
+    })
+    .instruction();
+
+  const latestBlockhash = await connection.getLatestBlockhash('confirmed');
+  const tx = new Transaction({
+    feePayer: cfg.keypair.publicKey,
+    blockhash: latestBlockhash.blockhash,
+    lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+  }).add(createIx, fundIx);
+
+  const txSig = await sendAndConfirmTransaction(connection, tx, [cfg.keypair], {
+    commitment: 'confirmed',
+  });
+
+  const task = await taskMarket.account.taskContract.fetch(taskAddress) as {
+    status: Record<string, unknown>;
+  };
+  if (!('funded' in task.status)) {
+    throw new Error(`task ${taskAddress.toBase58()} was created but did not reach funded status`);
+  }
+
+  return {
+    tx_sig: txSig,
+    amount: payment.amount,
+    mint: payment.mint,
+    task: taskAddress.toBase58(),
+  };
 }
 
 export type TxStatus = 'confirmed' | 'finalized' | 'not_found' | 'failed';
@@ -105,11 +252,6 @@ export async function verifySettlement(
   rpcUrl: string,
   txSig: string,
 ): Promise<{ status: TxStatus; slot?: number; err?: string }> {
-  // devnet pseudo-sigs from the fallback path
-  if (txSig.startsWith('devnet_pending_')) {
-    return { status: 'confirmed', slot: 0 };
-  }
-
   try {
     const res = await fetch(rpcUrl, {
       method: 'POST',

@@ -7,3 +7,4 @@ packages:
   - services/x402-gateway
   - services/compute-broker
   - examples/*
+  - examples/agents/*

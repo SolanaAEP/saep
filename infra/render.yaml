@@ -29,7 +29,7 @@ services:
     env: node
     plan: starter
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/proof-gen build
-    startCommand: pnpm --filter @saep/proof-gen start
+    startCommand: pnpm --filter @saep/proof-gen start:worker
     envVars:
       - key: NODE_VERSION
         value: 24
@@ -38,6 +38,32 @@ services:
           type: keyvalue
           name: saep-redis
           property: connectionString
+
+  - type: web
+    name: saep-x402-gateway
+    env: node
+    plan: starter
+    healthCheckPath: /healthz
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/x402-gateway build
+    startCommand: pnpm --filter @saep/x402-gateway start
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: saep-redis
+          property: connectionString
+      - key: SOLANA_RPC_URL
+        sync: false
+      - key: SAEP_OPERATOR_KEYPAIR
+        sync: false
+      - key: SAEP_TASK_MARKET_PROGRAM_ID
+        sync: false
+      - key: SAEP_AGENT_REGISTRY_PROGRAM_ID
+        sync: false
+      - key: CORS_ORIGINS
+        value: "https://app.buildonsaep.com,https://saep-app.onrender.com"
 
   - type: worker
     name: saep-indexer
@@ -75,3 +101,22 @@ services:
         value: "10000"
       - key: CORS_ORIGINS
         value: "https://app.buildonsaep.com,https://saep-app.onrender.com"
+
+  - type: web
+    name: saep-portal
+    env: node
+    plan: starter
+    healthCheckPath: /
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/portal build
+    startCommand: pnpm --filter @saep/portal start
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: NEXT_PUBLIC_SOLANA_CLUSTER
+        value: devnet
+      - key: NEXT_PUBLIC_RPC_URL
+        sync: false
+      - key: NEXT_PUBLIC_DEFAULT_PAYMENT_MINT
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true

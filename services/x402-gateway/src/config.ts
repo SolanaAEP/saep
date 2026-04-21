@@ -1,3 +1,5 @@
+import { readFileSync, statSync } from 'node:fs';
+import { Keypair } from '@solana/web3.js';
 import { z } from 'zod';
 
 const EnvSchema = z.object({
@@ -14,6 +16,17 @@ const EnvSchema = z.object({
   PROXY_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
   MAX_402_RETRIES: z.coerce.number().int().min(0).max(3).default(1),
   SAEP_CLUSTER: z.enum(['mainnet-beta', 'devnet', 'localnet']).default('localnet'),
+  SAEP_OPERATOR_KEYPAIR: z.string().optional(),
+  SAEP_TASK_MARKET_PROGRAM_ID: z.string().optional(),
+  SAEP_AGENT_REGISTRY_PROGRAM_ID: z.string().optional(),
+  X402_DEMO_PAYMENT_MINT: z.string().optional(),
+  X402_DEMO_PAYMENT_AMOUNT: z
+    .string()
+    .regex(/^\d+$/)
+    .default('1000000')
+    .transform((v) => BigInt(v)),
+  X402_DEMO_RECIPIENT_DID: z.string().optional(),
+  X402_DEMO_RESOURCE: z.string().default('/demo/paid'),
 });
 
 export type Config = {
@@ -30,10 +43,31 @@ export type Config = {
   proxyTimeoutMs: number;
   max402Retries: number;
   cluster: 'mainnet-beta' | 'devnet' | 'localnet';
+  operatorKeypairPath?: string;
+  keypair: Keypair | null;
+  taskMarketProgramId?: string;
+  agentRegistryProgramId?: string;
+  demoPaymentMint?: string;
+  demoPaymentAmount: bigint;
+  demoRecipientDid?: string;
+  demoResource: string;
 };
+
+function loadKeypair(path: string | undefined): Keypair | null {
+  if (!path) return null;
+  const mode = statSync(path).mode & 0o777;
+  if (mode & 0o044) {
+    process.stderr.write(
+      `WARNING: keypair file ${path} has permissions ${mode.toString(8).padStart(4, '0')}, recommended 0600\n`,
+    );
+  }
+  const raw = readFileSync(path, 'utf8');
+  return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(raw) as number[]));
+}
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const parsed = EnvSchema.parse(env);
+  const keypair = loadKeypair(parsed.SAEP_OPERATOR_KEYPAIR);
   return {
     port: parsed.PORT,
     host: parsed.HOST,
@@ -48,5 +82,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     proxyTimeoutMs: parsed.PROXY_TIMEOUT_MS,
     max402Retries: parsed.MAX_402_RETRIES,
     cluster: parsed.SAEP_CLUSTER,
+    operatorKeypairPath: parsed.SAEP_OPERATOR_KEYPAIR,
+    keypair,
+    taskMarketProgramId: parsed.SAEP_TASK_MARKET_PROGRAM_ID,
+    agentRegistryProgramId: parsed.SAEP_AGENT_REGISTRY_PROGRAM_ID,
+    demoPaymentMint: parsed.X402_DEMO_PAYMENT_MINT,
+    demoPaymentAmount: parsed.X402_DEMO_PAYMENT_AMOUNT,
+    demoRecipientDid: parsed.X402_DEMO_RECIPIENT_DID,
+    demoResource: parsed.X402_DEMO_RESOURCE,
   };
 }
