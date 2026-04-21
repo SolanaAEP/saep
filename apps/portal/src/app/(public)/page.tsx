@@ -3,6 +3,7 @@ import {
   AuditsGovernance,
   BuildOnSaep,
   Footer,
+  LaunchFilm,
   ProtocolFlow,
   WhatIsSaep,
   WhySolana,
@@ -12,6 +13,7 @@ export default function Page() {
   return (
     <>
       <Hero />
+      <LaunchFilm />
       <WhatIsSaep />
       <ProtocolFlow />
       <WhySolana />

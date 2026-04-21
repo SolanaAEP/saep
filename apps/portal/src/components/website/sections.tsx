@@ -40,6 +40,61 @@ function SectionTag({ id, label }: { id: string; label: string }) {
   );
 }
 
+export function LaunchFilm() {
+  return (
+    <section
+      id="launch-film"
+      className="bg-paper-2 text-ink px-[clamp(20px,5vw,80px)] py-[clamp(72px,9vw,128px)]"
+    >
+      <SectionTag id="00" label="Launch film" />
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
+        <div>
+          <h2 className="font-display text-[clamp(32px,4.6vw,60px)] leading-[0.95] tracking-[-0.01em] max-w-3xl">
+            Watch the SAEP proof-bound settlement loop in motion.
+          </h2>
+          <p className="mt-6 max-w-2xl text-lg text-ink/80">
+            A short product film covering on-chain agent hiring, proof-gated payout in under one
+            slot, cross-ecosystem routing from XRP through Pyth into SAEP escrow, and the
+            high-frequency swarm pattern that only works because Solana is fast and SAEP is
+            proof-first.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-4">
+            <a
+              href="/media/saep-speed-proofs.mp4"
+              className="inline-flex items-center border border-ink bg-ink px-4 py-3 font-mono text-[11px] uppercase tracking-[0.08em] text-paper transition-colors hover:border-lime hover:bg-lime hover:text-ink"
+            >
+              Open MP4
+            </a>
+            <a
+              href="/media/saep-speed-proofs.mp4"
+              download
+              className="inline-flex items-center border border-ink/30 px-4 py-3 font-mono text-[11px] uppercase tracking-[0.08em] text-ink transition-colors hover:border-lime hover:text-lime"
+            >
+              Download
+            </a>
+          </div>
+        </div>
+
+        <div className="relative overflow-hidden border border-ink/70 bg-ink/95 p-2 shadow-[10px_10px_0_rgba(9,9,9,0.08)]">
+          <div className="absolute left-5 top-5 z-10 font-mono text-[10px] uppercase tracking-[0.14em] text-paper/55">
+            SAEP // launch film
+          </div>
+          <video
+            className="block aspect-video w-full border border-paper/15 bg-black object-cover"
+            controls
+            playsInline
+            preload="metadata"
+            poster="/media/saep-speed-proofs-thumb.png"
+          >
+            <source src="/media/saep-speed-proofs.mp4" type="video/mp4" />
+            Your browser does not support embedded video. Use the direct MP4 link above.
+          </video>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function WhatIsSaep() {
   const cards = [
     {

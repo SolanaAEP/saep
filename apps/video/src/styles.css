@@ -1,0 +1,31 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+@import '@fontsource/archivo-black/400.css';
+
+:root {
+  --paper: #f2f0e8;
+  --paper-2: #e7e5dc;
+  --ink: #0b0b0b;
+  --ink-soft: rgba(11, 11, 11, 0.72);
+  --line: rgba(11, 11, 11, 0.14);
+  --line-strong: rgba(11, 11, 11, 0.24);
+  --lime: #cbff3a;
+  --lime-soft: rgba(203, 255, 58, 0.28);
+  --cyan: #4dd7ff;
+  --orange: #ff8e3c;
+  --rose: #ff5b72;
+  --font-display: 'Archivo Black', 'Helvetica Neue', Arial, sans-serif;
+  --font-body: 'Inter Variable', 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background: var(--paper);
+  color: var(--ink);
+}
