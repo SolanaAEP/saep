@@ -14,6 +14,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: public boundary scan
+        run: |
+          set -euo pipefail
+          PATTERN='INBOX\.md|BACKLOG\.md|AUTONOMY\.md|reports/autonomous-log\.md|saep-internal|SolanaAEP/saep-internal|internal repo|private repo|air-gapped|YubiKey|Signal group|team channels|support queue|runbook'
+          TARGETS=(
+            specs
+            scripts
+            apps/portal/src/content/specs
+            apps/portal/src/content/spec-index.ts
+            apps/docs/src/lib/specs.ts
+          )
+          if rg -n "$PATTERN" "${TARGETS[@]}"; then
+            echo "public boundary scan failed"
+            exit 1
+          fi
       - uses: pnpm/action-setup@v4
         with:
           version: 10.31.0

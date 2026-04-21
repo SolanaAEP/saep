@@ -122,7 +122,7 @@ async function main() {
           deltaG2 as unknown as number[],
           numPublicInputs,
           circuitLabel as unknown as number[],
-          false, // is_production = false (dev ceremony)
+          false, // is_production = false (dev/test artifact)
         )
         .accountsPartial({
           authority: authority.publicKey,

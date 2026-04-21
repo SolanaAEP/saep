@@ -12,9 +12,9 @@ Document the human-readable shape of the indexer's Postgres database: every tabl
 ## Non-goals
 
 - Not the migration tool. `diesel migration` runs `up.sql` / `down.sql` verbatim — this spec describes intent, not bytes.
-- Not the Discovery API spec. That spec (`specs/discovery-api.md`, BACKLOG line 106) consumes this schema and adds REST + WS surfaces.
+- Not the Discovery API spec. That spec (`specs/discovery-api.md`) consumes this schema and adds REST + WS surfaces.
 - Not a Yellowstone gRPC swap plan. Slot/sig ingestion currently runs through `getSignaturesForAddress` polling; the schema is identical post-Yellowstone, only the poller cadence changes.
-- Not a backup/restore runbook. Render's PG snapshot policy + WAL archiving lives in ops docs once provisioning lands (BACKLOG line 59 — 0xlinnet-approved per INBOX, pending exec).
+- Not a backup/restore policy document. This spec covers schema shape, not operational retention or restore procedures.
 
 ## Migration order
 
@@ -247,15 +247,15 @@ Raw `FeeClaim` events from `fee_collector` feeding the nightly `retro_eligibilit
 
 - **Connection pool:** `r2d2` with `POOL_MAX_SIZE = 8` (`db.rs:10`). Both the ingest path and the analytics API share this pool. Render's smallest paid PG plan offers 22 concurrent connections; pool-of-8 leaves headroom for `psql` ops + future workers.
 - **Materialized view refresh:** every 60s. CONCURRENTLY ⇒ no read-side lock, but two simultaneous refreshes are blocked. Scheduler is single-tenant so this is a non-issue at M1.
-- **Index maintenance:** `program_events` will accumulate fastest. Periodic `REINDEX CONCURRENTLY` on `program_events_program_id_idx` + `program_events_event_name_idx` belongs in the Render-provisioning runbook (Open Q).
+- **Index maintenance:** `program_events` will accumulate fastest. Periodic `REINDEX CONCURRENTLY` on `program_events_program_id_idx` + `program_events_event_name_idx` should be part of the published operating policy for the deployed indexer (Open Q).
 - **Pruning policy:** none at M1. `program_events` + `reputation_samples` + `retro_fee_samples` grow unbounded. Open Q.
 - **Migrations:** `diesel migration run` from `services/indexer/migrations/`. CI runs both `up` then `down` for each migration to keep `down.sql` honest.
-- **Backups:** Render managed PG ships daily snapshots + 7d PITR by default on paid plans. Confirm at provisioning-time per BACKLOG line 59.
+- **Backups:** Render managed PG ships daily snapshots + 7d PITR by default on paid plans. Confirm the exact retention at provisioning time.
 
 ## Open questions for reviewer
 
 1. **`reorg_log` column-name cleanup.** `old_hash` reused as `dropped_signature`, `new_hash` always `'dropped'`. Worth a rename migration before the auditor reads the schema, or leave + flag in the audit cover letter? Default: rename pre-audit (low risk, clean slate).
-2. **JSONB GIN indexes on `program_events.data`.** Currently no GIN. Portal's `/agents/[did]` does memcmp-style lookups via Anchor RPC, not JSONB scans, so the gap is theoretical. If Discovery API (BACKLOG line 106) introduces filtered queries (`WHERE data->>'agent_did' = $1`), add `CREATE INDEX … USING GIN (data jsonb_path_ops)` then. Default: defer.
+2. **JSONB GIN indexes on `program_events.data`.** Currently no GIN. Portal's `/agents/[did]` does memcmp-style lookups via Anchor RPC, not JSONB scans, so the gap is theoretical. If Discovery API introduces filtered queries (`WHERE data->>'agent_did' = $1`), add `CREATE INDEX … USING GIN (data jsonb_path_ops)` then. Default: defer.
 3. **Pruning policy for `program_events` / `reputation_samples` / `retro_fee_samples`.** Three options: (a) infinite retention + bigger PG instance (simplest); (b) cold-storage move to S3/R2 after 90d (cheapest at scale, adds restore-from-cold path); (c) aggregate-then-prune — keep daily rollups, drop raw rows after 30d (cheapest for analytics, breaks audit-trail use-case). Default: (a) for M1, revisit at M3 if storage cost > $20/mo.
 4. **Heartbeat-presence table.** `jobs::reputation_rollup` has a `TODO` for streaming IACP heartbeats into a `heartbeat_presence` table that drives the availability-axis decay. New table not yet specified. Should it land in this spec as a planned migration, or get its own follow-on spec when IACP→indexer wiring lands? Default: follow-on (out of scope here).
 5. **Reorg-window deeper than 150 slots.** RPC cache caps detection at ~150 slots. Yellowstone gRPC streams every block live, so post-Yellowstone we can detect arbitrarily deep reorgs (within the gRPC backlog window) without hitting the status-cache wall. Document the gap as a known M1 limitation in the audit package, or invest in a parallel deeper-window detector now? Default: document + defer until Yellowstone swap.
@@ -275,4 +275,4 @@ Raw `FeeClaim` events from `fee_collector` feeding the nightly `retro_eligibilit
 - [x] 7 reviewer open-questions sized to a single review batch.
 - [ ] Reviewer ratifies (or pushes back on) the 7 open questions.
 - [ ] Pre-audit rename pass: `reorg_log.old_hash → dropped_signature`, `blocks.hash` empty → NULL (if Q-1 + Q-6 ratified).
-- [ ] Discovery API spec (BACKLOG line 106) lands and references this schema for its query layer.
+- [ ] Discovery API spec lands and references this schema for its query layer.

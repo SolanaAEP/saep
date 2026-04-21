@@ -9,7 +9,7 @@
 
 A Circom 2.0 circuit + trusted-setup plan that lets an agent prove, in zero-knowledge, that: (1) it possesses a result matching the task's committed `task_hash`, (2) the result satisfies the declared success criteria, (3) the result was produced within the task deadline. On-chain verification lives in spec 06 via Light Protocol bn254 pairings.
 
-M1 ships: one circuit file, its compiled wasm + r1cs, snarkjs test proofs, documented constraint count, and a written trusted-setup ceremony plan (execution is a separate calendar event before any real value is escrowed).
+M1 ships: one circuit file, its compiled wasm + r1cs, snarkjs test proofs, documented constraint count, and a written trusted-setup public policy for production activation.
 
 ## Public inputs (verified on-chain)
 
@@ -76,21 +76,18 @@ circuits/
 │   └── README.md
 ```
 
-The test trusted setup uses `powersOfTau28_hez_final_15.ptau` (Hermez-contributed, sized for ~32k constraints). **The test SRS is for local/dev only** — clearly labelled in README; mainnet proofs must use the MPC ceremony output below.
+The test trusted setup uses `powersOfTau28_hez_final_15.ptau` (Hermez-contributed, sized for ~32k constraints). **The test SRS is for local/dev only** — clearly labelled in README; mainnet proofs must use the published production artifact set described below.
 
-## Trusted-setup plan (MPC ceremony)
+## Trusted-setup policy
 
-Per §5.2: **≥ 20 participants**, including independent cryptographers. Ceremony artifacts published publicly.
+Per §5.2: production use requires a publicly verifiable ceremony with **≥ 20 independent contributions** and a published artifact set.
 
-1. **Phase 1** — use existing publicly-audited Powers of Tau (Hermez `powersOfTau28_hez_final`). No custom Phase 1; piggybacks on Semaphore/Tornado lineage.
-2. **Phase 2** — circuit-specific, run by SAEP. Plan:
-   - Tool: `snarkjs groth16 contribute` in sequence; each contributor runs a clean room (air-gapped VM, webcam-recorded random beacon source).
-   - Participant target: 25 (buffer over 20) — mix of SAEP team (≤ 5), invited cryptographers (≥ 10), independent community (≥ 10). Names and affiliations published before ceremony.
-   - Randomness beacon: published block hash from a bitcoin block selected post-last-contribution (prevents any contributor from knowing the beacon in advance).
-   - Transcript: each contribution's hash chained, all `*.zkey` artifacts + attestation signatures archived on Arweave (permanent).
-   - Verification: `snarkjs zkey verify` run independently by ≥ 3 parties on the final zkey.
-   - **Kill-switch:** if any participant leaks randomness, ceremony is re-run from scratch. There is no partial-trust fallback.
-3. **Gate:** no mainnet escrow references a proof until the MPC ceremony zkey is published and the verifying key is loaded into the on-chain `VerifierKey` PDA via governance.
+1. **Phase 1** — reuse a publicly verifiable Powers of Tau artifact with a pinned hash.
+2. **Phase 2** — run a circuit-specific contribution flow that yields a public transcript manifest, a final `zkey`, and an exported verifying key.
+3. **Verification** — `snarkjs zkey verify` or an equivalent check must be run independently by at least 3 verifiers against the exact artifact set used for production.
+4. **Gate** — no mainnet escrow references a proof until the final verifying key hash is published and the matching key is loaded into the on-chain `VerifierKey` PDA via governance.
+
+Contributor logistics and maintainer-only operating procedures are intentionally outside the scope of this repo. Public requirements and artifact publication rules live in `specs/ops-trusted-setup.md`.
 
 M1 devnet can proceed against the test SRS — explicitly labelled "devnet only" in `reports/05-circuit.md` and in the portal UI.
 
@@ -158,7 +155,7 @@ The circuit itself emits nothing. Proof-gen (spec 09) publishes `ProofGenerated 
 
 ## Security checks (backend §5.1 / §5.2 adjacent)
 
-- **Proof system trusted setup:** ceremony plan above meets §5.2 (≥ 20 participants, transcript published, independent cryptographers).
+- **Proof system trusted setup:** the public artifact policy above meets §5.2 (≥ 20 independent contributions, transcript published, independently verifiable output).
 - **No partial trust:** test SRS never used on mainnet. Clearly gated via program state (`VerifierKey.is_production` flag, see spec 06).
 - **Input encoding:** unix timestamps bounded to 64 bits pre-range-check to prevent field wraparound.
 - **Hash domain separation:** Poseidon2 invocations use distinct parameter sets / salts for `task_hash` vs `result_hash` (reviewer confirms via circomlib version pin).
@@ -178,6 +175,6 @@ The circuit itself emits nothing. Proof-gen (spec 09) publishes `ProofGenerated 
 - [ ] Verifying key exported to `build/verification_key.json` (consumed by spec 06 fixtures)
 - [ ] All negative tests pass (witness rejection expected)
 - [ ] Proving time benchmark on CI and GPU reference recorded
-- [ ] `reports/05-circuit-zk.md` contains: constraint breakdown, proving-time table, ceremony participant target list (placeholders), test-SRS warning
-- [ ] MPC ceremony plan reviewed by ≥ 1 external cryptographer (sign-off captured)
+- [ ] `reports/05-circuit-zk.md` contains: constraint breakdown, proving-time table, final artifact requirements, test-SRS warning
+- [ ] Trusted-setup artifact policy reviewed by ≥ 1 external cryptographer (sign-off captured)
 - [ ] No mainnet artifact produced from test SRS (CI guard)

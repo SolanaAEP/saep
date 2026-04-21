@@ -89,18 +89,18 @@ export const specIndex: readonly SpecEntry[] = [
   },
   {
     slug: 'squads-multisig',
-    title: 'Squads multisig operations',
+    title: 'Squads multisig authority model',
     kind: 'ops',
     summary:
-      '4-of-7 signer set, ceremony runbook, key storage discipline, and on-call rotation for the upgrade path.',
+      'Public authority split for upgrades, governance changes, and emergency controls, with verifiable handover targets.',
     file: 'ops-squads-multisig.md',
   },
   {
     slug: 'trusted-setup',
-    title: 'Trusted setup ceremony',
+    title: 'Trusted setup public policy',
     kind: 'ops',
     summary:
-      'Powers-of-Tau contribution and phase-2 ceremony for the task-completion circuit. Multi-party, attested, reproducible.',
+      'Public acceptance criteria and artifact requirements for any production Groth16 setup used by SAEP.',
     file: 'ops-trusted-setup.md',
   },
 ] as const;

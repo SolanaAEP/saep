@@ -56,7 +56,7 @@ Constraints:
 - Non-membership witness valid.
 - `task_id` binds to current reputation update (replay guard at program level too).
 
-Trusted setup: reuses M1 powers-of-tau ceremony (see `specs/ops-trusted-setup.md`); unique-execution proof key stored as a distinct `proof_verifier::ProofKey` entry.
+Trusted setup: reuses the public ceremony artifact set described in `specs/ops-trusted-setup.md`; unique-execution proof key stored as a distinct `proof_verifier::ProofKey` entry.
 
 ## Dispute interaction
 

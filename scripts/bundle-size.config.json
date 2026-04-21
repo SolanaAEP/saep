@@ -1,5 +1,5 @@
 {
-  "_comment": "First Load JS limits per route (kB). Targets from BACKLOG.md 'Bundle-size gate' and cycle-53 baseline. Regression guard — lowering a limit requires a code change that justifies it; raising a limit requires explicit review. See reports/autonomous-log.md cycle 53 for rationale.",
+  "_comment": "First Load JS limits per route (kB). Regression guard: lowering a limit requires a matching code change, and raising a limit requires explicit review with updated measurements.",
   "portal": {
     "default": 280,
     "routes": {

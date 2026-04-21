@@ -21,6 +21,7 @@ docs/*.pdf
 reports/
 scripts/commit-as.sh
 CLAUDE.md
+AGENTS.md
 .claude/
 backlog/
 

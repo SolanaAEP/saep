@@ -1,14 +1,13 @@
 /**
- * Canonical SAEP Token-2022 mint init — per specs/token2022-saep-mint.md.
+ * Canonical SAEP Token-2022 mint init rehearsal and verification tool.
  *
  * Modes:
  *   --dry-run (default)  offline build; validates ix sequence + account size; CI-safe
  *   --devnet             send init + metadata + handover against devnet; rehearsal path
- *   --mainnet            refuses unconditionally at M1 per AUTONOMY.md stop list
+ *   --mainnet            refuses unconditionally from the public repo path
  *
- * The init tx (steps 1-9) MUST be atomic. Partial init leaves the mint unusable —
- * extension set is frozen after InitializeMint. Handover is a separate atomic tx
- * (step T+1). See spec §Authority handover sequence.
+ * The init tx MUST be atomic. Partial init leaves the mint unusable because the
+ * extension set is frozen after InitializeMint. Handover is a separate atomic tx.
  */
 
 import {
@@ -326,20 +325,20 @@ async function runDevnet(opts: { keypairPath?: string; rpcUrl?: string; forceRei
 function refuseMainnet(opts: { confirmMainnet: boolean }): never {
   const devnetState = readStateFile('devnet');
   const preconditions = {
-    autonomyStopList: 'AUTONOMY.md forbids on-chain actions against mainnet in autonomous mode',
+    autonomyStopList: 'public repo path does not execute mainnet activation',
     confirmFlagPresent: opts.confirmMainnet,
     devnetRehearsalPresent: !!devnetState,
     devnetRehearsalWithin7d: devnetState
       ? Date.now() - Date.parse(devnetState.timestamp) < 7 * 24 * 60 * 60 * 1000
       : false,
     configHashMatchesDevnet: devnetState ? devnetState.configHash === configHash() : false,
-    councilAttestedConfig: false,
-    ceremonyRunbookAcknowledged: false,
+    publicVerificationChecklistDefined: true,
+    mainnetExecutionEnabledInPublicRepo: false,
   };
   console.error('[refused] mainnet mode is not executable from this script path');
   console.error(JSON.stringify(preconditions, null, 2));
-  console.error('\nMainnet init is a 6-of-9 Squads ceremony per specs/token2022-saep-mint.md §Multisig ceremony.');
-  console.error('The runbook is in the spec, not this script. Human signers + air-gapped bootstrap key + council-attested config.');
+  console.error('\nMainnet activation is intentionally disabled from the public repo script path.');
+  console.error('Use the public mint spec and published verification artifacts to validate any release.');
   process.exit(2);
 }
 

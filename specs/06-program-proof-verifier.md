@@ -235,7 +235,7 @@ Post-SIMD-0334 target (not M1): ~200k CUs per §2.4.
 - **Integer Safety:** scalar reduction validated (`< field modulus`) before pairing. Library (Light Protocol) handles curve arithmetic internally with checked ops; version pinned.
 - **Authorization:** VK registration + rotation gated on `authority`. Execution of pending rotation is permissionless but only after timelock.
 - **Upgrade Safety:** program upgrade authority = Squads 4-of-7, 7-day timelock (§2.6). In-program VK rotation timelock also 7 days per §2.6 "Verifier key rotations via governance".
-- **Trusted Setup:** VK bytes originate only from spec 05's MPC ceremony for mainnet (`is_production = true` flag). Devnet/test VKs flagged false; mainnet mode rejects them.
+- **Trusted Setup:** VK bytes originate only from spec 05's published production artifact set for mainnet (`is_production = true` flag). Devnet/test VKs flagged false; mainnet mode rejects them.
 - **Slashing Safety:** N/A.
 - **Oracle Safety:** N/A.
 - **Token Safety:** N/A.
