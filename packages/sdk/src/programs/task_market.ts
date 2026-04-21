@@ -14,6 +14,7 @@ import {
   bidBookPda,
   bondEscrowPda,
   bidPda,
+  guardPda,
 } from '../pda/index.js';
 
 const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
@@ -250,6 +251,7 @@ export async function buildFundTaskIx(
 ): Promise<TransactionInstruction> {
   const [global] = marketGlobalPda(program.programId);
   const [escrow] = taskEscrowPda(program.programId, input.task);
+  const [guard] = guardPda(program.programId);
 
   return program.methods
     .fundTask()
@@ -259,6 +261,8 @@ export async function buildFundTaskIx(
       paymentMint: input.paymentMint,
       escrow,
       clientTokenAccount: input.clientTokenAccount,
+      hookAllowlist: null,
+      guard,
       client: input.client,
       tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
