@@ -23,11 +23,15 @@ function fakeFetch(handler: (url: string, init?: RequestInit) => Response | Prom
 }
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
-  return new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { 'content-type': 'application/json' },
-    ...init,
-  });
+  const status = init?.status ?? 200;
+  const payload = JSON.stringify(body);
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: new Headers({ 'content-type': 'application/json', ...init?.headers }),
+    json: async () => JSON.parse(payload),
+    text: async () => payload,
+  } as Response;
 }
 
 function buildTransferTx(): Transaction {

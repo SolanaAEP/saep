@@ -7,6 +7,7 @@ const PROGRAMS: { name: string; env: string }[] = [
   { name: 'Governance', env: 'NEXT_PUBLIC_PROGRAM_GOVERNANCE' },
   { name: 'Fee Collector', env: 'NEXT_PUBLIC_PROGRAM_FEE_COLLECTOR' },
   { name: 'Proof Verifier', env: 'NEXT_PUBLIC_PROGRAM_PROOF_VERIFIER' },
+  { name: 'Template Registry', env: 'NEXT_PUBLIC_PROGRAM_TEMPLATE_REGISTRY' },
 ];
 
 const ENDPOINTS = [

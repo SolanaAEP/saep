@@ -30,6 +30,8 @@ export type ProposalCategoryEnum = AnchorEnum<
 export type ProposalStatusEnum = AnchorEnum<
   'voting' | 'passed' | 'rejected' | 'queued' | 'executed' | 'failed' | 'cancelled' | 'expired'
 >;
+export type TemplateStatusEnum = AnchorEnum<'draft' | 'published' | 'deprecated' | 'retired'>;
+export type RentalStatusEnum = AnchorEnum<'active' | 'closed' | 'cancelled'>;
 
 export interface DecodedReputationScore {
   quality: number;
@@ -205,6 +207,63 @@ export interface DecodedRegistryConfig {
   approvedMask: BN;
   tagCount: number;
   paused: boolean;
+}
+
+export interface DecodedTemplateRegistryGlobal {
+  authority: PublicKey;
+  pendingAuthority: PublicKey | null;
+  agentRegistry: PublicKey;
+  treasuryStandard: PublicKey;
+  feeCollector: PublicKey;
+  royaltyCapBps: number;
+  platformFeeBps: number;
+  rentEscrowMint: PublicKey;
+  paused: boolean;
+  bump: number;
+}
+
+export interface DecodedAgentTemplate {
+  templateId: number[];
+  author: PublicKey;
+  configHash: number[];
+  configUri: number[];
+  capabilityMask: BN;
+  royaltyBps: number;
+  parentTemplate: PublicKey | null;
+  lineageDepth: number;
+  forkCount: number;
+  rentCount: number;
+  totalRevenue: BN;
+  rentPricePerSec: BN;
+  minRentDuration: BN;
+  maxRentDuration: BN;
+  status: TemplateStatusEnum;
+  createdAt: BN;
+  updatedAt: BN;
+  bump: number;
+}
+
+export interface DecodedTemplateFork {
+  childAgentDid: number[];
+  parentTemplate: PublicKey;
+  forker: PublicKey;
+  royaltyBpsSnapshot: number;
+  forkedAt: BN;
+  bump: number;
+}
+
+export interface DecodedTemplateRental {
+  template: PublicKey;
+  renter: PublicKey;
+  startTime: BN;
+  endTime: BN;
+  prepaidAmount: BN;
+  dripRatePerSec: BN;
+  claimedAuthor: BN;
+  claimedPlatform: BN;
+  status: RentalStatusEnum;
+  bump: number;
+  escrowBump: number;
 }
 
 export interface DecodedProposal {

@@ -9,6 +9,7 @@ export {
   useTreasuryProgram,
   useGovernanceProgram,
   useNxsStakingProgram,
+  useTemplateRegistryProgram,
 } from './hooks/program.js';
 export { useAccountInfo, useDecodedAccount, useAnchorAccount } from './hooks/account.js';
 export {
@@ -18,6 +19,13 @@ export {
   type UseYellowstoneSubscriptionOptions,
 } from './hooks/subscription.js';
 export { useAgentsByOperator, useAgent, useAgentTasks, useAllAgents, useTreasury } from './hooks/agents.js';
+export {
+  useTemplateRegistryConfig,
+  useAllTemplates,
+  useTemplate,
+  useTemplateForks,
+  useTemplateRentals,
+} from './hooks/templates.js';
 export { useTask, useTasksByClient, useRaiseDispute } from './hooks/tasks.js';
 export {
   useBidBook,

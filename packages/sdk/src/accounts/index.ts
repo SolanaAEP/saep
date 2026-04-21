@@ -5,7 +5,8 @@ import type { TreasuryStandard } from '../generated/treasury_standard.js';
 import type { TaskMarket } from '../generated/task_market.js';
 import type { ProofVerifier } from '../generated/proof_verifier.js';
 import type { CapabilityRegistry } from '../generated/capability_registry.js';
-import { agentAccountPda, treasuryPda, taskPda, verifierConfigPda, verifierKeyPda, capabilityConfigPda, treasuryAllowedMintsPda, vaultPda, bidBookPda, bidPda, categoryReputationPda } from '../pda/index.js';
+import type { TemplateRegistry } from '../generated/template_registry.js';
+import { agentAccountPda, treasuryPda, taskPda, verifierConfigPda, verifierKeyPda, capabilityConfigPda, treasuryAllowedMintsPda, vaultPda, bidBookPda, bidPda, categoryReputationPda, templateGlobalPda, templatePda } from '../pda/index.js';
 import type {
   AnchorEnum,
   AgentStatusEnum,
@@ -23,6 +24,12 @@ import type {
   DecodedCategoryReputation,
   DecodedRegistryConfig,
   DecodedReputationScore,
+  DecodedTemplateRegistryGlobal,
+  DecodedAgentTemplate,
+  DecodedTemplateFork,
+  DecodedTemplateRental,
+  TemplateStatusEnum,
+  RentalStatusEnum,
 } from './anchor-decoded.js';
 
 export interface AgentSummary {
@@ -45,6 +52,9 @@ const decodeUri = (bytes: number[]): string => {
   const slice = end === -1 ? bytes : bytes.slice(0, end);
   return new TextDecoder().decode(Uint8Array.from(slice));
 };
+
+const bytesFromHex = (hex: string): Uint8Array =>
+  Uint8Array.from(hex.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
 
 const statusFromEnum = (s: AnchorEnum): AgentSummary['status'] => {
   if ('active' in s) return 'active';
@@ -673,6 +683,199 @@ export async function fetchAllAgentsDetailed(
   );
 }
 
+// template_registry fetchers
+
+export interface TemplateRegistryConfigSummary {
+  address: PublicKey;
+  authority: PublicKey;
+  pendingAuthority: PublicKey | null;
+  agentRegistry: PublicKey;
+  treasuryStandard: PublicKey;
+  feeCollector: PublicKey;
+  royaltyCapBps: number;
+  platformFeeBps: number;
+  rentEscrowMint: PublicKey;
+  paused: boolean;
+}
+
+export interface TemplateSummary {
+  address: PublicKey;
+  templateId: Uint8Array;
+  author: PublicKey;
+  configHash: Uint8Array;
+  configUri: string;
+  capabilityMask: bigint;
+  royaltyBps: number;
+  parentTemplate: PublicKey | null;
+  lineageDepth: number;
+  forkCount: number;
+  rentCount: number;
+  totalRevenue: bigint;
+  rentPricePerSec: bigint;
+  minRentDuration: number;
+  maxRentDuration: number;
+  status: 'draft' | 'published' | 'deprecated' | 'retired';
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface TemplateForkSummary {
+  address: PublicKey;
+  childAgentDid: Uint8Array;
+  parentTemplate: PublicKey;
+  forker: PublicKey;
+  royaltyBpsSnapshot: number;
+  forkedAt: number;
+}
+
+export interface TemplateRentalSummary {
+  address: PublicKey;
+  template: PublicKey;
+  renter: PublicKey;
+  startTime: number;
+  endTime: number;
+  prepaidAmount: bigint;
+  dripRatePerSec: bigint;
+  claimedAuthor: bigint;
+  claimedPlatform: bigint;
+  status: 'active' | 'closed' | 'cancelled';
+}
+
+const templateStatusFromEnum = (s: TemplateStatusEnum): TemplateSummary['status'] => {
+  if ('draft' in s) return 'draft';
+  if ('published' in s) return 'published';
+  if ('deprecated' in s) return 'deprecated';
+  return 'retired';
+};
+
+const rentalStatusFromEnum = (s: RentalStatusEnum): TemplateRentalSummary['status'] => {
+  if ('active' in s) return 'active';
+  if ('closed' in s) return 'closed';
+  return 'cancelled';
+};
+
+const toTemplateSummary = (
+  address: PublicKey,
+  raw: DecodedAgentTemplate,
+): TemplateSummary => ({
+  address,
+  templateId: Uint8Array.from(raw.templateId),
+  author: raw.author,
+  configHash: Uint8Array.from(raw.configHash),
+  configUri: decodeUri(raw.configUri),
+  capabilityMask: BigInt(raw.capabilityMask.toString()),
+  royaltyBps: raw.royaltyBps,
+  parentTemplate: raw.parentTemplate ?? null,
+  lineageDepth: raw.lineageDepth,
+  forkCount: raw.forkCount,
+  rentCount: raw.rentCount,
+  totalRevenue: BigInt(raw.totalRevenue.toString()),
+  rentPricePerSec: BigInt(raw.rentPricePerSec.toString()),
+  minRentDuration: raw.minRentDuration.toNumber(),
+  maxRentDuration: raw.maxRentDuration.toNumber(),
+  status: templateStatusFromEnum(raw.status),
+  createdAt: raw.createdAt.toNumber(),
+  updatedAt: raw.updatedAt.toNumber(),
+});
+
+const toTemplateForkSummary = (
+  address: PublicKey,
+  raw: DecodedTemplateFork,
+): TemplateForkSummary => ({
+  address,
+  childAgentDid: Uint8Array.from(raw.childAgentDid),
+  parentTemplate: raw.parentTemplate,
+  forker: raw.forker,
+  royaltyBpsSnapshot: raw.royaltyBpsSnapshot,
+  forkedAt: raw.forkedAt.toNumber(),
+});
+
+const toTemplateRentalSummary = (
+  address: PublicKey,
+  raw: DecodedTemplateRental,
+): TemplateRentalSummary => ({
+  address,
+  template: raw.template,
+  renter: raw.renter,
+  startTime: raw.startTime.toNumber(),
+  endTime: raw.endTime.toNumber(),
+  prepaidAmount: BigInt(raw.prepaidAmount.toString()),
+  dripRatePerSec: BigInt(raw.dripRatePerSec.toString()),
+  claimedAuthor: BigInt(raw.claimedAuthor.toString()),
+  claimedPlatform: BigInt(raw.claimedPlatform.toString()),
+  status: rentalStatusFromEnum(raw.status),
+});
+
+export async function fetchTemplateRegistryConfig(
+  program: Program<TemplateRegistry>,
+): Promise<TemplateRegistryConfigSummary | null> {
+  const [addr] = templateGlobalPda(program.programId);
+  const raw = (await program.account.templateRegistryGlobal.fetchNullable(addr)) as
+    | DecodedTemplateRegistryGlobal
+    | null;
+  if (!raw) return null;
+  return {
+    address: addr,
+    authority: raw.authority,
+    pendingAuthority: raw.pendingAuthority ?? null,
+    agentRegistry: raw.agentRegistry,
+    treasuryStandard: raw.treasuryStandard,
+    feeCollector: raw.feeCollector,
+    royaltyCapBps: raw.royaltyCapBps,
+    platformFeeBps: raw.platformFeeBps,
+    rentEscrowMint: raw.rentEscrowMint,
+    paused: raw.paused,
+  };
+}
+
+export async function fetchTemplateById(
+  program: Program<TemplateRegistry>,
+  templateIdHex: string,
+): Promise<TemplateSummary | null> {
+  const templateId = bytesFromHex(templateIdHex);
+  const [addr] = templatePda(program.programId, templateId);
+  const raw = (await program.account.agentTemplate.fetchNullable(addr)) as DecodedAgentTemplate | null;
+  if (!raw) return null;
+  return toTemplateSummary(addr, raw);
+}
+
+export async function fetchAllTemplates(
+  program: Program<TemplateRegistry>,
+): Promise<TemplateSummary[]> {
+  const accounts = await program.account.agentTemplate.all();
+  return accounts
+    .map(({ publicKey, account }) => toTemplateSummary(publicKey, account as DecodedAgentTemplate))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+export async function fetchTemplateForks(
+  program: Program<TemplateRegistry>,
+  parentTemplate: PublicKey,
+): Promise<TemplateForkSummary[]> {
+  const accounts = await program.account.templateFork.all([
+    { memcmp: { offset: 8 + 32, bytes: parentTemplate.toBase58() } },
+  ]);
+  return accounts
+    .map(({ publicKey, account }) =>
+      toTemplateForkSummary(publicKey, account as DecodedTemplateFork),
+    )
+    .sort((a, b) => b.forkedAt - a.forkedAt);
+}
+
+export async function fetchTemplateRentals(
+  program: Program<TemplateRegistry>,
+  template: PublicKey,
+): Promise<TemplateRentalSummary[]> {
+  const accounts = await program.account.templateRental.all([
+    { memcmp: { offset: 8, bytes: template.toBase58() } },
+  ]);
+  return accounts
+    .map(({ publicKey, account }) =>
+      toTemplateRentalSummary(publicKey, account as DecodedTemplateRental),
+    )
+    .sort((a, b) => b.endTime - a.endTime);
+}
+
 // category reputation (proof-bound, per-capability)
 
 export interface CategoryReputationSummary {
@@ -785,6 +988,12 @@ export type {
   DecodedCategoryReputation,
   DecodedRegistryConfig,
   DecodedReputationScore,
+  DecodedTemplateRegistryGlobal,
+  DecodedAgentTemplate,
+  DecodedTemplateFork,
+  DecodedTemplateRental,
+  TemplateStatusEnum,
+  RentalStatusEnum,
   ProposalCategoryEnum,
   ProposalStatusEnum,
   DecodedProposal,

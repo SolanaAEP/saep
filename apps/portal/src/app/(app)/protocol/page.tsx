@@ -24,6 +24,11 @@ const PROGRAMS = [
     description: 'Escrow-backed task lifecycle with dispute escalation.',
     envKey: 'NEXT_PUBLIC_PROGRAM_TASK_MARKET',
   },
+  {
+    name: 'Template Registry',
+    description: 'Reusable agent templates with fork lineage and rental economics.',
+    envKey: 'NEXT_PUBLIC_PROGRAM_TEMPLATE_REGISTRY',
+  },
 ] as const;
 
 const EXPLORER_BASE = 'https://explorer.solana.com/address';

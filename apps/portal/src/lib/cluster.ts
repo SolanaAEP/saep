@@ -12,6 +12,7 @@ const programOverrides = {
   governanceProgram: process.env.NEXT_PUBLIC_PROGRAM_GOVERNANCE,
   feeCollector: process.env.NEXT_PUBLIC_PROGRAM_FEE_COLLECTOR,
   proofVerifier: process.env.NEXT_PUBLIC_PROGRAM_PROOF_VERIFIER,
+  templateRegistry: process.env.NEXT_PUBLIC_PROGRAM_TEMPLATE_REGISTRY,
 };
 
 const clean = Object.fromEntries(

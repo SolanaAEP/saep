@@ -10,6 +10,7 @@ import {
   useTreasuryProgram,
   useGovernanceProgram,
   useNxsStakingProgram,
+  useTemplateRegistryProgram,
 } from '../hooks/program.js';
 import { createWrapper, MOCK_CLUSTER, mockAnchorWallet, mockConnection, mockProgram } from './helpers.js';
 
@@ -46,6 +47,7 @@ describe('program-hook wrappers', () => {
     ['useTreasuryProgram', useTreasuryProgram, 'treasuryStandardProgram'],
     ['useGovernanceProgram', useGovernanceProgram, 'governanceProgramProgram'],
     ['useNxsStakingProgram', useNxsStakingProgram, 'nxsStakingProgram'],
+    ['useTemplateRegistryProgram', useTemplateRegistryProgram, 'templateRegistryProgram'],
   ] as const;
 
   for (const [name, hook, factoryKey] of cases) {
