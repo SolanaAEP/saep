@@ -252,6 +252,7 @@ export interface TaskSummary {
   agentDid: Uint8Array;
   taskNonce: Uint8Array;
   taskHash: Uint8Array;
+  catalogHash: Uint8Array | null;
   paymentMint: PublicKey;
   paymentAmount: bigint;
   status: string;
@@ -327,20 +328,7 @@ export async function fetchRecentTasks(
   const accounts = await program.account.taskContract.all();
   const statuses = opts?.statuses ? new Set(opts.statuses) : null;
   const sorted = accounts
-    .map(({ publicKey, account }) => ({
-      address: publicKey,
-      taskId: Uint8Array.from(account.taskId as number[]),
-      client: account.client,
-      agentDid: Uint8Array.from(account.agentDid as number[]),
-      taskNonce: Uint8Array.from(account.taskNonce as number[]),
-      taskHash: Uint8Array.from(account.taskHash as number[]),
-      paymentMint: account.paymentMint,
-      paymentAmount: BigInt((account.paymentAmount as BN).toString()),
-      status: taskStatusFromEnum(account.status as AnchorEnum),
-      deadline: (account.deadline as BN).toNumber(),
-      verified: account.verified as boolean,
-      createdAt: (account.createdAt as BN).toNumber(),
-    }))
+    .map(({ publicKey, account }) => toTaskSummary(publicKey, account as DecodedTaskContract))
     .filter((task) => (statuses ? statuses.has(task.status) : true))
     .sort((a, b) => b.createdAt - a.createdAt);
   return sorted.slice(0, opts?.limit ?? 20);
@@ -359,6 +347,8 @@ export async function fetchTask(
 }
 
 function toTaskSummary(address: PublicKey, t: DecodedTaskContract): TaskSummary {
+  const payload = decodeTaskPayload(t.payload);
+  const catalogHash = payload.kind.type === 'generic' ? payload.kind.argsHash : null;
   return {
     address,
     taskId: Uint8Array.from(t.taskId),
@@ -366,6 +356,7 @@ function toTaskSummary(address: PublicKey, t: DecodedTaskContract): TaskSummary 
     agentDid: Uint8Array.from(t.agentDid),
     taskNonce: Uint8Array.from(t.taskNonce),
     taskHash: Uint8Array.from(t.taskHash),
+    catalogHash,
     paymentMint: t.paymentMint,
     paymentAmount: BigInt(t.paymentAmount.toString()),
     status: taskStatusFromEnum(t.status),
@@ -453,6 +444,10 @@ const decodeTaskPayload = (raw: DecodedTaskPayloadRaw): TaskPayload => {
   };
 };
 
+function catalogHashFromPayload(payload: TaskPayload): Uint8Array | null {
+  return payload.kind.type === 'generic' ? payload.kind.argsHash : null;
+}
+
 export interface TaskDetail extends TaskSummary {
   taskHash: Uint8Array;
   resultHash: Uint8Array;
@@ -468,31 +463,35 @@ export interface TaskDetail extends TaskSummary {
   payload: TaskPayload;
 }
 
-const toTaskDetail = (address: PublicKey, raw: DecodedTaskContract): TaskDetail => ({
-  address,
-  taskId: Uint8Array.from(raw.taskId),
-  client: raw.client,
-  agentDid: Uint8Array.from(raw.agentDid),
-  taskNonce: Uint8Array.from(raw.taskNonce),
-  taskHash: Uint8Array.from(raw.taskHash),
-  paymentMint: raw.paymentMint,
-  paymentAmount: BigInt(raw.paymentAmount.toString()),
-  status: taskStatusFromEnum(raw.status),
-  deadline: raw.deadline.toNumber(),
-  verified: raw.verified,
-  createdAt: raw.createdAt.toNumber(),
-  resultHash: Uint8Array.from(raw.resultHash),
-  proofKey: Uint8Array.from(raw.proofKey),
-  criteriaRoot: Uint8Array.from(raw.criteriaRoot),
-  protocolFee: BigInt(raw.protocolFee.toString()),
-  solrepFee: BigInt(raw.solrepFee.toString()),
-  milestoneCount: raw.milestoneCount,
-  milestonesComplete: raw.milestonesComplete,
-  fundedAt: raw.fundedAt.toNumber(),
-  submittedAt: raw.submittedAt.toNumber(),
-  disputeWindowEnd: raw.disputeWindowEnd.toNumber(),
-  payload: decodeTaskPayload(raw.payload),
-});
+const toTaskDetail = (address: PublicKey, raw: DecodedTaskContract): TaskDetail => {
+  const payload = decodeTaskPayload(raw.payload);
+  return {
+    address,
+    taskId: Uint8Array.from(raw.taskId),
+    client: raw.client,
+    agentDid: Uint8Array.from(raw.agentDid),
+    taskNonce: Uint8Array.from(raw.taskNonce),
+    taskHash: Uint8Array.from(raw.taskHash),
+    catalogHash: catalogHashFromPayload(payload),
+    paymentMint: raw.paymentMint,
+    paymentAmount: BigInt(raw.paymentAmount.toString()),
+    status: taskStatusFromEnum(raw.status),
+    deadline: raw.deadline.toNumber(),
+    verified: raw.verified,
+    createdAt: raw.createdAt.toNumber(),
+    resultHash: Uint8Array.from(raw.resultHash),
+    proofKey: Uint8Array.from(raw.proofKey),
+    criteriaRoot: Uint8Array.from(raw.criteriaRoot),
+    protocolFee: BigInt(raw.protocolFee.toString()),
+    solrepFee: BigInt(raw.solrepFee.toString()),
+    milestoneCount: raw.milestoneCount,
+    milestonesComplete: raw.milestonesComplete,
+    fundedAt: raw.fundedAt.toNumber(),
+    submittedAt: raw.submittedAt.toNumber(),
+    disputeWindowEnd: raw.disputeWindowEnd.toNumber(),
+    payload,
+  };
+};
 
 export async function fetchTaskById(
   program: Program<TaskMarket>,
