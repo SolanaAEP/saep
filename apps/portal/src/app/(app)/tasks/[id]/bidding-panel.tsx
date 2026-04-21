@@ -2,7 +2,7 @@
 
 import { useBiddingState, useTaskBidsIndexed } from '@saep/sdk-ui';
 
-const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL ?? 'http://127.0.0.1:8080';
+const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL ?? '/api/discovery';
 
 const PHASE_COLOR: Record<string, string> = {
   commit: 'text-ink bg-ink/10',

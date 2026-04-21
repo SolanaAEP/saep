@@ -5,7 +5,7 @@ import { PublicKey } from '@solana/web3.js';
 import { useRetroEligibility, useSession } from '@saep/sdk-ui';
 
 const INDEXER_URL =
-  process.env.NEXT_PUBLIC_INDEXER_URL ?? 'http://127.0.0.1:8080';
+  process.env.NEXT_PUBLIC_INDEXER_URL ?? '/api/discovery';
 
 const TIER_LABEL: Record<'none' | 'basic' | 'verified', string> = {
   none: 'Unverified',

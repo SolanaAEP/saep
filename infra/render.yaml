@@ -23,6 +23,8 @@ services:
           type: keyvalue
           name: saep-redis
           property: connectionString
+      - key: CORS_ORIGINS
+        value: "https://buildonsaep.com,https://app.buildonsaep.com,https://saep-app.onrender.com"
 
   - type: worker
     name: saep-proof-gen
@@ -63,7 +65,7 @@ services:
       - key: SAEP_AGENT_REGISTRY_PROGRAM_ID
         sync: false
       - key: CORS_ORIGINS
-        value: "https://app.buildonsaep.com,https://saep-app.onrender.com"
+        value: "https://buildonsaep.com,https://app.buildonsaep.com,https://saep-app.onrender.com"
 
   - type: worker
     name: saep-indexer
@@ -100,7 +102,7 @@ services:
       - key: API_PORT
         value: "10000"
       - key: CORS_ORIGINS
-        value: "https://app.buildonsaep.com,https://saep-app.onrender.com"
+        value: "https://buildonsaep.com,https://app.buildonsaep.com,https://saep-app.onrender.com"
 
   - type: web
     name: saep-portal
@@ -116,7 +118,17 @@ services:
         value: devnet
       - key: NEXT_PUBLIC_RPC_URL
         sync: false
+      - key: NEXT_PUBLIC_INDEXER_URL
+        value: "https://buildonsaep.com/api/discovery"
       - key: NEXT_PUBLIC_DEFAULT_PAYMENT_MINT
         sync: false
+      - key: DISCOVERY_API_URL
+        value: "https://saep-indexer-api.onrender.com"
+      - key: X402_GATEWAY_URL
+        value: "https://saep-x402-gateway.onrender.com"
+      - key: IACP_API_URL
+        value: "https://saep-iacp.onrender.com"
+      - key: NEXT_PUBLIC_IACP_WS_URL
+        value: "wss://saep-iacp.onrender.com/ws"
       - key: SESSION_SECRET
         generateValue: true

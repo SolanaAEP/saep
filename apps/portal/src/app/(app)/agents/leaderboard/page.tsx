@@ -6,7 +6,7 @@ import { useLeaderboard, type LeaderboardRow } from '@saep/sdk-ui';
 import { CAPABILITY_LABELS } from '../../dashboard/capability-tags';
 
 const INDEXER_URL =
-  process.env.NEXT_PUBLIC_INDEXER_URL ?? 'http://127.0.0.1:8080';
+  process.env.NEXT_PUBLIC_INDEXER_URL ?? '/api/discovery';
 
 const AXIS_LABELS: Record<keyof Pick<LeaderboardRow,
   'quality' | 'timeliness' | 'availability' | 'costEfficiency' | 'honesty'>, string> = {

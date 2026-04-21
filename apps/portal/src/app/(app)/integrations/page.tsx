@@ -1,3 +1,15 @@
+import {
+  getPublicServicePublicUrl,
+  getSiteOrigin,
+} from '@/lib/public-service-routes';
+
+type IntegrationCard = {
+  name: string;
+  description: string;
+  href: string | null;
+  routeLabel?: string;
+};
+
 const INTEGRATIONS = [
   {
     name: 'MCP Server',
@@ -22,7 +34,14 @@ const INTEGRATIONS = [
   {
     name: 'x402 Gateway',
     description: 'RFC 9452 payment settlement with CCTP cross-chain support',
-    href: null,
+    href: '/docs/api#x402-gateway',
+    routeLabel: getPublicServicePublicUrl('x402'),
+  },
+  {
+    name: 'IACP Bus',
+    description: 'Signed inter-agent messaging control plane with a stable public route alias',
+    href: '/docs/api#iacp-bus',
+    routeLabel: getPublicServicePublicUrl('iacp'),
   },
   {
     name: 'Jupiter DCA',
@@ -31,17 +50,20 @@ const INTEGRATIONS = [
   },
   {
     name: 'Discovery API',
-    description: '11 REST + 4 WebSocket endpoints for agent search',
+    description: 'Stable public alias for leaderboard, bid-book, and `/v1/discovery/*` search endpoints',
     href: '/docs/api',
+    routeLabel: getPublicServicePublicUrl('discovery'),
   },
   {
     name: 'TypeScript SDK',
     description: 'Full typed SDK generated from on-chain IDLs. npm install @saep/sdk',
     href: 'https://www.npmjs.com/package/@saep/sdk',
   },
-] as const;
+] satisfies readonly IntegrationCard[];
 
 export default function IntegrationsPage() {
+  const siteOrigin = getSiteOrigin().replace(/^https?:\/\//, '');
+
   return (
     <section className="flex flex-col gap-6 max-w-6xl">
       <header className="flex items-end justify-between border-b border-ink/10 pb-6">
@@ -56,12 +78,13 @@ export default function IntegrationsPage() {
         </div>
         <div className="font-mono text-[10px] text-mute text-right leading-relaxed">
           <div>{INTEGRATIONS.length} CONNECTORS</div>
-          <div className="text-lime">ALL LIVE</div>
+          <div className="text-lime">PUBLIC ROUTES WIRED</div>
         </div>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {INTEGRATIONS.map((item) => {
+          const routePath = item.routeLabel ? new URL(item.routeLabel).pathname : null;
           const inner = (
             <>
               <div className="flex items-center justify-between mb-3">
@@ -71,11 +94,25 @@ export default function IntegrationsPage() {
                 <span className="font-mono text-[10px] text-lime tracking-widest">LIVE</span>
               </div>
               <p className="text-[12px] text-mute leading-relaxed">{item.description}</p>
-              {item.href && (
+              {item.routeLabel ? (
+                <div className="mt-3 font-mono text-[10px] text-mute/60 truncate">
+                  {routePath}
+                </div>
+              ) : item.href ? (
                 <div className="mt-3 font-mono text-[10px] text-mute/60 truncate">
                   {item.href.replace(/^https?:\/\//, '')}
                 </div>
-              )}
+              ) : null}
+              {!item.routeLabel && item.href?.startsWith('/') ? (
+                <div className="mt-1 font-mono text-[10px] text-mute/40 truncate">
+                  {siteOrigin}{item.href}
+                </div>
+              ) : null}
+              {item.routeLabel ? (
+                <div className="mt-1 font-mono text-[10px] text-mute/40 truncate">
+                  docs → {siteOrigin}{item.href ?? ''}
+                </div>
+              ) : null}
             </>
           );
 

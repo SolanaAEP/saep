@@ -80,6 +80,11 @@ const trails = [
     body: 'Upgrade cadence, multisig ceremony, capability additions, parameter setters.',
     href: '/governance-framework',
   },
+  {
+    title: 'API routing',
+    body: 'Stable public bases for discovery, x402 settlement, and the IACP control plane.',
+    href: '/docs/api',
+  },
 ];
 
 export default function DocsPage() {

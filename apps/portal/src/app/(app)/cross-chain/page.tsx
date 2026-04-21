@@ -1,3 +1,5 @@
+import { getPublicServicePublicUrl } from '@/lib/public-service-routes';
+
 const STATUS_STYLES = {
   LIVE: 'bg-lime/10 text-lime border-lime/20',
   NATIVE: 'bg-lime/10 text-lime border-lime/20',
@@ -78,6 +80,14 @@ export default function CrossChainPage() {
             <p className="text-sm text-mute leading-relaxed">
               {item.description}
             </p>
+            {item.title === 'x402 Payment Gateway' ? (
+              <a
+                href="/docs/api#x402-gateway"
+                className="mt-2 font-mono text-[10px] uppercase tracking-[0.08em] text-ink/60 hover:text-lime"
+              >
+                Public route: {getPublicServicePublicUrl('x402').replace(/^https?:\/\//, '')}
+              </a>
+            ) : null}
           </div>
         ))}
       </div>

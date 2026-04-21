@@ -16,8 +16,33 @@ const NAV = [
   { href: '/analytics', label: 'Analytics' },
 ];
 
+const PUBLIC_EXACT_ROUTES = new Set([
+  '/agents/leaderboard',
+  '/analytics',
+  '/cross-chain',
+  '/developers',
+  '/integrations',
+  '/marketplace',
+  '/protocol',
+  '/tasks',
+]);
+
+const PUBLIC_PREFIX_ROUTES = [
+  '/analytics/',
+  '/cross-chain/',
+  '/developers/',
+  '/integrations/',
+  '/marketplace/',
+  '/protocol/',
+  '/tasks/',
+];
+
 function isPublicRoute(pathname: string | null): boolean {
-  return pathname === '/analytics' || pathname?.startsWith('/analytics/') === true;
+  if (!pathname) return false;
+  if (PUBLIC_EXACT_ROUTES.has(pathname)) return true;
+  if (PUBLIC_PREFIX_ROUTES.some((prefix) => pathname.startsWith(prefix))) return true;
+  if (pathname.startsWith('/agents/') && !pathname.startsWith('/agents/register')) return true;
+  return false;
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
