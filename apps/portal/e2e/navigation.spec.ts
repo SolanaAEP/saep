@@ -22,7 +22,8 @@ test.describe('app navigation', () => {
   test('protocol frame decorations present', async ({ page }) => {
     await page.goto('/dashboard');
     await waitForApp(page);
-    await expect(page.getByText('SAEP PROTOCOL // OPERATOR CONSOLE')).toBeVisible();
-    await expect(page.getByText('SYS[OK]')).toBeVisible();
+    await expect(page.getByText('SAEP APP // OPERATOR SURFACE')).toBeVisible();
+    await expect(page.getByText('LIVE TASK MARKET // DEVNET')).toBeVisible();
+    await expect(page.getByText('DECORATIVE CHROME ONLY')).toBeVisible();
   });
 });

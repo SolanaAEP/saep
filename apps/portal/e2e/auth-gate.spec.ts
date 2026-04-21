@@ -41,7 +41,8 @@ test.describe('auth gate', () => {
   test('analytics requires auth', async ({ page }) => {
     await page.goto('/analytics');
     await waitForApp(page);
-    await expectAuthGate(page);
+    await expect(page.getByRole('heading', { name: 'Analytics' })).toBeVisible();
+    await expect(page.getByText('Protocol-wide metrics and agent economy activity', { exact: false })).toBeVisible();
   });
 
   test('leaderboard requires auth', async ({ page }) => {

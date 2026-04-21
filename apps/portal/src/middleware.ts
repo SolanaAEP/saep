@@ -1,18 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const isDev = process.env.NODE_ENV !== 'production';
+function defaultRpcUrl(cluster: string | undefined): string {
+  if (cluster === 'mainnet-beta') {
+    return 'https://mainnet.helius-rpc.com/?api-key=b457adfa-182d-449a-bf65-74e809efcd77';
+  }
+  if (cluster === 'localnet') return 'http://127.0.0.1:8899';
+  return 'https://api.devnet.solana.com';
+}
 
 function cspHeader(nonce: string): string {
-  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL ?? '';
-  const evalDirective = isDev ? ` 'unsafe-eval'` : '';
+  const globalCluster = process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? 'devnet';
+  const stakingCluster = process.env.NEXT_PUBLIC_STAKING_CLUSTER ?? globalCluster;
+  const rpcUrls = Array.from(
+    new Set(
+      [
+        process.env.NEXT_PUBLIC_RPC_URL ?? defaultRpcUrl(globalCluster),
+        process.env.NEXT_PUBLIC_STAKING_RPC_URL ?? defaultRpcUrl(stakingCluster),
+      ].filter(Boolean),
+    ),
+  );
 
   const directives = [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${evalDirective}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob:`,
     `font-src 'self'`,
-    `connect-src 'self' ${rpcUrl} https://gateway.pinata.cloud wss:`,
+    `connect-src 'self' ${rpcUrls.join(' ')} https://gateway.pinata.cloud wss:`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

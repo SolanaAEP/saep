@@ -2,9 +2,14 @@ import { test, expect } from './wallet-fixture';
 import { waitForApp } from './helpers';
 
 const BASE = process.env.BASE_URL ?? 'https://buildonsaep.com';
+const hasUnlockedWalletSession = process.env.ENABLE_WALLET_SESSION_E2E === '1';
 
 test.describe.serial('wallet session (requires unlocked wallet)', () => {
   test.setTimeout(300_000);
+  test.skip(
+    !hasUnlockedWalletSession,
+    'Set ENABLE_WALLET_SESSION_E2E=1 with an unlocked wallet browser session to run wallet session tests.',
+  );
 
   test('dashboard shows operator overview', async ({ walletContext }) => {
     // Use the existing page where user already authenticated
