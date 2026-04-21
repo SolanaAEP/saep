@@ -11,15 +11,16 @@ const STATUS_TONE: Record<string, string> = {
   disputed: 'text-danger bg-danger/10',
 };
 
-function fmtAmount(baseUnits: string, mint: string): string {
+function fmtAmount(baseUnits: string, mint: string, symbolOverride?: string): string {
   const amount = BigInt(baseUnits);
   const symbol =
-    mint === 'So11111111111111111111111111111111111111112'
+    symbolOverride ??
+    (mint === 'So11111111111111111111111111111111111111112'
       ? 'SOL'
       : mint === 'HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump'
         ? 'SAEP'
-        : mint.slice(0, 4);
-  const decimals = symbol === 'SOL' ? 9 : 6;
+        : mint.slice(0, 4));
+  const decimals = mint === 'So11111111111111111111111111111111111111112' ? 9 : 6;
   return `${(Number(amount) / 10 ** decimals).toFixed(2)} ${symbol}`;
 }
 
@@ -59,7 +60,7 @@ export function LiveBountiesPanel({ tasks }: { tasks: SerializedTask[] }) {
       <div className="grid gap-3 lg:grid-cols-2">
         {tasks.map((task) => {
           const badge = STATUS_TONE[task.status] ?? 'text-ink/60 bg-ink/5';
-          const bounty = findMarketplaceBountyByTaskHash(task.taskHash);
+          const bounty = findMarketplaceBountyByTaskHash(task.catalogHash ?? task.taskHash);
           return (
             <Link
               key={task.address}
@@ -86,7 +87,9 @@ export function LiveBountiesPanel({ tasks }: { tasks: SerializedTask[] }) {
               <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
                 <div>
                   <dt className="text-ink/45">Bounty</dt>
-                  <dd className="font-mono text-ink">{fmtAmount(task.paymentAmount, task.paymentMint)}</dd>
+                  <dd className="font-mono text-ink">
+                    {fmtAmount(task.paymentAmount, task.paymentMint, bounty?.suggestedMint)}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-ink/45">Deadline</dt>

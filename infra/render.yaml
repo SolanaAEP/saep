@@ -13,7 +13,7 @@ services:
     name: saep-iacp
     env: node
     plan: starter
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/iacp build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/sdk build && pnpm --filter @saep/iacp build
     startCommand: pnpm --filter @saep/iacp start
     envVars:
       - key: NODE_VERSION
@@ -44,7 +44,7 @@ services:
     env: node
     plan: starter
     healthCheckPath: /healthz
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/x402-gateway build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/sdk build && pnpm --filter @saep/x402-gateway build
     startCommand: pnpm --filter @saep/x402-gateway start
     envVars:
       - key: NODE_VERSION
@@ -107,7 +107,7 @@ services:
     env: node
     plan: starter
     healthCheckPath: /
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/portal build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/sdk build && pnpm --filter @saep/ui build && pnpm --filter @saep/sdk-ui build && pnpm --filter @saep/portal build
     startCommand: pnpm --filter @saep/portal start
     envVars:
       - key: NODE_VERSION
