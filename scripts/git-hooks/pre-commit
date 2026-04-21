@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Enforce SAEP rotation identity. Aborts any commit whose author/committer
 # is not one of the three personas. Use scripts/commit-as.sh to set them.
-set -u
+set -eu
 
 # External contributors: set SAEP_SKIP_IDENTITY_CHECK=1 to bypass.
 # Core team uses scripts/commit-as.sh for rotation identity.
@@ -56,5 +56,12 @@ committer_email="$(extract_email "$committer")"
 
 is_allowed "$author_email"   || fail "author"   "$author"
 is_allowed "$committer_email" || fail "committer" "$committer"
+
+BASH_BIN="${BASH:-bash}"
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+"$BASH_BIN" "$ROOT/scripts/check-forbidden-public-identifiers.sh" \
+  --git-ident \
+  --branch-name \
+  --staged
 
 exit 0

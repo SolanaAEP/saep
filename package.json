@@ -10,7 +10,9 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "guard:public-identifiers": "bash scripts/check-forbidden-public-identifiers.sh --repo",
     "lint": "turbo run lint",
+    "prepare": "bash scripts/install-hooks.sh >/dev/null 2>&1 || true",
     "typecheck": "turbo run typecheck",
     "seed:bounties": "tsx scripts/seed_marketplace_bounties.ts",
     "clean": "turbo run clean && rm -rf node_modules",

@@ -10,6 +10,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  public-id-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: guard tracked files
+        run: bash scripts/check-forbidden-public-identifiers.sh --repo
+      - name: guard reachable history
+        run: bash scripts/check-forbidden-public-identifiers.sh --rev-spec "--all"
+
   cargo-audit:
     runs-on: ubuntu-latest
     steps:

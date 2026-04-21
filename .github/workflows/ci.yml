@@ -10,8 +10,36 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  public-id-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: guard tracked files
+        run: bash scripts/check-forbidden-public-identifiers.sh --repo
+      - name: guard branch name
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: bash scripts/check-forbidden-public-identifiers.sh --branch-name "$BRANCH_NAME"
+      - name: guard pull request commits
+        if: github.event_name == 'pull_request'
+        run: |
+          bash scripts/check-forbidden-public-identifiers.sh \
+            --rev-spec "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+      - name: guard pushed commits
+        if: github.event_name == 'push'
+        run: |
+          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            SPEC="${{ github.sha }}"
+          else
+            SPEC="${{ github.event.before }}..${{ github.sha }}"
+          fi
+          bash scripts/check-forbidden-public-identifiers.sh --rev-spec "$SPEC"
+
   node:
     runs-on: ubuntu-latest
+    needs: public-id-guard
     steps:
       - uses: actions/checkout@v4
       - name: public boundary scan
@@ -59,6 +87,7 @@ jobs:
 
   rust-fast:
     runs-on: ubuntu-latest
+    needs: public-id-guard
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
