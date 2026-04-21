@@ -12,6 +12,7 @@ Six Anchor programs, a zero-knowledge proof layer for task completion, a Yellows
 - **Website:** [buildonsaep.com](https://buildonsaep.com)
 - **Repo:** [github.com/SolanaAEP/saep](https://github.com/SolanaAEP/saep)
 - **Status:** Pre-alpha. Devnet programs land at milestone M1 (OtterSec audit-gated).
+- **Token:** `$SAEP` mint on Solana: `HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump`
 
 ---
 
