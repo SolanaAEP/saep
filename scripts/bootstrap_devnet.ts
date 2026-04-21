@@ -12,6 +12,7 @@
 
 import * as anchor from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
+import { createMint, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -29,9 +30,6 @@ const PROGRAM_IDS = {
   capability_registry: new PublicKey('GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F'),
   dispute_arbitration: new PublicKey('GM8xiT17USBpCW24XXBmUR8YVCxxrJPMEcsddwfUokMa'),
 };
-
-// Devnet USDC. Additional allowed mints can be set later via governance.
-const USDC_DEVNET = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
 
 // Parameters — tunable via governance after init.
 const PROTOCOL_FEE_BPS = 100; // 1%
@@ -72,6 +70,21 @@ async function main() {
     console.warn('WARN: balance < 2 SOL; init_global may fail for rent');
   }
 
+  const configuredMint = process.env.SAEP_DEVNET_STAKE_MINT;
+  const stakeMint = configuredMint
+    ? new PublicKey(configuredMint)
+    : await createMint(
+        conn,
+        (provider.wallet as anchor.Wallet).payer,
+        authority,
+        null,
+        6,
+        undefined,
+        undefined,
+        TOKEN_PROGRAM_ID,
+      );
+  console.log(`stake_mint: ${stakeMint.toBase58()}${configuredMint ? ' (configured)' : ' (created)'}`);
+
   // capability_registry ------------------------------------------------------
   {
     const program = new anchor.Program<CapabilityRegistry>(
@@ -107,13 +120,13 @@ async function main() {
           PROGRAM_IDS.task_market,
           PROGRAM_IDS.dispute_arbitration,
           PublicKey.default, // treasury_standard pointer — not strictly required for init
-          USDC_DEVNET,
+          stakeMint,
           PROGRAM_IDS.proof_verifier,
           new anchor.BN(MIN_AGENT_STAKE),
           SLASH_BPS,
           new anchor.BN(REPUTATION_DECAY_SECS),
         )
-        .accountsPartial({ payer: authority, stakeMintInfo: USDC_DEVNET })
+        .accountsPartial({ payer: authority, stakeMintInfo: stakeMint })
         .rpc({ commitment: 'confirmed' });
       console.log('agent_registry: initialized');
     }
@@ -153,7 +166,7 @@ async function main() {
     } else {
       console.log('task_market: initializing...');
       const allowedMints: PublicKey[] = Array(8).fill(PublicKey.default);
-      allowedMints[0] = USDC_DEVNET;
+      allowedMints[0] = stakeMint;
       await program.methods
         .initGlobal(
           authority,

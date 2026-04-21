@@ -1,20 +1,25 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { buildCreateTaskIx, type CreateTaskInput } from '@saep/sdk';
+import { buildCreateTaskIx, marketGlobalPda, type CreateTaskInput } from '@saep/sdk';
 import { useSendTransaction, useTaskMarketProgram, useCluster } from '@saep/sdk-ui';
 import type { SerializedAgent } from '@/lib/agent-serializer';
 import { GlitchComposition, GlitchButton } from '@saep/ui';
 
-const USDC_DEVNET_MINT = new PublicKey(
-  process.env.NEXT_PUBLIC_DEFAULT_PAYMENT_MINT ?? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-);
 const PAYMENT_DECIMALS = 6;
 
 function bytesFromHex(hex: string): Uint8Array {
   return Uint8Array.from(hex.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
+}
+
+function firstCapabilityBit(mask: string): number {
+  const bits = BigInt(mask);
+  for (let bit = 0; bit < 128; bit += 1) {
+    if ((bits & (1n << BigInt(bit))) !== 0n) return bit;
+  }
+  return 0;
 }
 
 interface Props {
@@ -30,9 +35,16 @@ export function QuickHireModal({ agent, onClose }: Props) {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [deadlineHours, setDeadlineHours] = useState('24');
   const [txSignature, setTxSignature] = useState<string | null>(null);
+  const [paymentMint, setPaymentMint] = useState<PublicKey | null>(null);
+  const [paymentMintError, setPaymentMintError] = useState<string | null>(null);
 
+  const trimmedDescription = taskDescription.trim();
   const paymentBaseUnits = Math.round(parseFloat(paymentAmount || '0') * 10 ** PAYMENT_DECIMALS);
-  const valid = taskDescription.length > 0 && paymentBaseUnits > 0 && parseInt(deadlineHours) > 0;
+  const valid =
+    trimmedDescription.length > 0 &&
+    paymentBaseUnits > 0 &&
+    parseInt(deadlineHours) > 0 &&
+    paymentMint !== null;
 
   const { mutate, isPending, error } = useSendTransaction<CreateTaskInput>({
     buildInstruction: async (input) => buildCreateTaskIx(program!, cluster, input),
@@ -44,12 +56,48 @@ export function QuickHireModal({ agent, onClose }: Props) {
     },
   });
 
-  const handleSubmit = useCallback(async () => {
-    if (!valid || !publicKey || !program) return;
+  useEffect(() => {
+    let cancelled = false;
 
-    const descBytes = new TextEncoder().encode(taskDescription);
+    async function loadPaymentMint() {
+      if (!program) {
+        if (!cancelled) {
+          setPaymentMint(null);
+          setPaymentMintError(null);
+        }
+        return;
+      }
+
+      try {
+        const [globalAddress] = marketGlobalPda(program.programId);
+        const global = await program.account.marketGlobal.fetchNullable(globalAddress);
+        const nextMint =
+          global?.allowedPaymentMints.find((mint: PublicKey) => !mint.equals(PublicKey.default)) ?? null;
+
+        if (!cancelled) {
+          setPaymentMint(nextMint);
+          setPaymentMintError(nextMint ? null : 'Task market has no allowed payment mint configured.');
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setPaymentMint(null);
+          setPaymentMintError(err instanceof Error ? err.message : 'Unable to load payment mint.');
+        }
+      }
+    }
+
+    void loadPaymentMint();
+    return () => {
+      cancelled = true;
+    };
+  }, [program]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!valid || !publicKey || !program || !paymentMint) return;
+
+    const descBytes = new TextEncoder().encode(trimmedDescription);
     const hashBuf = await crypto.subtle.digest('SHA-256', descBytes);
-    const taskHash = new Uint8Array(hashBuf);
+    const argsHash = new Uint8Array(hashBuf);
     const criteriaRoot = new Uint8Array(32);
     const nonce = crypto.getRandomValues(new Uint8Array(8));
     const deadlineSec = BigInt(Math.floor(Date.now() / 1000) + parseInt(deadlineHours) * 3600);
@@ -57,6 +105,7 @@ export function QuickHireModal({ agent, onClose }: Props) {
     const didBytes = bytesFromHex(agent.did);
     const agentIdBytes = bytesFromHex(agent.agentId);
     const operatorKey = new PublicKey(agent.operator);
+    const capabilityBit = firstCapabilityBit(agent.capabilityMask);
 
     mutate({
       client: publicKey,
@@ -64,14 +113,23 @@ export function QuickHireModal({ agent, onClose }: Props) {
       agentDid: didBytes,
       agentOperator: operatorKey,
       agentId: agentIdBytes,
-      paymentMint: USDC_DEVNET_MINT,
+      paymentMint,
       paymentAmount: BigInt(paymentBaseUnits),
-      taskHash,
+      payload: {
+        kind: {
+          type: 'generic',
+          capabilityBit,
+          argsHash,
+        },
+        capabilityBit,
+        criteria: descBytes,
+        requiresPersonhood: 'none',
+      },
       criteriaRoot,
       deadline: deadlineSec,
-      milestoneCount: 0,
+      milestoneCount: 1,
     });
-  }, [valid, publicKey, program, taskDescription, deadlineHours, paymentBaseUnits, agent, mutate]);
+  }, [valid, publicKey, program, paymentMint, trimmedDescription, deadlineHours, paymentBaseUnits, agent, mutate]);
 
   const inputClass = 'border border-ink/20 bg-transparent px-3 py-2 font-mono text-sm focus:border-lime focus:outline-none';
 
@@ -102,6 +160,8 @@ export function QuickHireModal({ agent, onClose }: Props) {
             TARGET: <span className="text-ink">{agent.manifestUri || `${agent.did.slice(0, 16)}...`}</span>
             <br />
             ADDR: <span className="text-ink">{agent.address.slice(0, 8)}...{agent.address.slice(-8)}</span>
+            <br />
+            MINT: <span className="text-ink">{paymentMint ? `${paymentMint.toBase58().slice(0, 8)}...${paymentMint.toBase58().slice(-8)}` : 'LOADING...'}</span>
           </div>
 
           <label className="flex flex-col gap-1">
@@ -117,7 +177,7 @@ export function QuickHireModal({ agent, onClose }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1">
-              <span className="font-mono text-[10px] text-mute uppercase">Payment (USDC)</span>
+              <span className="font-mono text-[10px] text-mute uppercase">Payment amount</span>
               <input
                 type="number" step="0.01" min="0"
                 value={paymentAmount}
@@ -137,6 +197,12 @@ export function QuickHireModal({ agent, onClose }: Props) {
               />
             </label>
           </div>
+
+          {paymentMintError && (
+            <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">
+              MINT ERR: {paymentMintError}
+            </div>
+          )}
 
           {error && (
             <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">
@@ -160,7 +226,7 @@ export function QuickHireModal({ agent, onClose }: Props) {
             </GlitchButton>
             {!txSignature && (
               <GlitchButton variant="solid" onClick={handleSubmit} disabled={!valid || isPending || !publicKey}>
-                {isPending ? 'SIGNING...' : !publicKey ? 'CONNECT WALLET' : 'CREATE TASK'}
+                {isPending ? 'SIGNING...' : !publicKey ? 'CONNECT WALLET' : !paymentMint ? 'LOADING MINT' : 'CREATE TASK'}
               </GlitchButton>
             )}
           </div>

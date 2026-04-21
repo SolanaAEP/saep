@@ -8,11 +8,13 @@ import {
 import { AnchorProvider, type Wallet } from '@coral-xyz/anchor';
 import {
   resolveCluster,
+  agentRegistryGlobalPda,
   agentRegistryProgram,
   buildRegisterAgentIx,
   encodeAgentId,
   type ClusterConfig,
 } from '@saep/sdk';
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 
 const HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -53,17 +55,18 @@ export async function GET() {
     title: 'Register Agent — SAEP',
     description:
       'Register as an AI agent operator on SAEP. ' +
-      'Choose your capabilities, set your price, and start accepting tasks.',
+      'Choose your capabilities, set your price, and start accepting tasks. The action uses the registry stake mint and defaults to the current minimum stake.',
     label: 'Register Agent',
     links: {
       actions: [
         {
           label: 'Register Agent',
-          href: '/api/actions/register-agent?name={name}&capabilities={capabilities}&price={price}',
+          href: '/api/actions/register-agent?name={name}&capabilities={capabilities}&price={price}&stakeAmount={stakeAmount}',
           parameters: [
             { name: 'name', label: 'Agent name (seed for agent ID)', required: true },
             { name: 'capabilities', label: 'Capability bits (comma-separated, e.g. 0,2,5)', required: true },
             { name: 'price', label: 'Base price (lamports)', required: false },
+            { name: 'stakeAmount', label: 'Stake amount (defaults to registry minimum)', required: false },
           ],
         },
       ],
@@ -107,10 +110,42 @@ export async function POST(req: NextRequest) {
     const provider = readOnlyProvider(config);
     const program = agentRegistryProgram(provider, config);
     const connection = new Connection(config.endpoint, 'confirmed');
+    const [globalAddress] = agentRegistryGlobalPda(program.programId);
+    const global = await program.account.registryGlobal.fetchNullable(globalAddress);
+    if (!global) {
+      return NextResponse.json({ error: 'registry global not initialized' }, { status: 503, headers: HEADERS });
+    }
 
     const agentId = encodeAgentId(name);
-    const stakeMint = new PublicKey(
-      process.env.SAEP_DEFAULT_PAYMENT_MINT ?? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    const stakeMint = global.stakeMint;
+    const stakeAmountRaw = searchParams.get('stakeAmount');
+    const stakeAmount = stakeAmountRaw ? BigInt(stakeAmountRaw) : BigInt(global.minStake.toString());
+    if (stakeAmount < BigInt(global.minStake.toString())) {
+      return NextResponse.json(
+        { error: `stakeAmount must be at least ${global.minStake.toString()}` },
+        { status: 400, headers: HEADERS },
+      );
+    }
+
+    const mintInfo = await connection.getAccountInfo(stakeMint);
+    const tokenProgramId = mintInfo?.owner?.equals(TOKEN_PROGRAM_ID)
+      ? TOKEN_PROGRAM_ID
+      : mintInfo?.owner?.equals(TOKEN_2022_PROGRAM_ID)
+        ? TOKEN_2022_PROGRAM_ID
+        : null;
+
+    if (!tokenProgramId) {
+      return NextResponse.json(
+        { error: `stake mint ${stakeMint.toBase58()} is not a token mint on this cluster` },
+        { status: 503, headers: HEADERS },
+      );
+    }
+
+    const operatorTokenAccount = getAssociatedTokenAddressSync(
+      stakeMint,
+      operator,
+      false,
+      tokenProgramId,
     );
 
     const ix = await buildRegisterAgentIx(program, {
@@ -120,10 +155,11 @@ export async function POST(req: NextRequest) {
       capabilityMask,
       priceLamports,
       streamRate: 0n,
-      stakeAmount: 0n,
+      stakeAmount,
       stakeMint,
-      operatorTokenAccount: operator,
-      capabilityRegistryProgramId: config.programIds.capabilityRegistry,
+      operatorTokenAccount,
+      capabilityRegistryProgramId: global.capabilityRegistry,
+      tokenProgramId,
     });
 
     const { blockhash } = await connection.getLatestBlockhash('finalized');
@@ -140,7 +176,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         transaction: serialized.toString('base64'),
-        message: `Register agent "${name}" with capabilities [${bits.join(', ')}]`,
+        message: `Register agent "${name}" with capabilities [${bits.join(', ')}] and stake ${stakeAmount.toString()}`,
       },
       { headers: HEADERS },
     );

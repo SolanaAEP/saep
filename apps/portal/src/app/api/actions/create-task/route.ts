@@ -9,8 +9,11 @@ import {
 import { AnchorProvider, type Wallet } from '@coral-xyz/anchor';
 import {
   resolveCluster,
+  agentRegistryProgram,
   taskMarketProgram,
   buildCreateTaskIx,
+  fetchAgentByDid,
+  marketGlobalPda,
   type CreateTaskInput,
   type ClusterConfig,
 } from '@saep/sdk';
@@ -45,6 +48,24 @@ function readOnlyProvider(config: ClusterConfig) {
   );
 }
 
+function normalizeDidHex(raw: string): string | null {
+  const value = raw.startsWith('0x') ? raw.slice(2) : raw;
+  return /^[0-9a-fA-F]{64}$/.test(value) ? value.toLowerCase() : null;
+}
+
+function bytesFromHex(hex: string): Uint8Array {
+  return Uint8Array.from(
+    hex.match(/.{2}/g)!.map((part) => parseInt(part, 16)),
+  );
+}
+
+function firstCapabilityBit(mask: bigint): number {
+  for (let bit = 0; bit < 128; bit += 1) {
+    if ((mask & (1n << BigInt(bit))) !== 0n) return bit;
+  }
+  return 0;
+}
+
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: HEADERS });
 }
@@ -53,7 +74,7 @@ export async function GET() {
   const payload = {
     icon: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://buildonsaep.com'}/logo.svg`,
     title: 'Create Task — SAEP',
-    description: 'Create a new task on the SAEP TaskMarket and assign it to an AI agent.',
+    description: 'Create a new task on the SAEP TaskMarket and assign it to an AI agent by on-chain DID hex.',
     label: 'Create Task',
     links: {
       actions: [
@@ -61,7 +82,7 @@ export async function GET() {
           label: 'Create Task',
           href: '/api/actions/create-task?agentDid={agentDid}&amount={amount}&description={description}',
           parameters: [
-            { name: 'agentDid', label: 'Agent DID', required: true },
+            { name: 'agentDid', label: 'Agent DID (64-char hex)', required: true },
             { name: 'amount', label: 'Payment amount (token units)', required: true },
             { name: 'description', label: 'Task description', required: true },
           ],
@@ -99,36 +120,73 @@ export async function POST(req: NextRequest) {
     }
 
     const client = new PublicKey(account);
+    const agentDidHex = normalizeDidHex(agentDidRaw);
+    if (!agentDidHex) {
+      return NextResponse.json(
+        { error: 'agentDid must be a 64-character hex string' },
+        { status: 400, headers: HEADERS },
+      );
+    }
+
     const config = clusterConfig();
     const provider = readOnlyProvider(config);
+    const registry = agentRegistryProgram(provider, config);
     const program = taskMarketProgram(provider, config);
     const connection = new Connection(config.endpoint, 'confirmed');
+    const [marketGlobalAddress] = marketGlobalPda(program.programId);
+    const marketGlobal = await program.account.marketGlobal.fetchNullable(marketGlobalAddress);
+
+    const agent = await fetchAgentByDid(registry, agentDidHex);
+    if (!agent) {
+      return NextResponse.json(
+        { error: `agent not found for DID ${agentDidHex}` },
+        { status: 404, headers: HEADERS },
+      );
+    }
 
     const taskNonce = randomBytes(8);
-    const agentDidBytes = Buffer.alloc(32);
-    const didEncoded = Buffer.from(agentDidRaw, 'utf-8');
-    didEncoded.copy(agentDidBytes, 0, 0, Math.min(didEncoded.length, 32));
+    const taskDescription = descriptionRaw.trim();
+    if (!taskDescription) {
+      return NextResponse.json(
+        { error: 'description must not be empty' },
+        { status: 400, headers: HEADERS },
+      );
+    }
 
-    const taskHash = createHash('sha256').update(descriptionRaw).digest();
+    const capabilityBit = firstCapabilityBit(agent.capabilityMask);
+    const criteria = new TextEncoder().encode(taskDescription);
+    const argsHash = new Uint8Array(createHash('sha256').update(taskDescription).digest());
     const criteriaRoot = Buffer.alloc(32);
 
-    // Default: operator = client, agentId = first 16 bytes of DID hash
-    const agentId = createHash('sha256').update(agentDidRaw).digest().subarray(0, 16);
-
-    // Default payment mint = USDC devnet (or override via env)
-    const paymentMint = new PublicKey(
-      process.env.SAEP_DEFAULT_PAYMENT_MINT ?? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-    );
+    const configuredPaymentMint = process.env.SAEP_DEFAULT_PAYMENT_MINT?.trim();
+    const paymentMint = configuredPaymentMint
+      ? new PublicKey(configuredPaymentMint)
+      : marketGlobal?.allowedPaymentMints.find((mint) => !mint.equals(PublicKey.default));
+    if (!paymentMint) {
+      return NextResponse.json(
+        { error: 'task market has no allowed payment mint configured' },
+        { status: 503, headers: HEADERS },
+      );
+    }
 
     const input: CreateTaskInput = {
       client,
       taskNonce,
-      agentDid: agentDidBytes,
-      agentOperator: client,
-      agentId,
+      agentDid: bytesFromHex(agentDidHex),
+      agentOperator: agent.operator,
+      agentId: agent.agentId,
       paymentMint,
-      paymentAmount: BigInt(Math.floor(amount * 1e6)),
-      taskHash,
+      paymentAmount: BigInt(Math.round(amount * 1e6)),
+      payload: {
+        kind: {
+          type: 'generic',
+          capabilityBit,
+          argsHash,
+        },
+        capabilityBit,
+        criteria,
+        requiresPersonhood: 'none',
+      },
       criteriaRoot,
       deadline: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60), // 7 days
       milestoneCount: 1,
@@ -150,7 +208,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         transaction: serialized.toString('base64'),
-        message: `Create task for agent ${agentDidRaw} — ${amount} tokens`,
+        message: `Create task for agent ${agentDidHex} — ${amount} tokens`,
       },
       { headers: HEADERS },
     );

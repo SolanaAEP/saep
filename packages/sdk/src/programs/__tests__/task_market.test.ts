@@ -63,10 +63,19 @@ const paymentMint = PublicKey.unique();
 const taskNonce = new Uint8Array(8).fill(0x01);
 const agentDid = new Uint8Array(32).fill(0x02);
 const agentId = new Uint8Array(32).fill(0x03);
-const taskHash = new Uint8Array(32).fill(0x04);
 const criteriaRoot = new Uint8Array(32).fill(0x05);
 const taskId = new Uint8Array(32).fill(0x06);
 const vkId = new Uint8Array(32).fill(0x07);
+const payload = {
+  kind: {
+    type: 'generic' as const,
+    capabilityBit: 0,
+    argsHash: new Uint8Array(32).fill(0x04),
+  },
+  capabilityBit: 0,
+  criteria: new Uint8Array([0x62, 0x6c, 0x69, 0x6e, 0x6b]),
+  requiresPersonhood: 'none' as const,
+};
 
 describe('buildCreateTaskIx', () => {
   it('returns ix with correct programId, discriminator, accounts', async () => {
@@ -78,7 +87,7 @@ describe('buildCreateTaskIx', () => {
       agentId,
       paymentMint,
       paymentAmount: 1000n,
-      taskHash,
+      payload,
       criteriaRoot,
       deadline: 9999n,
       milestoneCount: 3,
@@ -110,7 +119,7 @@ describe('buildCreateTaskIx', () => {
       agentId,
       paymentMint,
       paymentAmount: 5000n,
-      taskHash,
+      payload,
       criteriaRoot,
       deadline: 12345n,
       milestoneCount: 7,
@@ -120,6 +129,10 @@ describe('buildCreateTaskIx', () => {
     const data = decoded.data as Record<string, unknown>;
     expect(data.task_nonce).toEqual(Array.from(taskNonce));
     expect((data.payment_amount as { toString(): string }).toString()).toBe('5000');
+    expect(data.payload).toMatchObject({
+      capability_bit: 0,
+      requires_personhood: { None: {} },
+    });
     expect((data.deadline as { toString(): string }).toString()).toBe('12345');
     expect(data.milestone_count).toBe(7);
   });

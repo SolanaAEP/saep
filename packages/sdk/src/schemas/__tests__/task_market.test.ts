@@ -4,6 +4,7 @@ import { BN } from '@coral-xyz/anchor';
 import {
   CreateTaskArgsSchema,
   MarketGlobalSchema,
+  TaskPayloadSchema,
   SubmitResultArgsSchema,
   TaskContractSchema,
   TaskStatusSchema,
@@ -12,6 +13,17 @@ import {
 
 const pk = () => PublicKey.default;
 const bytes = (n: number) => Array.from({ length: n }, (_, i) => i % 256);
+const genericPayload = () => ({
+  kind: {
+    generic: {
+      capabilityBit: 0,
+      argsHash: bytes(32),
+    },
+  },
+  capabilityBit: 0,
+  criteria: Array.from(new TextEncoder().encode('blink smoke test')),
+  requiresPersonhood: { none: {} },
+});
 
 describe('TaskStatusSchema', () => {
   it.each([
@@ -112,7 +124,7 @@ describe('CreateTaskArgsSchema', () => {
       agentDid: bytes(32),
       paymentMint: pk(),
       paymentAmount: new BN(1_000),
-      taskHash: bytes(32),
+      payload: genericPayload(),
       criteriaRoot: bytes(32),
       deadline: new BN(1700086400),
       milestoneCount: 1,
@@ -120,19 +132,33 @@ describe('CreateTaskArgsSchema', () => {
     expect(out.milestoneCount).toBe(1);
   });
 
-  it('rejects taskHash of wrong length', () => {
+  it('rejects payload argsHash of wrong length', () => {
     expect(() =>
       CreateTaskArgsSchema.parse({
         taskNonce: bytes(8),
         agentDid: bytes(32),
         paymentMint: pk(),
         paymentAmount: new BN(1),
-        taskHash: bytes(31),
+        payload: {
+          ...genericPayload(),
+          kind: {
+            generic: {
+              capabilityBit: 0,
+              argsHash: bytes(31),
+            },
+          },
+        },
         criteriaRoot: bytes(32),
         deadline: new BN(0),
         milestoneCount: 1,
       }),
     ).toThrow();
+  });
+});
+
+describe('TaskPayloadSchema', () => {
+  it('parses a generic payload', () => {
+    expect(TaskPayloadSchema.parse(genericPayload()).capabilityBit).toBe(0);
   });
 });
 

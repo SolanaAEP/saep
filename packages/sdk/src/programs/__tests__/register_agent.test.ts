@@ -15,6 +15,7 @@ import { makeTestProgram, decodeIx, expectedDiscriminator, accountKeys } from '.
 
 const PROG = new PublicKey('EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu');
 const CAP_PROG = new PublicKey('GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F');
+const TOKEN_LEGACY = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 
 const program = makeTestProgram<AgentRegistry>(idl as Record<string, unknown>, PROG);
 
@@ -100,6 +101,11 @@ describe('buildRegisterAgentIx', () => {
   it('uses Token-2022 program id for tokenProgram account', async () => {
     const ix = await buildRegisterAgentIx(program, baseInput);
     expect(accountKeys(ix)).toContain(TOKEN_2022_PROGRAM_ID.toBase58());
+  });
+
+  it('allows overriding the token program account', async () => {
+    const ix = await buildRegisterAgentIx(program, { ...baseInput, tokenProgramId: TOKEN_LEGACY });
+    expect(accountKeys(ix)).toContain(TOKEN_LEGACY.toBase58());
   });
 
   it('marks operator as signer + writable', async () => {

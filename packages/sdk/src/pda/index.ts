@@ -129,8 +129,12 @@ export function batchStatePda(programId: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([enc('batch')], programId);
 }
 
-export function proofVerifierGuardPda(programId: PublicKey): [PublicKey, number] {
+export function guardPda(programId: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([enc('guard')], programId);
+}
+
+export function proofVerifierGuardPda(programId: PublicKey): [PublicKey, number] {
+  return guardPda(programId);
 }
 
 export function proofVerifierAllowedCallersPda(programId: PublicKey): [PublicKey, number] {

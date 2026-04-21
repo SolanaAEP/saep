@@ -90,4 +90,8 @@ pub enum AgentRegistryError {
     InvalidCivicGateway,
     #[msg("availability decay cooldown has not elapsed (24h minimum)")]
     DecayCooldownNotElapsed,
+    #[msg("stake mint must be owned by the SPL Token or Token-2022 program")]
+    InvalidStakeMint,
+    #[msg("stake mint may not enable the TransferHook extension")]
+    StakeMintHasTransferHook,
 }

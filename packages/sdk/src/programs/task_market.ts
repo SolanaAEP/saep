@@ -18,6 +18,45 @@ import {
 
 const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
 
+export type PersonhoodTierInput = 'none' | 'basic' | 'verified';
+
+export type CreateTaskPayloadKindInput =
+  | {
+      type: 'swapExact';
+      inMint: PublicKey;
+      outMint: PublicKey;
+      amountIn: bigint;
+      minOut: bigint;
+    }
+  | {
+      type: 'transfer';
+      mint: PublicKey;
+      to: PublicKey;
+      amount: bigint;
+    }
+  | {
+      type: 'dataFetch';
+      urlHash: Uint8Array;
+      expectedHash: Uint8Array;
+    }
+  | {
+      type: 'compute';
+      circuitId: Uint8Array;
+      publicInputsHash: Uint8Array;
+    }
+  | {
+      type: 'generic';
+      capabilityBit: number;
+      argsHash: Uint8Array;
+    };
+
+export interface CreateTaskPayloadInput {
+  kind: CreateTaskPayloadKindInput;
+  capabilityBit: number;
+  criteria: Uint8Array;
+  requiresPersonhood?: PersonhoodTierInput;
+}
+
 export interface CreateTaskInput {
   client: PublicKey;
   taskNonce: Uint8Array;
@@ -26,10 +65,80 @@ export interface CreateTaskInput {
   agentId: Uint8Array;
   paymentMint: PublicKey;
   paymentAmount: bigint;
-  taskHash: Uint8Array;
+  payload: CreateTaskPayloadInput;
   criteriaRoot: Uint8Array;
   deadline: bigint;
   milestoneCount: number;
+}
+
+function toByteArray(bytes: Uint8Array, label: string, expectedLength?: number): number[] {
+  if (expectedLength !== undefined && bytes.length !== expectedLength) {
+    throw new Error(`${label} must be ${expectedLength} bytes`);
+  }
+  return Array.from(bytes);
+}
+
+function normalizePersonhoodTier(tier: PersonhoodTierInput) {
+  switch (tier) {
+    case 'basic':
+      return { basic: {} };
+    case 'verified':
+      return { verified: {} };
+    default:
+      return { none: {} };
+  }
+}
+
+function normalizeTaskKind(kind: CreateTaskPayloadKindInput) {
+  switch (kind.type) {
+    case 'swapExact':
+      return {
+        swapExact: {
+          inMint: kind.inMint,
+          outMint: kind.outMint,
+          amountIn: new BN(kind.amountIn.toString()),
+          minOut: new BN(kind.minOut.toString()),
+        },
+      };
+    case 'transfer':
+      return {
+        transfer: {
+          mint: kind.mint,
+          to: kind.to,
+          amount: new BN(kind.amount.toString()),
+        },
+      };
+    case 'dataFetch':
+      return {
+        dataFetch: {
+          urlHash: toByteArray(kind.urlHash, 'payload.kind.urlHash', 32),
+          expectedHash: toByteArray(kind.expectedHash, 'payload.kind.expectedHash', 32),
+        },
+      };
+    case 'compute':
+      return {
+        compute: {
+          circuitId: toByteArray(kind.circuitId, 'payload.kind.circuitId', 32),
+          publicInputsHash: toByteArray(kind.publicInputsHash, 'payload.kind.publicInputsHash', 32),
+        },
+      };
+    case 'generic':
+      return {
+        generic: {
+          capabilityBit: kind.capabilityBit,
+          argsHash: toByteArray(kind.argsHash, 'payload.kind.argsHash', 32),
+        },
+      };
+  }
+}
+
+function normalizeTaskPayload(payload: CreateTaskPayloadInput) {
+  return {
+    kind: normalizeTaskKind(payload.kind),
+    capabilityBit: payload.capabilityBit,
+    criteria: Buffer.from(payload.criteria),
+    requiresPersonhood: normalizePersonhoodTier(payload.requiresPersonhood ?? 'none'),
+  };
 }
 
 export async function buildCreateTaskIx(
@@ -48,7 +157,7 @@ export async function buildCreateTaskIx(
       Array.from(input.agentDid),
       input.paymentMint,
       new BN(input.paymentAmount.toString()),
-      Array.from(input.taskHash),
+      normalizeTaskPayload(input.payload),
       Array.from(input.criteriaRoot),
       new BN(input.deadline.toString()),
       input.milestoneCount,

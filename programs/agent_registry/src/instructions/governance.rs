@@ -1,4 +1,6 @@
 use anchor_lang::prelude::*;
+use spl_token_2022::extension::{BaseStateWithExtensions, StateWithExtensions, transfer_hook::TransferHook};
+use spl_token_2022::state::Mint as RawMint;
 
 use crate::errors::AgentRegistryError;
 use crate::events::GlobalParamsUpdated;
@@ -14,6 +16,40 @@ pub struct GovernanceUpdate<'info> {
     )]
     pub global: Account<'info, RegistryGlobal>,
     pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SetStakeMint<'info> {
+    #[account(
+        mut,
+        seeds = [b"global"],
+        bump = global.bump,
+        has_one = authority @ AgentRegistryError::Unauthorized,
+    )]
+    pub global: Account<'info, RegistryGlobal>,
+    /// CHECK: validated in handler; only read for owner/extension checks.
+    pub stake_mint_info: UncheckedAccount<'info>,
+    pub authority: Signer<'info>,
+}
+
+fn validate_stake_mint(mint_info: &UncheckedAccount<'_>, stake_mint: Pubkey) -> Result<()> {
+    require!(mint_info.key() == stake_mint, AgentRegistryError::Unauthorized);
+    require!(
+        mint_info.owner == &anchor_spl::token::ID || mint_info.owner == &anchor_spl::token_2022::ID,
+        AgentRegistryError::InvalidStakeMint
+    );
+    if mint_info.owner == &anchor_spl::token_2022::ID {
+        let data = mint_info
+            .try_borrow_data()
+            .map_err(|_| error!(AgentRegistryError::InvalidStakeMint))?;
+        let parsed = StateWithExtensions::<RawMint>::unpack(&data)
+            .map_err(|_| error!(AgentRegistryError::InvalidStakeMint))?;
+        require!(
+            parsed.get_extension::<TransferHook>().is_err(),
+            AgentRegistryError::StakeMintHasTransferHook
+        );
+    }
+    Ok(())
 }
 
 pub fn set_min_stake_handler(ctx: Context<GovernanceUpdate>, new_min_stake: u64) -> Result<()> {
@@ -68,6 +104,18 @@ pub fn set_civic_gateway_program_handler(
         AgentRegistryError::InvalidCivicGateway
     );
     ctx.accounts.global.civic_gateway_program = new_civic_gateway_program;
+    emit!(GlobalParamsUpdated {
+        timestamp: Clock::get()?.unix_timestamp,
+    });
+    Ok(())
+}
+
+pub fn set_stake_mint_handler(
+    ctx: Context<SetStakeMint>,
+    new_stake_mint: Pubkey,
+) -> Result<()> {
+    validate_stake_mint(&ctx.accounts.stake_mint_info, new_stake_mint)?;
+    ctx.accounts.global.stake_mint = new_stake_mint;
     emit!(GlobalParamsUpdated {
         timestamp: Clock::get()?.unix_timestamp,
     });

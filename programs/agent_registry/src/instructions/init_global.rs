@@ -49,14 +49,18 @@ pub fn handler(
     // be hook-free. SPL Token (legacy) mints have no extensions — always safe.
     let mint_info = &ctx.accounts.stake_mint_info;
     require!(mint_info.key() == stake_mint, AgentRegistryError::Unauthorized);
+    require!(
+        mint_info.owner == &anchor_spl::token::ID || mint_info.owner == &anchor_spl::token_2022::ID,
+        AgentRegistryError::InvalidStakeMint
+    );
     if mint_info.owner == &anchor_spl::token_2022::ID {
         let data = mint_info.try_borrow_data()
-            .map_err(|_| error!(AgentRegistryError::Unauthorized))?;
+            .map_err(|_| error!(AgentRegistryError::InvalidStakeMint))?;
         let parsed = StateWithExtensions::<RawMint>::unpack(&data)
-            .map_err(|_| error!(AgentRegistryError::Unauthorized))?;
+            .map_err(|_| error!(AgentRegistryError::InvalidStakeMint))?;
         require!(
             parsed.get_extension::<TransferHook>().is_err(),
-            AgentRegistryError::Unauthorized
+            AgentRegistryError::StakeMintHasTransferHook
         );
     }
 

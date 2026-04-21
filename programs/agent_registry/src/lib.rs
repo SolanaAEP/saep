@@ -172,6 +172,13 @@ pub mod agent_registry {
         )
     }
 
+    pub fn set_stake_mint(
+        ctx: Context<SetStakeMint>,
+        new_stake_mint: Pubkey,
+    ) -> Result<()> {
+        instructions::governance::set_stake_mint_handler(ctx, new_stake_mint)
+    }
+
     pub fn set_proof_verifier(
         ctx: Context<GovernanceUpdate>,
         new_proof_verifier: Pubkey,

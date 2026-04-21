@@ -1574,6 +1574,56 @@ export type AgentRegistry = {
       ]
     },
     {
+      "name": "setStakeMint",
+      "discriminator": [
+        98,
+        90,
+        126,
+        218,
+        121,
+        228,
+        110,
+        87
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "stakeMintInfo"
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newStakeMint",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "setStatus",
       "discriminator": [
         181,
@@ -2909,6 +2959,16 @@ export type AgentRegistry = {
       "code": 6043,
       "name": "decayCooldownNotElapsed",
       "msg": "availability decay cooldown has not elapsed (24h minimum)"
+    },
+    {
+      "code": 6044,
+      "name": "invalidStakeMint",
+      "msg": "stake mint must be owned by the SPL Token or Token-2022 program"
+    },
+    {
+      "code": 6045,
+      "name": "stakeMintHasTransferHook",
+      "msg": "stake mint may not enable the TransferHook extension"
     }
   ],
   "types": [

@@ -1,7 +1,7 @@
 import { BN, Program } from '@coral-xyz/anchor';
-import { PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import type { AgentRegistry } from '../generated/agent_registry.js';
-import { agentAccountPda, agentRegistryGlobalPda, agentStakePda } from '../pda/index.js';
+import { agentAccountPda, agentRegistryGlobalPda, agentStakePda, guardPda } from '../pda/index.js';
 
 export const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
 export const CAPABILITY_CONFIG_SEED = 'config';
@@ -20,6 +20,8 @@ export interface RegisterAgentInput {
   stakeMint: PublicKey;
   operatorTokenAccount: PublicKey;
   capabilityRegistryProgramId: PublicKey;
+  personhoodAttestation?: PublicKey | null;
+  tokenProgramId?: PublicKey;
 }
 
 export function encodeAgentId(seed: string): Uint8Array {
@@ -57,6 +59,7 @@ export async function buildRegisterAgentIx(
   const [global] = agentRegistryGlobalPda(program.programId);
   const [agent] = agentAccountPda(program.programId, input.operator, input.agentId);
   const [stakeVault] = agentStakePda(program.programId, agent);
+  const [guard] = guardPda(program.programId);
   const capabilityConfig = capabilityConfigPda(input.capabilityRegistryProgramId);
 
   const manifestBytes = encodeManifestUri(input.manifestUri);
@@ -78,7 +81,11 @@ export async function buildRegisterAgentIx(
       stakeVault,
       operatorTokenAccount: input.operatorTokenAccount,
       operator: input.operator,
-      tokenProgram: TOKEN_2022_PROGRAM_ID,
+      personhoodAttestation: input.personhoodAttestation ?? null,
+      guard,
+      tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+      rent: SYSVAR_RENT_PUBKEY,
     } as never)
     .instruction();
 }

@@ -4,6 +4,56 @@ import { BN } from '@coral-xyz/anchor';
 
 const pubkey = z.instanceof(PublicKey);
 const bn = z.instanceof(BN);
+const fixedBytes = (length: number) => z.array(z.number()).length(length);
+
+export const PersonhoodTierSchema = z.union([
+  z.object({ none: z.object({}).passthrough() }),
+  z.object({ basic: z.object({}).passthrough() }),
+  z.object({ verified: z.object({}).passthrough() }),
+]);
+
+export const TaskKindSchema = z.union([
+  z.object({
+    swapExact: z.object({
+      inMint: pubkey,
+      outMint: pubkey,
+      amountIn: bn,
+      minOut: bn,
+    }),
+  }),
+  z.object({
+    transfer: z.object({
+      mint: pubkey,
+      to: pubkey,
+      amount: bn,
+    }),
+  }),
+  z.object({
+    dataFetch: z.object({
+      urlHash: fixedBytes(32),
+      expectedHash: fixedBytes(32),
+    }),
+  }),
+  z.object({
+    compute: z.object({
+      circuitId: fixedBytes(32),
+      publicInputsHash: fixedBytes(32),
+    }),
+  }),
+  z.object({
+    generic: z.object({
+      capabilityBit: z.number(),
+      argsHash: fixedBytes(32),
+    }),
+  }),
+]);
+
+export const TaskPayloadSchema = z.object({
+  kind: TaskKindSchema,
+  capabilityBit: z.number(),
+  criteria: z.array(z.number()),
+  requiresPersonhood: PersonhoodTierSchema,
+});
 
 export const TaskStatusSchema = z.enum([
   'created', 'funded', 'inExecution', 'proofSubmitted',
@@ -58,7 +108,7 @@ export const CreateTaskArgsSchema = z.object({
   agentDid: z.array(z.number()).length(32),
   paymentMint: pubkey,
   paymentAmount: bn,
-  taskHash: z.array(z.number()).length(32),
+  payload: TaskPayloadSchema,
   criteriaRoot: z.array(z.number()).length(32),
   deadline: bn,
   milestoneCount: z.number(),

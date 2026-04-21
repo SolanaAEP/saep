@@ -30,6 +30,17 @@ const camel = (snake: string) => {
 };
 
 const typeFiles = readdirSync(typesDir).filter((f) => f.endsWith('.ts'));
+const existingGeneratedTypes = readdirSync(generatedDir).filter(
+  (f) => f.endsWith('.ts') && f !== 'index.ts',
+);
+
+if (existingGeneratedTypes.length > 0 && typeFiles.length < existingGeneratedTypes.length) {
+  console.warn(
+    `[sdk:gen] ${typesDir} only contains ${typeFiles.length}/${existingGeneratedTypes.length} program types — skipping regen to avoid clobbering committed SDK artifacts`,
+  );
+  process.exit(0);
+}
+
 const programs: Array<{ snake: string; pascal: string; camel: string; address: string }> = [];
 
 for (const file of typeFiles) {
