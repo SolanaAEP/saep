@@ -352,7 +352,7 @@ mod tests {
             honesty: 5000,
             disputed: false,
         };
-        let mut s2 = s1.clone();
+        let mut s2 = s1;
         s2.disputed = true;
         assert_ne!(hash_sample(&s1).unwrap(), hash_sample(&s2).unwrap());
     }

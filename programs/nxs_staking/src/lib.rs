@@ -1,3 +1,8 @@
+#![allow(unexpected_cfgs)]
+#![allow(ambiguous_glob_reexports)]
+#![allow(clippy::diverging_sub_expression)]
+#![allow(clippy::too_many_arguments)]
+
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
@@ -118,7 +123,7 @@ pub mod nxs_staking {
         );
         require!(amount > 0, NxsStakingError::ZeroAmount);
         require!(
-            lockup_duration_secs >= MIN_LOCKUP_SECS && lockup_duration_secs <= MAX_LOCKUP_SECS,
+            (MIN_LOCKUP_SECS..=MAX_LOCKUP_SECS).contains(&lockup_duration_secs),
             NxsStakingError::InvalidLockup,
         );
 

@@ -67,7 +67,7 @@ pub fn handler(
         TaskMarketError::BidBookAlreadyOpen
     );
     require!(
-        bond_bps >= MIN_BID_BOND_BPS && bond_bps <= MAX_BID_BOND_BPS,
+        (MIN_BID_BOND_BPS..=MAX_BID_BOND_BPS).contains(&bond_bps),
         TaskMarketError::BondOutOfRange
     );
     require!(

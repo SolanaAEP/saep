@@ -14,17 +14,24 @@ pub enum ProviderKind {
     SAS,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, InitSpace)]
+#[derive(
+    AnchorSerialize,
+    AnchorDeserialize,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Debug,
+    Default,
+    InitSpace
+)]
 pub enum PersonhoodTier {
+    #[default]
     None,
     Basic,
     Verified,
-}
-
-impl Default for PersonhoodTier {
-    fn default() -> Self {
-        PersonhoodTier::None
-    }
 }
 
 #[account]
@@ -302,7 +309,7 @@ mod proptests {
 
         #[test]
         fn slash_within_cap_accepted(
-            stake in 1u64..=u64::MAX / (BPS_DENOM as u64),
+            stake in 1u64..=u64::MAX / BPS_DENOM,
             ratio_bps in 0u16..=MAX_SLASH_BPS_CAP,
         ) {
             let amount = ((stake as u128) * (ratio_bps as u128) / BPS_DENOM as u128) as u64;

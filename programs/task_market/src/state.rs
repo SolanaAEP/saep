@@ -450,14 +450,13 @@ mod proptests {
     #[test]
     fn bid_book_reveal_hash_nonce_sensitive() {
         let did = [7u8; 32];
-        let mut nonce_a = [9u8; 32];
+        let nonce_a = [9u8; 32];
         let mut nonce_b = [9u8; 32];
         nonce_b[0] = 10;
         assert_ne!(
             reveal_commit_hash(1_000, &nonce_a, &did),
             reveal_commit_hash(1_000, &nonce_b, &did),
         );
-        nonce_a[0] = 9;
     }
 
     #[test]
@@ -868,7 +867,7 @@ mod proptests {
 
     // F-2026-07: close_bidding must receive exactly `reveal_count * 2` accounts.
     fn enumeration_matches(reveal_count: u16, remaining_len: usize) -> bool {
-        remaining_len % 2 == 0 && remaining_len == (reveal_count as usize) * 2
+        remaining_len.is_multiple_of(2) && remaining_len == (reveal_count as usize) * 2
     }
 
     #[test]
@@ -904,4 +903,3 @@ mod proptests {
         assert!(!is_duplicate(&seen, &Pubkey::new_from_array([3u8; 32])));
     }
 }
-

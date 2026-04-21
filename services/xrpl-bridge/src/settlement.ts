@@ -183,7 +183,16 @@ async function buildSettlementTx(
     agentId: agentDidBytes.subarray(0, 16),
     paymentMint: PublicKey.default,
     paymentAmount: lamports,
-    taskHash: argsHash.subarray(0, 32),
+    payload: {
+      kind: {
+        type: 'generic',
+        capabilityBit: 0,
+        argsHash: argsHash.subarray(0, 32),
+      },
+      capabilityBit: 0,
+      criteria: argsHash.subarray(0, 32),
+      requiresPersonhood: 'none',
+    },
     criteriaRoot: new Uint8Array(32),
     deadline,
     milestoneCount: 1,

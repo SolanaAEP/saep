@@ -155,15 +155,14 @@ proptest! {
     #[test]
     fn multiplier_always_in_range(secs in i64::MIN..=i64::MAX) {
         let m = compute_multiplier(secs);
-        prop_assert!(m >= 1 && m <= MAX_VOTING_POWER_MULTIPLIER);
+        prop_assert!((1..=MAX_VOTING_POWER_MULTIPLIER).contains(&m));
     }
 
     #[test]
     fn voting_power_no_overflow(amount in any::<u64>(), multiplier in 1u8..=MAX_VOTING_POWER_MULTIPLIER) {
         let vp = compute_voting_power(amount, multiplier);
-        prop_assert!(vp <= u64::MAX);
         if (amount as u128 * multiplier as u128) <= u64::MAX as u128 {
-            prop_assert_eq!(vp, amount as u64 * multiplier as u64);
+            prop_assert_eq!(vp, amount * u64::from(multiplier));
         }
     }
 

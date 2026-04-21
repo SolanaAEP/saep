@@ -289,7 +289,10 @@ pub fn read_oracle(feed_info: &AccountInfo, clock: &Clock) -> Result<OraclePrice
 
     let msg = &update.price_message;
     let age = clock.unix_timestamp.saturating_sub(msg.publish_time);
-    require!(age >= 0 && age <= MAX_STALENESS_SECS, TreasuryError::OracleStale);
+    require!(
+        (0..=MAX_STALENESS_SECS).contains(&age),
+        TreasuryError::OracleStale
+    );
 
     Ok(OraclePrice {
         price: msg.price,
@@ -673,4 +676,3 @@ mod proptests {
         assert!(assert_call_target_allowed(&g, Some(&at), &pk(1)).is_err());
     }
 }
-

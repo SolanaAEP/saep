@@ -59,7 +59,7 @@ pub fn handler<'info>(ctx: Context<'info, CloseBidding<'info>>) -> Result<()> {
     let agent_registry = ctx.accounts.global.agent_registry;
     let remaining = ctx.remaining_accounts;
     require!(
-        remaining.len() % 2 == 0,
+        remaining.len().is_multiple_of(2),
         TaskMarketError::Unauthorized
     );
     // F-2026-07: cranker must submit every revealed bid (each as a

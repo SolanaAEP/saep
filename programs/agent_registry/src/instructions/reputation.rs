@@ -330,7 +330,6 @@ mod tests {
 
     #[test]
     fn cap_bit_range_upper_bound() {
-        assert!(MAX_CAPABILITY_BIT <= 127);
         let bit: u16 = MAX_CAPABILITY_BIT;
         let mask: u128 = 1u128 << bit;
         assert_ne!(mask, 0);

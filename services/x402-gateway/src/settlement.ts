@@ -99,7 +99,16 @@ async function buildSettlementTx(
     agentId: agentDidBytes,
     paymentMint,
     paymentAmount: BigInt(payment.amount),
-    taskHash: argsHashBytes.subarray(0, 32),
+    payload: {
+      kind: {
+        type: 'generic',
+        capabilityBit: 0,
+        argsHash: argsHashBytes.subarray(0, 32),
+      },
+      capabilityBit: 0,
+      criteria: argsHashBytes.subarray(0, 32),
+      requiresPersonhood: 'none',
+    },
     criteriaRoot: new Uint8Array(32),
     deadline,
     milestoneCount: 1,

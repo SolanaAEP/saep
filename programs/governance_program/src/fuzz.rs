@@ -1,19 +1,13 @@
 #![cfg(test)]
 
 use anchor_lang::prelude::*;
-use anchor_lang::{AccountDeserialize, AccountSerialize, Discriminator};
+use anchor_lang::{AccountDeserialize, Discriminator};
 use proptest::prelude::*;
 
 use crate::state::{
     compute_vote_leaf, verify_vote_proof, GovernanceConfig, ProgramRegistry, ProposalAccount,
     VoteRecord, ExecutionRecord,
 };
-
-fn bytes<T: AccountSerialize>(v: &T) -> Vec<u8> {
-    let mut buf = Vec::new();
-    v.try_serialize(&mut buf).unwrap();
-    buf
-}
 
 #[test]
 fn discriminators_pairwise_distinct() {

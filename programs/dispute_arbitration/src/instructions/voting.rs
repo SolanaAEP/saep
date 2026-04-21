@@ -66,7 +66,7 @@ pub fn commit_vote_handler(
 
     let signer = ctx.accounts.arbitrator_signer.key();
     require!(
-        dc.arbitrators.iter().any(|a| *a == signer),
+        dc.arbitrators.contains(&signer),
         DisputeArbitrationError::ArbitratorNotSelected
     );
 

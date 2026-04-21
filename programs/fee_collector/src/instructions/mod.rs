@@ -1,3 +1,5 @@
+#![allow(ambiguous_glob_reexports)]
+
 pub mod agent_hook_allowlist;
 pub mod claim_staker;
 pub mod commit_distribution;
