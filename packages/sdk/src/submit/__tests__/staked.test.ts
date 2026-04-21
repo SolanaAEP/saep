@@ -96,6 +96,42 @@ describe('clampPriorityFee', () => {
   it('floors negative to zero', () => {
     expect(clampPriorityFee(-50, {})).toBe(0);
   });
+  it('passes through positive fractional estimate with no floor/cap', () => {
+    expect(clampPriorityFee(99.1, {})).toBe(100);
+  });
+  it('applies both floor and cap when both are configured', () => {
+    expect(clampPriorityFee(10, { floor: 100, cap: 1_000 })).toBe(100);
+    expect(clampPriorityFee(5_000, { floor: 100, cap: 1_000 })).toBe(1_000);
+  });
+});
+
+describe('hasComputeBudgetIx', () => {
+  it('ignores instructions from other programs', () => {
+    const tx = buildTransferTx();
+    expect(hasComputeBudgetIx(tx)).toEqual({ price: false, limit: false });
+  });
+
+  it('ignores compute-budget ixs with unrecognized tag bytes', () => {
+    const tx = buildTransferTx();
+    tx.instructions = [
+      {
+        programId: ComputeBudgetProgram.programId,
+        keys: [],
+        data: Buffer.from([7]),
+      },
+      ...tx.instructions,
+    ];
+    expect(hasComputeBudgetIx(tx)).toEqual({ price: false, limit: false });
+  });
+
+  it('detects an existing setComputeUnitLimit', () => {
+    const tx = buildTransferTx();
+    tx.instructions = [
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }),
+      ...tx.instructions,
+    ];
+    expect(hasComputeBudgetIx(tx)).toEqual({ price: false, limit: true });
+  });
 });
 
 describe('getHeliusPriorityFeeEstimate', () => {
@@ -132,6 +168,70 @@ describe('getHeliusPriorityFeeEstimate', () => {
     await expect(
       getHeliusPriorityFeeEstimate('https://x', new Uint8Array([1]), 'Medium', fetchImpl),
     ).rejects.toThrow(/http 403/);
+  });
+
+  it('throws when body omits priorityFeeEstimate entirely', async () => {
+    const fetchImpl = fakeFetch(() =>
+      jsonResponse({ jsonrpc: '2.0', id: 'priority-fee', result: {} }),
+    );
+    await expect(
+      getHeliusPriorityFeeEstimate('https://x', new Uint8Array([1]), 'Medium', fetchImpl),
+    ).rejects.toMatchObject({
+      name: 'HeliusEstimateUnavailable',
+      message: /missing priorityFeeEstimate/,
+    });
+  });
+
+  it('throws when priorityFeeEstimate is non-finite', async () => {
+    const fetchImpl = fakeFetch(() =>
+      jsonResponse({
+        jsonrpc: '2.0',
+        id: 'priority-fee',
+        result: { priorityFeeEstimate: Number.POSITIVE_INFINITY },
+      }),
+    );
+    await expect(
+      getHeliusPriorityFeeEstimate('https://x', new Uint8Array([1]), 'Medium', fetchImpl),
+    ).rejects.toBeInstanceOf(HeliusEstimateUnavailable);
+  });
+
+  it('defaults priorityLevel to Medium when caller omits it', async () => {
+    const fetchImpl = fakeFetch(() =>
+      jsonResponse({ jsonrpc: '2.0', id: 'priority-fee', result: { priorityFeeEstimate: 10 } }),
+    );
+    const est = await getHeliusPriorityFeeEstimate(
+      'https://x',
+      new Uint8Array([1]),
+      undefined,
+      fetchImpl,
+    );
+    expect(est.level).toBe('Medium');
+    const body = JSON.parse(
+      (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![1]!.body as string,
+    );
+    expect(body.params[0].options.priorityLevel).toBe('Medium');
+  });
+
+  it('falls back to btoa path when global Buffer is undefined', async () => {
+    const fetchImpl = fakeFetch(() =>
+      jsonResponse({ jsonrpc: '2.0', id: 'priority-fee', result: { priorityFeeEstimate: 1 } }),
+    );
+    const realBuffer = (globalThis as { Buffer?: unknown }).Buffer;
+    try {
+      (globalThis as { Buffer?: unknown }).Buffer = undefined;
+      await getHeliusPriorityFeeEstimate(
+        'https://x',
+        new Uint8Array([0x41, 0x42, 0x43]),
+        'Low',
+        fetchImpl,
+      );
+      const body = JSON.parse(
+        (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![1]!.body as string,
+      );
+      expect(body.params[0].transaction).toBe('QUJD');
+    } finally {
+      (globalThis as { Buffer?: unknown }).Buffer = realBuffer;
+    }
   });
 });
 
@@ -222,5 +322,48 @@ describe('StakedRpcSubmitter', () => {
   it('uses pubkey-typed sender (sanity that PublicKey serialization survives)', () => {
     const pk = new PublicKey('11111111111111111111111111111112');
     expect(pk.toBase58()).toMatch(/^1+/);
+  });
+
+  it('throws when rpc body has neither error nor result', async () => {
+    const fetchImpl = fakeFetch(() => jsonResponse({ jsonrpc: '2.0', id: 'staked-send' }));
+    const submitter = new StakedRpcSubmitter({
+      stakedUrl: 'https://staked.example',
+      retries: 0,
+      fetchImpl,
+    });
+    await expect(submitter.submit(buildTransferTx())).rejects.toThrow(/no signature/);
+  });
+
+  it('throws with default rpc-error message when body.error.message is missing', async () => {
+    const fetchImpl = fakeFetch(() =>
+      jsonResponse({ jsonrpc: '2.0', id: 'staked-send', error: {} }),
+    );
+    const submitter = new StakedRpcSubmitter({
+      stakedUrl: 'https://staked.example',
+      retries: 0,
+      fetchImpl,
+    });
+    await expect(submitter.submit(buildTransferTx())).rejects.toThrow(/unknown/);
+  });
+
+  it('forwards maxRetries and preflightCommitment to the staked rpc body', async () => {
+    const sig = '6'.repeat(88);
+    const fetchImpl = fakeFetch(() =>
+      jsonResponse({ jsonrpc: '2.0', id: 'staked-send', result: sig }),
+    );
+    const submitter = new StakedRpcSubmitter({
+      stakedUrl: 'https://staked.example',
+      retries: 0,
+      fetchImpl,
+    });
+    await submitter.submit(buildTransferTx(), {
+      maxRetries: 4,
+      preflightCommitment: 'confirmed',
+    });
+    const body = JSON.parse(
+      (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![1]!.body as string,
+    );
+    expect(body.params[1].maxRetries).toBe(4);
+    expect(body.params[1].preflightCommitment).toBe('confirmed');
   });
 });

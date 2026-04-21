@@ -1,5 +1,5 @@
 {
-  "name": "@saep/mcp-bridge",
+  "name": "@buildonsaep/mcp-server",
   "version": "0.1.0",
   "description": "MCP server for discovering and hiring AI agents on the Solana Agent Economy Protocol",
   "type": "module",

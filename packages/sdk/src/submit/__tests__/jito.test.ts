@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Keypair, SystemProgram, Transaction } from '@solana/web3.js';
+import {
+  Keypair,
+  MessageV0,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  VersionedTransaction,
+} from '@solana/web3.js';
 import {
   JitoBundleSubmitter,
   JitoError,
@@ -33,6 +40,24 @@ function buildTx(): Transaction {
   );
   tx.recentBlockhash = '11111111111111111111111111111111';
   tx.feePayer = from.publicKey;
+  return tx;
+}
+
+function buildVersionedTx(): VersionedTransaction {
+  const payer = Keypair.generate();
+  const msg = MessageV0.compile({
+    payerKey: payer.publicKey,
+    recentBlockhash: '11111111111111111111111111111111',
+    instructions: [
+      SystemProgram.transfer({
+        fromPubkey: payer.publicKey,
+        toPubkey: new PublicKey('11111111111111111111111111111112'),
+        lamports: 1,
+      }),
+    ],
+  });
+  const tx = new VersionedTransaction(msg);
+  tx.sign([payer]);
   return tx;
 }
 
@@ -178,6 +203,195 @@ describe('JitoBundleSubmitter', () => {
       submitter.submitBundle([buildTx(), buildTx(), buildTx(), buildTx(), buildTx(), buildTx()]),
     ).rejects.toThrow(/max 5/);
   });
+
+  it('sends x-jito-auth header when authToken configured and encodes VersionedTransaction', async () => {
+    const fetchImpl = fakeFetch(() =>
+      jsonResponse({ jsonrpc: '2.0', id: 1, result: 'bundle-v0' }),
+    );
+    const submitter = new JitoBundleSubmitter({
+      blockEngineUrl: 'https://bl.example/',
+      retries: 0,
+      authToken: 'secret-token',
+      fetchImpl,
+    });
+    const id = await submitter.submitBundle([buildVersionedTx()]);
+    expect(id).toBe('bundle-v0');
+    const [, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    expect((init!.headers as Record<string, string>)['x-jito-auth']).toBe('secret-token');
+  });
+
+  it('rejects construction without blockEngineUrl', () => {
+    expect(() => new JitoBundleSubmitter({ blockEngineUrl: '' })).toThrow(/blockEngineUrl required/);
+  });
+
+  it('wraps fetch network error as JitoError network', async () => {
+    const fetchImpl = fakeFetch(() => {
+      throw new TypeError('connection refused');
+    });
+    const submitter = new JitoBundleSubmitter({
+      blockEngineUrl: 'https://bl.example',
+      retries: 0,
+      fetchImpl,
+    });
+    await expect(submitter.submitBundle([buildTx()])).rejects.toMatchObject({
+      name: 'JitoError',
+      kind: 'network',
+    });
+  });
+
+  it('wraps 500-class errors as JitoError server with response text', async () => {
+    const fetchImpl = fakeFetch(() => new Response('internal-boom', { status: 503 }));
+    const submitter = new JitoBundleSubmitter({
+      blockEngineUrl: 'https://bl.example',
+      retries: 0,
+      fetchImpl,
+    });
+    await expect(submitter.submitBundle([buildTx()])).rejects.toMatchObject({
+      kind: 'server',
+      status: 503,
+    });
+  });
+
+  it('wraps rpc-level body.error as JitoError rpc', async () => {
+    const fetchImpl = fakeFetch(() =>
+      jsonResponse({ jsonrpc: '2.0', id: 1, error: { message: 'sim failed' } }),
+    );
+    const submitter = new JitoBundleSubmitter({
+      blockEngineUrl: 'https://bl.example',
+      retries: 0,
+      fetchImpl,
+    });
+    await expect(submitter.submitBundle([buildTx()])).rejects.toMatchObject({
+      kind: 'rpc',
+      message: 'sim failed',
+    });
+  });
+
+  it('wraps rpc-level body.error with default message when missing', async () => {
+    const fetchImpl = fakeFetch(() => jsonResponse({ jsonrpc: '2.0', id: 1, error: {} }));
+    const submitter = new JitoBundleSubmitter({
+      blockEngineUrl: 'https://bl.example',
+      retries: 0,
+      fetchImpl,
+    });
+    await expect(submitter.submitBundle([buildTx()])).rejects.toThrow(/rpc error/);
+  });
+
+  it('falls back to empty string when response.text throws (safeText catch)', async () => {
+    const brokenText = new Response(null, { status: 500 });
+    Object.defineProperty(brokenText, 'text', {
+      value: async () => {
+        throw new Error('stream gone');
+      },
+    });
+    const fetchImpl = fakeFetch(() => brokenText);
+    const submitter = new JitoBundleSubmitter({
+      blockEngineUrl: 'https://bl.example',
+      retries: 0,
+      fetchImpl,
+    });
+    await expect(submitter.submitBundle([buildTx()])).rejects.toMatchObject({
+      kind: 'server',
+      status: 500,
+    });
+  });
+
+  it('parses Invalid status as Pending and unknown status as Unknown', async () => {
+    const responses = [
+      jsonResponse({
+        jsonrpc: '2.0',
+        id: 1,
+        result: { value: [{ bundle_id: 'b', status: 'Invalid' }] },
+      }),
+      jsonResponse({
+        jsonrpc: '2.0',
+        id: 1,
+        result: { value: [{ bundle_id: 'b', status: 'GibberishState' }] },
+      }),
+      jsonResponse({ jsonrpc: '2.0', id: 1, result: { value: [] } }),
+    ];
+    let idx = 0;
+    const fetchImpl = fakeFetch(() => responses[idx++]!);
+    const submitter = new JitoBundleSubmitter({
+      blockEngineUrl: 'https://bl.example',
+      retries: 0,
+      fetchImpl,
+    });
+    expect(await submitter.getInflightBundleStatus('b')).toEqual({ state: 'Pending' });
+    expect(await submitter.getInflightBundleStatus('b')).toEqual({ state: 'Unknown' });
+    expect(await submitter.getInflightBundleStatus('b')).toEqual({ state: 'Unknown' });
+  });
+
+  it('fills missing slot/err.msg with defaults on Landed/Failed', async () => {
+    const responses = [
+      jsonResponse({
+        jsonrpc: '2.0',
+        id: 1,
+        result: { value: [{ bundle_id: 'b', status: 'Landed' }] },
+      }),
+      jsonResponse({
+        jsonrpc: '2.0',
+        id: 1,
+        result: { value: [{ bundle_id: 'b', status: 'Failed' }] },
+      }),
+    ];
+    let idx = 0;
+    const fetchImpl = fakeFetch(() => responses[idx++]!);
+    const submitter = new JitoBundleSubmitter({
+      blockEngineUrl: 'https://bl.example',
+      retries: 0,
+      fetchImpl,
+    });
+    expect(await submitter.getInflightBundleStatus('b')).toEqual({ state: 'Landed', slot: 0 });
+    expect(await submitter.getInflightBundleStatus('b')).toEqual({
+      state: 'Failed',
+      reason: 'unknown',
+    });
+  });
+
+  it('wraps non-JitoError thrown inside getInflightBundleStatus as JitoError network', async () => {
+    const fetchImpl = fakeFetch(() => {
+      throw new RangeError('dns fail');
+    });
+    const submitter = new JitoBundleSubmitter({
+      blockEngineUrl: 'https://bl.example',
+      retries: 0,
+      fetchImpl,
+    });
+    await expect(submitter.getInflightBundleStatus('b')).rejects.toMatchObject({
+      name: 'JitoError',
+      kind: 'network',
+    });
+  });
+
+  it('rethrows JitoError from inflight without rewrapping', async () => {
+    const fetchImpl = fakeFetch(() => new Response('nope', { status: 400 }));
+    const submitter = new JitoBundleSubmitter({
+      blockEngineUrl: 'https://bl.example',
+      retries: 0,
+      fetchImpl,
+    });
+    await expect(submitter.getInflightBundleStatus('b')).rejects.toMatchObject({
+      kind: 'client',
+      status: 400,
+    });
+  });
+
+  it('getTipAccounts maps result to { pubkey } and defaults to [] when null', async () => {
+    const responses = [
+      jsonResponse({ jsonrpc: '2.0', id: 1, result: ['tipA', 'tipB'] }),
+      jsonResponse({ jsonrpc: '2.0', id: 1, result: null }),
+    ];
+    let idx = 0;
+    const fetchImpl = fakeFetch(() => responses[idx++]!);
+    const submitter = new JitoBundleSubmitter({
+      blockEngineUrl: 'https://bl.example',
+      retries: 0,
+      fetchImpl,
+    });
+    expect(await submitter.getTipAccounts()).toEqual([{ pubkey: 'tipA' }, { pubkey: 'tipB' }]);
+    expect(await submitter.getTipAccounts()).toEqual([]);
+  });
 });
 
 describe('submitBundleOrFallback', () => {
@@ -206,5 +420,50 @@ describe('submitBundleOrFallback', () => {
     await expect(
       submitBundleOrFallback(submitter, [buildTx()], { allowFallback: false }),
     ).rejects.toBeInstanceOf(JitoError);
+  });
+
+  it('returns { bundleId, fallback: false } on success without invoking sendRaw', async () => {
+    const submitter = new JitoBundleSubmitter({
+      blockEngineUrl: 'https://bl.example',
+      retries: 0,
+      fetchImpl: fakeFetch(() =>
+        jsonResponse({ jsonrpc: '2.0', id: 1, result: 'bundle-happy' }),
+      ),
+    });
+    const sendRaw = vi.fn(async () => 'unused');
+    const out = await submitBundleOrFallback(submitter, [buildTx()], {
+      allowFallback: true,
+      sendRaw,
+    });
+    expect(out).toEqual({ bundleId: 'bundle-happy', fallback: false });
+    expect(sendRaw).not.toHaveBeenCalled();
+  });
+
+  it('rethrows when allowFallback=true but sendRaw is absent', async () => {
+    const submitter = new JitoBundleSubmitter({
+      blockEngineUrl: 'https://bl.example',
+      retries: 0,
+      fetchImpl: fakeFetch(() => new Response('down', { status: 503 })),
+    });
+    await expect(
+      submitBundleOrFallback(submitter, [buildTx()], { allowFallback: true }),
+    ).rejects.toBeInstanceOf(JitoError);
+  });
+
+  it('serializes VersionedTransaction via .serialize() on the fallback path', async () => {
+    const submitter = new JitoBundleSubmitter({
+      blockEngineUrl: 'https://bl.example',
+      retries: 0,
+      fetchImpl: fakeFetch(() => new Response('down', { status: 503 })),
+    });
+    const sendRaw = vi.fn(async (raw: Uint8Array) => `sig-${raw.length}`);
+    const vtx = buildVersionedTx();
+    const out = await submitBundleOrFallback(submitter, [vtx], {
+      allowFallback: true,
+      sendRaw,
+    });
+    expect(out.fallback).toBe(true);
+    expect(sendRaw).toHaveBeenCalledTimes(1);
+    expect(out.signatures?.[0]).toMatch(/^sig-\d+$/);
   });
 });
