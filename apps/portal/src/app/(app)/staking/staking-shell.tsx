@@ -1138,7 +1138,7 @@ function stageLabel(stage: ProgramStage) {
   if (stage === 'not-deployed') return 'not deployed';
   if (stage === 'deployed') return 'program only';
   if (stage === 'configured') return 'config live';
-  return 'pool ready';
+  return 'live';
 }
 
 function stageTone(stage: ProgramStage): 'lime' | 'amber' | 'danger' | 'muted' {

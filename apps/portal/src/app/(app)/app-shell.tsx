@@ -42,12 +42,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <img src="/logomark-bw.svg" alt="" aria-hidden="true" className="h-12 w-12 shrink-0" />
               SAEP
             </Link>
-            <nav className="mt-20 flex flex-col gap-7 md:gap-8" aria-label="App">
+            <nav className="mt-20 flex flex-col gap-8 md:gap-9" aria-label="App">
               {NAV.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`font-mono text-[20px] uppercase tracking-[0.18em] transition-colors ${
+                  className={`block w-full max-w-[185px] font-mono text-[14px] leading-[1.35] uppercase tracking-[0.18em] transition-colors ${
                     pathname === item.href || pathname?.startsWith(`${item.href}/`)
                       ? 'text-ink'
                       : 'text-ink/58 hover:text-ink/78'

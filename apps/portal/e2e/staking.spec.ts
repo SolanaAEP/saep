@@ -5,7 +5,7 @@ test.describe('staking surface', () => {
     await page.goto('/staking');
 
     await expect(page.getByTestId('staking-shell')).toBeVisible();
-    await expect(page.getByTestId('staking-stage-badge')).toHaveText(/pool ready/i);
+    await expect(page.getByTestId('staking-stage-badge')).toHaveText(/^live$/i);
     await expect(page.getByTestId('staking-available-balance')).toBeVisible();
     await expect(page.getByTestId('staking-program-status')).toContainText('Deployed');
     await expect(page.getByTestId('staking-pool-status')).toContainText(/live/i);
@@ -15,6 +15,7 @@ test.describe('staking surface', () => {
     await expect(page.getByText('LIVE STAKING // MAINNET')).toHaveCount(0);
     await expect(page.getByText(/App cluster: devnet · Staking: mainnet-beta/i)).toHaveCount(0);
     await expect(page.getByText(/mainnet-beta/i)).toHaveCount(0);
+    await expect(page.getByText(/pool ready/i)).toHaveCount(0);
     await expect(page.getByRole('heading', { name: /stake saep/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /select wallet/i })).toBeVisible();
     await expect(page.getByText('Loading session…')).toHaveCount(0);
