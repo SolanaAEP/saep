@@ -17,10 +17,11 @@ class FakeProvider implements ComputeProvider {
   async reserve(req: LeaseRequest): Promise<LeaseReservation> {
     const leaseId = `${this.name}-lease-${req.gpuHours}`;
     this.statuses.set(leaseId, 'reserved');
+    const nowUnix = Math.floor(Date.now() / 1000);
     return {
       leaseId,
       gpuHours: req.gpuHours,
-      expiresAt: 1_700_000_000,
+      expiresAt: nowUnix + req.durationSecs,
       pricedUsdMicro: 50_000_000,
     };
   }
@@ -48,6 +49,7 @@ describe('compute-broker server', () => {
   let app: FastifyInstance;
   let ionet: FakeProvider;
   let akash: FakeProvider;
+  let nextGpuHours = 20;
 
   beforeAll(async () => {
     ionet = new FakeProvider('ionet');
@@ -62,6 +64,43 @@ describe('compute-broker server', () => {
   afterAll(async () => {
     await app.close();
   });
+
+  async function requestBond(
+    payload: Partial<{
+      agent_did: string;
+      provider: 'ionet' | 'akash';
+      gpu_hours: number;
+      duration_secs: number;
+    }> = {},
+  ) {
+    const agent_did = payload.agent_did ?? '11111111111111111111111111111111';
+    const provider = payload.provider ?? 'ionet';
+    const gpu_hours = payload.gpu_hours ?? nextGpuHours++;
+    const duration_secs = payload.duration_secs ?? 7 * 24 * 3600;
+    const res = await app.inject({
+      method: 'POST',
+      url: '/bonds/request',
+      payload: {
+        agent_did,
+        provider,
+        gpu_hours,
+        duration_secs,
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    return {
+      agent_did,
+      provider,
+      body: res.json() as {
+        lease_id: string;
+        attestation_sig: string;
+        broker_pubkey: string;
+        gpu_hours: number;
+        expires_at: number;
+        slashable_until: number;
+      },
+    };
+  }
 
   it('healthz reports key loaded', async () => {
     const res = await app.inject({ method: 'GET', url: '/healthz' });
@@ -96,24 +135,7 @@ describe('compute-broker server', () => {
   });
 
   it('bonds/request returns attestation that verifies under broker pubkey', async () => {
-    const res = await app.inject({
-      method: 'POST',
-      url: '/bonds/request',
-      payload: {
-        agent_did: '11111111111111111111111111111111',
-        provider: 'ionet',
-        gpu_hours: 4,
-        duration_secs: 7 * 24 * 3600,
-      },
-    });
-    expect(res.statusCode).toBe(200);
-    const body = res.json() as {
-      lease_id: string;
-      attestation_sig: string;
-      broker_pubkey: string;
-      gpu_hours: number;
-      expires_at: number;
-    };
+    const { body } = await requestBond();
     const ok = await verify(
       {
         agent_did: '11111111111111111111111111111111',
@@ -126,6 +148,39 @@ describe('compute-broker server', () => {
       body.broker_pubkey,
     );
     expect(ok).toBe(true);
+  });
+
+  it('bonds/verify validates the attestation payload over HTTP', async () => {
+    const { agent_did, provider, body } = await requestBond({ gpu_hours: 6 });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/bonds/verify',
+      payload: {
+        agent_did,
+        provider,
+        lease_id: body.lease_id,
+        gpu_hours: body.gpu_hours,
+        expires_at: body.expires_at,
+        attestation_sig: body.attestation_sig,
+        broker_pubkey: body.broker_pubkey,
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ valid: true });
+  });
+
+  it('bonds/:id exposes tracked bond state', async () => {
+    const { body } = await requestBond({ gpu_hours: 3 });
+    const res = await app.inject({
+      method: 'GET',
+      url: `/bonds/${body.lease_id}`,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      lease_id: body.lease_id,
+      status: 'reserved',
+      provider_status: 'reserved',
+    });
   });
 
   it('bonds/request returns 503 without broker key', async () => {
@@ -165,7 +220,8 @@ describe('compute-broker server', () => {
     const agentKey = hexToKey('cd'.repeat(32));
     const agentPk = await getPublicKeyAsync(agentKey);
     const agentDid = bs58.encode(agentPk);
-    const leaseId = 'ionet-lease-4';
+    const { body } = await requestBond({ agent_did: agentDid });
+    const leaseId = body.lease_id;
     const cancelMsg = new TextEncoder().encode(
       JSON.stringify({ action: 'cancel', lease_id: leaseId, agent_did: agentDid }),
     );
@@ -181,6 +237,112 @@ describe('compute-broker server', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ lease_id: leaseId, status: 'cancelled' });
+
+    const tracked = await app.inject({ method: 'GET', url: `/bonds/${leaseId}` });
+    expect(tracked.json()).toMatchObject({ status: 'cancelled' });
+  });
+
+  it('bonds/lock binds a reservation to one task and rejects rebinding', async () => {
+    const { agent_did, provider, body } = await requestBond({ gpu_hours: 9 });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/bonds/lock',
+      payload: {
+        lease_id: body.lease_id,
+        provider,
+        agent_did,
+        task_id: 'task-alpha',
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      lease_id: body.lease_id,
+      task_id: 'task-alpha',
+      status: 'locked',
+      provider_status: 'active',
+    });
+    expect(ionet.calls).toContainEqual({ op: 'activate', leaseId: body.lease_id });
+
+    const second = await app.inject({
+      method: 'POST',
+      url: '/bonds/lock',
+      payload: {
+        lease_id: body.lease_id,
+        provider,
+        agent_did,
+        task_id: 'task-beta',
+      },
+    });
+    expect(second.statusCode).toBe(409);
+  });
+
+  it('bonds/release reclaims the provider lease after task completion', async () => {
+    const { agent_did, provider, body } = await requestBond({ gpu_hours: 10 });
+    await app.inject({
+      method: 'POST',
+      url: '/bonds/lock',
+      payload: {
+        lease_id: body.lease_id,
+        provider,
+        agent_did,
+        task_id: 'task-release',
+      },
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/bonds/release',
+      payload: {
+        lease_id: body.lease_id,
+        provider,
+        agent_did,
+        task_id: 'task-release',
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      lease_id: body.lease_id,
+      status: 'released',
+      provider_status: 'reclaimed',
+    });
+    expect(ionet.calls).toContainEqual({ op: 'reclaim', leaseId: body.lease_id });
+  });
+
+  it('bonds/slash marks the bond terminal and records the reason', async () => {
+    const { agent_did, provider, body } = await requestBond({
+      provider: 'akash',
+      gpu_hours: 11,
+    });
+    await app.inject({
+      method: 'POST',
+      url: '/bonds/lock',
+      payload: {
+        lease_id: body.lease_id,
+        provider,
+        agent_did,
+        task_id: 'task-slash',
+      },
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/bonds/slash',
+      payload: {
+        lease_id: body.lease_id,
+        provider,
+        agent_did,
+        task_id: 'task-slash',
+        reason: 'missed deadline',
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      lease_id: body.lease_id,
+      status: 'slashed',
+      status_reason: 'missed deadline',
+      provider_status: 'reclaimed',
+    });
+    expect(akash.calls).toContainEqual({ op: 'reclaim', leaseId: body.lease_id });
   });
 
   it('leases/activate activates the selected provider lease', async () => {
@@ -212,21 +374,22 @@ describe('compute-broker server', () => {
   });
 
   it('leases/expire-sweep reclaims expired leases and skips active windows', async () => {
+    const tracked = await requestBond({ provider: 'ionet', gpu_hours: 12 });
     const res = await app.inject({
       method: 'POST',
       url: '/leases/expire-sweep',
       payload: {
-        now_unix: 1_700_000_100,
+        now_unix: tracked.body.slashable_until + 1,
         leases: [
           {
-            lease_id: 'ionet-expired',
+            lease_id: tracked.body.lease_id,
             provider: 'ionet',
-            slashable_until: 1_700_000_000,
+            slashable_until: tracked.body.slashable_until,
           },
           {
             lease_id: 'akash-still-live',
             provider: 'akash',
-            slashable_until: 1_700_000_500,
+            slashable_until: tracked.body.slashable_until + 500,
           },
         ],
       },
@@ -237,6 +400,8 @@ describe('compute-broker server', () => {
       skipped: 1,
       errors: 0,
     });
-    expect(ionet.calls).toContainEqual({ op: 'reclaim', leaseId: 'ionet-expired' });
+    expect(ionet.calls).toContainEqual({ op: 'reclaim', leaseId: tracked.body.lease_id });
+    const expired = await app.inject({ method: 'GET', url: `/bonds/${tracked.body.lease_id}` });
+    expect(expired.json()).toMatchObject({ status: 'expired' });
   });
 });

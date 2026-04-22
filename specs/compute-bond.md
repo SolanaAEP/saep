@@ -134,6 +134,12 @@ Category bond requirements per capability bit maintained in `capability_registry
 ## Phased rollout
 
 - **M2**: post_compute_bond + broker service + manual lock/slash; no task_market enforcement yet.
+  Live now in the broker:
+  - reservation + attestation signing
+  - attestation verification endpoint
+  - single-bind task lock tracking
+  - release/slash/cancel/expiry terminal states with provider reclaim hooks
+  - optional file-backed broker state persistence
 - **M3**: capability-level enforcement, dispute integration, Akash fallback.
 - **M4**: auction-based pricing for bond requirements per category.
 

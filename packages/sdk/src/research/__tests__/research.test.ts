@@ -4,9 +4,11 @@ import {
   DEFAULT_YIELD_STRATEGIES,
   circuitArtifactStem,
   circuitRuntimeId,
+  transitionComputeBond,
   computeDeployableUsdMicro,
   deriveCrossChainState,
   validateCircuitCatalogEntry,
+  validateComputeBondRecord,
   validateCrossChainIntent,
   validateTreasuryYieldPolicy,
 } from '../index.js';
@@ -78,5 +80,40 @@ describe('research surfaces', () => {
     expect(circuitArtifactStem(liveCircuit)).toBe('task-completion-v1');
     expect(circuitRuntimeId(liveCircuit)).toBe('task_completion.v1');
     expect(validateCircuitCatalogEntry(liveCircuit)).toEqual([]);
+  });
+
+  it('validates and transitions compute bonds through the single-bind lifecycle', () => {
+    const base = {
+      agent_did: '11111111111111111111111111111111',
+      provider: 'ionet' as const,
+      lease_id: 'lease-1',
+      gpu_hours: 4,
+      expires_at: 2_000,
+      attestation_sig: 'sig',
+      broker_pubkey: 'pub',
+      reserved_price_usd_micro: 50_000_000,
+      slashable_until: 3_000,
+      task_id: null,
+      status: 'reserved' as const,
+      created_at_ms: 1_000,
+      updated_at_ms: 1_000,
+      status_reason: null,
+    };
+    expect(validateComputeBondRecord(base)).toEqual([]);
+
+    const locked = transitionComputeBond(base, {
+      type: 'lock',
+      task_id: 'task-123',
+      now_ms: 1_500,
+    });
+    expect(locked.status).toBe('locked');
+    expect(locked.task_id).toBe('task-123');
+
+    const released = transitionComputeBond(locked, {
+      type: 'release',
+      task_id: 'task-123',
+      now_ms: 1_700,
+    });
+    expect(released.status).toBe('released');
   });
 });

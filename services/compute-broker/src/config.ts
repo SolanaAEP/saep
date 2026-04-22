@@ -11,6 +11,8 @@ const EnvSchema = z.object({
   AKASH_WALLET: z.string().optional(),
   MIN_BOND_USD_MICRO: z.coerce.number().int().positive().default(10_000_000),
   MAX_BOND_DURATION_SECS: z.coerce.number().int().positive().default(14 * 24 * 3600),
+  BOND_SLASH_WINDOW_SECS: z.coerce.number().int().positive().default(24 * 3600),
+  COMPUTE_BOND_STORE_PATH: z.string().optional(),
 });
 
 export type Config = {
@@ -24,6 +26,8 @@ export type Config = {
   akashWallet: string | undefined;
   minBondMicro: number;
   maxBondDurationSecs: number;
+  bondSlashWindowSecs: number;
+  computeBondStorePath: string | undefined;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -39,5 +43,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     akashWallet: parsed.AKASH_WALLET,
     minBondMicro: parsed.MIN_BOND_USD_MICRO,
     maxBondDurationSecs: parsed.MAX_BOND_DURATION_SECS,
+    bondSlashWindowSecs: parsed.BOND_SLASH_WINDOW_SECS,
+    computeBondStorePath: parsed.COMPUTE_BOND_STORE_PATH,
   };
 }
