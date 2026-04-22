@@ -34,15 +34,15 @@ export function MarketplaceShell({ initialAgents }: Props) {
 
   return (
     <>
-      <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
+      <div className="grid gap-6 xl:grid-cols-[260px_1fr]">
         <aside className="flex flex-col gap-6">
           <CapabilityFilterPanel
             selected={selectedBits}
             onToggle={toggleBit}
             onClear={clearFilter}
           />
-          <div className="font-mono text-[10px] text-mute border-t border-ink/10 pt-3 mt-1">
-            {filtered.length} RESULT{filtered.length !== 1 ? 'S' : ''}
+          <div className="border border-ink/10 bg-paper px-4 py-3 font-mono text-[11px] uppercase tracking-[0.08em] text-ink/70">
+            {filtered.length} result{filtered.length !== 1 ? 's' : ''}
           </div>
         </aside>
 

@@ -1,7 +1,5 @@
 'use client';
 
-import { GlitchComposition, GlitchButton } from '@saep/ui';
-
 const STEPS = [
   { n: '01', label: 'ORCHESTRATOR POSTS TASK', desc: 'An agent posts a composite task to the A2A market' },
   { n: '02', label: 'SUB-AGENTS BID', desc: 'Specialized agents bid on individual subtasks' },
@@ -16,62 +14,63 @@ const STATS = [
 
 export function A2APanel() {
   return (
-    <div className="border border-ink/10 overflow-hidden">
-      <div className="relative h-14 overflow-hidden border-b border-ink/10">
-        <GlitchComposition seed="a2a-hiring" className="absolute inset-0 opacity-30" />
-        <div className="relative px-4 py-2 flex flex-col justify-center h-full">
-          <span className="font-mono text-[10px] text-mute uppercase tracking-widest">
-            Protocol Layer
-          </span>
-          <span className="font-mono text-xs text-ink uppercase tracking-widest">
-            Agent-to-Agent Protocol
-          </span>
+    <section className="border border-ink/10 bg-paper">
+      <div className="border-b border-ink/10 px-5 py-4 md:px-6">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+          Protocol layer
         </div>
+        <h2 className="mt-1 font-display text-[22px] tracking-[-0.01em]">Agent-to-agent flows</h2>
+        <p className="mt-1 text-sm text-ink/60">
+          A simple view of how orchestrators, sub-agents, and proof-gated settlement fit together.
+        </p>
       </div>
 
-      <div className="px-4 py-5 flex flex-col gap-5">
+      <div className="px-5 py-5 md:px-6">
         <div>
-          <span className="font-mono text-[9px] text-mute uppercase tracking-widest">
-            How It Works
-          </span>
-          <div className="grid sm:grid-cols-3 gap-3 mt-3">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+            How it works
+          </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
             {STEPS.map((step, i) => (
-              <div key={step.n} className="border border-ink/10 p-3 flex flex-col gap-2">
+              <div key={step.n} className="border border-ink/10 bg-paper-2 px-4 py-4">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-[9px] text-lime">{step.n}</span>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-mute">{step.n}</span>
                   {i < STEPS.length - 1 && (
-                    <span className="font-mono text-[9px] text-ink/20 hidden sm:inline">→</span>
+                    <span className="font-mono text-[10px] text-ink/20 hidden md:inline">→</span>
                   )}
                 </div>
-                <span className="font-mono text-[10px] text-ink uppercase tracking-wide leading-tight">
+                <div className="mt-3 font-mono text-[11px] uppercase tracking-[0.08em] text-ink">
                   {step.label}
-                </span>
-                <span className="font-mono text-[9px] text-mute leading-relaxed">
-                  {step.desc}
-                </span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-ink/60">{step.desc}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="border-t border-ink/10 pt-4">
-          <span className="font-mono text-[9px] text-mute uppercase tracking-widest">
-            Stats <span className="text-ink/30">[MOCK]</span>
-          </span>
-          <div className="grid grid-cols-3 gap-3 mt-3">
+        <div className="mt-6 border-t border-ink/10 pt-5">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+            Snapshot <span className="text-ink/30">[mock]</span>
+          </div>
+          <div className="mt-3 grid gap-0 border border-ink/10 md:grid-cols-3">
             {STATS.map((stat) => (
-              <div key={stat.label}>
-                <div className="font-mono text-[9px] text-mute uppercase">{stat.label}</div>
-                <div className="font-mono text-[11px] text-ink">{stat.value}</div>
+              <div key={stat.label} className="border-b border-r border-ink/10 px-4 py-3 last:border-r-0 md:border-b-0">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-mute">{stat.label}</div>
+                <div className="mt-2 font-display text-[24px] leading-none tracking-[-0.01em] text-ink">
+                  {stat.value}
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        <GlitchButton as="a" href="/tasks?filter=a2a" variant="outline" size="sm" className="w-full text-center">
-          EXPLORE A2A TASKS
-        </GlitchButton>
+        <a
+          href="/tasks?filter=a2a"
+          className="mt-6 inline-flex h-11 items-center justify-center border border-ink/15 px-4 font-mono text-[11px] uppercase tracking-[0.08em] text-ink/75 transition-colors hover:border-ink/35 hover:text-ink"
+        >
+          Explore A2A tasks
+        </a>
       </div>
-    </div>
+    </section>
   );
 }

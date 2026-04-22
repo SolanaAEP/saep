@@ -199,128 +199,161 @@ export function QuickHireModal({ agent, onClose }: Props) {
   }, [valid, publicKey, program, selectedMint, connection, taskDescription, deadlineHours, agent, mutate, paymentAmount]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/35 px-4" onClick={onClose}>
       <div
-        className="bg-background border border-ink/10 rounded-xl p-6 w-full max-w-md flex flex-col gap-4"
+        className="w-full max-w-xl border border-ink/10 bg-paper shadow-[0_24px_60px_rgba(0,0,0,0.16)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Quick hire</h2>
-          <button onClick={onClose} className="text-ink/50 hover:text-ink text-lg leading-none">
+        <header className="flex items-start justify-between gap-4 border-b border-ink/10 px-5 py-4 md:px-6">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+              Task market
+            </div>
+            <h2 className="mt-1 font-display text-[22px] tracking-[-0.01em]">Quick hire</h2>
+            <p className="mt-1 text-sm text-ink/60">
+              Create and fund a task for the selected agent in a single flow.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="font-mono text-[18px] leading-none text-ink/45 transition-colors hover:text-ink"
+          >
             &times;
           </button>
         </header>
 
-        <p className="text-xs text-ink/60">
-          Hiring <span className="font-mono text-ink">{agent.manifestUri || `${agent.did.slice(0, 12)}...`}</span>
-        </p>
-
-        {marketConfig?.paused && (
-          <p className="rounded bg-danger/10 px-3 py-2 text-xs text-danger">
-            The task market is currently paused on-chain. New hires are disabled until the market resumes.
+        <div className="flex flex-col gap-4 px-5 py-5 md:px-6">
+          <p className="text-sm text-ink/60">
+            Hiring{' '}
+            <span className="font-mono text-[12px] text-ink">
+              {agent.manifestUri || `${agent.did.slice(0, 12)}...`}
+            </span>
           </p>
-        )}
 
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-ink/70">Task description</span>
-          <textarea
-            value={taskDescription}
-            onChange={(e) => setTaskDescription(e.target.value)}
-            rows={3}
-            className="rounded border border-ink/20 bg-transparent px-3 py-2 text-sm focus:border-lime/60 focus:outline-none resize-none"
-            placeholder="Describe the task..."
-          />
-        </label>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-ink/70">Payment</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={paymentAmount}
-              onChange={(e) => setPaymentAmount(e.target.value)}
-              className="rounded border border-ink/20 bg-transparent px-3 py-2 text-sm font-mono focus:border-lime/60 focus:outline-none"
-              placeholder="0.00"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-ink/70">Payment mint</span>
-            <select
-              value={selectedMint}
-              onChange={(e) => setSelectedMint(e.target.value)}
-              className="rounded border border-ink/20 bg-transparent px-3 py-2 text-sm font-mono focus:border-lime/60 focus:outline-none"
-              disabled={!marketConfig || marketConfig.allowedPaymentMints.length === 0}
-            >
-              {!marketConfig?.allowedPaymentMints.length && (
-                <option value="">No allowed mints</option>
-              )}
-              {marketConfig?.allowedPaymentMints.map((mint: PublicKey) => {
-                const address = mint.toBase58();
-                return (
-                  <option key={address} value={address}>
-                    {mintLabel(address)}
-                  </option>
-                );
-              })}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-ink/70">Deadline (hours)</span>
-            <input
-              type="number"
-              min="1"
-              value={deadlineHours}
-              onChange={(e) => setDeadlineHours(e.target.value)}
-              className="rounded border border-ink/20 bg-transparent px-3 py-2 text-sm font-mono focus:border-lime/60 focus:outline-none"
-              placeholder="24"
-            />
-          </label>
-        </div>
-
-        <p className="text-[11px] text-ink/45">
-          Escrow is created and funded in one signature using the selected mint. Amount is interpreted with
-          {` ${selectedMintDecimals} `}
-          decimals for UI preview until the chain mint metadata is fetched.
-        </p>
-
-        {localError && (
-          <p className="text-xs text-danger bg-danger/10 rounded px-3 py-2">{localError}</p>
-        )}
-
-        {error && (
-          <p className="text-xs text-danger bg-danger/10 rounded px-3 py-2">{(error as Error).message}</p>
-        )}
-
-        {txSignature && (
-          <p className="text-xs text-lime bg-lime/10 rounded px-3 py-2">
-            Task created:{' '}
-            <a href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
-               target="_blank" rel="noopener noreferrer" className="underline font-mono">
-              {txSignature.slice(0, 12)}...
-            </a>
-          </p>
-        )}
-
-        <div className="flex gap-2 justify-end pt-2">
-          <button
-            onClick={onClose}
-            className="text-xs px-3 py-1.5 rounded border border-ink/20 text-ink/70 hover:border-ink/40"
-          >
-            {txSignature ? 'Close' : 'Cancel'}
-          </button>
-          {!txSignature && (
-            <button
-              onClick={handleSubmit}
-              disabled={!valid || isPending || !publicKey || marketConfig?.paused}
-              className="text-xs font-medium px-4 py-1.5 rounded bg-lime text-black hover:bg-lime/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              {isPending ? 'Signing...' : !publicKey ? 'Connect wallet' : 'Create + fund task'}
-            </button>
+          {marketConfig?.paused && (
+            <p className="border border-danger/30 bg-danger/5 px-3 py-3 text-sm text-danger">
+              The task market is currently paused on-chain. New hires are disabled until the market
+              resumes.
+            </p>
           )}
+
+          <label className="flex flex-col gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-mute">
+              Task description
+            </span>
+            <textarea
+              value={taskDescription}
+              onChange={(e) => setTaskDescription(e.target.value)}
+              rows={4}
+              className="border border-ink/15 bg-paper-2 px-3 py-3 text-sm leading-6 text-ink placeholder:text-mute focus:border-ink/35 focus:outline-none resize-none"
+              placeholder="Describe the task..."
+            />
+          </label>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="flex flex-col gap-2">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-mute">
+                Payment
+              </span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                className="border border-ink/15 bg-paper-2 px-3 py-3 font-mono text-sm text-ink focus:border-ink/35 focus:outline-none"
+                placeholder="0.00"
+              />
+            </label>
+
+            <label className="flex flex-col gap-2">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-mute">
+                Payment mint
+              </span>
+              <select
+                value={selectedMint}
+                onChange={(e) => setSelectedMint(e.target.value)}
+                className="border border-ink/15 bg-paper-2 px-3 py-3 font-mono text-sm text-ink focus:border-ink/35 focus:outline-none"
+                disabled={!marketConfig || marketConfig.allowedPaymentMints.length === 0}
+              >
+                {!marketConfig?.allowedPaymentMints.length && (
+                  <option value="">No allowed mints</option>
+                )}
+                {marketConfig?.allowedPaymentMints.map((mint: PublicKey) => {
+                  const address = mint.toBase58();
+                  return (
+                    <option key={address} value={address}>
+                      {mintLabel(address)}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-2">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-mute">
+                Deadline (hours)
+              </span>
+              <input
+                type="number"
+                min="1"
+                value={deadlineHours}
+                onChange={(e) => setDeadlineHours(e.target.value)}
+                className="border border-ink/15 bg-paper-2 px-3 py-3 font-mono text-sm text-ink focus:border-ink/35 focus:outline-none"
+                placeholder="24"
+              />
+            </label>
+          </div>
+
+          <p className="text-[11px] leading-5 text-ink/45">
+            Escrow is created and funded in one signature using the selected mint. Amount is
+            interpreted with {selectedMintDecimals} decimals for UI preview until the chain mint
+            metadata is fetched.
+          </p>
+
+          {localError && (
+            <p className="border border-danger/30 bg-danger/5 px-3 py-3 text-sm text-danger">
+              {localError}
+            </p>
+          )}
+
+          {error && (
+            <p className="border border-danger/30 bg-danger/5 px-3 py-3 text-sm text-danger">
+              {(error as Error).message}
+            </p>
+          )}
+
+          {txSignature && (
+            <p className="border border-lime/30 bg-lime/5 px-3 py-3 text-sm text-ink">
+              Task created:{' '}
+              <a
+                href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono underline decoration-ink/25 underline-offset-4"
+              >
+                {txSignature.slice(0, 12)}...
+              </a>
+            </p>
+          )}
+
+          <div className="flex flex-col gap-2 border-t border-ink/10 pt-5 sm:flex-row sm:justify-end">
+            <button
+              onClick={onClose}
+              className="inline-flex h-11 items-center justify-center border border-ink/15 px-4 font-mono text-[11px] uppercase tracking-[0.08em] text-ink/70 transition-colors hover:border-ink/35 hover:text-ink"
+            >
+              {txSignature ? 'Close' : 'Cancel'}
+            </button>
+            {!txSignature && (
+              <button
+                onClick={handleSubmit}
+                disabled={!valid || isPending || !publicKey || marketConfig?.paused}
+                className="inline-flex h-11 items-center justify-center bg-ink px-4 font-mono text-[11px] uppercase tracking-[0.08em] text-paper transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {isPending ? 'Signing...' : !publicKey ? 'Connect wallet' : 'Create + fund task'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

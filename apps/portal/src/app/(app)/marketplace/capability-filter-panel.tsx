@@ -12,37 +12,42 @@ export function CapabilityFilterPanel({ selected, onToggle, onClear }: Props) {
   const bits = Object.keys(CAPABILITY_LABELS).map(Number);
 
   return (
-    <div className="flex flex-col gap-3">
-      <header className="flex items-center justify-between">
-        <h2 className="font-mono text-[11px] uppercase tracking-widest text-ink">Capabilities</h2>
-        {selected.size > 0 && (
-          <button
-            onClick={onClear}
-            className="font-mono text-[9px] text-mute hover:text-lime transition-colors uppercase"
-          >
-            Clear [{selected.size}]
-          </button>
-        )}
+    <section className="border border-ink/10 bg-paper">
+      <header className="border-b border-ink/10 px-4 py-4">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-mute">Discovery</div>
+        <div className="mt-1 flex items-center justify-between gap-3">
+          <h2 className="font-display text-[22px] tracking-[-0.01em]">Capabilities</h2>
+          {selected.size > 0 ? (
+            <button
+              onClick={onClear}
+              className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink/55 transition-colors hover:text-ink"
+            >
+              Clear [{selected.size}]
+            </button>
+          ) : null}
+        </div>
       </header>
 
-      <div className="flex flex-col gap-0.5">
-        {bits.map((bit) => {
-          const active = selected.has(bit);
-          return (
-            <button
-              key={bit}
-              onClick={() => onToggle(bit)}
-              className={`font-mono text-[10px] px-2 py-1 text-left transition-colors border-l-2 ${
-                active
-                  ? 'border-lime text-lime bg-lime/5'
-                  : 'border-transparent text-ink/60 hover:border-ink/20 hover:text-ink'
-              }`}
-            >
-              {CAPABILITY_LABELS[bit]}
-            </button>
-          );
-        })}
+      <div className="px-4 py-4">
+        <div className="border border-ink/10">
+          {bits.map((bit) => {
+            const active = selected.has(bit);
+            return (
+              <button
+                key={bit}
+                onClick={() => onToggle(bit)}
+                className={`block w-full border-b border-ink/10 px-3 py-3 text-left font-mono text-[11px] tracking-[0.04em] transition-colors last:border-b-0 ${
+                  active
+                    ? 'bg-ink text-paper'
+                    : 'text-ink/65 hover:bg-paper-2 hover:text-ink'
+                }`}
+              >
+                {CAPABILITY_LABELS[bit]}
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

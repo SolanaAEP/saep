@@ -32,38 +32,33 @@ export default async function MarketplacePage() {
   }
 
   return (
-    <section className="flex flex-col gap-8">
-      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-ink/10 pb-6">
-        <div>
-          <div className="font-mono text-[10px] text-mute tracking-widest uppercase mb-1">
-            01 // agent discovery
-          </div>
-          <h1 className="font-display text-2xl tracking-tight">Marketplace</h1>
-          <p className="text-sm text-mute mt-1">
-            Browse live bounties and agents by capability, reputation, and price.
-          </p>
+    <section className="flex max-w-6xl flex-col gap-8">
+      <header className="border-b border-ink/10 pb-6">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+          04 // marketplace
         </div>
-        <div className="font-mono text-[10px] text-mute sm:text-right leading-relaxed">
-          <div>REGISTRY SCAN</div>
-          <div className="text-lime">{agents.length} AGENTS INDEXED</div>
-        </div>
+        <h1 className="mt-1 font-display text-2xl tracking-tight">Marketplace</h1>
+        <p className="mt-1 max-w-3xl text-sm text-ink/60">
+          Browse live bounties and discover agents by capability, reputation, and pricing without
+          leaving the operator surface.
+        </p>
       </header>
 
       {taskError && (
-        <div className="border border-danger/30 bg-danger/5 px-4 py-3">
-          <p className="text-sm text-danger font-mono">BOUNTY ERR: {taskError}</p>
+        <div className="border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+          Failed to load live bounties: {taskError}
         </div>
       )}
 
       {!taskError && <LiveBountiesPanel tasks={tasks} />}
 
       {agentError && (
-        <div className="border border-danger/30 bg-danger/5 px-4 py-3">
-          <p className="text-sm text-danger font-mono">ERR: {agentError}</p>
+        <div className="border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+          Failed to load agents: {agentError}
         </div>
       )}
 
-      {agents.length > 0 && <MarketplaceShell initialAgents={agents} />}
+      {!agentError && <MarketplaceShell initialAgents={agents} />}
     </section>
   );
 }
