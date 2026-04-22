@@ -18,6 +18,9 @@ const NAV = [
   { href: '/analytics', label: 'Analytics' },
 ];
 
+const APP_CLUSTER = process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? 'devnet';
+const STAKING_CLUSTER = process.env.NEXT_PUBLIC_STAKING_CLUSTER ?? APP_CLUSTER;
+
 function isPublicRoute(pathname: string | null): boolean {
   return (
     pathname === '/analytics' ||
@@ -25,6 +28,14 @@ function isPublicRoute(pathname: string | null): boolean {
     pathname === '/staking' ||
     pathname?.startsWith('/staking/') === true
   );
+}
+
+function isStakingRoute(pathname: string | null): boolean {
+  return pathname === '/staking' || pathname?.startsWith('/staking/') === true;
+}
+
+function clusterRailLabel(cluster: string): string {
+  return cluster === 'mainnet-beta' ? 'MAINNET' : cluster.toUpperCase();
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -62,7 +73,7 @@ function useShellChromeOpacity(): number {
   return opacity;
 }
 
-function ShellChrome({ opacity }: { opacity: number }) {
+function ShellChrome({ opacity, railLabel }: { opacity: number; railLabel: string }) {
   return (
     <div
       aria-hidden="true"
@@ -82,7 +93,7 @@ function ShellChrome({ opacity }: { opacity: number }) {
       </div>
 
       <div className="absolute right-[calc(clamp(20px,2.5vw,36px)+18px)] top-[calc(clamp(20px,2.5vw,36px)+24px)] font-mono text-[10px] uppercase tracking-[0.18em] text-ink/45 [writing-mode:vertical-rl] [transform:rotate(180deg)]">
-        LIVE TASK MARKET // DEVNET
+        {railLabel}
       </div>
 
       <div className="absolute left-[calc(240px+clamp(20px,2.5vw,36px)+24px)] bottom-[calc(clamp(20px,2.5vw,36px)+8px)] font-mono text-[10px] uppercase tracking-[0.08em] text-ink/45">
@@ -123,11 +134,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const chromeOpacity = useShellChromeOpacity();
   const content = isPublicRoute(pathname) ? children : <AuthGate>{children}</AuthGate>;
+  const stakingRoute = isStakingRoute(pathname);
+  const railLabel = stakingRoute
+    ? `LIVE STAKING // ${clusterRailLabel(STAKING_CLUSTER)}`
+    : `LIVE TASK MARKET // ${clusterRailLabel(APP_CLUSTER)}`;
+  const clusterSummary =
+    stakingRoute && STAKING_CLUSTER !== APP_CLUSTER
+      ? `App cluster: ${APP_CLUSTER} · Staking: ${STAKING_CLUSTER}`
+      : `Cluster: ${APP_CLUSTER}`;
 
   return (
     <AppProviders>
       <div className="relative min-h-screen overflow-x-hidden bg-paper text-ink">
-        <ShellChrome opacity={chromeOpacity} />
+        <ShellChrome opacity={chromeOpacity} railLabel={railLabel} />
 
         <div className="relative z-10 grid min-h-screen grid-cols-[240px_1fr]">
           <aside className="border-r border-ink/10 bg-paper/85 p-6 flex flex-col gap-6 backdrop-blur-[1px]">
@@ -145,9 +164,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
               ))}
             </nav>
-            <div className="mt-auto text-xs text-ink/60">
-              Cluster: {process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? 'devnet'}
-            </div>
+            <div className="mt-auto text-xs text-ink/60">{clusterSummary}</div>
           </aside>
           <main className="p-8">{content}</main>
         </div>

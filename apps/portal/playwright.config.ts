@@ -41,7 +41,7 @@ export default defineConfig({
         'GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z',
       NEXT_PUBLIC_STAKING_STAKE_MINT:
         process.env.NEXT_PUBLIC_STAKING_STAKE_MINT ??
-        '979TdkMamSq7twjKC7tsiJyEDjJ2wFKNNvn99raFpEiY',
+        'HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump',
       SESSION_SECRET: process.env.SESSION_SECRET ?? 'playwright-local-session-secret',
     },
   },

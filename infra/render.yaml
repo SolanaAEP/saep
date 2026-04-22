@@ -123,7 +123,7 @@ services:
       - key: NEXT_PUBLIC_STAKING_PROGRAM_NXS_STAKING
         value: GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z
       - key: NEXT_PUBLIC_STAKING_STAKE_MINT
-        value: 979TdkMamSq7twjKC7tsiJyEDjJ2wFKNNvn99raFpEiY
+        value: HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump
       - key: NEXT_PUBLIC_PROGRAM_NXS_STAKING
         sync: false
       - key: NEXT_PUBLIC_DEFAULT_PAYMENT_MINT

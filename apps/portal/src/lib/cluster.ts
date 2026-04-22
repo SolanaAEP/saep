@@ -1,7 +1,7 @@
 import { resolveCluster, type SaepCluster } from '@saep/sdk';
 
 const MAINNET_NXS_STAKING_PROGRAM_ID = 'GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z';
-const MAINNET_PLACEHOLDER_STAKE_MINT = '979TdkMamSq7twjKC7tsiJyEDjJ2wFKNNvn99raFpEiY';
+const MAINNET_SAEP_STAKE_MINT = 'HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump';
 const MAINNET_STAKING_RPC_URL =
   'https://mainnet.helius-rpc.com/?api-key=b457adfa-182d-449a-bf65-74e809efcd77';
 
@@ -60,4 +60,4 @@ export const stakeMintAddress = globalStakeMint ?? '';
 export const stakingStakeMintAddress =
   process.env.NEXT_PUBLIC_STAKING_STAKE_MINT ??
   globalStakeMint ??
-  (stakingCluster === 'mainnet-beta' ? MAINNET_PLACEHOLDER_STAKE_MINT : '');
+  (stakingCluster === 'mainnet-beta' ? MAINNET_SAEP_STAKE_MINT : '');
