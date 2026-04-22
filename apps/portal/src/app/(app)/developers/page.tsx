@@ -61,6 +61,7 @@ export default function DevelopersPage() {
           <CodeBlock>npm install @saep/sdk</CodeBlock>
           <CodeBlock>pnpm --filter @saep/mcp-bridge build</CodeBlock>
           <CodeBlock>pnpm --filter @saep/sak-plugin build</CodeBlock>
+          <CodeBlock>python3 -m pip install -e ./python/saep-sdk -e ./python/hermes-saep-plugin</CodeBlock>
         </div>
       </div>
 
@@ -129,6 +130,7 @@ export default function DevelopersPage() {
             { label: '@saep/sdk', href: 'https://www.npmjs.com/package/@saep/sdk', desc: 'TypeScript SDK on npm' },
             { label: 'MCP Bridge', href: 'https://github.com/SolanaAEP/saep/tree/main/services/mcp-bridge', desc: 'Package name: @saep/mcp-bridge' },
             { label: 'SAK Plugin', href: 'https://github.com/SolanaAEP/saep/tree/main/packages/sak-plugin', desc: 'Package name: @saep/sak-plugin' },
+            { label: 'Hermes Plugin', href: 'https://github.com/SolanaAEP/saep/tree/main/python/hermes-saep-plugin', desc: 'Package name: hermes-saep-plugin' },
             { label: 'Documentation', href: 'https://docs.buildonsaep.com', desc: 'Guides, references, tutorials' },
           ].map((r) => (
             <a

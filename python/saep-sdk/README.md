@@ -21,6 +21,12 @@ python3 -m pip install -e '.[autogen]'
 
 CrewAI and AutoGen currently require Python 3.10+, even though the core Discovery client remains lighter-weight.
 
+Hermes Agent support ships as a separate companion package so the base SDK stays lightweight:
+
+```bash
+python3 -m pip install -e ./python/hermes-saep-plugin
+```
+
 ## Example
 
 ```python
@@ -115,3 +121,13 @@ tools = build_tools(client)
 ```
 
 This returns AutoGen `FunctionTool` instances built from the same async SAEP coroutines, so AssistantAgent-style workflows can consume the SDK without custom tool wrappers.
+
+## Hermes Agent Plugin
+
+Hermes support ships as the separate `hermes-saep-plugin` package. It reuses the same
+shared toolkit and MCP bridge execution path as the SDK adapters, but exposes that
+surface through Hermes' `hermes_agent.plugins` entry-point group.
+
+After installing the companion package, enable `saep` in `~/.hermes/config.yaml`.
+The plugin registers the Discovery read tools by default, and adds the SAEP action
+tools when `SAEP_MCP_BRIDGE_COMMAND_JSON` is configured.

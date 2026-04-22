@@ -543,6 +543,7 @@ export function buildTools(): Tool[] {
         crypto.getRandomValues(nonce);
         const commitHash = computeCommitHash(amount, nonce, agentDid);
         const taskId = Uint8Array.from(task.taskId);
+        const tokenProgramId = await resolveTokenProgram(cfg, task.paymentMint);
 
         const ix = await buildCommitBidIx(tm, config, {
           bidder,
@@ -554,6 +555,7 @@ export function buildTools(): Tool[] {
           agentId: agentAcc.agentId,
           agentDid,
           commitHash,
+          tokenProgramId,
         });
         const outcome = await signOrSerialize(cfg, ix, bidder);
         return {

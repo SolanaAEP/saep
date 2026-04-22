@@ -65,7 +65,7 @@ export async function main(): Promise<void> {
         category = 'internal_error';
       }
       process.stderr.write(`[tool:${req.params.name}] ${category}: ${msg}\n`);
-      const safeMsg = category === 'validation_error' ? msg : category;
+      const safeMsg = msg;
       return { isError: true, content: [{ type: 'text', text: safeMsg }] };
     }
   });

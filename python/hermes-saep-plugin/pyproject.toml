@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hermes-saep-plugin"
+version = "0.1.0"
+description = "Hermes Agent plugin for SAEP task discovery and MCP-backed actions"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "SolanaAEP" }
+]
+keywords = ["saep", "hermes-agent", "agents", "solana", "plugin"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+  "saep-sdk>=0.1.0",
+]
+
+[project.entry-points."hermes_agent.plugins"]
+saep = "hermes_saep_plugin"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+hermes_saep_plugin = ["plugin.yaml"]

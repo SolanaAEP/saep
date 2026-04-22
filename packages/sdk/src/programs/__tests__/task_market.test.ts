@@ -14,6 +14,7 @@ import {
   verifierConfigPda,
   verifierKeyPda,
   verifierModePda,
+  reentrancyGuardPda,
 } from '../../pda/index.js';
 import {
   buildCreateTaskIx,
@@ -227,7 +228,46 @@ describe('buildOpenBiddingIx', () => {
 });
 
 describe('buildCommitBidIx', () => {
-  it.skip('IDL requires personhood_attestation/capability_tag/hook_allowlist accounts — needs localnet', () => {});
+  it('returns ix with explicit null optional accounts and registry global', async () => {
+    const task = PublicKey.unique();
+    const bidderTokenAccount = PublicKey.unique();
+    const ix = await buildCommitBidIx(program, clusterConfig, {
+      bidder,
+      task,
+      taskId,
+      paymentMint,
+      bidderTokenAccount,
+      agentOperator: operator,
+      agentId,
+      agentDid,
+      commitHash: new Uint8Array(32).fill(0xaa),
+    });
+    const [global] = marketGlobalPda(PROG);
+    const [book] = bidBookPda(PROG, taskId);
+    const [bid] = bidPda(PROG, taskId, bidder);
+    const [bondEscrow] = bondEscrowPda(PROG, taskId);
+    const [registryGlobal] = agentRegistryGlobalPda(clusterConfig.programIds.agentRegistry);
+    const [agentAccount] = agentAccountPda(clusterConfig.programIds.agentRegistry, operator, agentId);
+    expect(accountKeys(ix)).toEqual([
+      global.toBase58(),
+      task.toBase58(),
+      book.toBase58(),
+      bid.toBase58(),
+      paymentMint.toBase58(),
+      bondEscrow.toBase58(),
+      bidderTokenAccount.toBase58(),
+      bidder.toBase58(),
+      clusterConfig.programIds.agentRegistry.toBase58(),
+      registryGlobal.toBase58(),
+      agentAccount.toBase58(),
+      PROG.toBase58(),
+      PROG.toBase58(),
+      PROG.toBase58(),
+      TOKEN_2022.toBase58(),
+      SystemProgram.programId.toBase58(),
+    ]);
+    expect(ix.keys[7].isSigner).toBe(true);
+  });
 });
 
 describe('buildRevealBidIx', () => {
@@ -259,7 +299,25 @@ describe('buildRevealBidIx', () => {
 });
 
 describe('buildCloseBiddingIx', () => {
-  it.skip('IDL requires guard account — needs localnet', () => {});
+  it('includes the reentrancy guard account', async () => {
+    const task = PublicKey.unique();
+    const ix = await buildCloseBiddingIx(program, {
+      cranker,
+      task,
+      taskId,
+    });
+    const [global] = marketGlobalPda(PROG);
+    const [book] = bidBookPda(PROG, taskId);
+    const [guard] = reentrancyGuardPda(PROG);
+    expect(accountKeys(ix)).toEqual([
+      global.toBase58(),
+      task.toBase58(),
+      book.toBase58(),
+      guard.toBase58(),
+      cranker.toBase58(),
+    ]);
+    expect(ix.keys[4].isSigner).toBe(true);
+  });
 });
 
 describe('buildClaimBondIx', () => {

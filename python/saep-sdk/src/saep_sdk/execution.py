@@ -39,15 +39,19 @@ class MCPBridgeExecutor:
         cwd: Optional[str] = None,
         client_name: str = "saep-sdk",
         client_version: str = "0.1.0",
+        request_timeout_seconds: float = 20.0,
     ) -> None:
         resolved_command = tuple(command or _default_bridge_command())
         if not resolved_command:
             raise ExecutionError("MCP bridge command must not be empty")
+        if request_timeout_seconds <= 0:
+            raise ExecutionError("MCP bridge timeout must be greater than zero")
         self._command = resolved_command
         self._env = dict(env or {})
         self._cwd = cwd
         self._client_name = client_name
         self._client_version = client_version
+        self._request_timeout_seconds = request_timeout_seconds
         self._process: Optional[asyncio.subprocess.Process] = None
         self._reader_task: Optional[asyncio.Task[None]] = None
         self._stderr_task: Optional[asyncio.Task[None]] = None
@@ -61,13 +65,27 @@ class MCPBridgeExecutor:
         arguments: Optional[Mapping[str, Any]] = None,
     ) -> Dict[str, Any]:
         await self._ensure_started()
-        result = await self._request(
-            "tools/call",
-            {
-                "name": name,
-                "arguments": dict(arguments or {}),
-            },
-        )
+        try:
+            result = await asyncio.wait_for(
+                self._request(
+                    "tools/call",
+                    {
+                        "name": name,
+                        "arguments": dict(arguments or {}),
+                    },
+                ),
+                timeout=self._request_timeout_seconds,
+            )
+        except asyncio.TimeoutError as exc:
+            await self.aclose()
+            raise ExecutionError(
+                "MCP bridge call timed out",
+                tool_name=name,
+                details=(
+                    f"after {self._request_timeout_seconds:g}s; "
+                    "check SAEP_RPC_URL, SAEP_CLUSTER, and bridge operator config"
+                ),
+            ) from exc
         if result.get("isError"):
             raise ExecutionError(_response_text(result) or "tool call failed", tool_name=name)
 
@@ -133,18 +151,30 @@ class MCPBridgeExecutor:
             self._reader_task = asyncio.create_task(self._reader_loop())
             self._stderr_task = asyncio.create_task(self._drain_stderr())
             try:
-                await self._request(
-                    "initialize",
-                    {
-                        "protocolVersion": "2025-06-18",
-                        "capabilities": {},
-                        "clientInfo": {
-                            "name": self._client_name,
-                            "version": self._client_version,
+                await asyncio.wait_for(
+                    self._request(
+                        "initialize",
+                        {
+                            "protocolVersion": "2025-06-18",
+                            "capabilities": {},
+                            "clientInfo": {
+                                "name": self._client_name,
+                                "version": self._client_version,
+                            },
                         },
-                    },
+                    ),
+                    timeout=self._request_timeout_seconds,
                 )
                 await self._notify("notifications/initialized")
+            except asyncio.TimeoutError as exc:
+                await self.aclose()
+                raise ExecutionError(
+                    "MCP bridge initialization timed out",
+                    details=(
+                        f"after {self._request_timeout_seconds:g}s; "
+                        "verify the bridge command launches a compatible server"
+                    ),
+                ) from exc
             except Exception:
                 await self.aclose()
                 raise
@@ -186,9 +216,7 @@ class MCPBridgeExecutor:
         process = self._process
         if process is None or process.stdin is None:
             raise ExecutionError("MCP bridge process is not running")
-        payload = json.dumps(message).encode("utf-8")
-        header = f"Content-Length: {len(payload)}\r\n\r\n".encode("ascii")
-        process.stdin.write(header)
+        payload = (json.dumps(message) + "\n").encode("utf-8")
         process.stdin.write(payload)
         await process.stdin.drain()
 
@@ -223,22 +251,36 @@ class MCPBridgeExecutor:
         if process is None or process.stdout is None:
             return None
 
-        headers: Dict[str, str] = {}
         while True:
             line = await process.stdout.readline()
             if not line:
                 return None
             decoded = line.decode("utf-8").strip()
             if not decoded:
-                break
-            name, _, value = decoded.partition(":")
-            headers[name.lower()] = value.strip()
+                continue
 
-        length = headers.get("content-length")
-        if length is None:
-            raise ExecutionError("MCP bridge response missing Content-Length header")
-        body = await process.stdout.readexactly(int(length))
-        message = json.loads(body.decode("utf-8"))
+            if decoded.lower().startswith("content-length:"):
+                headers: Dict[str, str] = {}
+                name, _, value = decoded.partition(":")
+                headers[name.lower()] = value.strip()
+                while True:
+                    header_line = await process.stdout.readline()
+                    if not header_line:
+                        return None
+                    header_text = header_line.decode("utf-8").strip()
+                    if not header_text:
+                        break
+                    header_name, _, header_value = header_text.partition(":")
+                    headers[header_name.lower()] = header_value.strip()
+                length = headers.get("content-length")
+                if length is None:
+                    raise ExecutionError("MCP bridge response missing Content-Length header")
+                body = await process.stdout.readexactly(int(length))
+                message = json.loads(body.decode("utf-8"))
+            else:
+                message = json.loads(decoded)
+            break
+
         if not isinstance(message, dict):
             raise ExecutionError("MCP bridge response must be a JSON object")
         return message

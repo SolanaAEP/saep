@@ -75,8 +75,40 @@ class ClientTests(unittest.TestCase):
 
         self.assertEqual(page.page, 2)
         self.assertEqual(page.total, 9)
+        self.assertIsNone(page.cursor)
         self.assertEqual(page.items[0].status, "funded")
         self.assertEqual(transport.calls[0]["params"]["capability"], 3)
+
+    def test_list_tasks_falls_back_to_public_discovery_shape(self):
+        transport = FakeTransport(
+            {
+                "/tasks": TransportError("missing", status_code=404),
+                "/v1/discovery/tasks": {
+                    "items": [
+                        {
+                            "task_id_hex": "ab" * 32,
+                            "creator": "creator-1",
+                            "agent_did_hex": None,
+                            "status": "funded",
+                            "reward_lamports": "1000",
+                            "created_at_unix": 10,
+                            "deadline_unix": 20,
+                            "updated_at_unix": 11,
+                            "compute_bonds": [],
+                        }
+                    ],
+                    "cursor": "next-page",
+                },
+            }
+        )
+        client = SAEPClient("http://unused", transport=transport)
+
+        page = asyncio.run(client.list_tasks(limit=5))
+
+        self.assertEqual(page.limit, 5)
+        self.assertEqual(page.total, 1)
+        self.assertEqual(page.cursor, "next-page")
+        self.assertEqual(transport.calls[1]["path"], "/v1/discovery/tasks")
 
     def test_get_agent_parses_reputation_breakdown(self):
         did = "cd" * 32
@@ -115,12 +147,56 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(detail.reputation_breakdown[0].capability_bit, 2)
         self.assertEqual(detail.reputation_breakdown[0].composite_score, 9200)
 
+    def test_list_agents_falls_back_to_public_discovery_shape(self):
+        did = "cd" * 32
+        transport = FakeTransport(
+            {
+                "/agents": TransportError("missing", status_code=404),
+                "/v1/discovery/agents": {
+                    "items": [
+                        {
+                            "did_hex": did,
+                            "operator": "operator-1",
+                            "capability_mask": "0x4",
+                            "stake_lamports": "999",
+                            "reputation_composite": 8800,
+                            "status": "active",
+                            "last_active_unix": 55,
+                        }
+                    ],
+                    "cursor": None,
+                },
+            }
+        )
+        client = SAEPClient("http://unused", transport=transport)
+
+        page = asyncio.run(client.list_agents(limit=5))
+
+        self.assertEqual(page.items[0].did, did)
+        self.assertEqual(page.items[0].reputation, 8800)
+        self.assertEqual(transport.calls[1]["params"]["limit"], 5)
+
     def test_transport_errors_bubble(self):
         transport = FakeTransport({"/stats": TransportError("boom", status_code=503)})
         client = SAEPClient("http://unused", transport=transport)
 
         with self.assertRaises(TransportError):
             asyncio.run(client.get_stats())
+
+    def test_get_stats_returns_best_effort_zero_snapshot_when_public_backend_lacks_stats(self):
+        transport = FakeTransport(
+            {
+                "/stats": TransportError("missing", status_code=404),
+                "/v1/discovery/stats": TransportError("missing", status_code=404),
+            }
+        )
+        client = SAEPClient("http://unused", transport=transport)
+
+        stats = asyncio.run(client.get_stats())
+
+        self.assertEqual(stats.total_agents, 0)
+        self.assertEqual(stats.total_tasks, 0)
+        self.assertEqual(stats.note, "aggregate stats unavailable on this discovery backend")
 
     def test_callback_wallet_delegates_signing(self):
         async def signer(message: bytes) -> bytes:
@@ -200,6 +276,37 @@ class ClientTests(unittest.TestCase):
 
         with self.assertRaises(ExecutionError):
             asyncio.run(client.claim_payout(task_address="task-1"))
+
+    def test_action_methods_omit_none_values_for_optional_fields(self):
+        did = "ab" * 32
+        executor = FakeExecutor(
+            {
+                "get_reputation": {
+                    "cluster": "devnet",
+                    "agent_did_hex": did,
+                    "agent_address": "agent-1",
+                    "operator": "operator-1",
+                    "jobs_completed": "0",
+                    "jobs_disputed": 0,
+                    "reputation": {
+                        "quality": 0,
+                        "timeliness": 0,
+                        "availability": 0,
+                        "cost_efficiency": 0,
+                        "honesty": 0,
+                        "composite": 0,
+                    },
+                    "capability_bit_filter": None,
+                    "category_scoped": False,
+                }
+            }
+        )
+        client = SAEPClient("http://unused", transport=FakeTransport({"/stats": {}}), executor=executor)
+
+        asyncio.run(client.get_reputation(did))
+
+        self.assertEqual(executor.calls[0]["name"], "get_reputation")
+        self.assertNotIn("capability_bit", executor.calls[0]["arguments"])
 
 
 if __name__ == "__main__":

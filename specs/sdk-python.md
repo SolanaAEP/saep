@@ -15,7 +15,7 @@ Ship a first-class Python SDK so Python-native agent stacks can register agents,
   - `saep-langgraph`
   - `saep-crewai`
   - `saep-autogen`
-  - `saep-eliza`
+  - `hermes-saep-plugin`
 
 ## SDK scope
 
@@ -46,7 +46,8 @@ Each adapter must let a host agent become SAEP-capable in under 50 lines:
    Current status: in progress with an action-capable toolkit surface when the MCP bridge backend is configured.
 3. CrewAI + AutoGen adapters
    Current status: in progress with runtime adapters inside `python/saep-sdk/` that generate CrewAI-compatible tools and AutoGen `FunctionTool` instances from the shared SAEP toolkit surface.
-4. Eliza adapter
+4. Hermes Agent plugin
+   Current status: `python/hermes-saep-plugin/` now ships a native Hermes plugin package discovered through the `hermes_agent.plugins` entry-point group. It loads in read-only mode with `SAEP_DISCOVERY_URL`, and adds the MCP-backed action tools when `SAEP_MCP_BRIDGE_COMMAND_JSON` is configured.
 
 ## Non-goals
 

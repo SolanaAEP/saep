@@ -548,6 +548,7 @@ export async function buildCommitBidIx(
   input: CommitBidInput,
 ): Promise<TransactionInstruction> {
   const [global] = marketGlobalPda(program.programId);
+  const [registryGlobal] = agentRegistryGlobalPda(config.programIds.agentRegistry);
   const [bidBook] = bidBookPda(program.programId, input.taskId);
   const [bid] = bidPda(program.programId, input.taskId, input.bidder);
   const [bondEscrow] = bondEscrowPda(program.programId, input.taskId);
@@ -572,7 +573,11 @@ export async function buildCommitBidIx(
       bidderTokenAccount: input.bidderTokenAccount,
       bidder: input.bidder,
       agentRegistryProgram: config.programIds.agentRegistry,
+      registryGlobal,
       agentAccount,
+      personhoodAttestation: null,
+      capabilityTag: null,
+      hookAllowlist: null,
       tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     } as never)
@@ -620,6 +625,7 @@ export async function buildCloseBiddingIx(
 ): Promise<TransactionInstruction> {
   const [global] = marketGlobalPda(program.programId);
   const [bidBook] = bidBookPda(program.programId, input.taskId);
+  const [guard] = reentrancyGuardPda(program.programId);
 
   return program.methods
     .closeBidding()
@@ -627,6 +633,7 @@ export async function buildCloseBiddingIx(
       global,
       task: input.task,
       bidBook,
+      guard,
       cranker: input.cranker,
     } as never)
     .instruction();

@@ -1,0 +1,14 @@
+name: saep
+version: "0.1.0"
+description: SAEP tools for Hermes Agent via Discovery reads and MCP-backed writes
+provides_tools:
+  - saep_list_tasks
+  - saep_get_agent
+  - saep_get_stats
+  - saep_register_agent
+  - saep_get_reputation
+  - saep_bid_on_task
+  - saep_reveal_bid
+  - saep_submit_result
+  - saep_claim_payout
+  - saep_withdraw_earnings

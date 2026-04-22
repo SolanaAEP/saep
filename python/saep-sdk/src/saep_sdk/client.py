@@ -30,6 +30,7 @@ from .models import (
     withdraw_earnings_from_dict,
 )
 from .transport import AsyncTransport, UrllibAsyncTransport
+from .transport import TransportError
 
 
 class SAEPClient:
@@ -42,8 +43,14 @@ class SAEPClient:
         bridge_command: Optional[Sequence[str]] = None,
         bridge_env: Optional[Mapping[str, str]] = None,
         bridge_cwd: Optional[str] = None,
+        bridge_timeout_seconds: Optional[float] = None,
     ) -> None:
-        if executor is not None and (bridge_command is not None or bridge_env is not None or bridge_cwd is not None):
+        if executor is not None and (
+            bridge_command is not None
+            or bridge_env is not None
+            or bridge_cwd is not None
+            or bridge_timeout_seconds is not None
+        ):
             raise ValueError("Pass either executor=... or bridge_command/bridge_env/bridge_cwd, not both")
         self._transport: AsyncTransport = transport or UrllibAsyncTransport(base_url)
         if executor is not None:
@@ -53,6 +60,7 @@ class SAEPClient:
                 command=bridge_command,
                 env=bridge_env,
                 cwd=bridge_cwd,
+                request_timeout_seconds=bridge_timeout_seconds or 20.0,
             )
         else:
             self._executor = None
@@ -73,10 +81,10 @@ class SAEPClient:
         page: int = 1,
         limit: int = 50,
     ) -> Page[AgentSummary]:
-        payload = await self._transport.request(
-            "GET",
+        payload = await self._read_request(
             "/agents",
-            params={
+            "/v1/discovery/agents",
+            {
                 "capability": capability,
                 "min_reputation": min_reputation,
                 "min_stake": min_stake,
@@ -86,8 +94,15 @@ class SAEPClient:
                 "page": page,
                 "limit": limit,
             },
+            {
+                "capability_mask": _capability_mask_hex(capability),
+                "min_reputation": min_reputation,
+                "status": status,
+                "sort": _public_agent_sort(sort),
+                "limit": limit,
+            },
         )
-        return page_from_dict(payload, agent_summary_from_dict)
+        return page_from_dict(payload, agent_summary_from_dict, default_limit=limit)
 
     async def list_tasks(
         self,
@@ -98,25 +113,49 @@ class SAEPClient:
         page: int = 1,
         limit: int = 50,
     ) -> Page[TaskSummary]:
-        payload = await self._transport.request(
-            "GET",
+        payload = await self._read_request(
             "/tasks",
-            params={
+            "/v1/discovery/tasks",
+            {
                 "capability": capability,
                 "status": status,
                 "min_reward": min_reward,
                 "page": page,
                 "limit": limit,
             },
+            {
+                "status": status,
+                "limit": limit,
+            },
         )
-        return page_from_dict(payload, task_summary_from_dict)
+        return page_from_dict(payload, task_summary_from_dict, default_limit=limit)
 
     async def get_agent(self, did: str) -> AgentDetail:
-        payload = await self._transport.request("GET", f"/agents/{did}")
+        payload = await self._read_request(
+            f"/agents/{did}",
+            f"/v1/discovery/agents/{did}",
+            None,
+            None,
+        )
         return agent_detail_from_dict(payload)
 
     async def get_stats(self) -> ProtocolStats:
-        payload = await self._transport.request("GET", "/stats")
+        try:
+            payload = await self._read_request("/stats", "/v1/discovery/stats", None, None)
+        except TransportError as exc:
+            if exc.status_code != 404:
+                raise
+            payload = {
+                "total_agents": 0,
+                "total_tasks": 0,
+                "total_value_locked_lamports": "0",
+                "active_streams": 0,
+                "burn_rate": {
+                    "total_protocol_fees_lamports": "0",
+                    "last_24h_lamports": "0",
+                },
+                "note": "aggregate stats unavailable on this discovery backend",
+            }
         return stats_from_dict(payload)
 
     async def register_agent(
@@ -269,4 +308,40 @@ class SAEPClient:
                 "Pass executor=... or bridge_command=... to enable action methods.",
                 tool_name=name,
             )
-        return await self._executor.call_tool(name, arguments)
+        return await self._executor.call_tool(name, _clean_tool_arguments(arguments))
+
+    async def _read_request(
+        self,
+        legacy_path: str,
+        public_path: str,
+        legacy_params: Optional[Mapping[str, object]],
+        public_params: Optional[Mapping[str, object]],
+    ) -> dict:
+        try:
+            return await self._transport.request("GET", legacy_path, params=legacy_params)
+        except TransportError as exc:
+            if exc.status_code != 404:
+                raise
+        return await self._transport.request("GET", public_path, params=public_params)
+
+
+def _capability_mask_hex(bit: Optional[int]) -> Optional[str]:
+    if bit is None:
+        return None
+    if bit < 0:
+        raise ValueError("capability bit must be non-negative")
+    return hex(1 << bit)
+
+
+def _public_agent_sort(sort: Optional[str]) -> Optional[str]:
+    if sort is None:
+        return None
+    mapping = {
+        "reputation_desc": "reputation_desc",
+        "recent_desc": "recent_desc",
+    }
+    return mapping.get(sort, sort)
+
+
+def _clean_tool_arguments(arguments: Optional[Mapping[str, object]]) -> dict[str, object]:
+    return {key: value for key, value in dict(arguments or {}).items() if value is not None}

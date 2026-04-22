@@ -7,27 +7,37 @@ from typing import Any, Dict, Optional
 
 
 def read_message() -> Optional[Dict[str, Any]]:
-    headers: Dict[str, str] = {}
     while True:
         line = sys.stdin.buffer.readline()
         if not line:
             return None
         decoded = line.decode("utf-8").strip()
         if not decoded:
-            break
-        name, _, value = decoded.partition(":")
-        headers[name.lower()] = value.strip()
+            continue
+        if decoded.lower().startswith("content-length:"):
+            headers: Dict[str, str] = {}
+            name, _, value = decoded.partition(":")
+            headers[name.lower()] = value.strip()
+            while True:
+                header_line = sys.stdin.buffer.readline()
+                if not header_line:
+                    return None
+                header_text = header_line.decode("utf-8").strip()
+                if not header_text:
+                    break
+                header_name, _, header_value = header_text.partition(":")
+                headers[header_name.lower()] = header_value.strip()
 
-    length = headers.get("content-length")
-    if length is None:
-        raise RuntimeError("missing content-length")
-    body = sys.stdin.buffer.read(int(length))
-    return json.loads(body.decode("utf-8"))
+            length = headers.get("content-length")
+            if length is None:
+                raise RuntimeError("missing content-length")
+            body = sys.stdin.buffer.read(int(length))
+            return json.loads(body.decode("utf-8"))
+        return json.loads(decoded)
 
 
 def send(message: Dict[str, Any]) -> None:
-    payload = json.dumps(message).encode("utf-8")
-    sys.stdout.buffer.write(f"Content-Length: {len(payload)}\r\n\r\n".encode("ascii"))
+    payload = (json.dumps(message) + "\n").encode("utf-8")
     sys.stdout.buffer.write(payload)
     sys.stdout.buffer.flush()
 

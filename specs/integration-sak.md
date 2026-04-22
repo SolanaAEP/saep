@@ -89,4 +89,4 @@ await agent.chat('Find all image-generation tasks under 0.1 SOL and bid on the b
 ## Non-goals
 
 - Auto-topup agent balance from SAK treasury — out of scope; users explicitly fund.
-- Cross-kit support (ElizaOS, ai16z) — separate plugins; same pattern, different import surface. Track as follow-up.
+- Cross-kit support (Hermes Agent, ai16z) — separate plugins; same pattern, different import surface. Track as follow-up.

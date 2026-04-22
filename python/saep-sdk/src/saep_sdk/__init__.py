@@ -16,6 +16,7 @@ from .models import (
     TransactionEnvelope,
     WithdrawEarningsResult,
 )
+from .toolkit import ToolSpec, build_toolkit
 from .wallet import CallbackWallet, Wallet
 
 __all__ = [
@@ -33,9 +34,11 @@ __all__ = [
     "ReputationSnapshot",
     "RevealResult",
     "SAEPClient",
+    "ToolSpec",
     "SubmitResultReceipt",
     "TaskSummary",
     "TransactionEnvelope",
+    "build_toolkit",
     "WithdrawEarningsResult",
     "Wallet",
 ]

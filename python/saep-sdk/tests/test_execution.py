@@ -8,6 +8,7 @@ from saep_sdk.execution import ExecutionError
 
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "fake_mcp_bridge.py"
+HANGING_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "fake_mcp_bridge_hanging.py"
 
 
 class ExecutionTests(unittest.TestCase):
@@ -52,6 +53,24 @@ class ExecutionTests(unittest.TestCase):
             ) as client:
                 with self.assertRaises(ExecutionError):
                     await client.withdraw_earnings(stream_address="stream-1")
+
+        asyncio.run(scenario())
+
+    def test_mcp_bridge_executor_times_out_on_stuck_tool(self):
+        async def scenario():
+            executor = MCPBridgeExecutor(
+                command=[sys.executable, str(HANGING_FIXTURE)],
+                request_timeout_seconds=0.1,
+            )
+            try:
+                with self.assertRaises(ExecutionError) as ctx:
+                    await executor.call_tool(
+                        "get_reputation",
+                        {"agent_did_hex": "ab" * 32},
+                    )
+                self.assertIn("timed out", str(ctx.exception))
+            finally:
+                await executor.aclose()
 
         asyncio.run(scenario())
 

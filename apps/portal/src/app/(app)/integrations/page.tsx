@@ -59,6 +59,11 @@ const INTEGRATIONS = [
     description: 'Full typed SDK generated from on-chain IDLs. npm install @saep/sdk',
     href: 'https://www.npmjs.com/package/@saep/sdk',
   },
+  {
+    name: 'Hermes Agent',
+    description: 'Native Hermes plugin for SAEP task discovery and MCP-backed actions. Package name: hermes-saep-plugin',
+    href: 'https://github.com/SolanaAEP/saep/tree/main/python/hermes-saep-plugin',
+  },
 ] satisfies readonly IntegrationCard[];
 
 export default function IntegrationsPage() {

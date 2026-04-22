@@ -1,6 +1,7 @@
 from .autogen import build_tools as build_autogen_tools
 from .crewai import build_tools as build_crewai_tools
-from .langgraph import ToolSpec, build_toolkit, build_toolkit as build_langgraph_toolkit
+from .langgraph import build_toolkit as build_langgraph_toolkit
+from ..toolkit import ToolSpec, build_toolkit
 
 __all__ = [
     "ToolSpec",

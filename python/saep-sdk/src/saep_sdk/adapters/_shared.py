@@ -1,21 +1,14 @@
 from __future__ import annotations
 
 import inspect
-import json
 import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from .langgraph import ToolSpec, build_toolkit
+from saep_sdk.toolkit import ToolSpec, build_toolkit, normalize_tool_result
 
 
 def toolkit_specs(client) -> List[ToolSpec]:
     return build_toolkit(client)
-
-
-def normalize_tool_result(result: Any) -> str:
-    if isinstance(result, str):
-        return result
-    return json.dumps(result, sort_keys=True)
 
 
 def parameter_properties(spec: ToolSpec) -> Dict[str, Dict[str, Any]]:

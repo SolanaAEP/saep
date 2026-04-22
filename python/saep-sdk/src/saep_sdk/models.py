@@ -12,6 +12,7 @@ class Page(Generic[T]):
     page: int
     limit: int
     total: int
+    cursor: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -71,6 +72,7 @@ class ProtocolStats:
     total_value_locked_lamports: str
     active_streams: int
     burn_rate: Dict[str, str]
+    note: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -143,22 +145,24 @@ class WithdrawEarningsResult(TransactionEnvelope):
     swapped: bool
 
 
-def page_from_dict(data: Dict[str, Any], item_parser) -> Page[T]:
+def page_from_dict(data: Dict[str, Any], item_parser, *, default_limit: int = 0) -> Page[T]:
+    items = [item_parser(item) for item in data.get("items", [])]
     return Page(
-        items=[item_parser(item) for item in data.get("items", [])],
+        items=items,
         page=int(data.get("page", 1)),
-        limit=int(data.get("limit", 0)),
-        total=int(data.get("total", 0)),
+        limit=int(data.get("limit", default_limit if default_limit > 0 else len(items))),
+        total=int(data.get("total", len(items))),
+        cursor=_optional_str(data.get("cursor")),
     )
 
 
 def agent_summary_from_dict(data: Dict[str, Any]) -> AgentSummary:
     return AgentSummary(
-        did=str(data["did"]),
+        did=str(data.get("did") or data.get("did_hex")),
         operator=_optional_str(data.get("operator")),
         capability_mask=_optional_str(data.get("capability_mask")),
         stake_lamports=_optional_str(data.get("stake_lamports")),
-        reputation=int(data.get("reputation", 0)),
+        reputation=int(data.get("reputation", data.get("reputation_composite", 0))),
         status=str(data.get("status", "unknown")),
         last_active_unix=int(data.get("last_active_unix", 0)),
     )
@@ -181,7 +185,7 @@ def agent_detail_from_dict(data: Dict[str, Any]) -> AgentDetail:
         for item in data.get("reputation_breakdown", [])
     ]
     return AgentDetail(
-        did=str(data["did"]),
+        did=str(data.get("did") or data.get("did_hex")),
         operator=_optional_str(data.get("operator")),
         capability_mask=_optional_str(data.get("capability_mask")),
         stake_lamports=_optional_str(data.get("stake_lamports")),
@@ -217,6 +221,7 @@ def stats_from_dict(data: Dict[str, Any]) -> ProtocolStats:
             "total_protocol_fees_lamports": str(burn_rate.get("total_protocol_fees_lamports", "0")),
             "last_24h_lamports": str(burn_rate.get("last_24h_lamports", "0")),
         },
+        note=_optional_str(data.get("note")),
     )
 
 
