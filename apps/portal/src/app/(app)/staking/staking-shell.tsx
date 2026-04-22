@@ -385,9 +385,6 @@ export function StakingShell() {
           <Badge tone={stageTone(stage)} testId="staking-stage-badge">
             {stageLabel(stage)}
           </Badge>
-          <Badge tone="muted" testId="staking-cluster-badge">
-            {cluster.cluster}
-          </Badge>
           <a
             href={explorerHref('address', program.programId.toBase58(), explorerBase)}
             target="_blank"

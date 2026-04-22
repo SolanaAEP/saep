@@ -19,11 +19,11 @@ test.describe('app navigation', () => {
     await expect(page).toHaveURL('/');
   });
 
-  test('protocol frame decorations present', async ({ page }) => {
+  test('app shell stays free of protocol chrome', async ({ page }) => {
     await page.goto('/dashboard');
     await waitForApp(page);
-    await expect(page.getByText('SAEP APP // OPERATOR SURFACE')).toBeVisible();
-    await expect(page.getByText('LIVE TASK MARKET // DEVNET')).toBeVisible();
-    await expect(page.getByText('DECORATIVE CHROME ONLY')).toBeVisible();
+    await expect(page.getByText('SAEP APP // OPERATOR SURFACE')).toHaveCount(0);
+    await expect(page.getByText('LIVE TASK MARKET // DEVNET')).toHaveCount(0);
+    await expect(page.getByText('DECORATIVE CHROME ONLY')).toHaveCount(0);
   });
 });

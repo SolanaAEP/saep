@@ -41,6 +41,11 @@ const STATUS_STYLES: Record<string, { dot: string; badge: string }> = {
   },
 };
 
+const DEFAULT_STATUS_STYLE = {
+  dot: 'bg-ink/30',
+  badge: 'border-ink/20 text-mute',
+};
+
 export default function RoadmapPage() {
   return (
     <PageShell
@@ -50,7 +55,7 @@ export default function RoadmapPage() {
     >
       <div className="mt-16 space-y-20">
         {phases.map((phase) => {
-          const s = STATUS_STYLES[phase.statusLabel];
+          const s = STATUS_STYLES[phase.statusLabel] ?? DEFAULT_STATUS_STYLE;
           return (
             <section key={phase.title} className="relative">
               <div className="flex items-center gap-3 mb-6">
