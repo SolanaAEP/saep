@@ -2,7 +2,9 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import {
   transitionComputeBond,
+  type ComputeBondProvider,
   type ComputeBondRecord,
+  type ComputeBondStatus,
   type ComputeBondTransition,
 } from '@saep/sdk';
 
@@ -52,6 +54,29 @@ export class ComputeBondRegistry {
 
   get(leaseId: string): ComputeBondRecord | undefined {
     return this.bonds.get(leaseId);
+  }
+
+  list(filters: {
+    agentDid?: string;
+    taskId?: string;
+    taskIds?: readonly string[];
+    status?: ComputeBondStatus;
+    provider?: ComputeBondProvider;
+    limit?: number;
+  } = {}): ComputeBondRecord[] {
+    const taskIds = filters.taskIds ? new Set(filters.taskIds) : null;
+    const limit = filters.limit ?? 50;
+    return [...this.bonds.values()]
+      .filter((bond) => {
+        if (filters.agentDid && bond.agent_did !== filters.agentDid) return false;
+        if (filters.taskId && bond.task_id !== filters.taskId) return false;
+        if (taskIds && (!bond.task_id || !taskIds.has(bond.task_id))) return false;
+        if (filters.status && bond.status !== filters.status) return false;
+        if (filters.provider && bond.provider !== filters.provider) return false;
+        return true;
+      })
+      .sort((a, b) => b.updated_at_ms - a.updated_at_ms || a.lease_id.localeCompare(b.lease_id))
+      .slice(0, limit);
   }
 
   reserve(record: ComputeBondRecord): ComputeBondRecord {

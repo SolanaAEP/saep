@@ -11,6 +11,8 @@ import {
 import {
   validateComputeBondRecord,
   validateComputeBondTransition,
+  type ComputeBondProvider,
+  type ComputeBondStatus,
   type ComputeBondRecord,
   type ComputeBondTransition,
 } from '@saep/sdk';
@@ -60,6 +62,15 @@ const BondVerifyBody = z.object({
   broker_pubkey: z.string().min(1),
 });
 
+const BondListQuery = z.object({
+  agent_did: z.string().min(32).max(44).optional(),
+  task_id: z.string().min(1).optional(),
+  task_ids: z.string().optional(),
+  status: z.enum(['reserved', 'locked', 'released', 'slashed', 'cancelled', 'expired']).optional(),
+  provider: z.enum(['ionet', 'akash']).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
+
 const BondTaskActionBody = z.object({
   lease_id: z.string().min(1),
   provider: z.enum(['ionet', 'akash']),
@@ -89,6 +100,41 @@ export type BuildOpts = {
   providers?: { ionet: ComputeProvider; akash: ComputeProvider };
   bondRegistry?: ComputeBondRegistry;
 };
+
+function serializeBond(
+  bond: ComputeBondRecord,
+  providerStatus: string | null = null,
+) {
+  return {
+    lease_id: bond.lease_id,
+    agent_did: bond.agent_did,
+    provider: bond.provider,
+    gpu_hours: bond.gpu_hours,
+    expires_at: bond.expires_at,
+    slashable_until: bond.slashable_until,
+    task_id: bond.task_id,
+    status: bond.status,
+    status_reason: bond.status_reason,
+    reserved_price_usd_micro: bond.reserved_price_usd_micro,
+    broker_pubkey: bond.broker_pubkey,
+    attestation_sig: bond.attestation_sig,
+    created_at_ms: bond.created_at_ms,
+    updated_at_ms: bond.updated_at_ms,
+    provider_status: providerStatus,
+  };
+}
+
+async function providerStatusFor(
+  bond: ComputeBondRecord,
+  providers: { ionet: ComputeProvider; akash: ComputeProvider },
+): Promise<string | null> {
+  try {
+    const provider = selectProvider(bond.provider, providers);
+    return await provider.status(bond.lease_id);
+  } catch {
+    return null;
+  }
+}
 
 function asBondError(
   reply: FastifyReply,
@@ -149,14 +195,30 @@ export function build(opts: BuildOpts) {
     const id = (req.params as { id: string }).id;
     const bond = bondRegistry.get(id);
     if (!bond) return reply.code(404).send({ error: 'bond not found' });
-    const provider = selectProvider(bond.provider, providers);
-    let provider_status: string | null = null;
-    try {
-      provider_status = await provider.status(id);
-    } catch {
-      provider_status = null;
+    return reply.send(serializeBond(bond, await providerStatusFor(bond, providers)));
+  });
+
+  app.get('/bonds', async (req, reply) => {
+    const parsed = BondListQuery.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.message });
     }
-    return reply.send({ ...bond, provider_status });
+    const q = parsed.data;
+    const taskIds = q.task_ids
+      ? q.task_ids.split(',').map((value) => value.trim()).filter(Boolean)
+      : undefined;
+    const items = bondRegistry.list({
+      agentDid: q.agent_did,
+      taskId: q.task_id,
+      taskIds,
+      status: q.status as ComputeBondStatus | undefined,
+      provider: q.provider as ComputeBondProvider | undefined,
+      limit: q.limit,
+    });
+    const serialized = await Promise.all(
+      items.map(async (bond) => serializeBond(bond, await providerStatusFor(bond, providers))),
+    );
+    return reply.send({ items: serialized });
   });
 
   app.post('/bonds/verify', async (req, reply) => {

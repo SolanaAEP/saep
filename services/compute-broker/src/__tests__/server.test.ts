@@ -183,6 +183,63 @@ describe('compute-broker server', () => {
     });
   });
 
+  it('bonds lists tracked bonds with task and status filters', async () => {
+    const first = await requestBond({
+      agent_did: '11111111111111111111111111111111',
+      provider: 'ionet',
+      gpu_hours: 13,
+    });
+    const second = await requestBond({
+      agent_did: '22222222222222222222222222222222',
+      provider: 'akash',
+      gpu_hours: 14,
+    });
+    await app.inject({
+      method: 'POST',
+      url: '/bonds/lock',
+      payload: {
+        lease_id: second.body.lease_id,
+        provider: second.provider,
+        agent_did: second.agent_did,
+        task_id: 'task-filtered',
+      },
+    });
+
+    const byTask = await app.inject({
+      method: 'GET',
+      url: '/bonds?task_id=task-filtered&status=locked',
+    });
+    expect(byTask.statusCode).toBe(200);
+    expect(byTask.json()).toMatchObject({
+      items: [
+        {
+          lease_id: second.body.lease_id,
+          task_id: 'task-filtered',
+          status: 'locked',
+          provider: 'akash',
+        },
+      ],
+    });
+
+    const byAgent = await app.inject({
+      method: 'GET',
+      url: `/bonds?agent_did=${first.agent_did}&provider=ionet`,
+    });
+    expect(byAgent.statusCode).toBe(200);
+    const byAgentJson = byAgent.json() as {
+      items: Array<{ lease_id: string; agent_did: string; provider: string }>;
+    };
+    expect(byAgentJson.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          lease_id: first.body.lease_id,
+          agent_did: first.agent_did,
+          provider: 'ionet',
+        }),
+      ]),
+    );
+  });
+
   it('bonds/request returns 503 without broker key', async () => {
     const nokey = build({
       cfg: loadConfig({}),

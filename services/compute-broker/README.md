@@ -21,6 +21,7 @@ compute-bond enforcement are still pending.
 
 - `POST /bonds/request` — reserve provider capacity and sign a broker attestation
 - `POST /bonds/verify` — verify a broker attestation over the canonical payload
+- `GET /bonds` — list tracked bonds by agent, task, provider, or lifecycle status
 - `GET /bonds/:id` — inspect the tracked bond record plus current provider status
 - `POST /bonds/lock` — bind a reserved bond to a single task and activate the provider lease
 - `POST /bonds/release` — mark a locked bond released and reclaim the provider lease

@@ -1,11 +1,18 @@
 import { fileURLToPath } from 'node:url';
-import Fastify from 'fastify';
+import Fastify, { type FastifyReply } from 'fastify';
 import websocket from '@fastify/websocket';
 import pino from 'pino';
 import { getPool, query, queryOne, close as closeDb } from './db.js';
 import {
+  HttpComputeBondClient,
+  type ComputeBondClient,
+  type ComputeBondSummary,
+} from './compute-bonds.js';
+import {
   AgentsQuerySchema,
   AgentDidParamsSchema,
+  ComputeBondQuerySchema,
+  TaskIdParamsSchema,
   TaskHistoryQuerySchema,
   TasksQuerySchema,
   WebhookSubscriptionCreateSchema,
@@ -43,6 +50,15 @@ export interface BuildServerOptions {
   webhookAdminToken?: string;
   webhookServiceToken?: string;
   webhookStorePath?: string;
+  computeBondClient?: ComputeBondClient | null;
+  db?: DiscoveryDb;
+}
+
+export interface DiscoveryDb {
+  getPool: typeof getPool;
+  query: typeof query;
+  queryOne: typeof queryOne;
+  close: typeof closeDb;
 }
 
 function requireToken(
@@ -53,8 +69,76 @@ function requireToken(
   return authorizeToken(token, expected);
 }
 
+function computeBondLimit(taskCount: number): number {
+  return Math.min(200, Math.max(50, taskCount * 4));
+}
+
+function groupComputeBondsByTaskId(
+  bonds: readonly ComputeBondSummary[],
+): Map<string, ComputeBondSummary[]> {
+  const grouped = new Map<string, ComputeBondSummary[]>();
+  for (const bond of bonds) {
+    if (!bond.task_id) continue;
+    const existing = grouped.get(bond.task_id);
+    if (existing) {
+      existing.push(bond);
+      continue;
+    }
+    grouped.set(bond.task_id, [bond]);
+  }
+  return grouped;
+}
+
+async function loadComputeBondsForTaskIds(
+  client: ComputeBondClient | null,
+  taskIds: readonly string[],
+): Promise<Map<string, ComputeBondSummary[]>> {
+  if (!client || taskIds.length === 0) {
+    return new Map();
+  }
+
+  const uniqueTaskIds = [...new Set(taskIds)];
+  try {
+    const bonds = await client.listBonds({
+      taskIds: uniqueTaskIds,
+      limit: computeBondLimit(uniqueTaskIds.length),
+    });
+    return groupComputeBondsByTaskId(bonds);
+  } catch (err) {
+    log.warn({ err: err instanceof Error ? err.message : String(err) }, 'compute bond enrichment unavailable');
+    return new Map();
+  }
+}
+
+async function listComputeBondsOrReply(
+  reply: FastifyReply,
+  client: ComputeBondClient | null,
+  query: Parameters<ComputeBondClient['listBonds']>[0],
+): Promise<ComputeBondSummary[] | null> {
+  if (!client) {
+    reply.code(503).send({ error: 'compute_bond_client_not_configured' });
+    return null;
+  }
+
+  try {
+    return await client.listBonds(query);
+  } catch (err) {
+    reply.code(502).send({
+      error: 'compute_bond_client_unavailable',
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
 export async function buildServer(opts: BuildServerOptions = {}) {
   const app = Fastify({ loggerInstance: log });
+  const db = opts.db ?? {
+    getPool,
+    query,
+    queryOne,
+    close: closeDb,
+  };
   const webhookStorePath = opts.webhookStorePath ?? process.env.WEBHOOK_STORE_PATH;
   const webhookStore = webhookStorePath ? new JsonFileWebhookStore(webhookStorePath) : null;
   const webhookHub = opts.webhookHub ?? new WebhookHub({
@@ -65,11 +149,16 @@ export async function buildServer(opts: BuildServerOptions = {}) {
   });
   const webhookAdminToken = opts.webhookAdminToken ?? process.env.WEBHOOK_ADMIN_TOKEN;
   const webhookServiceToken = opts.webhookServiceToken ?? process.env.WEBHOOK_SERVICE_TOKEN;
+  const computeBondClient =
+    opts.computeBondClient ??
+    (process.env.COMPUTE_BROKER_URL
+      ? new HttpComputeBondClient(process.env.COMPUTE_BROKER_URL)
+      : null);
   await app.register(websocket);
 
   app.get('/healthz', async () => {
     try {
-      await getPool().query('SELECT 1');
+      await db.getPool().query('SELECT 1');
       return { status: 'ok' };
     } catch {
       return { status: 'degraded' };
@@ -113,7 +202,7 @@ export async function buildServer(opts: BuildServerOptions = {}) {
     const sortDir = sortCol === 'reputation_composite' ? 'DESC' : 'DESC';
 
     const countSql = `SELECT count(*)::int AS total FROM agent_directory ${where}`;
-    const countRow = await queryOne<{ total: number }>(countSql, values);
+    const countRow = await db.queryOne<{ total: number }>(countSql, values);
     const total = countRow?.total ?? 0;
 
     const dataSql = `
@@ -126,7 +215,7 @@ export async function buildServer(opts: BuildServerOptions = {}) {
       LIMIT $${idx++} OFFSET $${idx++}`;
     const dataValues = [...values, q.limit, offset];
 
-    const rows = await query<{
+    const rows = await db.query<{
       agent_did: Buffer;
       operator: string | null;
       capability_mask: string | null;
@@ -191,12 +280,12 @@ export async function buildServer(opts: BuildServerOptions = {}) {
     `;
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const countRow = await queryOne<{ total: number }>(
+    const countRow = await db.queryOne<{ total: number }>(
       `SELECT count(*)::int AS total ${from} ${where}`,
       values,
     );
 
-    const rows = await query<{
+    const rows = await db.query<{
       task_id: Buffer;
       creator: string | null;
       agent_did: Buffer | null;
@@ -223,17 +312,27 @@ export async function buildServer(opts: BuildServerOptions = {}) {
       [...values, q.limit, offset],
     );
 
+    const items = rows.map((row) => ({
+      task_id_hex: bytesToHex(row.task_id),
+      creator: row.creator,
+      agent_did_hex: row.agent_did ? bytesToHex(row.agent_did) : null,
+      status: row.status,
+      reward_lamports: row.reward_lamports,
+      capability_mask: row.capability_mask,
+      created_at_unix: Number(row.created_at_unix),
+      deadline_unix: row.deadline_unix ? Number(row.deadline_unix) : null,
+      updated_at_unix: row.updated_at_unix ? Number(row.updated_at_unix) : null,
+      compute_bonds: [] as ComputeBondSummary[],
+    }));
+    const bondsByTaskId = await loadComputeBondsForTaskIds(
+      computeBondClient,
+      items.map((item) => item.task_id_hex),
+    );
+
     return {
-      items: rows.map((row) => ({
-        task_id_hex: bytesToHex(row.task_id),
-        creator: row.creator,
-        agent_did_hex: row.agent_did ? bytesToHex(row.agent_did) : null,
-        status: row.status,
-        reward_lamports: row.reward_lamports,
-        capability_mask: row.capability_mask,
-        created_at_unix: Number(row.created_at_unix),
-        deadline_unix: row.deadline_unix ? Number(row.deadline_unix) : null,
-        updated_at_unix: row.updated_at_unix ? Number(row.updated_at_unix) : null,
+      items: items.map((item) => ({
+        ...item,
+        compute_bonds: bondsByTaskId.get(item.task_id_hex) ?? [],
       })),
       page: q.page,
       limit: q.limit,
@@ -249,7 +348,7 @@ export async function buildServer(opts: BuildServerOptions = {}) {
     }
     const didBytes = hexToBytes(params.data.did);
 
-    const agent = await queryOne<{
+    const agent = await db.queryOne<{
       agent_did: Buffer;
       operator: string | null;
       capability_mask: string | null;
@@ -266,7 +365,7 @@ export async function buildServer(opts: BuildServerOptions = {}) {
     );
     if (!agent) return reply.code(404).send({ error: 'agent_not_found' });
 
-    const reputation = await query<{
+    const reputation = await db.query<{
       capability_bit: number;
       quality: number;
       timeliness: number;
@@ -335,12 +434,12 @@ export async function buildServer(opts: BuildServerOptions = {}) {
 
     const where = conditions.join(' AND ');
 
-    const countRow = await queryOne<{ total: number }>(
+    const countRow = await db.queryOne<{ total: number }>(
       `SELECT count(*)::int AS total FROM task_directory WHERE ${where}`,
       values,
     );
 
-    const rows = await query<{
+    const rows = await db.query<{
       task_id: Buffer;
       creator: string | null;
       status: string | null;
@@ -358,15 +457,25 @@ export async function buildServer(opts: BuildServerOptions = {}) {
       [...values, q.limit, offset],
     );
 
+    const items = rows.map((r) => ({
+      task_id: bytesToHex(r.task_id),
+      creator: r.creator,
+      status: r.status,
+      reward_lamports: r.reward_lamports,
+      created_at_unix: Number(r.created_at_unix),
+      deadline_unix: Number(r.deadline_unix),
+      updated_at_unix: Number(r.updated_at_unix),
+      compute_bonds: [] as ComputeBondSummary[],
+    }));
+    const bondsByTaskId = await loadComputeBondsForTaskIds(
+      computeBondClient,
+      items.map((item) => item.task_id),
+    );
+
     return {
-      items: rows.map((r) => ({
-        task_id: bytesToHex(r.task_id),
-        creator: r.creator,
-        status: r.status,
-        reward_lamports: r.reward_lamports,
-        created_at_unix: Number(r.created_at_unix),
-        deadline_unix: Number(r.deadline_unix),
-        updated_at_unix: Number(r.updated_at_unix),
+      items: items.map((item) => ({
+        ...item,
+        compute_bonds: bondsByTaskId.get(item.task_id) ?? [],
       })),
       page: q.page,
       limit: q.limit,
@@ -374,9 +483,74 @@ export async function buildServer(opts: BuildServerOptions = {}) {
     };
   });
 
+  app.get('/agents/:did/compute-bonds', async (req, reply) => {
+    const params = AgentDidParamsSchema.safeParse(req.params);
+    if (!params.success) {
+      return reply.code(400).send({ error: 'invalid_did' });
+    }
+    const qParsed = ComputeBondQuerySchema.safeParse(req.query);
+    if (!qParsed.success) {
+      return reply.code(400).send({ error: 'invalid_query', issues: qParsed.error.issues });
+    }
+
+    const didBytes = hexToBytes(params.data.did);
+    const taskRows = await db.query<{ task_id: Buffer }>(
+      `SELECT task_id
+       FROM task_directory
+       WHERE agent_did = $1
+       ORDER BY COALESCE(updated_at_unix, created_at_unix) DESC, task_id ASC
+       LIMIT 200`,
+      [didBytes],
+    );
+    const taskIds = taskRows.map((row) => bytesToHex(row.task_id));
+    if (taskIds.length === 0) {
+      return {
+        agent_did: params.data.did,
+        items: [],
+      };
+    }
+
+    const items = await listComputeBondsOrReply(reply, computeBondClient, {
+      taskIds,
+      status: qParsed.data.status,
+      provider: qParsed.data.provider,
+      limit: qParsed.data.limit,
+    });
+    if (!items) return reply;
+
+    return {
+      agent_did: params.data.did,
+      items,
+    };
+  });
+
+  app.get('/tasks/:task_id/compute-bonds', async (req, reply) => {
+    const params = TaskIdParamsSchema.safeParse(req.params);
+    if (!params.success) {
+      return reply.code(400).send({ error: 'invalid_task_id' });
+    }
+    const qParsed = ComputeBondQuerySchema.safeParse(req.query);
+    if (!qParsed.success) {
+      return reply.code(400).send({ error: 'invalid_query', issues: qParsed.error.issues });
+    }
+
+    const items = await listComputeBondsOrReply(reply, computeBondClient, {
+      taskId: params.data.task_id,
+      status: qParsed.data.status,
+      provider: qParsed.data.provider,
+      limit: qParsed.data.limit,
+    });
+    if (!items) return reply;
+
+    return {
+      task_id: params.data.task_id,
+      items,
+    };
+  });
+
   // GET /capabilities — all registered capability tags
   app.get('/capabilities', async () => {
-    const rows = await query<{
+    const rows = await db.query<{
       capability_bit: number;
       agents: number;
       tasks: number;
@@ -392,7 +566,7 @@ export async function buildServer(opts: BuildServerOptions = {}) {
 
   // GET /stats — protocol-level stats
   app.get('/stats', async () => {
-    const row = await queryOne<{
+    const row = await db.queryOne<{
       total_agents: number;
       total_tasks: number;
       volume_lamports: string;
@@ -545,7 +719,7 @@ export async function buildServer(opts: BuildServerOptions = {}) {
 
       try {
         if (!events || events.has('status_change')) {
-          const changed = await query<{
+          const changed = await db.query<{
             agent_did: Buffer;
             status: string;
             reputation_composite: number;
@@ -574,7 +748,7 @@ export async function buildServer(opts: BuildServerOptions = {}) {
         }
 
         if (!events || events.has('new_task')) {
-          const tasks = await query<{
+          const tasks = await db.query<{
             task_id: Buffer;
             creator: string | null;
             status: string | null;
@@ -616,7 +790,7 @@ export async function buildServer(opts: BuildServerOptions = {}) {
     const shutdown = async () => {
       log.info('shutting down');
       await app.close();
-      await closeDb();
+      await db.close();
       process.exit(0);
     };
     process.on('SIGINT', () => void shutdown());
