@@ -1,8 +1,9 @@
 'use client';
 
 import { useBiddingState, useTaskBidsIndexed } from '@saep/sdk-ui';
+import { getPortalIndexerUrl } from '@/lib/indexer-url';
 
-const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL ?? '/api/discovery';
+const INDEXER_URL = getPortalIndexerUrl();
 
 const PHASE_COLOR: Record<string, string> = {
   commit: 'text-ink bg-ink/10',

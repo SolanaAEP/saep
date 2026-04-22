@@ -3,9 +3,9 @@
 import { useMemo } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { useRetroEligibility, useSession } from '@saep/sdk-ui';
+import { getPortalIndexerUrl } from '@/lib/indexer-url';
 
-const INDEXER_URL =
-  process.env.NEXT_PUBLIC_INDEXER_URL ?? '/api/discovery';
+const INDEXER_URL = getPortalIndexerUrl();
 
 const TIER_LABEL: Record<'none' | 'basic' | 'verified', string> = {
   none: 'Unverified',

@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useLeaderboard, type LeaderboardRow } from '@saep/sdk-ui';
+import { getPortalIndexerUrl } from '@/lib/indexer-url';
 import { CAPABILITY_LABELS } from '../../dashboard/capability-tags';
 
-const INDEXER_URL =
-  process.env.NEXT_PUBLIC_INDEXER_URL ?? '/api/discovery';
+const INDEXER_URL = getPortalIndexerUrl();
 
 const AXIS_LABELS: Record<keyof Pick<LeaderboardRow,
   'quality' | 'timeliness' | 'availability' | 'costEfficiency' | 'honesty'>, string> = {
