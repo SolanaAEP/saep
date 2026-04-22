@@ -9,24 +9,36 @@ import type { ComputeProvider, LeaseRequest, LeaseReservation } from '../provide
 
 class FakeProvider implements ComputeProvider {
   readonly name: 'ionet' | 'akash';
+  readonly calls: Array<{ op: string; leaseId: string }> = [];
+  private statuses = new Map<string, 'reserved' | 'active' | 'cancelled' | 'reclaimed'>();
   constructor(name: 'ionet' | 'akash') {
     this.name = name;
   }
   async reserve(req: LeaseRequest): Promise<LeaseReservation> {
+    const leaseId = `${this.name}-lease-${req.gpuHours}`;
+    this.statuses.set(leaseId, 'reserved');
     return {
-      leaseId: `${this.name}-lease-${req.gpuHours}`,
+      leaseId,
       gpuHours: req.gpuHours,
       expiresAt: 1_700_000_000,
       pricedUsdMicro: 50_000_000,
     };
   }
-  async activate(): Promise<void> {}
-  async cancel(): Promise<{ refundUsdMicro: number }> {
+  async activate(leaseId: string): Promise<void> {
+    this.calls.push({ op: 'activate', leaseId });
+    this.statuses.set(leaseId, 'active');
+  }
+  async cancel(leaseId: string): Promise<{ refundUsdMicro: number }> {
+    this.calls.push({ op: 'cancel', leaseId });
+    this.statuses.set(leaseId, 'cancelled');
     return { refundUsdMicro: 0 };
   }
-  async reclaim(): Promise<void> {}
-  async status(): Promise<'reserved'> {
-    return 'reserved';
+  async reclaim(leaseId: string): Promise<void> {
+    this.calls.push({ op: 'reclaim', leaseId });
+    this.statuses.set(leaseId, 'reclaimed');
+  }
+  async status(leaseId: string): Promise<'reserved' | 'active' | 'cancelled' | 'reclaimed'> {
+    return this.statuses.get(leaseId) ?? 'reserved';
   }
 }
 
@@ -34,11 +46,15 @@ describe('compute-broker server', () => {
   const key = 'ab'.repeat(32);
   const cfg = loadConfig({ BROKER_SIGNING_KEY_HEX: key });
   let app: FastifyInstance;
+  let ionet: FakeProvider;
+  let akash: FakeProvider;
 
   beforeAll(async () => {
+    ionet = new FakeProvider('ionet');
+    akash = new FakeProvider('akash');
     app = build({
       cfg,
-      providers: { ionet: new FakeProvider('ionet'), akash: new FakeProvider('akash') },
+      providers: { ionet, akash },
     });
     await app.ready();
   });
@@ -57,6 +73,7 @@ describe('compute-broker server', () => {
     const res = await app.inject({ method: 'GET', url: '/metrics' });
     expect(res.statusCode).toBe(200);
     expect(res.body).toContain('compute_broker_bond_requests_total');
+    expect(res.body).toContain('compute_broker_lease_lifecycle_ops_total');
   });
 
   it('bonds/request rejects bad body', async () => {
@@ -164,5 +181,62 @@ describe('compute-broker server', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ lease_id: leaseId, status: 'cancelled' });
+  });
+
+  it('leases/activate activates the selected provider lease', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/leases/activate',
+      payload: {
+        lease_id: 'ionet-lease-9',
+        provider: 'ionet',
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ lease_id: 'ionet-lease-9', status: 'active' });
+    expect(ionet.calls).toContainEqual({ op: 'activate', leaseId: 'ionet-lease-9' });
+  });
+
+  it('leases/reclaim reclaims the selected provider lease', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/leases/reclaim',
+      payload: {
+        lease_id: 'akash-lease-5',
+        provider: 'akash',
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ lease_id: 'akash-lease-5', status: 'reclaimed' });
+    expect(akash.calls).toContainEqual({ op: 'reclaim', leaseId: 'akash-lease-5' });
+  });
+
+  it('leases/expire-sweep reclaims expired leases and skips active windows', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/leases/expire-sweep',
+      payload: {
+        now_unix: 1_700_000_100,
+        leases: [
+          {
+            lease_id: 'ionet-expired',
+            provider: 'ionet',
+            slashable_until: 1_700_000_000,
+          },
+          {
+            lease_id: 'akash-still-live',
+            provider: 'akash',
+            slashable_until: 1_700_000_500,
+          },
+        ],
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      reclaimed: 1,
+      skipped: 1,
+      errors: 0,
+    });
+    expect(ionet.calls).toContainEqual({ op: 'reclaim', leaseId: 'ionet-expired' });
   });
 });

@@ -1,0 +1,9 @@
+{
+  "slug": "task-completion",
+  "displayName": "Task Completion",
+  "lifecycle": "live",
+  "version": 1,
+  "verifier": "groth16-bn254",
+  "publicInputs": ["task_root", "task_id", "result_hash"],
+  "summary": "Current proof used to bind task completion and escrow release to committed task inputs and result hashes."
+}

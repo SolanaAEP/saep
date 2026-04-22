@@ -8,6 +8,9 @@ governance circuits arrive in later milestones.
 ```
 circuits/
 ├── package.json                    # circomlib + snarkjs pins
+├── catalog/
+│   ├── README.md                   # shared naming + manifest conventions
+│   └── *.json                      # circuit metadata manifests
 ├── ceremony/
 │   ├── README.md                   # production trusted-setup workspace
 │   ├── phase1/
@@ -121,3 +124,9 @@ Gitignored: `build/*.r1cs`, `build/*.wasm`, `build/*.sym`, `build/*.zkey`,
 For the real mainnet ceremony, use `circuits/ceremony/`. The current
 `task_completion/build/verification_key.json` remains dev-only and is not a
 drop-in replacement for the production VK.
+
+## Circuit catalog
+
+`circuits/catalog/` is the shared metadata layer for the proof-gen service, portal, and future
+verification-key management. Each manifest records the circuit slug, version, verifier type,
+public-input order, and lifecycle (`live`, `planned`, or `research`).

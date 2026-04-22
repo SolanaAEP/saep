@@ -8,6 +8,7 @@ import { MultiAssetBalanceTable } from './multi-asset-balance-table';
 import { StreamingPaymentsMonitor } from './streaming-payments-monitor';
 import { SpendingLimitsEditor } from './spending-limits-editor';
 import { ExportReports } from './export-reports';
+import { YieldAutomationPanel } from './yield-automation-panel';
 
 export default function TreasuryPage() {
   const { publicKey } = useWallet();
@@ -57,6 +58,7 @@ export default function TreasuryPage() {
           <MultiAssetBalanceTable agent={active} />
           <StreamingPaymentsMonitor agent={active} />
           <SpendingLimitsEditor agent={active} />
+          <YieldAutomationPanel />
           <ExportReports agent={active} />
         </>
       )}

@@ -16,6 +16,7 @@ import {
 import {
   attestationsSigned,
   bondRequests,
+  leaseLifecycleOps,
   leaseReservationLatency,
   registry,
 } from './metrics.js';
@@ -32,6 +33,24 @@ const BondCancelBody = z.object({
   lease_id: z.string().min(1),
   agent_did: z.string().min(32).max(44),
   signed_request: z.string().min(1),
+});
+
+const LeaseActionBody = z.object({
+  lease_id: z.string().min(1),
+  provider: z.enum(['ionet', 'akash']),
+});
+
+const ExpireSweepBody = z.object({
+  now_unix: z.number().int().positive().optional(),
+  leases: z
+    .array(
+      z.object({
+        lease_id: z.string().min(1),
+        provider: z.enum(['ionet', 'akash']),
+        slashable_until: z.number().int().positive(),
+      }),
+    )
+    .min(1),
 });
 
 export type BuildOpts = {
@@ -62,6 +81,42 @@ export function build(opts: BuildOpts) {
       return { lease_id: id, status };
     } catch (err) {
       return reply.code(501).send({ error: asMessage(err) });
+    }
+  });
+
+  app.post('/leases/activate', async (req, reply) => {
+    const parsed = LeaseActionBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.message });
+    }
+
+    const { lease_id, provider: providerName } = parsed.data;
+    const provider = selectProvider(providerName, providers);
+    try {
+      await provider.activate(lease_id);
+      leaseLifecycleOps.inc({ provider: providerName, operation: 'activate', status: 'ok' });
+      return reply.send({ lease_id, provider: providerName, status: 'active' });
+    } catch (err) {
+      leaseLifecycleOps.inc({ provider: providerName, operation: 'activate', status: 'error' });
+      return reply.code(502).send({ error: asMessage(err) });
+    }
+  });
+
+  app.post('/leases/reclaim', async (req, reply) => {
+    const parsed = LeaseActionBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.message });
+    }
+
+    const { lease_id, provider: providerName } = parsed.data;
+    const provider = selectProvider(providerName, providers);
+    try {
+      await provider.reclaim(lease_id);
+      leaseLifecycleOps.inc({ provider: providerName, operation: 'reclaim', status: 'ok' });
+      return reply.send({ lease_id, provider: providerName, status: 'reclaimed' });
+    } catch (err) {
+      leaseLifecycleOps.inc({ provider: providerName, operation: 'reclaim', status: 'error' });
+      return reply.code(502).send({ error: asMessage(err) });
     }
   });
 
@@ -200,6 +255,73 @@ export function build(opts: BuildOpts) {
       lease_id,
       status: 'cancelled',
       refund_usd_micro: refund.refundUsdMicro,
+    });
+  });
+
+  app.post('/leases/expire-sweep', async (req, reply) => {
+    const parsed = ExpireSweepBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.message });
+    }
+
+    const nowUnix = parsed.data.now_unix ?? Math.floor(Date.now() / 1000);
+    const results: Array<{
+      lease_id: string;
+      provider: 'ionet' | 'akash';
+      status: 'reclaimed' | 'skipped' | 'error';
+      reason?: string;
+    }> = [];
+
+    for (const lease of parsed.data.leases) {
+      if (lease.slashable_until > nowUnix) {
+        leaseLifecycleOps.inc({
+          provider: lease.provider,
+          operation: 'expire_sweep',
+          status: 'skipped',
+        });
+        results.push({
+          lease_id: lease.lease_id,
+          provider: lease.provider,
+          status: 'skipped',
+          reason: 'slashable window still active',
+        });
+        continue;
+      }
+
+      const provider = selectProvider(lease.provider, providers);
+      try {
+        await provider.reclaim(lease.lease_id);
+        leaseLifecycleOps.inc({
+          provider: lease.provider,
+          operation: 'expire_sweep',
+          status: 'ok',
+        });
+        results.push({
+          lease_id: lease.lease_id,
+          provider: lease.provider,
+          status: 'reclaimed',
+        });
+      } catch (err) {
+        leaseLifecycleOps.inc({
+          provider: lease.provider,
+          operation: 'expire_sweep',
+          status: 'error',
+        });
+        results.push({
+          lease_id: lease.lease_id,
+          provider: lease.provider,
+          status: 'error',
+          reason: asMessage(err),
+        });
+      }
+    }
+
+    return reply.send({
+      now_unix: nowUnix,
+      reclaimed: results.filter((item) => item.status === 'reclaimed').length,
+      skipped: results.filter((item) => item.status === 'skipped').length,
+      errors: results.filter((item) => item.status === 'error').length,
+      results,
     });
   });
 

@@ -20,5 +20,6 @@ export * from './auth/session.js';
 export * from './schemas/index.js';
 export * from './jito/index.js';
 export * from './submit/index.js';
+export * from './research/index.js';
 
 export { DEVNET_PROGRAM_IDS as SAEP_PROGRAM_IDS } from './cluster/index.js';

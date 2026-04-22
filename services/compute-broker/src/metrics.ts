@@ -23,3 +23,10 @@ export const attestationsSigned = new Counter({
   labelNames: ['provider'],
   registers: [registry],
 });
+
+export const leaseLifecycleOps = new Counter({
+  name: 'compute_broker_lease_lifecycle_ops_total',
+  help: 'lease lifecycle operations executed by the broker',
+  labelNames: ['provider', 'operation', 'status'],
+  registers: [registry],
+});
