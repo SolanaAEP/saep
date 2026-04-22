@@ -23,6 +23,7 @@ cargo install diesel_cli --no-default-features --features postgres
 diesel migration run
 
 INDEXER_ROLE=all API_PORT=8081 HEALTHCHECK_PORT=8080 \
+INDEXER_RUN_MIGRATIONS=1 \
 INDEXER_INTERNAL_API_TOKEN=local-saep-indexer-token \
 cargo run -p saep-indexer
 ```
@@ -47,6 +48,7 @@ When `INDEXER_ROLE=all` or `INDEXER_ROLE=api`, the public discovery API listens 
 | `SOLANA_CLUSTER` | `devnet` | `mainnet` or `devnet` — selects Helius host |
 | `SOLANA_RPC_URL` | derived | Set to override the Helius-derived URL |
 | `INDEXER_ROLE` | `poller` | `poller`, `api`, or `all`. Use `all` locally when you want ingest plus the public API in one process. |
+| `INDEXER_RUN_MIGRATIONS` | `false` | When `1`/`true`, runs Diesel migrations even in `INDEXER_ROLE=api`. Use this for local smoke stacks that only need the read APIs. |
 | `POLL_INTERVAL_MS` | `2000` | Polling mode: per-cycle sleep between program scans |
 | `RPC_PAGE_LIMIT` | `200` | Polling mode: signatures fetched per call (Helius caps at 1000) |
 | `YELLOWSTONE_ENDPOINT` | unset | When set, switches ingest to Yellowstone gRPC streaming. Unset = JSON-RPC polling. |
@@ -68,6 +70,10 @@ To exercise the persisted compute-bond read model locally:
 The broker pushes lifecycle snapshots to the internal indexer API, the indexer persists them, and
 both Discovery and the public indexer API should converge on the same task-scoped compute-bond
 records.
+
+For the self-orchestrating local path, `pnpm smoke:compute-bonds:local` instead starts the indexer
+in `INDEXER_ROLE=api` with `INDEXER_RUN_MIGRATIONS=1`, then boots Discovery and the broker around
+it automatically.
 
 ## IDL regeneration
 

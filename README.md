@@ -109,9 +109,10 @@ anchor test --validator legacy   # localnet integration tests
 pnpm --filter @saep/portal dev   # portal on :3000
 ```
 
-For the persisted compute-bond snapshot loop, use the local rollout flow in
-[docs/getting-started.md](./docs/getting-started.md): start the indexer with `INDEXER_ROLE=all`,
-run Discovery plus the compute broker, then execute `pnpm smoke:compute-bonds`.
+For the persisted compute-bond snapshot loop, use the self-orchestrating local rollout flow in
+[docs/getting-started.md](./docs/getting-started.md): `pnpm smoke:compute-bonds:local` boots
+Postgres, the API-only indexer, Discovery, and the compute broker in mock-provider mode, then
+verifies the broker -> indexer -> read-model path end to end.
 
 ## Development
 

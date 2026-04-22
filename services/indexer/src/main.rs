@@ -41,12 +41,12 @@ async fn main() -> Result<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    let cfg = config::Config::from_env()?;
     let role = Role::from_env();
+    let cfg = config::Config::from_env(role.runs_poller())?;
     tracing::info!(?cfg, ?role, "starting saep-indexer");
 
     let pool = db::pool(&cfg.database_url)?;
-    if role.runs_poller() {
+    if role.runs_poller() || cfg.run_migrations {
         db::run_migrations(&pool)?;
         tracing::info!("migrations applied");
     }

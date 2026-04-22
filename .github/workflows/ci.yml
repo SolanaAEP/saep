@@ -125,3 +125,30 @@ jobs:
       - name: cargo check indexer
         working-directory: services/indexer
         run: cargo check --all-targets
+
+  compute-bond-smoke:
+    runs-on: ubuntu-latest
+    needs: public-id-guard
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - run: pnpm install --frozen-lockfile
+      - name: Run compute-bond smoke stack
+        run: pnpm smoke:compute-bonds:local
+      - name: Upload compute-bond smoke logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compute-bond-smoke-logs
+          path: test-results/compute-bond-smoke
+          if-no-files-found: ignore

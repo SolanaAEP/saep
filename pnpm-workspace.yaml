@@ -2,6 +2,7 @@ packages:
   - apps/*
   - packages/*
   - services/proof-gen
+  - services/discovery
   - services/iacp
   - services/mcp-bridge
   - services/x402-gateway

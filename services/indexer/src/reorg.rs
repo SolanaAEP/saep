@@ -227,7 +227,13 @@ async fn get_latest_slot(cfg: &Config, http: &reqwest::Client) -> Result<i64> {
         "params": [{ "commitment": "confirmed" }],
     });
     let timer = metrics::time_rpc("getSlot");
-    let v: Value = http.post(&cfg.rpc_url).json(&body).send().await?.json().await?;
+    let v: Value = http
+        .post(cfg.rpc_url_required())
+        .json(&body)
+        .send()
+        .await?
+        .json()
+        .await?;
     timer.observe_duration();
     if let Some(err) = v.get("error") {
         metrics::RPC_ERRORS
@@ -260,7 +266,13 @@ async fn fetch_statuses(
             "params": [chunk, { "searchTransactionHistory": false }],
         });
         let timer = metrics::time_rpc("getSignatureStatuses");
-        let v: Value = http.post(&cfg.rpc_url).json(&body).send().await?.json().await?;
+        let v: Value = http
+            .post(cfg.rpc_url_required())
+            .json(&body)
+            .send()
+            .await?
+            .json()
+            .await?;
         timer.observe_duration();
         if let Some(err) = v.get("error") {
             metrics::RPC_ERRORS

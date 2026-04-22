@@ -16,6 +16,7 @@
     "typecheck": "turbo run typecheck",
     "seed:bounties": "tsx scripts/seed_marketplace_bounties.ts",
     "smoke:compute-bonds": "tsx scripts/smoke_compute_bond_snapshots.ts",
+    "smoke:compute-bonds:local": "tsx scripts/smoke_compute_bond_snapshots_local.ts",
     "clean": "turbo run clean && rm -rf node_modules",
     "size": "node scripts/check-bundle-size.mjs apps/portal --build && node scripts/check-bundle-size.mjs apps/analytics --build",
     "test": "turbo run test"

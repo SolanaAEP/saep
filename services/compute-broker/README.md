@@ -50,3 +50,7 @@ When `INDEXER_INTERNAL_API_URL` is set, the broker also pushes persisted compute
 the indexer’s internal `POST /compute-bonds/snapshots` route after reserve, lock, release, slash,
 cancel, and expiry transitions. Set `INDEXER_INTERNAL_API_TOKEN` on both services to require a
 shared Bearer token for that sync path.
+
+Set `COMPUTE_PROVIDER_MODE=mock` for the local smoke stack when you want the full lifecycle
+without external io.net or Akash credentials. The repo-root `pnpm smoke:compute-bonds:local`
+command uses this mode automatically.

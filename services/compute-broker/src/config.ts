@@ -12,6 +12,7 @@ const EnvSchema = z.object({
   MIN_BOND_USD_MICRO: z.coerce.number().int().positive().default(10_000_000),
   MAX_BOND_DURATION_SECS: z.coerce.number().int().positive().default(14 * 24 * 3600),
   BOND_SLASH_WINDOW_SECS: z.coerce.number().int().positive().default(24 * 3600),
+  COMPUTE_PROVIDER_MODE: z.enum(['live', 'mock']).default('live'),
   COMPUTE_BOND_STORE_PATH: z.string().optional(),
   INDEXER_INTERNAL_API_URL: z.string().url().optional(),
   INDEXER_INTERNAL_API_TOKEN: z.string().optional(),
@@ -29,6 +30,7 @@ export type Config = {
   minBondMicro: number;
   maxBondDurationSecs: number;
   bondSlashWindowSecs: number;
+  computeProviderMode: 'live' | 'mock';
   computeBondStorePath: string | undefined;
   indexerInternalApiUrl: string | undefined;
   indexerInternalApiToken: string | undefined;
@@ -48,6 +50,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     minBondMicro: parsed.MIN_BOND_USD_MICRO,
     maxBondDurationSecs: parsed.MAX_BOND_DURATION_SECS,
     bondSlashWindowSecs: parsed.BOND_SLASH_WINDOW_SECS,
+    computeProviderMode: parsed.COMPUTE_PROVIDER_MODE,
     computeBondStorePath: parsed.COMPUTE_BOND_STORE_PATH,
     indexerInternalApiUrl: parsed.INDEXER_INTERNAL_API_URL,
     indexerInternalApiToken: parsed.INDEXER_INTERNAL_API_TOKEN,

@@ -216,7 +216,7 @@ async fn get_signatures(
     });
     let timer = metrics::time_rpc("getSignaturesForAddress");
     let v: Value = http
-        .post(&cfg.rpc_url)
+        .post(cfg.rpc_url_required())
         .json(&body)
         .send()
         .await?
@@ -255,7 +255,7 @@ async fn get_transaction(
     });
     let timer = metrics::time_rpc("getTransaction");
     let v: Value = http
-        .post(&cfg.rpc_url)
+        .post(cfg.rpc_url_required())
         .json(&body)
         .send()
         .await?

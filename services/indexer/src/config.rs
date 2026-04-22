@@ -1,9 +1,9 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 
 #[derive(Clone)]
 pub struct Config {
     pub database_url: String,
-    pub rpc_url: String,
+    pub rpc_url: Option<String>,
     pub poll_interval_ms: u64,
     pub page_limit: u16,
     pub healthcheck_port: u16,
@@ -17,24 +17,15 @@ pub struct Config {
     pub yellowstone_endpoint: Option<String>,
     pub yellowstone_token: Option<String>,
     pub internal_api_token: Option<String>,
+    pub run_migrations: bool,
 }
 
 impl Config {
-    pub fn from_env() -> Result<Self> {
-        let rpc_url = std::env::var("SOLANA_RPC_URL")
-            .ok()
-            .or_else(|| {
-                let key = std::env::var("HELIUS_API_KEY")
-                    .or_else(|_| std::env::var("HELIUS_API_KEY_SAEP"))
-                    .ok()?;
-                let cluster = std::env::var("SOLANA_CLUSTER").unwrap_or_else(|_| "devnet".into());
-                let host = match cluster.as_str() {
-                    "mainnet" | "mainnet-beta" => "mainnet.helius-rpc.com",
-                    _ => "devnet.helius-rpc.com",
-                };
-                Some(format!("https://{host}/?api-key={key}"))
-            })
-            .context("SOLANA_RPC_URL (or HELIUS_API_KEY + SOLANA_CLUSTER)")?;
+    pub fn from_env(require_rpc: bool) -> Result<Self> {
+        let rpc_url = resolve_rpc_url();
+        if require_rpc && rpc_url.is_none() {
+            bail!("SOLANA_RPC_URL (or HELIUS_API_KEY + SOLANA_CLUSTER)");
+        }
 
         Ok(Self {
             database_url: std::env::var("DATABASE_URL").context("DATABASE_URL")?,
@@ -88,7 +79,14 @@ impl Config {
                 .ok()
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty()),
+            run_migrations: env_flag("INDEXER_RUN_MIGRATIONS"),
         })
+    }
+
+    pub fn rpc_url_required(&self) -> &str {
+        self.rpc_url
+            .as_deref()
+            .expect("rpc_url is required when the poller role is active")
     }
 }
 
@@ -122,16 +120,94 @@ impl std::fmt::Debug for Config {
                 "internal_api_token",
                 &self.internal_api_token.as_ref().map(|_| "***"),
             )
+            .field("run_migrations", &self.run_migrations)
             .finish()
     }
 }
 
-fn redact_key(url: &str) -> String {
-    if let Some(idx) = url.find("api-key=") {
-        let mut s = url[..idx + 8].to_string();
-        s.push_str("***");
-        s
-    } else {
-        url.to_string()
+fn resolve_rpc_url() -> Option<String> {
+    std::env::var("SOLANA_RPC_URL").ok().or_else(|| {
+        let key = std::env::var("HELIUS_API_KEY")
+            .or_else(|_| std::env::var("HELIUS_API_KEY_SAEP"))
+            .ok()?;
+        let cluster = std::env::var("SOLANA_CLUSTER").unwrap_or_else(|_| "devnet".into());
+        let host = match cluster.as_str() {
+            "mainnet" | "mainnet-beta" => "mainnet.helius-rpc.com",
+            _ => "devnet.helius-rpc.com",
+        };
+        Some(format!("https://{host}/?api-key={key}"))
+    })
+}
+
+fn env_flag(name: &str) -> bool {
+    std::env::var(name)
+        .ok()
+        .map(|value| matches!(value.trim(), "1" | "true" | "TRUE" | "yes" | "YES"))
+        .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Config;
+    use std::sync::{Mutex, OnceLock};
+
+    static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+
+    fn with_env(vars: &[(&str, Option<&str>)], f: impl FnOnce()) {
+        let _guard = ENV_LOCK.get_or_init(|| Mutex::new(())).lock().expect("env lock");
+        let saved: Vec<(String, Option<String>)> = vars
+            .iter()
+            .map(|(key, _)| ((*key).to_string(), std::env::var(key).ok()))
+            .collect();
+
+        for (key, value) in vars {
+            match value {
+                Some(value) => unsafe { std::env::set_var(key, value) },
+                None => unsafe { std::env::remove_var(key) },
+            }
+        }
+
+        f();
+
+        for (key, value) in saved {
+            match value {
+                Some(value) => unsafe { std::env::set_var(&key, value) },
+                None => unsafe { std::env::remove_var(&key) },
+            }
+        }
+    }
+
+    #[test]
+    fn api_mode_can_load_without_rpc_env() {
+        with_env(
+            &[
+                ("DATABASE_URL", Some("postgres://saep:saep@localhost:5432/saep")),
+                ("SOLANA_RPC_URL", None),
+                ("HELIUS_API_KEY", None),
+                ("HELIUS_API_KEY_SAEP", None),
+                ("INDEXER_RUN_MIGRATIONS", Some("1")),
+            ],
+            || {
+                let cfg = Config::from_env(false).expect("config");
+                assert!(cfg.rpc_url.is_none());
+                assert!(cfg.run_migrations);
+            },
+        );
+    }
+
+    #[test]
+    fn poller_mode_requires_rpc_env() {
+        with_env(
+            &[
+                ("DATABASE_URL", Some("postgres://saep:saep@localhost:5432/saep")),
+                ("SOLANA_RPC_URL", None),
+                ("HELIUS_API_KEY", None),
+                ("HELIUS_API_KEY_SAEP", None),
+            ],
+            || {
+                let err = Config::from_env(true).expect_err("missing rpc env should fail");
+                assert!(err.to_string().contains("SOLANA_RPC_URL"));
+            },
+        );
     }
 }

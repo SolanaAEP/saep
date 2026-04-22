@@ -126,6 +126,57 @@ describe('compute-broker server', () => {
     expect(res.json()).toMatchObject({ broker_key_loaded: true });
   });
 
+  it('supports request/lock/release with mock provider mode from config', async () => {
+    const mockApp = build({
+      cfg: loadConfig({
+        BROKER_SIGNING_KEY_HEX: key,
+        COMPUTE_PROVIDER_MODE: 'mock',
+      }),
+    });
+    await mockApp.ready();
+
+    const requestRes = await mockApp.inject({
+      method: 'POST',
+      url: '/bonds/request',
+      payload: {
+        agent_did: '11111111111111111111111111111111',
+        provider: 'ionet',
+        gpu_hours: 5,
+        duration_secs: 3600,
+      },
+    });
+    expect(requestRes.statusCode).toBe(200);
+    const requested = requestRes.json() as { lease_id: string };
+
+    const lockRes = await mockApp.inject({
+      method: 'POST',
+      url: '/bonds/lock',
+      payload: {
+        lease_id: requested.lease_id,
+        provider: 'ionet',
+        agent_did: '11111111111111111111111111111111',
+        task_id: 'mock-task-id',
+      },
+    });
+    expect(lockRes.statusCode).toBe(200);
+    expect(lockRes.json()).toMatchObject({ status: 'locked', provider_status: 'active' });
+
+    const releaseRes = await mockApp.inject({
+      method: 'POST',
+      url: '/bonds/release',
+      payload: {
+        lease_id: requested.lease_id,
+        provider: 'ionet',
+        agent_did: '11111111111111111111111111111111',
+        task_id: 'mock-task-id',
+      },
+    });
+    expect(releaseRes.statusCode).toBe(200);
+    expect(releaseRes.json()).toMatchObject({ status: 'released', provider_status: 'reclaimed' });
+
+    await mockApp.close();
+  });
+
   it('metrics exposes prometheus text', async () => {
     const res = await app.inject({ method: 'GET', url: '/metrics' });
     expect(res.statusCode).toBe(200);

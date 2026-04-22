@@ -20,6 +20,57 @@ export interface ComputeProvider {
   status(leaseId: string): Promise<'reserved' | 'active' | 'cancelled' | 'reclaimed'>;
 }
 
+type MockLeaseStatus = 'reserved' | 'active' | 'cancelled' | 'reclaimed';
+
+export class MockProvider implements ComputeProvider {
+  readonly name: 'ionet' | 'akash';
+  private nextLeaseId = 1;
+  private statuses = new Map<string, MockLeaseStatus>();
+
+  constructor(name: 'ionet' | 'akash') {
+    this.name = name;
+  }
+
+  async reserve(req: LeaseRequest): Promise<LeaseReservation> {
+    const leaseId = `${this.name}-mock-${this.nextLeaseId++}`;
+    this.statuses.set(leaseId, 'reserved');
+    const nowUnix = Math.floor(Date.now() / 1000);
+    return {
+      leaseId,
+      gpuHours: req.gpuHours,
+      expiresAt: nowUnix + req.durationSecs,
+      pricedUsdMicro: req.gpuHours * 10_000_000,
+    };
+  }
+
+  async activate(leaseId: string): Promise<void> {
+    this.assertLease(leaseId);
+    this.statuses.set(leaseId, 'active');
+  }
+
+  async cancel(leaseId: string): Promise<{ refundUsdMicro: number }> {
+    this.assertLease(leaseId);
+    this.statuses.set(leaseId, 'cancelled');
+    return { refundUsdMicro: 0 };
+  }
+
+  async reclaim(leaseId: string): Promise<void> {
+    this.assertLease(leaseId);
+    this.statuses.set(leaseId, 'reclaimed');
+  }
+
+  async status(leaseId: string): Promise<MockLeaseStatus> {
+    this.assertLease(leaseId);
+    return this.statuses.get(leaseId) ?? 'reserved';
+  }
+
+  private assertLease(leaseId: string): void {
+    if (!this.statuses.has(leaseId)) {
+      throw new Error(`mock provider lease not found: ${leaseId}`);
+    }
+  }
+}
+
 type IonetConfig = {
   apiUrl: string;
   apiKey: string;
@@ -176,7 +227,14 @@ export function createProviders(cfg: {
   ionetApiKey?: string;
   akashRpcUrl: string;
   akashWallet?: string;
+  computeProviderMode?: 'live' | 'mock';
 }): { ionet: ComputeProvider; akash: ComputeProvider } {
+  if (cfg.computeProviderMode === 'mock') {
+    return {
+      ionet: new MockProvider('ionet'),
+      akash: new MockProvider('akash'),
+    };
+  }
   const ionet = cfg.ionetApiKey
     ? new IonetProvider(cfg.ionetApiUrl, cfg.ionetApiKey)
     : new IonetProviderUnconfigured();

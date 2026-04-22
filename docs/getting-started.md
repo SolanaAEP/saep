@@ -62,16 +62,18 @@ pnpm --filter @saep/proof-gen build && pnpm --filter @saep/proof-gen start
 # x402 settlement edge (needs Redis + RPC + funded signer)
 pnpm --filter @saep/x402-gateway build && pnpm --filter @saep/x402-gateway start
 
-# indexer with internal + public APIs (needs Postgres + Helius API key)
-INDEXER_ROLE=all API_PORT=8081 HEALTHCHECK_PORT=8080 \
+# indexer with internal + public APIs
+INDEXER_ROLE=all INDEXER_RUN_MIGRATIONS=1 API_PORT=8081 HEALTHCHECK_PORT=8080 \
   INDEXER_INTERNAL_API_TOKEN=local-saep-indexer-token \
-  cargo run -p saep-indexer
+  cargo run --manifest-path services/indexer/Cargo.toml --bin saep-indexer
 
 # discovery API (needs Postgres)
 pnpm --filter @saep/discovery build && pnpm --filter @saep/discovery start
 
-# compute broker with persisted snapshot sync (needs indexer internal API)
-INDEXER_INTERNAL_API_URL=http://127.0.0.1:8080 \
+# compute broker with persisted snapshot sync (mock providers, no external DePIN creds)
+COMPUTE_PROVIDER_MODE=mock \
+  BROKER_SIGNING_KEY_HEX=abababababababababababababababababababababababababababababababab \
+  INDEXER_INTERNAL_API_URL=http://127.0.0.1:8080 \
   INDEXER_INTERNAL_API_TOKEN=local-saep-indexer-token \
   COMPUTE_BOND_STORE_PATH=.local/compute-broker.json \
   pnpm --filter @saep/compute-broker build && pnpm --filter @saep/compute-broker start
@@ -82,8 +84,18 @@ compute-bond read path locally.
 
 ## 5b. Smoke-test persisted compute-bond snapshots
 
-Once the indexer, discovery, and compute broker are all running, you can drive one full reserve
-→ lock → release flow and wait for both read paths to converge:
+For the supported local smoke path, you only need Docker/Postgres available:
+
+```bash
+pnpm smoke:compute-bonds:local
+```
+
+That command boots the API-only indexer with migrations enabled, starts Discovery and the compute
+broker in mock-provider mode, runs the live reserve → lock → release flow, then tears the stack
+down automatically.
+
+If you already have the services running yourself, you can still drive one full reserve → lock →
+release flow and wait for both read paths to converge with:
 
 ```bash
 pnpm smoke:compute-bonds
@@ -97,9 +109,9 @@ pnpm smoke:compute-bonds --task-id <64-char-hex>
 pnpm smoke:compute-bonds --provider akash --gpu-hours 8 --duration-secs 7200
 ```
 
-The smoke script expects the indexer public API on `http://127.0.0.1:8081`, the broker on
+The smoke commands expect the indexer public API on `http://127.0.0.1:8081`, the broker on
 `http://127.0.0.1:8788`, and Discovery on `http://127.0.0.1:8790` unless you override them with
-CLI flags or the matching `SAEP_*` environment variables.
+CLI flags or the matching `SAEP_*` or `SMOKE_*` environment variables.
 
 ## 6. Seed live devnet bounties
 
