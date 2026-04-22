@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { WEBHOOK_EVENT_TYPES } from './webhooks.js';
 
 const HexString = z.string().regex(/^[0-9a-fA-F]+$/);
 
@@ -41,6 +42,30 @@ export const WsUnsubscribeSchema = z.object({
   type: z.literal('unsubscribe'),
 });
 
+export const WebhookEventTypeSchema = z.enum(WEBHOOK_EVENT_TYPES);
+
+export const WebhookSubscriptionCreateSchema = z.object({
+  url: z.string().url(),
+  events: z.array(WebhookEventTypeSchema).min(1),
+  secret: z.string().min(16).max(256),
+  description: z.string().trim().min(1).max(120).optional(),
+});
+
+export const WebhookDeliveriesQuerySchema = z.object({
+  state: z.enum(['pending', 'delivered', 'retrying', 'dead_letter']).optional(),
+});
+
+export const WebhookEventEmitSchema = z.object({
+  type: WebhookEventTypeSchema,
+  chain: z.string().trim().min(1).default('solana'),
+  cluster: z.string().trim().min(1).default('devnet'),
+  resource: z.object({
+    type: z.enum(['task', 'bid', 'stream', 'agent']),
+    id: z.string().trim().min(1),
+  }),
+  payload: z.record(z.unknown()).default({}),
+});
+
 export const WsMessageSchema = z.discriminatedUnion('type', [
   WsSubscribeSchema,
   WsUnsubscribeSchema,
@@ -50,4 +75,7 @@ export type AgentsQuery = z.infer<typeof AgentsQuerySchema>;
 export type AgentDidParams = z.infer<typeof AgentDidParamsSchema>;
 export type TaskHistoryQuery = z.infer<typeof TaskHistoryQuerySchema>;
 export type TasksQuery = z.infer<typeof TasksQuerySchema>;
+export type WebhookSubscriptionCreate = z.infer<typeof WebhookSubscriptionCreateSchema>;
+export type WebhookDeliveriesQuery = z.infer<typeof WebhookDeliveriesQuerySchema>;
+export type WebhookEventEmit = z.infer<typeof WebhookEventEmitSchema>;
 export type WsMessage = z.infer<typeof WsMessageSchema>;
