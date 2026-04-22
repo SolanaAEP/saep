@@ -53,7 +53,7 @@ jobs:
             apps/portal/src/content/spec-index.ts
             apps/docs/src/lib/specs.ts
           )
-          if rg -n "$PATTERN" "${TARGETS[@]}"; then
+          if grep -RInE "$PATTERN" "${TARGETS[@]}"; then
             echo "public boundary scan failed"
             exit 1
           fi

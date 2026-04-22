@@ -290,7 +290,11 @@ async function main() {
 
     await waitForPostgres(repoRoot, join(runLogDir, 'postgres-ready.log'), DEFAULTS.timeoutMs);
 
-    console.log('Building discovery, compute-broker, and indexer...');
+    console.log('Building SDK, discovery, compute-broker, and indexer...');
+    await runCommand('build sdk', 'pnpm', ['--filter', '@saep/sdk', 'build'], {
+      cwd: repoRoot,
+      logPath: join(runLogDir, 'build-sdk.log'),
+    });
     await runCommand('build discovery', 'pnpm', ['--filter', '@saep/discovery', 'build'], {
       cwd: repoRoot,
       logPath: join(runLogDir, 'build-discovery.log'),
