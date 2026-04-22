@@ -1,4 +1,4 @@
-export type CrossChainProtocol = 'layerzero-intent' | 'cctp' | 'xrpl-bridge';
+export type CrossChainProtocol = 'layerzero-intent' | 'cctp' | 'xrpl-bridge' | 'wormhole';
 
 export type CrossChainState =
   | 'awaiting_funds'
@@ -12,7 +12,13 @@ export type CrossChainState =
 
 export type CrossChainTrackLifecycle = 'live' | 'prototype' | 'research';
 
-export type SupportedIntentChain = 'solana' | 'ethereum' | 'arbitrum' | 'base' | 'xrpl';
+export type SupportedIntentChain =
+  | 'solana'
+  | 'ethereum'
+  | 'arbitrum'
+  | 'base'
+  | 'xrpl'
+  | 'bsc';
 
 export interface CrossChainIntentEnvelope {
   intentId: string;
@@ -66,6 +72,19 @@ export const RESEARCH_CROSS_CHAIN_TRACKS: readonly CrossChainTrack[] = [
       'Default research track for portable task funding and deterministic timeout/refund handling.',
   },
 ] as const;
+
+export function chainIdToSupportedIntentChain(chainId: number): SupportedIntentChain | null {
+  switch (chainId) {
+    case 1:
+      return 'solana';
+    case 2:
+      return 'ethereum';
+    case 4:
+      return 'bsc';
+    default:
+      return null;
+  }
+}
 
 export function validateCrossChainIntent(
   intent: CrossChainIntentEnvelope,

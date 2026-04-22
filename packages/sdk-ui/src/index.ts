@@ -43,7 +43,15 @@ export {
   type BiddingState,
   type TaskBidIndexed,
 } from './hooks/bids.js';
-export { useAllowedMints, useAgentStreams, useVaultBalances, useSetLimits } from './hooks/treasury.js';
+export {
+  useAllowedMints,
+  useAgentStreams,
+  useVaultBalances,
+  useSetLimits,
+  useTreasuryYieldResearch,
+  type YieldResearchPosition,
+  type YieldResearchSnapshotData,
+} from './hooks/treasury.js';
 export {
   useLeaderboard,
   useAgentReputation,

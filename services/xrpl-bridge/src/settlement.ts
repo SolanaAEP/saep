@@ -23,6 +23,11 @@ import type { Redis } from 'ioredis';
 import { convertXrpToLamports } from './price-oracle.js';
 import { bridgeRequests, bridgeDuration } from './metrics.js';
 import type { ValidatedPayment } from './xrpl-listener.js';
+import {
+  buildIntentEnvelope,
+  workflowStateFor,
+  type SettlementContext,
+} from './workflow.js';
 
 export type SettlementStatus = 'pending' | 'settled' | 'failed';
 
@@ -31,6 +36,8 @@ export interface SettlementResult {
   solTxSig: string;
   lamports: bigint;
   status: SettlementStatus;
+  intent: ReturnType<typeof buildIntentEnvelope>;
+  workflowState: ReturnType<typeof workflowStateFor>;
 }
 
 const REDIS_PREFIX = 'xrpl-bridge:settlement:';
@@ -42,12 +49,20 @@ export async function checkIdempotency(
 ): Promise<SettlementResult | null> {
   const raw = await redis.get(`${REDIS_PREFIX}${xrplTxHash}`);
   if (!raw) return null;
-  const data = JSON.parse(raw) as { solTxSig: string; lamports: string; status: SettlementStatus };
+  const data = JSON.parse(raw) as {
+    solTxSig: string;
+    lamports: string;
+    status: SettlementStatus;
+    intent: SettlementResult['intent'];
+    workflowState: SettlementResult['workflowState'];
+  };
   return {
     txHash: xrplTxHash,
     solTxSig: data.solTxSig,
     lamports: BigInt(data.lamports),
     status: data.status,
+    intent: data.intent,
+    workflowState: data.workflowState,
   };
 }
 
@@ -62,6 +77,8 @@ async function recordSettlement(
       solTxSig: result.solTxSig,
       lamports: result.lamports.toString(),
       status: result.status,
+      intent: result.intent,
+      workflowState: result.workflowState,
     }),
     'EX',
     REDIS_TTL,
@@ -88,8 +105,10 @@ export async function settle(
   gatewayKeypairB58: string,
   solanaRpcUrl: string,
   cluster: 'mainnet-beta' | 'devnet' | 'localnet',
+  context: SettlementContext,
 ): Promise<SettlementResult> {
   const end = bridgeDuration.startTimer();
+  const intent = buildIntentEnvelope(payment.txHash, context);
 
   const existing = await checkIdempotency(redis, payment.txHash);
   if (existing) {
@@ -102,6 +121,8 @@ export async function settle(
 
   if (cluster === 'localnet') {
     const result = await simulateSettlement(payment, lamports);
+    result.intent = intent;
+    result.workflowState = workflowStateFor(result.status, intent);
     await recordSettlement(redis, payment.txHash, result);
     bridgeRequests.inc({ status: 'settled' });
     end({ status: 'settled' });
@@ -138,6 +159,8 @@ export async function settle(
       solTxSig: sig,
       lamports,
       status: 'settled',
+      intent,
+      workflowState: workflowStateFor('settled', intent),
     };
     await recordSettlement(redis, payment.txHash, result);
     bridgeRequests.inc({ status: 'settled' });
@@ -149,6 +172,8 @@ export async function settle(
       solTxSig: '',
       lamports,
       status: 'failed',
+      intent,
+      workflowState: workflowStateFor('failed', intent),
     };
     await recordSettlement(redis, payment.txHash, failResult);
     bridgeRequests.inc({ status: 'failed' });
@@ -251,6 +276,17 @@ async function simulateSettlement(
     solTxSig: h.digest('base64url'),
     lamports,
     status: 'settled',
+    intent: buildIntentEnvelope(payment.txHash, {
+      protocol: 'xrpl-bridge',
+      sourceChain: 'xrpl',
+      assetSymbol: 'XRP',
+      amountAtomic: payment.drops.toString(),
+      requester: payment.sender,
+      beneficiaryDid: payment.agentDid,
+      createdAtMs: Date.now(),
+      timeoutAtMs: Date.now(),
+    }),
+    workflowState: 'settled',
   };
 }
 

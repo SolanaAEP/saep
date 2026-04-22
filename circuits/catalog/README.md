@@ -26,5 +26,13 @@ The catalog is the stable metadata layer shared across:
 - `lifecycle`: `live`, `planned`, or `research`
 - `version`: manifest and artifact version
 - `verifier`: verification-key family
+- `verificationKeyVersion`: on-chain VK schema/version for rollout tracking
 - `publicInputs`: ordered list used by verifiers and tooling
 - `summary`: concise description of what the circuit proves
+
+## Runtime conventions
+
+- Runtime circuit id: `<slug-with-underscores>.v<version>`
+- Build directory: `circuits/<slug_with_underscores>/build`
+- Wasm path: `circuits/<slug_with_underscores>/build/<slug_with_underscores>_js/<slug_with_underscores>.wasm`
+- zkey path: `circuits/<slug_with_underscores>/build/<slug_with_underscores>.zkey`

@@ -58,7 +58,7 @@ export default function TreasuryPage() {
           <MultiAssetBalanceTable agent={active} />
           <StreamingPaymentsMonitor agent={active} />
           <SpendingLimitsEditor agent={active} />
-          <YieldAutomationPanel />
+          <YieldAutomationPanel agent={active} />
           <ExportReports agent={active} />
         </>
       )}

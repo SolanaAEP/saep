@@ -1,6 +1,4 @@
-import { createHash, randomBytes, createCipheriv } from 'node:crypto';
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { randomBytes, createCipheriv } from 'node:crypto';
 import { randomUUID } from 'node:crypto';
 import Fastify from 'fastify';
 import { jwtVerify } from 'jose';
@@ -9,7 +7,6 @@ import {
   ProveRequestSchema,
   JobIdParamsSchema,
   type PrivateInputs,
-  type PublicInputs,
 } from './schema.js';
 import {
   buildQueue,
@@ -20,6 +17,7 @@ import {
   type ProveJobData,
 } from './queue.js';
 import { registry, cacheHits } from './metrics.js';
+import { findRuntimeCircuit, hashCircuitPublicInputs, loadRuntimeCircuitCatalog } from './catalog.js';
 
 const logger = pino({
   level: process.env.LOG_LEVEL ?? 'info',
@@ -37,18 +35,7 @@ const logger = pino({
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
 const PORT = Number(process.env.PROOFGEN_PORT ?? 8787);
-const ARTIFACTS_DIR = resolve(
-  process.env.CIRCUIT_ARTIFACTS_DIR ?? '../../circuits/task_completion/build',
-);
 const KEY_TTL = Number(process.env.PROOFGEN_KEY_TTL_SEC ?? 600);
-
-const WASM_PATH = resolve(ARTIFACTS_DIR, 'task_completion_js', 'task_completion.wasm');
-const ZKEY_PATH = resolve(ARTIFACTS_DIR, 'task_completion.zkey');
-const VK_PATH = resolve(ARTIFACTS_DIR, 'verification_key.json');
-
-function artifactsReady(): boolean {
-  return existsSync(WASM_PATH) && existsSync(ZKEY_PATH);
-}
 
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const SESSION_ISSUER = 'saep.portal';
@@ -129,22 +116,11 @@ function encryptWitness(priv: PrivateInputs): {
   };
 }
 
-function hashPublicInputs(circuit_id: string, pub: PublicInputs): string {
-  const canonical = JSON.stringify([
-    circuit_id,
-    pub.task_hash,
-    pub.result_hash,
-    pub.deadline,
-    pub.submitted_at,
-    pub.criteria_root,
-  ]);
-  return createHash('sha256').update(canonical).digest('hex');
-}
-
 export async function buildServer() {
   const app = Fastify({ loggerInstance: logger });
   const connection = redisConnection(REDIS_URL);
   const queue = buildQueue(connection);
+  const catalog = loadRuntimeCircuitCatalog();
 
   app.get('/healthz', async () => {
     let redisStatus: 'up' | 'down' = 'down';
@@ -159,15 +135,44 @@ export async function buildServer() {
       queue.getActiveCount(),
       queue.getFailedCount(),
     ]);
-    const hasArtifacts = artifactsReady();
-    const hasVk = existsSync(VK_PATH);
+    const liveCircuits = catalog.filter((entry) => entry.lifecycle === 'live');
+    const readyCircuits = liveCircuits.filter((entry) => entry.artifactsReady);
+    const hasArtifacts = readyCircuits.length > 0;
+    const hasVk = liveCircuits.some((entry) => entry.verificationKeyPresent);
     return {
       ok: redisStatus === 'up' && hasArtifacts,
       redis: redisStatus,
       artifacts: hasArtifacts ? 'loaded' : 'missing',
       verification_key: hasVk ? 'present' : 'missing',
-      circuits: hasArtifacts ? ['task_completion.v1'] : [],
+      circuits: readyCircuits.map((entry) => entry.runtimeId),
+      catalog: catalog.map((entry) => ({
+        circuit_id: entry.runtimeId,
+        slug: entry.slug,
+        lifecycle: entry.lifecycle,
+        verifier: entry.verifier,
+        verification_key_version: entry.verificationKeyVersion,
+        public_inputs: entry.publicInputs,
+        artifacts: entry.artifactsReady ? 'loaded' : 'missing',
+        verification_key: entry.verificationKeyPresent ? 'present' : 'missing',
+      })),
       queue: { waiting, active, failed },
+    };
+  });
+
+  app.get('/circuits', async () => {
+    return {
+      circuits: catalog.map((entry) => ({
+        circuit_id: entry.runtimeId,
+        slug: entry.slug,
+        display_name: entry.displayName,
+        lifecycle: entry.lifecycle,
+        verifier: entry.verifier,
+        verification_key_version: entry.verificationKeyVersion,
+        public_inputs: entry.publicInputs,
+        artifacts: entry.artifactsReady ? 'loaded' : 'missing',
+        verification_key: entry.verificationKeyPresent ? 'present' : 'missing',
+        summary: entry.summary,
+      })),
     };
   });
 
@@ -177,10 +182,6 @@ export async function buildServer() {
   });
 
   app.post('/prove', async (req, reply) => {
-    if (!artifactsReady()) {
-      return reply.code(503).send({ error: 'no_artifacts' });
-    }
-
     const agent = await resolveAgent(req.headers.authorization);
     if (!agent) return reply.code(401).send({ error: 'unauthorized' });
 
@@ -192,8 +193,18 @@ export async function buildServer() {
       return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
     }
     const { circuit_id, public_inputs, private_inputs } = parsed.data;
+    const circuit = findRuntimeCircuit(catalog, circuit_id);
+    if (!circuit) {
+      return reply.code(400).send({ error: 'unsupported_circuit' });
+    }
+    if (circuit.lifecycle !== 'live') {
+      return reply.code(422).send({ error: 'circuit_not_live' });
+    }
+    if (!circuit.artifactsReady) {
+      return reply.code(503).send({ error: 'no_artifacts' });
+    }
 
-    const pubHash = hashPublicInputs(circuit_id, public_inputs);
+    const pubHash = hashCircuitPublicInputs(circuit, public_inputs as unknown as Record<string, unknown>);
 
     const cached = await connection.get(cacheKey(pubHash));
     if (cached) {
@@ -257,7 +268,7 @@ export async function buildServer() {
 async function main() {
   const { app } = await buildServer();
   await app.listen({ port: PORT, host: '0.0.0.0' });
-  logger.info({ port: PORT, artifacts_dir: ARTIFACTS_DIR }, 'proof-gen api up');
+  logger.info({ port: PORT }, 'proof-gen api up');
 }
 
 const isEntry = import.meta.url === `file://${process.argv[1]}`;

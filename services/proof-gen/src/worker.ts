@@ -1,6 +1,5 @@
 import { createDecipheriv } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { Worker } from 'bullmq';
 import pino from 'pino';
 import * as snarkjs from 'snarkjs';
@@ -15,6 +14,7 @@ import {
   type ProveJobResult,
 } from './queue.js';
 import { jobsTotal, proveDuration } from './metrics.js';
+import { findRuntimeCircuit, loadRuntimeCircuitCatalog } from './catalog.js';
 
 const logger = pino({
   level: process.env.LOG_LEVEL ?? 'info',
@@ -25,27 +25,20 @@ const logger = pino({
 });
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
-const ARTIFACTS_DIR = resolve(
-  process.env.CIRCUIT_ARTIFACTS_DIR ?? '../../circuits/task_completion/build',
-);
 const CONCURRENCY = Number(process.env.PROOFGEN_WORKER_CONCURRENCY ?? 1);
 const RESULT_TTL = Number(process.env.PROOFGEN_RESULT_TTL_SEC ?? 3600);
 
 type CircuitArtifacts = { wasm: string; zkey: string };
 const artifactCache = new Map<string, CircuitArtifacts>();
-
-const CIRCUIT_ARTIFACTS: Record<string, CircuitArtifacts> = {
-  'task_completion.v1': {
-    wasm: resolve(ARTIFACTS_DIR, 'task_completion_js', 'task_completion.wasm'),
-    zkey: resolve(ARTIFACTS_DIR, 'task_completion.zkey'),
-  },
-};
+const catalog = loadRuntimeCircuitCatalog();
 
 function loadArtifacts(circuit_id: string): CircuitArtifacts {
   const cached = artifactCache.get(circuit_id);
   if (cached) return cached;
-  const paths = CIRCUIT_ARTIFACTS[circuit_id];
-  if (!paths) throw new Error(`unknown circuit: ${circuit_id}`);
+  const circuit = findRuntimeCircuit(catalog, circuit_id);
+  if (!circuit) throw new Error(`unknown circuit: ${circuit_id}`);
+  if (circuit.lifecycle !== 'live') throw new Error(`circuit not live: ${circuit_id}`);
+  const paths = { wasm: circuit.wasmPath, zkey: circuit.zkeyPath };
   if (!existsSync(paths.wasm)) throw new Error(`wasm missing: ${paths.wasm}`);
   if (!existsSync(paths.zkey)) throw new Error(`zkey missing: ${paths.zkey}`);
   artifactCache.set(circuit_id, paths);
@@ -141,5 +134,5 @@ export function startWorker() {
 const isEntry = import.meta.url === `file://${process.argv[1]}`;
 if (isEntry) {
   startWorker();
-  logger.info({ artifacts_dir: ARTIFACTS_DIR, concurrency: CONCURRENCY }, 'proof-gen worker up');
+  logger.info({ circuits: catalog.map((entry) => entry.runtimeId), concurrency: CONCURRENCY }, 'proof-gen worker up');
 }

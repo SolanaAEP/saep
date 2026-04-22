@@ -3,6 +3,7 @@ import {
   DEFAULT_CIRCUIT_CATALOG,
   DEFAULT_YIELD_STRATEGIES,
   circuitArtifactStem,
+  circuitRuntimeId,
   computeDeployableUsdMicro,
   deriveCrossChainState,
   validateCircuitCatalogEntry,
@@ -75,6 +76,7 @@ describe('research surfaces', () => {
   it('builds circuit artifact stems and validates catalog entries', () => {
     const liveCircuit = DEFAULT_CIRCUIT_CATALOG[0]!;
     expect(circuitArtifactStem(liveCircuit)).toBe('task-completion-v1');
+    expect(circuitRuntimeId(liveCircuit)).toBe('task_completion.v1');
     expect(validateCircuitCatalogEntry(liveCircuit)).toEqual([]);
   });
 });
