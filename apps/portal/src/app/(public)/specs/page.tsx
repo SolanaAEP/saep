@@ -29,7 +29,7 @@ export default function SpecsIndexPage() {
       eyebrow="Section 02"
       crumbs={[{ label: 'Specs' }]}
       title="Protocol specifications."
-      lede="Every program, circuit, and service in SAEP has a source-of-truth spec. These pages mirror the specs the audit firms review — no marketing gloss, no omissions."
+      lede="Every program, circuit, and service in SAEP has a source-of-truth spec. These pages mirror the implementation and release-review docs — no marketing gloss, no omissions."
     >
       <div className="flex flex-col gap-16">
         {grouped.map((g) =>

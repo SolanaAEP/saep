@@ -16,7 +16,7 @@ SAEP has two governance surfaces: **off-chain** (this repo, roadmap, maintainers
 - **New features, breaking changes, new dependencies:** two maintainer approvals + a merged spec.
 - **Security fixes:** fast-track — one maintainer review + lead maintainer sign-off, patched before public disclosure.
 - **Stack changes, milestone scope changes:** discussion issue first, then PR. Lead maintainer can veto only with written reasoning.
-- **Auditor selection, bounty sizing, token economics:** on-chain governance (see below) once `governance_program` is deployed. Until then, lead maintainer decides publicly.
+- **Security response, bounty sizing, token economics:** on-chain governance (see below) once `governance_program` is deployed. Until then, lead maintainer decides publicly.
 
 Disputes that cannot be resolved by the maintainer group go to the lead maintainer. Disputes with the lead maintainer go to a simple majority vote of maintainers excluding the lead.
 
@@ -34,7 +34,7 @@ Any upgrade requires:
 
 1. PR merged to `main` with corresponding spec update.
 2. Build reproducibility verified against the commit hash.
-3. External audit report filed for the changes, if the change touches audit-scope code.
+3. Security review completed for the changes, if the change materially affects fund flow or upgrade surfaces.
 4. 4-of-7 multisig signatures.
 5. Announcement posted at least 48 hours before execution, except for Critical security patches (see [SECURITY.md](./SECURITY.md)).
 
@@ -48,7 +48,7 @@ Once `governance_program` is live (M2), protocol parameters (fee rates, stake mi
 - **Threshold:** simple majority for parameter tweaks, 66% for treasury spend above the delegated limit.
 - **Timelock:** 48h for parameter changes, 7d for treasury actions.
 
-Upgrade-authority multisig and governance program are intentionally distinct: governance cannot force an upgrade, and the multisig cannot bypass a governance-set parameter without a new upgrade + audit cycle.
+Upgrade-authority multisig and governance program are intentionally distinct: governance cannot force an upgrade, and the multisig cannot bypass a governance-set parameter without a new code change + review cycle.
 
 ## Slashing and dispute arbitration
 

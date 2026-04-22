@@ -1,6 +1,6 @@
 # Contributing to SAEP
 
-Thanks for the interest. SAEP is a protocol, not a library, and the contribution model reflects that: everything that touches on-chain state ships through a spec → implement → internal audit → external audit pipeline. Off-chain code moves faster.
+Thanks for the interest. SAEP is a protocol, not a library, and the contribution model reflects that: everything that touches on-chain state ships through a spec → implement → tests → security review pipeline. Off-chain code moves faster.
 
 ## Before you start
 
@@ -24,11 +24,11 @@ What it verifies: `pnpm install` clean, `anchor build` produces 7 binaries, `anc
 
 | Area | Workflow |
 |---|---|
-| `programs/` | Spec → implement → unit + integration tests → internal security audit → external audit → mainnet |
+| `programs/` | Spec → implement → unit + integration tests → security review → release |
 | `circuits/` | Spec → implement → external cryptographer review → trusted-setup ceremony (multi-party) |
 | `services/` | Spec → implement → production hardening → reviewer |
 | `apps/`, `packages/` | Spec → implement → reviewer |
-| `specs/`, `docs/` | PR with clear rationale; no audit required |
+| `specs/`, `docs/` | PR with clear rationale |
 
 On-chain code is **never** the place for "we'll harden it later." Security is a gate, not a follow-up.
 
@@ -63,7 +63,7 @@ program-agent-registry: add slash timelock with 30d queue
 ## Pull requests
 
 - One spec per PR. Don't bundle unrelated work.
-- Fill out the PR template. Skipping the audit checklist for on-chain changes blocks merge.
+- Fill out the PR template. Skipping the on-chain checklist for `programs/` changes blocks merge.
 - CI must be green: lint, typecheck, clippy, anchor build, anchor test.
 - For `programs/` changes: note the CU budget delta and any new CPI dependencies.
 - For `circuits/` changes: note the constraint count delta.

@@ -278,88 +278,6 @@ export function WhySolana() {
   );
 }
 
-export function AuditsGovernance() {
-  const rows = [
-    {
-      m: 'Phase 1 — Core protocol',
-      s: 'AgentRegistry · TreasuryStandard · TaskMarket · ProofVerifier',
-      a: 'OtterSec',
-      state: 'In progress',
-    },
-    {
-      m: 'Phase 2 — Governance & fees',
-      s: 'DisputeArbitration · GovernanceProgram · FeeCollector · IACP',
-      a: 'Neodyme',
-      state: 'Scheduled',
-    },
-    {
-      m: 'Phase 3 — Token & re-audit',
-      s: 'Token-2022 mint · full protocol re-audit',
-      a: 'Halborn',
-      state: 'Scheduled',
-    },
-  ];
-  const guards = [
-    { k: '4-of-7 Squads', v: 'Every program upgrade requires 4 of 7 geographically distributed signers.' },
-    { k: '7-day timelock', v: 'Upgrade transactions are queued 7 days before they can execute. Any signer can veto.' },
-    { k: '30-day slash window', v: 'Stake slashes propose-and-wait for 30 days. Operators keep appeal rights; governance keeps cancel rights.' },
-    { k: 'Pause switches', v: 'Each program has a governance pause that blocks state-changing instructions without touching funds.' },
-  ];
-  return (
-    <section className="bg-paper-2 text-ink px-[clamp(20px,5vw,80px)] py-[clamp(72px,9vw,128px)]">
-      <SectionTag id="04" label="Audits & governance" />
-      <div className="grid md:grid-cols-12 gap-10 items-end mb-12">
-        <h2 className="md:col-span-8 font-display text-[clamp(32px,4.5vw,56px)] leading-[0.95] tracking-[-0.01em]">
-          Audit-gated. Timelocked. No single key.
-        </h2>
-        <p className="md:col-span-4 text-[16px] text-ink/75">
-          Nothing holds value on mainnet until the audit for that milestone closes. Upgrades never
-          land faster than seven days.
-        </p>
-      </div>
-      <div className="border border-ink/70 bg-paper">
-        <div className="grid grid-cols-12 font-mono uppercase text-[11px] tracking-[0.08em] text-mute border-b border-ink/30">
-          <div className="col-span-3 p-4">Milestone</div>
-          <div className="col-span-5 p-4">Scope</div>
-          <div className="col-span-2 p-4">Auditor</div>
-          <div className="col-span-2 p-4">State</div>
-        </div>
-        {rows.map((r, i) => (
-          <div
-            key={r.m}
-            className={`grid grid-cols-12 ${i < rows.length - 1 ? 'border-b border-ink/20' : ''}`}
-          >
-            <div className="col-span-3 p-4 font-display text-lg tracking-[-0.01em]">{r.m}</div>
-            <div className="col-span-5 p-4 text-[14px] text-ink/80 leading-relaxed">{r.s}</div>
-            <div className="col-span-2 p-4 font-mono uppercase text-[11px] tracking-[0.08em] text-ink">
-              {r.a}
-            </div>
-            <div className="col-span-2 p-4 font-mono uppercase text-[11px] tracking-[0.08em] text-mute">
-              {r.state}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="grid md:grid-cols-4 gap-8 mt-14">
-        {guards.map((g) => (
-          <div key={g.k} className="border-t border-ink/30 pt-5">
-            <div className="font-display text-[20px] tracking-[-0.01em]">{g.k}</div>
-            <p className="mt-2 text-ink/75 text-[14px] leading-relaxed">{g.v}</p>
-          </div>
-        ))}
-      </div>
-      <div className="flex gap-6 mt-12 font-mono uppercase text-[11px] tracking-[0.08em]">
-        <a href="/security" className="border-b border-ink hover:text-lime hover:border-lime">
-          Security policy →
-        </a>
-        <a href="/governance-framework" className="border-b border-ink hover:text-lime hover:border-lime">
-          Governance →
-        </a>
-      </div>
-    </section>
-  );
-}
-
 export function BuildOnSaep() {
   return (
     <section className="bg-paper text-ink px-[clamp(20px,5vw,80px)] py-[clamp(72px,9vw,128px)]">
@@ -371,7 +289,7 @@ export function BuildOnSaep() {
           </h2>
           <p className="mt-5 text-ink/80 text-[16px] leading-relaxed">
             Typed TypeScript client, generated from on-chain IDLs. React hooks ship in a sibling
-            package. Available on devnet today — mainnet following audit completion.
+            package. Available on devnet today — broader rollout lands in phases.
           </p>
           <div className="mt-6 flex gap-4 font-mono uppercase text-[11px] tracking-[0.08em]">
             <a
@@ -462,7 +380,6 @@ export function Footer() {
           links={[
             { label: 'Security', href: '/security' },
             { label: 'Governance', href: '/governance-framework' },
-            { label: 'Audit status', href: '/security#audits' },
           ]}
         />
         <FooterCol

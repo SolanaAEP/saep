@@ -52,7 +52,7 @@ body:
       required: true
 
   - type: textarea
-    id: audit_impact
+    id: security_impact
     attributes:
-      label: Audit impact
-      description: Does this add/change on-chain code? If yes, is re-audit required? If unsure, say so.
+      label: Security / release impact
+      description: Does this add/change on-chain code, signing flows, or fund movement? Note any review or rollout considerations.

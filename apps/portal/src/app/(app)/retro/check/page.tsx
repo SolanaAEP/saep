@@ -122,7 +122,7 @@ export default function RetroCheckPage() {
 
       <footer className="font-mono text-[10px] text-mute border-t border-ink/10 pt-4">
         Allocations are estimates against the current rollup epoch. Final
-        distribution is gated on M3 token launch and Halborn audit sign-off per
+        distribution follows the M3 token launch plan described in
         <span className="font-mono"> specs/retro-airdrop.md</span>.
       </footer>
     </section>

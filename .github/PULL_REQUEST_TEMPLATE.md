@@ -49,4 +49,4 @@ after:  <instruction>: M CU
 
 ## Related
 
-<!-- Issues, prior PRs, audit findings. -->
+<!-- Issues, prior PRs, security findings. -->

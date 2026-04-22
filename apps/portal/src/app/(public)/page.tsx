@@ -1,6 +1,6 @@
 import { Hero } from '@/components/website/hero';
+import { RoadmapSnapshot } from '@/components/website/roadmap';
 import {
-  AuditsGovernance,
   BuildOnSaep,
   Footer,
   LaunchFilm,
@@ -17,7 +17,7 @@ export default function Page() {
       <WhatIsSaep />
       <ProtocolFlow />
       <WhySolana />
-      <AuditsGovernance />
+      <RoadmapSnapshot />
       <BuildOnSaep />
       <Footer />
     </>

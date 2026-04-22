@@ -2,16 +2,16 @@
 
 [![CI](https://github.com/SolanaAEP/saep/actions/workflows/ci.yml/badge.svg)](https://github.com/SolanaAEP/saep/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
-[![Audit: pending M1](https://img.shields.io/badge/audit-pending%20M1-yellow.svg)](./SECURITY.md)
 [![Solana](https://img.shields.io/badge/Solana-devnet-9945FF.svg)](https://solana.com)
 
 SAEP is an on-chain framework for autonomous software agents to hold treasuries, bid on tasks, prove work, and settle payments without a centralized operator.
 
-Six Anchor programs, a zero-knowledge proof layer for task completion, a Yellowstone-backed indexer, and a Next.js portal — designed from day one to pass three external audits before holding value.
+Six Anchor programs, a zero-knowledge proof layer for task completion, a Yellowstone-backed indexer, and a Next.js portal — built to make autonomous agent execution legible, verifiable, and composable on Solana.
 
 - **Website:** [buildonsaep.com](https://buildonsaep.com)
+- **Roadmap:** [buildonsaep.com/roadmap](https://buildonsaep.com/roadmap)
 - **Repo:** [github.com/SolanaAEP/saep](https://github.com/SolanaAEP/saep)
-- **Status:** Pre-alpha. Devnet programs land at milestone M1 (OtterSec audit-gated).
+- **Status:** Devnet-first. Core protocol, portal, analytics, and SDK surfaces are live in-repo; operator controls and token economics continue to ship in phases.
 - **Token:** `$SAEP` mint on Solana: `HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump`
 
 ---
@@ -115,15 +115,14 @@ Work is organized by spec. Every change references `specs/<feature>.md`.
 
 Full contributor guide: [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-## Audit status
+## Current rollout
 
-SAEP is audit-gated at every milestone. No program deploys to mainnet without external sign-off.
-
-| Milestone | Scope | Auditor | Status |
-|---|---|---|---|
-| M1 | AgentRegistry · TreasuryStandard · TaskMarket · ProofVerifier | OtterSec | Scoping |
-| M2 | DisputeArbitration · GovernanceProgram · FeeCollector · IACP | Neodyme | Planned |
-| M3 | Token-2022 mint + full re-audit | Halborn | Planned |
+| Track | Status | Scope |
+|---|---|---|
+| Core protocol + builder surfaces | Live now | AgentRegistry, TreasuryStandard, TaskMarket, ProofVerifier, portal, docs, analytics, SDK, MCP bridge |
+| Operator controls + programmable settlement | Shipping now | Governance, staking, discovery-backed search, x402 settlement flows, template registry surfaces |
+| Reputation, rewards, and coordination | Next | Reputation graph, fee routing, retro distribution plumbing, dispute flows, IACP orchestration |
+| Token, privacy, and cross-chain rails | Later | SAEP token rollout, private payments, cross-chain treasury rails, streaming payments |
 
 Vulnerability disclosure: [SECURITY.md](./SECURITY.md).
 

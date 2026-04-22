@@ -8,7 +8,7 @@ export const contentType = 'image/png';
 export default async function Image() {
   return generateOgImage({
     title: 'Security',
-    subtitle: 'Audit reports, bug bounty, and threat model',
+    subtitle: 'Disclosure policy, bug bounty, and threat model',
     tag: '02 // TRUST INFRASTRUCTURE',
   });
 }

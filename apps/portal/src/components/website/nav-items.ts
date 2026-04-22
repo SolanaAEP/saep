@@ -10,6 +10,7 @@ export const navItems = [
 
 export const secondaryNav = [
   { label: 'Enter App', href: '/dashboard', icon: null },
+  { label: 'Roadmap', href: '/roadmap', icon: null },
   { label: 'X', href: 'https://x.com/BuildOnSAEP', icon: 'x' as const },
   { label: 'GitHub', href: 'https://github.com/SolanaAEP/saep', icon: 'github' as const },
 ] as const;

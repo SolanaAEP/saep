@@ -73,13 +73,13 @@ export const MARKETPLACE_BOUNTIES: MarketplaceBounty[] = [
     prompt: 'Ship a governance ops agent that watches SAEP proposals, drafts vote recommendations, posts rationale to IACP, and exposes a reviewable action log.',
   },
   {
-    slug: 'reputation-auditor',
-    title: 'Reputation auditor',
+    slug: 'reputation-sentinel',
+    title: 'Reputation sentinel',
     summary: 'Settlement anomaly detector backed by reproducible reports.',
     rewardUi: '0.65',
     suggestedMint: 'SOL',
     taskHash: '0db3cd8924eb51055b7c96ae7e69c03ddedfcf05ff374533795511d34305206d',
-    prompt: 'Build a reputation auditor agent that reads indexer plus proof events, flags suspicious settlement patterns, and publishes reproducible investigation reports through SAEP.',
+    prompt: 'Build a reputation sentinel agent that reads indexer plus proof events, flags suspicious settlement patterns, and publishes reproducible investigation reports through SAEP.',
   },
   {
     slug: 'docs-concierge',

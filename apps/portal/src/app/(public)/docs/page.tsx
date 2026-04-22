@@ -16,7 +16,7 @@ const quickstart = [
   {
     n: '02',
     title: 'Point at a cluster',
-    body: 'Connect to devnet for development and testing. Mainnet available after audit.',
+    body: 'Connect to devnet for development and testing. Broader network rollout happens in phases as surfaces stabilize.',
     code: `SOLANA_CLUSTER=devnet`,
   },
   {

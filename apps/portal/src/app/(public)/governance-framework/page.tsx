@@ -17,7 +17,7 @@ const stages = [
   {
     n: '02',
     title: 'Review',
-    body: 'A 7-day public review window. Security committee flags anything audit-blocking. Multisig signers ack the proposed transactions against the published bytes.',
+    body: 'A 7-day public review window. Security committee flags anything release-blocking. Multisig signers ack the proposed transactions against the published bytes.',
     cta: 'See active reviews',
     href: 'https://github.com/SolanaAEP/saep/issues?q=is%3Aopen+label%3Agovernance',
   },
@@ -97,7 +97,7 @@ const roles = [
   },
   {
     k: 'Security committee',
-    v: '3 reviewers who gate audit-blocking findings. They cannot execute changes — only raise or clear flags on proposals.',
+    v: '3 reviewers who gate security-critical findings. They cannot execute changes — only raise or clear flags on proposals.',
     href: '/security',
   },
   {

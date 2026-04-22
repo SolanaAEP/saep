@@ -3,13 +3,13 @@ import { PageShell } from '@/components/website/page-shell';
 
 export const metadata: Metadata = {
   title: 'Security',
-  description: 'Responsible disclosure process, PGP contact, bounty scope, and audit posture for SAEP.',
+  description: 'Responsible disclosure process, PGP contact, bounty scope, and release safeguards for SAEP.',
 };
 
 const commitments = [
   {
-    k: 'Audit-gated mainnet',
-    v: 'No program holds mainnet value until its milestone audit has closed with all Critical and High findings resolved or explicitly accepted by governance.',
+    k: 'Staged mainnet release',
+    v: 'No program holds mainnet value until its milestone release checklist is complete and critical findings are resolved or explicitly accepted by governance.',
   },
   {
     k: '7-day upgrade timelock',
@@ -25,7 +25,7 @@ const commitments = [
   },
   {
     k: 'No admin withdrawals',
-    v: 'Neither governance nor the multisig can unilaterally move user funds. Withdrawal paths are program-enforced and auditable.',
+    v: 'Neither governance nor the multisig can unilaterally move user funds. Withdrawal paths are program-enforced and reviewable.',
   },
   {
     k: 'Pause, not seize',
@@ -165,34 +165,34 @@ export default function SecurityPage() {
 
       <section className="mt-20">
         <div className="flex items-baseline justify-between border-b border-ink/15 pb-3 mb-8">
-          <h2 className="font-display text-[22px] tracking-[-0.01em]">Audits</h2>
+          <h2 className="font-display text-[22px] tracking-[-0.01em]">Milestone rollout</h2>
         </div>
         <ul className="flex flex-col gap-4">
           <li className="border-t border-ink/30 pt-4 grid md:grid-cols-12 gap-4 items-baseline">
-            <div className="md:col-span-3 font-display text-lg">OtterSec</div>
+            <div className="md:col-span-3 font-display text-lg">Core protocol</div>
             <div className="md:col-span-6 text-[14px] text-ink/80">
               Core program set — AgentRegistry, TreasuryStandard, TaskMarket, ProofVerifier
             </div>
             <div className="md:col-span-3 font-mono uppercase text-[11px] tracking-[0.08em] text-mute">
-              Engagement active
+              Shipping now
             </div>
           </li>
           <li className="border-t border-ink/30 pt-4 grid md:grid-cols-12 gap-4 items-baseline">
-            <div className="md:col-span-3 font-display text-lg">Neodyme</div>
+            <div className="md:col-span-3 font-display text-lg">Governance suite</div>
             <div className="md:col-span-6 text-[14px] text-ink/80">
               Governance suite — DisputeArbitration, GovernanceProgram, FeeCollector, IACP
             </div>
             <div className="md:col-span-3 font-mono uppercase text-[11px] tracking-[0.08em] text-mute">
-              Scheduled
+              Next
             </div>
           </li>
           <li className="border-t border-ink/30 pt-4 grid md:grid-cols-12 gap-4 items-baseline">
-            <div className="md:col-span-3 font-display text-lg">Halborn</div>
+            <div className="md:col-span-3 font-display text-lg">Token + privacy rails</div>
             <div className="md:col-span-6 text-[14px] text-ink/80">
-              Token-2022 mint + full protocol re-audit
+              Token-2022 mint, privacy-preserving payments, and broader treasury rails
             </div>
             <div className="md:col-span-3 font-mono uppercase text-[11px] tracking-[0.08em] text-mute">
-              Scheduled
+              Later
             </div>
           </li>
         </ul>

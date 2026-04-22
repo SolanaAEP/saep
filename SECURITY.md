@@ -1,6 +1,6 @@
 # Security Policy
 
-SAEP is an audit-gated protocol. Anything that holds value — keys, funds, program upgrade authority, vote weight — is in scope for responsible disclosure.
+SAEP treats anything that holds value — keys, funds, program upgrade authority, vote weight — as in scope for responsible disclosure.
 
 ## Supported versions
 
@@ -67,7 +67,7 @@ We acknowledge within **48 hours** and share a triage outcome within **7 days**.
 |---|---|---|---|
 | Critical | Direct fund loss, unauthorized upgrade, state corruption, key extraction | 24h ack · 72h patch plan | 7d fix |
 | High | Unauthorized state transition, economic griefing with real cost, proof forgery | 48h ack · 7d plan | 30d fix |
-| Medium | Logic error without fund loss, auditable degradation | 7d ack | 60d fix |
+| Medium | Logic error without fund loss, observable degradation | 7d ack | 60d fix |
 | Low | Best-practice deviations, hardening opportunities | 14d ack | Rolling |
 
 Severity is set by the SAEP maintainers after triage; reporters can dispute.
@@ -81,21 +81,15 @@ Default timeline:
 - **Day ≤ 30 (Critical) / 60 (High):** Patched on all affected versions, multisig upgrade proposed
 - **Day +14 after patch:** Public advisory published, reporter credited (unless anonymous preferred)
 
-We won't sit on a valid report. If triage takes longer than the window above for reasons outside our control (audit firm scheduling, upstream dependency), we'll say so in writing.
+We won't sit on a valid report. If triage takes longer than the window above for reasons outside our control (upstream dependency, infra incident), we'll say so in writing.
 
 ## Bug bounty
 
 TBD. A program will be announced before mainnet launch (M3). Reports filed during the pre-bounty window are honored retroactively for any bug that would have qualified.
 
-## Audits
+## Public disclosures
 
-All audit reports will be published under [`reports/`](./reports) and linked from the README after release.
-
-| Milestone | Auditor | Commit hash | Report |
-|---|---|---|---|
-| M1 | OtterSec | TBD | TBD |
-| M2 | Neodyme | TBD | TBD |
-| M3 | Halborn | TBD | TBD |
+Security advisories, remediation notes, and milestone reports will be linked here after release.
 
 ## Hall of fame
 

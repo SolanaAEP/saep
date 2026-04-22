@@ -1,18 +1,18 @@
-name: Audit finding tracking
-description: Track a finding from an internal or external audit report. Maintainers only.
-labels: ["audit", "security"]
-title: "[Audit] <short finding description>"
+name: Security finding tracking
+description: Track a security finding from a researcher report, advisory, or internal review. Maintainers only.
+labels: ["security"]
+title: "[Security] <short finding description>"
 body:
   - type: markdown
     attributes:
       value: |
-        **Use this template only for findings that are already public (external report published) or internal findings that do not represent an exploitable vulnerability.** Critical and High findings from a live audit are tracked privately via GitHub Security Advisories.
+        **Use this template only for findings that are already public or internal findings that do not represent an exploitable vulnerability.** Critical and High issues with real user impact are tracked privately via GitHub Security Advisories.
 
   - type: input
-    id: audit_source
+    id: finding_source
     attributes:
-      label: Audit source
-      placeholder: "OtterSec M1, Neodyme M2, internal pre-audit, etc."
+      label: Finding source
+      placeholder: "private advisory, researcher report, internal review, etc."
     validations:
       required: true
 
@@ -20,7 +20,7 @@ body:
     id: finding_id
     attributes:
       label: Finding ID
-      description: As assigned by the auditor, e.g. "OS-SAEP-01".
+      description: Use any stable identifier, ticket number, or advisory slug.
     validations:
       required: true
 
