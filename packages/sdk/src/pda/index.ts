@@ -137,10 +137,6 @@ export function verifierModePda(programId: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([enc('mode')], programId);
 }
 
-export function proofVerifierAllowedCallersPda(programId: PublicKey): [PublicKey, number] {
-  return PublicKey.findProgramAddressSync([enc('allowed_callers')], programId);
-}
-
 export function batchStatePda(programId: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([enc('batch')], programId);
 }

@@ -1,7 +1,7 @@
 import { Connection, Keypair, Transaction, VersionedTransaction } from '@solana/web3.js';
 import bs58 from 'bs58';
-import { saepPlugin } from '@buildonsaep/sak-plugin';
-import type { SakAgentLike } from '@buildonsaep/sak-plugin';
+import { saepPlugin } from '@saep/sak-plugin';
+import type { SakAgentLike } from '@saep/sak-plugin';
 
 function wallet(kp: Keypair) {
   return {
