@@ -20,7 +20,7 @@ import {
   buildCloseStreamIx,
   buildWithdrawEarnedIx,
 } from '../treasury_standard.js';
-import { makeTestProgram, decodeIx, expectedDiscriminator, accountKeys } from './helpers.js';
+import { makeTestProgram, makeRecordingProgram, decodeIx, expectedDiscriminator, accountKeys } from './helpers.js';
 
 const PROG = new PublicKey('6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ');
 const program = makeTestProgram<TreasuryStandard>(idl as Record<string, unknown>, PROG);
@@ -329,5 +329,102 @@ describe('buildWithdrawEarnedIx', () => {
     const data = decoded.data as { route_data: { data: number[] } | number[] };
     const bytes = Array.isArray(data.route_data) ? data.route_data : data.route_data.data;
     expect(bytes).toEqual([0xde, 0xad, 0xbe, 0xef]);
+  });
+});
+
+describe('recording-program treasury coverage', () => {
+  it('covers withdraw and stream lifecycle builders without Anchor account resolution', async () => {
+    const { program: recordingProgram, calls } = makeRecordingProgram<TreasuryStandard>(PROG);
+    const stream = PublicKey.unique();
+    const treasury = PublicKey.unique();
+    const customPriceFeed = PublicKey.unique();
+    const customAllowedTargets = PublicKey.unique();
+    const customHookAllowlist = PublicKey.unique();
+    const customAgentHooks = PublicKey.unique();
+    const customTokenProgram = PublicKey.unique();
+    const customJupiterProgram = PublicKey.unique();
+
+    await buildWithdrawIx(recordingProgram, {
+      operator,
+      agentDid,
+      mint,
+      destination: PublicKey.unique(),
+      amount: 1_234n,
+    });
+    await buildWithdrawIx(recordingProgram, {
+      operator,
+      agentDid,
+      mint,
+      destination: PublicKey.unique(),
+      amount: 9_999n,
+      priceFeed: customPriceFeed,
+    });
+    await buildInitStreamIx(recordingProgram, {
+      client,
+      agentDid,
+      streamNonce,
+      payerMint,
+      payoutMint,
+      clientTokenAccount,
+      ratePerSec: 77n,
+      maxDuration: 3_600n,
+    });
+    await buildCloseStreamIx(recordingProgram, {
+      signer: client,
+      stream,
+      treasury,
+      payerMint,
+      agentDid,
+      clientTokenAccount,
+    });
+    await buildWithdrawEarnedIx(recordingProgram, {
+      operator,
+      agentDid,
+      stream,
+      payerMint,
+      payoutMint,
+      jupiterProgram: customJupiterProgram,
+      routeData: Uint8Array.from([1, 2, 3]),
+    });
+    await buildWithdrawEarnedIx(recordingProgram, {
+      operator,
+      agentDid,
+      stream,
+      payerMint,
+      payoutMint,
+      jupiterProgram: customJupiterProgram,
+      routeData: Uint8Array.from([4, 5, 6]),
+      payerPriceFeed: customPriceFeed,
+      payoutPriceFeed: PublicKey.unique(),
+      allowedTargets: customAllowedTargets,
+      hookAllowlist: customHookAllowlist,
+      agentHooks: customAgentHooks,
+      tokenProgramId: customTokenProgram,
+    });
+
+    expect(calls.map((call) => call.method)).toEqual([
+      'withdraw',
+      'withdraw',
+      'initStream',
+      'closeStream',
+      'withdrawEarned',
+      'withdrawEarned',
+    ]);
+
+    expect(calls[0]?.args[0]).toMatchObject({ words: expect.any(Array) });
+    expect(calls[0]?.accounts.priceFeed).toBeNull();
+    expect(calls[1]?.accounts.priceFeed).toEqual(customPriceFeed);
+    expect(calls[2]?.args[0]).toEqual(Array.from(streamNonce));
+    expect(calls[2]?.accounts.rent).toEqual(new PublicKey('SysvarRent111111111111111111111111111111111'));
+    expect(calls[3]?.accounts.treasury).toEqual(treasury);
+    expect(calls[4]?.accounts.allowedTargets).toBeNull();
+    expect(calls[4]?.accounts.hookAllowlist).toBeNull();
+    expect(calls[4]?.accounts.agentHooks).toBeNull();
+    expect((calls[4]?.accounts.tokenProgram as PublicKey).equals(new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'))).toBe(true);
+    expect(calls[5]?.accounts.allowedTargets).toEqual(customAllowedTargets);
+    expect(calls[5]?.accounts.hookAllowlist).toEqual(customHookAllowlist);
+    expect(calls[5]?.accounts.agentHooks).toEqual(customAgentHooks);
+    expect((calls[5]?.accounts.tokenProgram as PublicKey).equals(customTokenProgram)).toBe(true);
+    expect(calls[5]?.args[0]).toEqual(Buffer.from([4, 5, 6]));
   });
 });

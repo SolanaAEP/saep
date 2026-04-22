@@ -1,4 +1,4 @@
-import { BN, Program } from '@coral-xyz/anchor';
+import { BN, Program } from '../anchor.js';
 import {
   PublicKey,
   SystemProgram,

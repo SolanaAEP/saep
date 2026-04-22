@@ -1,4 +1,4 @@
-import { BN, Program } from '@coral-xyz/anchor';
+import { BN, Program } from '../anchor.js';
 import { PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import type { NxsStaking } from '../generated/nxs_staking.js';
 import { stakingPoolPda, stakeAccountPda, stakeVaultPda } from '../pda/index.js';

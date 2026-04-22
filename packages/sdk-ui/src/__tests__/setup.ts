@@ -38,6 +38,8 @@ vi.mock('@saep/sdk', async () => {
     fetchTemplateRentals: vi.fn(),
     fetchTaskById: vi.fn(),
     fetchTasksByClient: vi.fn(),
+    fetchRecentTasks: vi.fn(),
+    fetchMarketGlobal: vi.fn(),
     buildRaiseDisputeIx: vi.fn(),
     buildRegisterAgentIx: vi.fn(),
     buildSetLimitsIx: vi.fn(),

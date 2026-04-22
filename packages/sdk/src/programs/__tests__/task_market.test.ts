@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PublicKey, SystemProgram } from '@solana/web3.js';
+import { PublicKey, SYSVAR_INSTRUCTIONS_PUBKEY, SystemProgram } from '@solana/web3.js';
 import idl from '../../idl/task_market.json' with { type: 'json' };
 import type { TaskMarket } from '../../generated/task_market.js';
 import {
@@ -17,6 +17,7 @@ import {
 } from '../../pda/index.js';
 import {
   buildCreateTaskIx,
+  buildDisputedTimeoutRefundIx,
   buildFundTaskIx,
   buildSubmitResultIx,
   buildVerifyTaskIx,
@@ -31,7 +32,7 @@ import {
   buildCancelBiddingIx,
   buildCancelUnfundedTaskIx,
 } from '../task_market.js';
-import { makeTestProgram, decodeIx, expectedDiscriminator, accountKeys } from './helpers.js';
+import { makeTestProgram, makeRecordingProgram, decodeIx, expectedDiscriminator, accountKeys } from './helpers.js';
 
 const PROG = new PublicKey('HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w');
 const TOKEN_2022 = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
@@ -60,6 +61,7 @@ const cranker = PublicKey.unique();
 const operator = PublicKey.unique();
 const bidder = PublicKey.unique();
 const paymentMint = PublicKey.unique();
+const clientTokenAccount = PublicKey.unique();
 const taskNonce = new Uint8Array(8).fill(0x01);
 const agentDid = new Uint8Array(32).fill(0x02);
 const agentId = new Uint8Array(32).fill(0x03);
@@ -292,5 +294,291 @@ describe('buildCancelUnfundedTaskIx', () => {
     expect(Array.from(ix.data.subarray(0, 8))).toEqual(expectedDiscriminator(idl as never, 'cancel_unfunded_task'));
     expect(accountKeys(ix)).toEqual([task.toBase58(), client.toBase58()]);
     expect(ix.keys[1].isSigner).toBe(true);
+  });
+});
+
+describe('recording-program task-market coverage', () => {
+  it('normalizes create-task payload variants and personhood tiers', async () => {
+    const { program: recordingProgram, calls } = makeRecordingProgram<TaskMarket>(PROG);
+
+    await buildCreateTaskIx(recordingProgram, clusterConfig, {
+      client,
+      taskNonce,
+      agentDid,
+      agentOperator: operator,
+      agentId,
+      paymentMint,
+      paymentAmount: 11n,
+      payload: {
+        kind: {
+          type: 'swapExact',
+          inMint: PublicKey.unique(),
+          outMint: PublicKey.unique(),
+          amountIn: 42n,
+          minOut: 7n,
+        },
+        capabilityBit: 2,
+        criteria: Uint8Array.from([1, 2, 3]),
+        requiresPersonhood: 'basic',
+      },
+      criteriaRoot,
+      deadline: 101n,
+      milestoneCount: 1,
+    });
+
+    await buildCreateTaskIx(recordingProgram, clusterConfig, {
+      client,
+      taskNonce,
+      agentDid,
+      agentOperator: operator,
+      agentId,
+      paymentMint,
+      paymentAmount: 12n,
+      payload: {
+        kind: {
+          transfer: {
+            mint: PublicKey.unique(),
+            to: PublicKey.unique(),
+            amount: 9n,
+          },
+        },
+        capabilityBit: 3,
+        criteria: Uint8Array.from([4, 5]),
+        requiresPersonhood: { verified: {} },
+      },
+      criteriaRoot,
+      deadline: 102n,
+      milestoneCount: 2,
+    });
+
+    await buildCreateTaskIx(recordingProgram, clusterConfig, {
+      client,
+      taskNonce,
+      agentDid,
+      agentOperator: operator,
+      agentId,
+      paymentMint,
+      paymentAmount: 13n,
+      payload: {
+        kind: {
+          dataFetch: {
+            urlHash: new Uint8Array(32).fill(0x11),
+            expectedHash: new Uint8Array(32).fill(0x22),
+          },
+        },
+        capabilityBit: 4,
+        criteria: Uint8Array.from([6]),
+        requiresPersonhood: { none: {} },
+      },
+      criteriaRoot,
+      deadline: 103n,
+      milestoneCount: 3,
+    });
+
+    await buildCreateTaskIx(recordingProgram, clusterConfig, {
+      client,
+      taskNonce,
+      agentDid,
+      agentOperator: operator,
+      agentId,
+      paymentMint,
+      paymentAmount: 14n,
+      payload: {
+        kind: {
+          compute: {
+            circuitId: new Uint8Array(32).fill(0x33),
+            publicInputsHash: new Uint8Array(32).fill(0x44),
+          },
+        },
+        capabilityBit: 5,
+        criteria: Uint8Array.from([7, 8]),
+        requiresPersonhood: undefined,
+      },
+      criteriaRoot,
+      deadline: 104n,
+      milestoneCount: 4,
+    });
+
+    const [swapCall, transferCall, dataFetchCall, computeCall] = calls;
+    expect(swapCall?.method).toBe('createTask');
+    expect((swapCall?.args[4] as { kind: Record<string, unknown>; requiresPersonhood: unknown }).kind).toHaveProperty(
+      'swapExact',
+    );
+    expect((swapCall?.args[4] as { requiresPersonhood: unknown }).requiresPersonhood).toEqual({ basic: {} });
+    expect((transferCall?.args[4] as { kind: Record<string, unknown>; requiresPersonhood: unknown }).kind).toHaveProperty(
+      'transfer',
+    );
+    expect((transferCall?.args[4] as { requiresPersonhood: unknown }).requiresPersonhood).toEqual({
+      verified: {},
+    });
+    expect((dataFetchCall?.args[4] as { kind: Record<string, unknown>; requiresPersonhood: unknown }).kind).toHaveProperty(
+      'dataFetch',
+    );
+    expect((dataFetchCall?.args[4] as { requiresPersonhood: unknown }).requiresPersonhood).toEqual({
+      none: {},
+    });
+    expect((computeCall?.args[4] as { kind: Record<string, unknown>; requiresPersonhood: unknown }).kind).toHaveProperty(
+      'compute',
+    );
+    expect((computeCall?.args[4] as { requiresPersonhood: unknown }).requiresPersonhood).toEqual({ none: {} });
+  });
+
+  it('rejects malformed create-task payload hashes', async () => {
+    const { program: recordingProgram } = makeRecordingProgram<TaskMarket>(PROG);
+
+    await expect(
+      buildCreateTaskIx(recordingProgram, clusterConfig, {
+        client,
+        taskNonce,
+        agentDid,
+        agentOperator: operator,
+        agentId,
+        paymentMint,
+        paymentAmount: 1n,
+        payload: {
+          kind: {
+            generic: {
+              capabilityBit: 1,
+              argsHash: new Uint8Array(31),
+            },
+          },
+          capabilityBit: 1,
+          criteria: Uint8Array.from([1]),
+        },
+        criteriaRoot,
+        deadline: 1n,
+        milestoneCount: 1,
+      }),
+    ).rejects.toThrow('payload.kind.argsHash must be 32 bytes');
+  });
+
+  it('covers the remaining task lifecycle builders without localnet account resolution', async () => {
+    const { program: recordingProgram, calls } = makeRecordingProgram<TaskMarket>(PROG);
+    const task = PublicKey.unique();
+    const customTokenProgram = PublicKey.unique();
+    const customHookAllowlist = PublicKey.unique();
+
+    await buildFundTaskIx(recordingProgram, {
+      client,
+      task,
+      paymentMint,
+      clientTokenAccount,
+    });
+    await buildSubmitResultIx(recordingProgram, clusterConfig, {
+      operator,
+      task,
+      agentAccount: PublicKey.unique(),
+      resultHash: new Uint8Array(32).fill(0x51),
+      proofKey: new Uint8Array(32).fill(0x52),
+    });
+    await buildVerifyTaskIx(recordingProgram, clusterConfig, {
+      cranker,
+      task,
+      verifierKey: PublicKey.unique(),
+      vkId,
+      proofA: new Uint8Array(32).fill(0x61),
+      proofB: new Uint8Array(64).fill(0x62),
+      proofC: new Uint8Array(32).fill(0x63),
+    });
+    await buildReleaseIx(recordingProgram, clusterConfig, {
+      cranker,
+      task,
+      paymentMint,
+      agentTokenAccount: PublicKey.unique(),
+      feeCollectorTokenAccount: PublicKey.unique(),
+      solrepPoolTokenAccount: PublicKey.unique(),
+      agentAccount: PublicKey.unique(),
+      client,
+      hookAllowlist: customHookAllowlist,
+      tokenProgramId: customTokenProgram,
+    });
+    await buildExpireIx(recordingProgram, clusterConfig, {
+      cranker,
+      task,
+      paymentMint,
+      clientTokenAccount,
+      client,
+      agentAccount: PublicKey.unique(),
+      tokenProgramId: customTokenProgram,
+    });
+    await buildDisputedTimeoutRefundIx(recordingProgram, {
+      cranker,
+      client,
+      task,
+      paymentMint,
+      clientTokenAccount,
+      tokenProgramId: customTokenProgram,
+    });
+    await buildCommitBidIx(recordingProgram, clusterConfig, {
+      bidder,
+      task,
+      taskId,
+      paymentMint,
+      bidderTokenAccount: PublicKey.unique(),
+      agentOperator: operator,
+      agentId,
+      agentDid,
+      commitHash: new Uint8Array(32).fill(0x71),
+      tokenProgramId: customTokenProgram,
+    });
+    await buildCloseBiddingIx(recordingProgram, {
+      cranker,
+      task,
+      taskId,
+    });
+    await buildClaimBondIx(recordingProgram, {
+      bidder,
+      task,
+      taskId,
+      paymentMint,
+      bidderTokenAccount: PublicKey.unique(),
+      feeCollectorTokenAccount: PublicKey.unique(),
+      tokenProgramId: customTokenProgram,
+    });
+    await buildCancelBiddingIx(recordingProgram, {
+      client,
+      task,
+      taskId,
+      paymentMint,
+      tokenProgramId: customTokenProgram,
+    });
+    await buildCancelUnfundedTaskIx(recordingProgram, {
+      client,
+      task,
+    });
+
+    expect(calls.map((call) => call.method)).toEqual([
+      'fundTask',
+      'submitResult',
+      'verifyTask',
+      'release',
+      'expire',
+      'disputedTimeoutRefund',
+      'commitBid',
+      'closeBidding',
+      'claimBond',
+      'cancelBidding',
+      'cancelUnfundedTask',
+    ]);
+
+    expect(calls[0]?.accounts.hookAllowlist).toBeNull();
+    expect((calls[0]?.accounts.tokenProgram as PublicKey).equals(TOKEN_2022)).toBe(true);
+    expect(calls[1]?.args).toEqual([
+      Array.from(new Uint8Array(32).fill(0x51)),
+      Array.from(new Uint8Array(32).fill(0x52)),
+    ]);
+    expect(calls[2]?.accounts.instructions).toEqual(SYSVAR_INSTRUCTIONS_PUBKEY);
+    expect((calls[3]?.accounts.hookAllowlist as PublicKey).equals(customHookAllowlist)).toBe(true);
+    expect((calls[3]?.accounts.tokenProgram as PublicKey).equals(customTokenProgram)).toBe(true);
+    expect((calls[4]?.accounts.tokenProgram as PublicKey).equals(customTokenProgram)).toBe(true);
+    expect((calls[5]?.accounts.tokenProgram as PublicKey).equals(customTokenProgram)).toBe(true);
+    expect(calls[6]?.args[0]).toEqual(Array.from(new Uint8Array(32).fill(0x71)));
+    expect((calls[6]?.accounts.tokenProgram as PublicKey).equals(customTokenProgram)).toBe(true);
+    expect((calls[8]?.accounts.tokenProgram as PublicKey).equals(customTokenProgram)).toBe(true);
+    expect((calls[9]?.accounts.tokenProgram as PublicKey).equals(customTokenProgram)).toBe(true);
+    expect(calls[10]?.accounts).toEqual({
+      task,
+      client,
+    });
   });
 });

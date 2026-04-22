@@ -1,4 +1,4 @@
-import { BN, Program } from '@coral-xyz/anchor';
+import { BN, Program } from '../anchor.js';
 import { PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import type { GovernanceProgram } from '../generated/governance_program.js';
 import {

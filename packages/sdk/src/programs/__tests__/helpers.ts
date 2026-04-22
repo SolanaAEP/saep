@@ -34,3 +34,50 @@ export function expectedDiscriminator(idl: Record<string, unknown>, ixName: stri
 export function accountKeys(ix: TransactionInstruction): string[] {
   return ix.keys.map((k) => k.pubkey.toBase58());
 }
+
+export interface RecordedInstructionCall {
+  method: string;
+  args: unknown[];
+  accounts: Record<string, unknown>;
+}
+
+export function makeRecordingProgram<T extends Idl>(programId: PublicKey): {
+  program: Program<T>;
+  calls: RecordedInstructionCall[];
+} {
+  const calls: RecordedInstructionCall[] = [];
+
+  const methods = new Proxy(
+    {},
+    {
+      get(_target, methodName) {
+        return (...args: unknown[]) => ({
+          accounts(accounts: Record<string, unknown>) {
+            calls.push({
+              method: String(methodName),
+              args,
+              accounts,
+            });
+            return {
+              async instruction() {
+                return {
+                  programId,
+                  keys: [],
+                  data: Buffer.alloc(0),
+                } as TransactionInstruction;
+              },
+            };
+          },
+        });
+      },
+    },
+  );
+
+  return {
+    program: {
+      programId,
+      methods,
+    } as unknown as Program<T>,
+    calls,
+  };
+}

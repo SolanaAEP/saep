@@ -14,6 +14,7 @@ import {
   useVaultBalances,
   useSetLimits,
   useTreasuryYieldResearch,
+  rawToUsdMicro,
 } from '../hooks/treasury.js';
 import { createWrapper, createQueryClient, MOCK_PUBKEY, MOCK_PUBKEY_2, mockConnection, mockWallet, mockAnchorWallet } from './helpers.js';
 
@@ -225,5 +226,56 @@ describe('useTreasuryYieldResearch', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.data.snapshot.status).toBe('inactive');
     expect(result.current.data.blockedReasons).toContain('no supported stable balances available');
+  });
+
+  it('reports paused and no-strategy policy states explicitly', async () => {
+    vi.mocked(fetchAllowedMints).mockResolvedValue([MOCK_PUBKEY] as any);
+    vi.mocked(fetchVaultBalances).mockResolvedValue([
+      {
+        mint: new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'),
+        vault: MOCK_PUBKEY,
+        amount: 2_000_000n,
+        exists: true,
+      },
+    ] as any);
+
+    const paused = renderHook(
+      () =>
+        useTreasuryYieldResearch(agentDid, {
+          allowedStrategyIds: ['kamino-lend'],
+          maxAllocationBps: 2_500,
+          paused: true,
+          emergencyUnwindEnabled: true,
+        }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(paused.result.current.isLoading).toBe(false));
+    expect(paused.result.current.data.snapshot.status).toBe('paused');
+    expect(paused.result.current.data.blockedReasons).toContain('policy paused');
+
+    const noStrategy = renderHook(
+      () =>
+        useTreasuryYieldResearch(agentDid, {
+          allowedStrategyIds: [],
+          maxAllocationBps: 2_500,
+          paused: false,
+          emergencyUnwindEnabled: true,
+        }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(noStrategy.result.current.isLoading).toBe(false));
+    expect(noStrategy.result.current.data.snapshot.status).toBe('inactive');
+    expect(noStrategy.result.current.data.snapshot.strategyId).toBeNull();
+    expect(noStrategy.result.current.data.blockedReasons).toContain('no active strategy selected');
+  });
+});
+
+describe('rawToUsdMicro', () => {
+  it('returns zero for non-stable mints and rescales stable decimals around 6', () => {
+    expect(rawToUsdMicro(123n, 9, false)).toBe(0n);
+    expect(rawToUsdMicro(1_234_567_890n, 9, true)).toBe(1_234_567n);
+    expect(rawToUsdMicro(12_345n, 4, true)).toBe(1_234_500n);
   });
 });

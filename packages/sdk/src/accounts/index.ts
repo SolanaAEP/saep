@@ -1,4 +1,4 @@
-import { Program, BN } from '@coral-xyz/anchor';
+import { Program, BN } from '../anchor.js';
 import { PublicKey } from '@solana/web3.js';
 import type { AgentRegistry } from '../generated/agent_registry.js';
 import type { TreasuryStandard } from '../generated/treasury_standard.js';

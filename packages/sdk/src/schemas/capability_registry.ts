@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { PublicKey } from '@solana/web3.js';
-import { BN } from '@coral-xyz/anchor';
+import { BN } from '../anchor.js';
 
 const pubkey = z.instanceof(PublicKey);
 const bn = z.instanceof(BN);

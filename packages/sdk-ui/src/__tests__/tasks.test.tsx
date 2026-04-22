@@ -3,6 +3,8 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { useAnchorWallet } from '@solana/wallet-adapter-react';
 import {
+  fetchMarketGlobal,
+  fetchRecentTasks,
   fetchTaskById,
   fetchTasksByClient,
   buildRaiseDisputeIx,
@@ -15,6 +17,8 @@ import {
   useDiscoveryTasks,
   useDiscoveryAgentTasks,
   useTaskComputeBonds,
+  useRecentTasks,
+  useTaskMarketConfig,
 } from '../hooks/tasks.js';
 import {
   createWrapper,
@@ -269,6 +273,102 @@ describe('discovery task hooks', () => {
       { wrapper: createWrapper() },
     );
     expect(disabled.result.current.fetchStatus).toBe('idle');
+  });
+
+  it('uses default discovery query params and falls back cleanly when ids or fetch bodies are invalid', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            items: [
+              {
+                creator: 'creator-3',
+                status: 'funded',
+                reward_lamports: '1',
+                created_at_unix: 1,
+                deadline_unix: null,
+                updated_at_unix: null,
+                compute_bonds: [],
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        text: vi.fn().mockRejectedValue(new Error('body unavailable')),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const tasks = renderHook(() => useDiscoveryTasks({ indexerUrl: `${INDEXER}/` }), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(tasks.result.current.isSuccess).toBe(true));
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`${INDEXER}/tasks?page=1&limit=20`);
+    expect(tasks.result.current.data?.[0]).toMatchObject({
+      taskIdHex: '',
+      agentDidHex: null,
+      capabilityMask: null,
+    });
+
+    const errored = renderHook(
+      () => useDiscoveryTasks({ indexerUrl: INDEXER, capability: 0, minReward: '0', enabled: true }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(errored.result.current.isError).toBe(true));
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(`${INDEXER}/tasks?capability=0&min_reward=0&page=1&limit=20`);
+    expect(errored.result.current.error?.message).toBe('indexer 503: Service Unavailable');
+
+    const invalidDid = renderHook(
+      () => useDiscoveryAgentTasks({ indexerUrl: INDEXER, agentDidHex: 'too-short', enabled: true }),
+      { wrapper: createWrapper() },
+    );
+    expect(invalidDid.result.current.fetchStatus).toBe('idle');
+  });
+});
+
+describe('task market read hooks', () => {
+  it('fetches recent tasks and config when the program is available', async () => {
+    vi.mocked(fetchRecentTasks).mockResolvedValue([{ id: 'recent-1' }] as any);
+    vi.mocked(fetchMarketGlobal).mockResolvedValue({ feeBps: 25 } as any);
+
+    const recent = renderHook(() => useRecentTasks(5, ['open', 'funded']), {
+      wrapper: createWrapper(),
+    });
+    const config = renderHook(() => useTaskMarketConfig(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(recent.result.current.isSuccess).toBe(true));
+    await waitFor(() => expect(config.result.current.isSuccess).toBe(true));
+
+    expect(fetchRecentTasks).toHaveBeenCalledWith(mockProgramInstance, {
+      limit: 5,
+      statuses: ['open', 'funded'],
+    });
+    expect(fetchMarketGlobal).toHaveBeenCalledWith(mockProgramInstance);
+  });
+
+  it('keeps recent-tasks and config queries idle when the program is unavailable', () => {
+    vi.mocked(taskMarketProgram).mockReturnValue(null as any);
+
+    const recent = renderHook(() => useRecentTasks(), {
+      wrapper: createWrapper(),
+    });
+    const config = renderHook(() => useTaskMarketConfig(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(recent.result.current.fetchStatus).toBe('idle');
+    expect(config.result.current.fetchStatus).toBe('idle');
+    expect(fetchRecentTasks).not.toHaveBeenCalled();
+    expect(fetchMarketGlobal).not.toHaveBeenCalled();
   });
 });
 

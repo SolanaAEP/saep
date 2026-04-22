@@ -1,4 +1,4 @@
-import { BN, Program } from '@coral-xyz/anchor';
+import { BN, Program } from '../anchor.js';
 import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import type { AgentRegistry } from '../generated/agent_registry.js';
 import { agentAccountPda, agentRegistryGlobalPda, agentStakePda, capabilityConfigPda } from '../pda/index.js';

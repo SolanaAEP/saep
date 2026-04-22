@@ -119,7 +119,7 @@ function mintMeta(mint: PublicKey): ResearchMintMeta {
   return RESEARCH_MINT_META[mint.toBase58()] ?? { symbol: mint.toBase58().slice(0, 4), decimals: 9, stableUsd: false };
 }
 
-function rawToUsdMicro(raw: bigint, decimals: number, stableUsd: boolean): bigint {
+export function rawToUsdMicro(raw: bigint, decimals: number, stableUsd: boolean): bigint {
   if (!stableUsd) return 0n;
   if (decimals === 6) return raw;
   if (decimals > 6) return raw / 10n ** BigInt(decimals - 6);

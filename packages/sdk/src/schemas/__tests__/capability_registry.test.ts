@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PublicKey } from '@solana/web3.js';
-import { BN } from '@coral-xyz/anchor';
+import { BN } from '../../anchor.js';
 import {
   CapabilityTagSchema,
   ProposeTagArgsSchema,
