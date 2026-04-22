@@ -1,281 +1,271 @@
-import crypto from 'node:crypto';
-import pino from 'pino';
-import { query, queryOne } from './db.js';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 
-const log = pino({ level: process.env.LOG_LEVEL ?? 'info', name: 'webhooks' });
-
-const WEBHOOK_EVENTS = [
+export const WEBHOOK_EVENT_TYPES = [
   'task.created',
-  'task.completed',
+  'task.verified',
+  'task.released',
   'task.disputed',
-  'proof.verified',
-  'agent.registered',
-  'agent.slashed',
-  'payment.settled',
+  'bid.revealed',
+  'stream.withdrawn',
+  'agent.status_changed',
 ] as const;
 
-export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
+export type WebhookEventType = typeof WEBHOOK_EVENT_TYPES[number];
+export type WebhookResourceType = 'task' | 'bid' | 'stream' | 'agent';
+export type DeliveryState = 'pending' | 'delivered' | 'retrying' | 'dead_letter';
+export type ScheduleTask = () => Promise<void> | void;
 
-export interface WebhookRegistration {
-  id: string;
-  operator: string;
+export interface WebhookSubscriptionInput {
   url: string;
-  events: WebhookEvent[];
-  created_at: number;
-  active: boolean;
+  events: WebhookEventType[];
+  secret: string;
+  description?: string | null;
 }
 
-export interface WebhookPayload {
+export interface WebhookEventInput {
+  type: WebhookEventType;
+  chain: string;
+  cluster: string;
+  resource: {
+    type: WebhookResourceType;
+    id: string;
+  };
+  payload: Record<string, unknown>;
+}
+
+export interface WebhookEvent extends WebhookEventInput {
   id: string;
-  event: string;
-  timestamp: number;
-  data: object;
+  emitted_at: string;
 }
 
-const MAX_WEBHOOKS_PER_OPERATOR = 10;
-const MAX_DELIVERIES_PER_MIN = 100;
-const MAX_RETRIES = 3;
-const RETRY_BASE_MS = 1_000;
-
-export function signPayload(body: string, secret: string): string {
-  return crypto.createHmac('sha256', secret).update(body).digest('hex');
+export interface WebhookSubscriptionRecord {
+  id: string;
+  url: string;
+  events: WebhookEventType[];
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  secret_preview: string;
+  status: 'active';
 }
 
-export function isValidEvent(event: string): event is WebhookEvent {
-  return (WEBHOOK_EVENTS as readonly string[]).includes(event);
+export interface WebhookDeliveryRecord {
+  id: string;
+  subscription_id: string;
+  event_id: string;
+  event_type: WebhookEventType;
+  state: DeliveryState;
+  attempt_count: number;
+  target_url: string;
+  last_attempt_at: string | null;
+  next_attempt_at: string | null;
+  last_status_code: number | null;
+  last_error: string | null;
 }
 
-export const INIT_SQL = `
-  CREATE TABLE IF NOT EXISTS webhook_registrations (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    operator      TEXT NOT NULL,
-    url           TEXT NOT NULL,
-    events        TEXT[] NOT NULL,
-    secret_hash   TEXT NOT NULL,
-    active        BOOLEAN NOT NULL DEFAULT true,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-  );
+type StoredSubscription = WebhookSubscriptionRecord & {
+  secret: string;
+};
 
-  CREATE INDEX IF NOT EXISTS idx_webhook_operator ON webhook_registrations (operator);
-  CREATE INDEX IF NOT EXISTS idx_webhook_events ON webhook_registrations USING GIN (events);
+type StoredDelivery = WebhookDeliveryRecord & {
+  timer?: unknown;
+};
 
-  CREATE TABLE IF NOT EXISTS webhook_delivery_log (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    webhook_id    UUID NOT NULL REFERENCES webhook_registrations(id) ON DELETE CASCADE,
-    event         TEXT NOT NULL,
-    payload       JSONB NOT NULL,
-    status_code   INT,
-    attempt       INT NOT NULL DEFAULT 1,
-    delivered_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    success       BOOLEAN NOT NULL DEFAULT false
-  );
+export interface WebhookHubOptions {
+  fetchImpl?: typeof fetch;
+  now?: () => number;
+  schedule?: (task: ScheduleTask, delayMs: number) => unknown;
+  cancel?: (handle: unknown) => void;
+  retryBaseMs?: number;
+  maxAttempts?: number;
+  userAgent?: string;
+  idFactory?: () => string;
+}
 
-  CREATE INDEX IF NOT EXISTS idx_delivery_webhook ON webhook_delivery_log (webhook_id, delivered_at);
-`;
+export class WebhookHub {
+  private readonly subscriptions = new Map<string, StoredSubscription>();
+  private readonly deliveries = new Map<string, StoredDelivery>();
+  private readonly events = new Map<string, WebhookEvent>();
+  private readonly fetchImpl: typeof fetch;
+  private readonly now: () => number;
+  private readonly schedule: (task: ScheduleTask, delayMs: number) => unknown;
+  private readonly cancel: (handle: unknown) => void;
+  private readonly retryBaseMs: number;
+  private readonly maxAttempts: number;
+  private readonly userAgent: string;
+  private readonly idFactory: () => string;
 
-export class WebhookManager {
-  async init(): Promise<void> {
-    const statements = INIT_SQL.split(';').filter((s) => s.trim());
-    for (const stmt of statements) {
-      await query(stmt);
-    }
+  constructor(opts: WebhookHubOptions = {}) {
+    this.fetchImpl = opts.fetchImpl ?? fetch;
+    this.now = opts.now ?? Date.now;
+    this.schedule = opts.schedule ?? ((task, delayMs) => setTimeout(() => {
+      void task();
+    }, delayMs));
+    this.cancel = opts.cancel ?? ((handle) => clearTimeout(handle as NodeJS.Timeout));
+    this.retryBaseMs = Math.max(1, opts.retryBaseMs ?? 1_000);
+    this.maxAttempts = Math.max(1, opts.maxAttempts ?? 4);
+    this.userAgent = opts.userAgent ?? 'saep-discovery-webhooks/0.1';
+    this.idFactory = opts.idFactory ?? randomUUID;
   }
 
-  async registerWebhook(
-    operator: string,
-    url: string,
-    events: string[],
-    secret: string,
-  ): Promise<WebhookRegistration> {
-    const invalid = events.filter((e) => !isValidEvent(e));
-    if (invalid.length > 0) {
-      throw new WebhookError(`invalid events: ${invalid.join(', ')}`, 400);
-    }
-    if (events.length === 0) {
-      throw new WebhookError('at least one event required', 400);
-    }
+  createSubscription(input: WebhookSubscriptionInput): WebhookSubscriptionRecord {
+    const id = this.idFactory();
+    const timestamp = this.isoNow();
+    const record: StoredSubscription = {
+      id,
+      url: input.url,
+      events: [...new Set(input.events)],
+      description: input.description ?? null,
+      created_at: timestamp,
+      updated_at: timestamp,
+      secret_preview: previewSecret(input.secret),
+      status: 'active',
+      secret: input.secret,
+    };
+    this.subscriptions.set(id, record);
+    return sanitizeSubscription(record);
+  }
 
-    const count = await queryOne<{ total: number }>(
-      `SELECT count(*)::int AS total FROM webhook_registrations
-       WHERE operator = $1 AND active = true`,
-      [operator],
-    );
-    if ((count?.total ?? 0) >= MAX_WEBHOOKS_PER_OPERATOR) {
-      throw new WebhookError(`max ${MAX_WEBHOOKS_PER_OPERATOR} webhooks per operator`, 429);
-    }
+  listSubscriptions(): WebhookSubscriptionRecord[] {
+    return Array.from(this.subscriptions.values())
+      .map(sanitizeSubscription)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at));
+  }
 
-    const secretHash = crypto.createHash('sha256').update(secret).digest('hex');
+  listDeliveries(state?: DeliveryState): WebhookDeliveryRecord[] {
+    return Array.from(this.deliveries.values())
+      .filter((delivery) => !state || delivery.state === state)
+      .map(sanitizeDelivery)
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }
 
-    const row = await queryOne<{
-      id: string;
-      operator: string;
-      url: string;
-      events: string[];
-      created_at: Date;
-      active: boolean;
-    }>(
-      `INSERT INTO webhook_registrations (operator, url, events, secret_hash)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, operator, url, events, created_at, active`,
-      [operator, url, events, secretHash],
-    );
+  async emit(input: WebhookEventInput): Promise<{
+    event: WebhookEvent;
+    deliveries: WebhookDeliveryRecord[];
+  }> {
+    const event: WebhookEvent = {
+      id: this.idFactory(),
+      emitted_at: this.isoNow(),
+      ...input,
+    };
+    this.events.set(event.id, event);
 
-    if (!row) throw new WebhookError('failed to insert webhook', 500);
+    const matching = Array.from(this.subscriptions.values())
+      .filter((subscription) => subscription.events.includes(event.type));
+    const initialDeliveries = matching.map((subscription) => this.createDelivery(subscription, event));
+
+    await Promise.all(initialDeliveries.map((delivery) => this.dispatch(delivery.id)));
 
     return {
-      id: row.id,
-      operator: row.operator,
-      url: row.url,
-      events: row.events as WebhookEvent[],
-      created_at: Math.floor(row.created_at.getTime() / 1000),
-      active: row.active,
+      event,
+      deliveries: initialDeliveries.map(sanitizeDelivery),
     };
   }
 
-  async removeWebhook(id: string, operator: string): Promise<boolean> {
-    const row = await queryOne<{ id: string }>(
-      `UPDATE webhook_registrations SET active = false
-       WHERE id = $1 AND operator = $2 AND active = true
-       RETURNING id`,
-      [id, operator],
-    );
-    return row !== null;
+  private createDelivery(
+    subscription: StoredSubscription,
+    event: WebhookEvent,
+  ): StoredDelivery {
+    const id = this.idFactory();
+    const delivery: StoredDelivery = {
+      id,
+      subscription_id: subscription.id,
+      event_id: event.id,
+      event_type: event.type,
+      state: 'pending',
+      attempt_count: 0,
+      target_url: subscription.url,
+      last_attempt_at: null,
+      next_attempt_at: null,
+      last_status_code: null,
+      last_error: null,
+    };
+    this.deliveries.set(id, delivery);
+    return delivery;
   }
 
-  async listWebhooks(operator: string): Promise<WebhookRegistration[]> {
-    const rows = await query<{
-      id: string;
-      operator: string;
-      url: string;
-      events: string[];
-      created_at: Date;
-      active: boolean;
-    }>(
-      `SELECT id, operator, url, events, created_at, active
-       FROM webhook_registrations
-       WHERE operator = $1 AND active = true
-       ORDER BY created_at DESC`,
-      [operator],
-    );
-    return rows.map((r) => ({
-      id: r.id,
-      operator: r.operator,
-      url: r.url,
-      events: r.events as WebhookEvent[],
-      created_at: Math.floor(r.created_at.getTime() / 1000),
-      active: r.active,
-    }));
-  }
+  private async dispatch(deliveryId: string): Promise<void> {
+    const delivery = this.deliveries.get(deliveryId);
+    if (!delivery) return;
+    const subscription = this.subscriptions.get(delivery.subscription_id);
+    const event = this.events.get(delivery.event_id);
+    if (!subscription || !event) return;
 
-  async deliverEvent(event: string, payload: object): Promise<void> {
-    if (!isValidEvent(event)) return;
+    delivery.timer = undefined;
+    delivery.next_attempt_at = null;
+    delivery.attempt_count += 1;
+    delivery.last_attempt_at = this.isoNow();
+    delivery.last_error = null;
 
-    const hooks = await query<{
-      id: string;
-      url: string;
-      secret_hash: string;
-    }>(
-      `SELECT id, url, secret_hash FROM webhook_registrations
-       WHERE active = true AND $1 = ANY(events)`,
-      [event],
-    );
+    const body = JSON.stringify(event);
+    const timestamp = Math.floor(this.now() / 1000).toString();
+    const signature = createHmac('sha256', subscription.secret)
+      .update(`${timestamp}.${body}`)
+      .digest('hex');
 
-    const deliveries = hooks.map((hook) => this.deliverToHook(hook, event, payload));
-    await Promise.allSettled(deliveries);
-  }
+    try {
+      const response = await this.fetchImpl(subscription.url, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'user-agent': this.userAgent,
+          'x-saep-event-id': event.id,
+          'x-saep-event-type': event.type,
+          'x-saep-event-timestamp': timestamp,
+          'x-saep-signature': `sha256=${signature}`,
+        },
+        body,
+      });
 
-  private async deliverToHook(
-    hook: { id: string; url: string; secret_hash: string },
-    event: string,
-    data: object,
-  ): Promise<void> {
-    if (await this.isRateLimited(hook.id)) {
-      log.warn({ webhook_id: hook.id }, 'rate limited, skipping delivery');
+      delivery.last_status_code = response.status;
+      if (response.ok) {
+        delivery.state = 'delivered';
+        return;
+      }
+
+      delivery.last_error = `http_${response.status}`;
+    } catch (err) {
+      delivery.last_error = err instanceof Error ? err.message : String(err);
+    }
+
+    if (delivery.attempt_count >= this.maxAttempts) {
+      delivery.state = 'dead_letter';
       return;
     }
 
-    const envelope: WebhookPayload = {
-      id: crypto.randomUUID(),
-      event,
-      timestamp: Math.floor(Date.now() / 1000),
-      data,
-    };
-
-    const body = JSON.stringify(envelope);
-    // sign with the stored hash as HMAC key (operator proves knowledge of secret via registration;
-    // we use the hash so the raw secret is never stored)
-    const signature = signPayload(body, hook.secret_hash);
-
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const res = await fetch(hook.url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-SAEP-Signature': signature,
-            'X-SAEP-Event': event,
-          },
-          body,
-          signal: AbortSignal.timeout(10_000),
-        });
-
-        await this.logDelivery(hook.id, event, envelope, res.status, attempt, res.ok);
-
-        if (res.ok) return;
-        if (res.status >= 400 && res.status < 500) return; // don't retry client errors
-      } catch (err) {
-        log.warn(
-          { webhook_id: hook.id, attempt, err: err instanceof Error ? err.message : String(err) },
-          'delivery failed',
-        );
-        await this.logDelivery(hook.id, event, envelope, 0, attempt, false);
-      }
-
-      if (attempt < MAX_RETRIES) {
-        await sleep(RETRY_BASE_MS * 2 ** (attempt - 1));
-      }
-    }
+    delivery.state = 'retrying';
+    const delayMs = this.retryBaseMs * Math.max(1, 2 ** (delivery.attempt_count - 1));
+    delivery.next_attempt_at = new Date(this.now() + delayMs).toISOString();
+    delivery.timer = this.schedule(() => this.dispatch(delivery.id), delayMs);
   }
 
-  private async isRateLimited(webhookId: string): Promise<boolean> {
-    const row = await queryOne<{ cnt: number }>(
-      `SELECT count(*)::int AS cnt FROM webhook_delivery_log
-       WHERE webhook_id = $1 AND delivered_at > now() - interval '1 minute'`,
-      [webhookId],
-    );
-    return (row?.cnt ?? 0) >= MAX_DELIVERIES_PER_MIN;
-  }
-
-  private async logDelivery(
-    webhookId: string,
-    event: string,
-    payload: object,
-    statusCode: number,
-    attempt: number,
-    success: boolean,
-  ): Promise<void> {
-    try {
-      await query(
-        `INSERT INTO webhook_delivery_log (webhook_id, event, payload, status_code, attempt, success)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [webhookId, event, JSON.stringify(payload), statusCode, attempt, success],
-      );
-    } catch (err) {
-      log.error({ err: err instanceof Error ? err.message : String(err) }, 'failed to log delivery');
-    }
+  private isoNow(): string {
+    return new Date(this.now()).toISOString();
   }
 }
 
-export class WebhookError extends Error {
-  constructor(
-    message: string,
-    public statusCode: number,
-  ) {
-    super(message);
-    this.name = 'WebhookError';
-  }
+function sanitizeSubscription(subscription: StoredSubscription): WebhookSubscriptionRecord {
+  const { secret: _secret, ...rest } = subscription;
+  return { ...rest };
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function sanitizeDelivery(delivery: StoredDelivery): WebhookDeliveryRecord {
+  const { timer: _timer, ...rest } = delivery;
+  return { ...rest };
+}
+
+function previewSecret(secret: string): string {
+  if (secret.length <= 8) return `${secret}***`;
+  return `${secret.slice(0, 4)}...${secret.slice(-4)}`;
+}
+
+export function authorizeToken(
+  provided: string | undefined,
+  expected: string | undefined,
+): boolean {
+  if (!provided || !expected) return false;
+  const left = Buffer.from(provided);
+  const right = Buffer.from(expected);
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
 }

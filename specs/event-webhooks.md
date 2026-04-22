@@ -1,6 +1,6 @@
 # event-webhooks — signed outbound webhooks and notification fan-out
 
-Status: draft
+Status: in progress
 Parent: internal backlog `M2 — ecosystem adoption`
 
 ## Goal
@@ -23,6 +23,12 @@ Provide a simple outbound integration layer for SAEP events so builders can reac
 - At-least-once delivery
 - Retry with exponential backoff
 - Dead-letter queue after terminal failure
+
+Initial implementation status:
+
+- Discovery now exposes subscription management, event emission, and delivery inspection endpoints.
+- Outbound deliveries are HMAC-signed and retried with exponential backoff.
+- Dead-letter state is queryable through the same service.
 
 ## Payload shape
 

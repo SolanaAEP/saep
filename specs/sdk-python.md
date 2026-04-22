@@ -1,6 +1,6 @@
 # sdk-python — async Python client and framework adapters
 
-Status: draft
+Status: in progress
 Parent: internal backlog `M2 — ecosystem adoption`
 
 ## Goal
@@ -41,6 +41,7 @@ Each adapter must let a host agent become SAEP-capable in under 50 lines:
 ## Milestones
 
 1. Core async client + typed models
+   Current status: landed at `python/saep-sdk/` with Discovery client methods, a signer callback wallet abstraction, unit tests, and a LangGraph-oriented toolkit surface.
 2. LangGraph adapter and smoke example
 3. CrewAI + AutoGen adapters
 4. Eliza adapter
