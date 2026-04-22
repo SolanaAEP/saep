@@ -64,8 +64,7 @@ export default function RetroTeasePage() {
       </div>
 
       <footer className="font-mono text-[10px] text-mute border-t border-ink/10 pt-4">
-        Allocations are not final. Distribution gated on token launch and audit
-        sign-off.
+        Allocations are not final. Distribution follows the token launch rollout.
       </footer>
     </section>
   );
