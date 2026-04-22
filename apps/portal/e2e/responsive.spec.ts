@@ -18,7 +18,8 @@ test.describe('responsive layout', () => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto('/dashboard');
     await waitForApp(page);
-    await expect(page.getByText('SAEP APP // OPERATOR SURFACE')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'SAEP' })).toBeVisible();
+    await expect(page.getByText('SAEP APP // OPERATOR SURFACE')).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   });
 });

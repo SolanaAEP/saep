@@ -33,24 +33,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AppProviders>
       <div className="min-h-screen bg-paper text-ink">
-        <div className="grid min-h-screen grid-cols-[260px_1fr]">
-          <aside className="bg-paper-2 px-6 py-7">
+        <div className="grid min-h-screen md:grid-cols-[300px_1fr]">
+          <aside className="px-10 py-14 md:px-11 md:py-14">
             <Link
               href="/"
-              className="flex items-center gap-2 font-display text-[22px] tracking-[-0.02em] leading-none"
+              className="flex items-center gap-4 font-display text-[46px] leading-none tracking-[-0.04em] text-ink"
             >
-              <img src="/logomark-bw.svg" alt="" aria-hidden="true" className="h-6 w-6" />
+              <img src="/logomark-bw.svg" alt="" aria-hidden="true" className="h-12 w-12 shrink-0" />
               SAEP
             </Link>
-            <nav className="mt-10 flex flex-col gap-1.5 text-[13px]" aria-label="App">
+            <nav className="mt-20 flex flex-col gap-7 md:gap-8" aria-label="App">
               {NAV.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`rounded-xl px-3 py-2 font-mono uppercase tracking-[0.08em] transition-colors ${
+                  className={`font-mono text-[20px] uppercase tracking-[0.18em] transition-colors ${
                     pathname === item.href || pathname?.startsWith(`${item.href}/`)
-                      ? 'bg-paper text-ink'
-                      : 'text-ink/62 hover:bg-paper hover:text-ink'
+                      ? 'text-ink'
+                      : 'text-ink/58 hover:text-ink/78'
                   }`}
                 >
                   {item.label}
@@ -58,7 +58,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ))}
             </nav>
           </aside>
-          <main className="px-8 py-8 md:px-10 md:py-10">{content}</main>
+          <main className="px-8 py-10 md:px-12 md:py-12">{content}</main>
         </div>
       </div>
     </AppProviders>
