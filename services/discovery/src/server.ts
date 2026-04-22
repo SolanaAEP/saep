@@ -1,4 +1,3 @@
-import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
 import websocket from '@fastify/websocket';
 import pino from 'pino';
@@ -8,13 +7,9 @@ import {
   AgentDidParamsSchema,
   TaskHistoryQuerySchema,
   TasksQuerySchema,
-  WebhookSubscriptionCreateSchema,
-  WebhookDeliveriesQuerySchema,
-  WebhookEventEmitSchema,
   WsMessageSchema,
   type WsMessage,
 } from './schema.js';
-import { WebhookHub, authorizeToken } from './webhooks.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info', name: 'discovery' });
 const PORT = Number(process.env.DISCOVERY_PORT ?? 8790);
@@ -35,29 +30,8 @@ const SORT_MAP: Record<string, SortColumn> = {
   jobs_completed: 'jobs_completed',
 };
 
-export interface BuildServerOptions {
-  installSignalHandlers?: boolean;
-  webhookHub?: WebhookHub;
-  webhookAdminToken?: string;
-  webhookServiceToken?: string;
-}
-
-function requireToken(
-  header: string | string[] | undefined,
-  expected: string | undefined,
-): boolean {
-  const token = Array.isArray(header) ? header[0] : header;
-  return authorizeToken(token, expected);
-}
-
-export async function buildServer(opts: BuildServerOptions = {}) {
+async function buildServer() {
   const app = Fastify({ loggerInstance: log });
-  const webhookHub = opts.webhookHub ?? new WebhookHub({
-    retryBaseMs: Number(process.env.WEBHOOK_RETRY_BASE_MS ?? 1_000),
-    maxAttempts: Number(process.env.WEBHOOK_MAX_ATTEMPTS ?? 4),
-  });
-  const webhookAdminToken = opts.webhookAdminToken ?? process.env.WEBHOOK_ADMIN_TOKEN;
-  const webhookServiceToken = opts.webhookServiceToken ?? process.env.WEBHOOK_SERVICE_TOKEN;
   await app.register(websocket);
 
   app.get('/healthz', async () => {
@@ -425,58 +399,6 @@ export async function buildServer(opts: BuildServerOptions = {}) {
     };
   });
 
-  app.post('/webhooks/subscriptions', async (req, reply) => {
-    if (!requireToken(req.headers['x-saep-admin-token'], webhookAdminToken)) {
-      return reply.code(401).send({ error: 'unauthorized' });
-    }
-
-    const parsed = WebhookSubscriptionCreateSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
-    }
-
-    const subscription = webhookHub.createSubscription(parsed.data);
-    return reply.code(201).send(subscription);
-  });
-
-  app.get('/webhooks/subscriptions', async (req, reply) => {
-    if (!requireToken(req.headers['x-saep-admin-token'], webhookAdminToken)) {
-      return reply.code(401).send({ error: 'unauthorized' });
-    }
-    return { items: webhookHub.listSubscriptions() };
-  });
-
-  app.get('/webhooks/deliveries', async (req, reply) => {
-    if (!requireToken(req.headers['x-saep-admin-token'], webhookAdminToken)) {
-      return reply.code(401).send({ error: 'unauthorized' });
-    }
-
-    const parsed = WebhookDeliveriesQuerySchema.safeParse(req.query);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_query', issues: parsed.error.issues });
-    }
-
-    return { items: webhookHub.listDeliveries(parsed.data.state) };
-  });
-
-  app.post('/webhooks/events', async (req, reply) => {
-    if (!requireToken(req.headers['x-saep-service-token'], webhookServiceToken)) {
-      return reply.code(401).send({ error: 'unauthorized' });
-    }
-
-    const parsed = WebhookEventEmitSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
-    }
-
-    const emitted = await webhookHub.emit(parsed.data);
-    return reply.code(202).send({
-      event: emitted.event,
-      delivery_count: emitted.deliveries.length,
-      deliveries: emitted.deliveries,
-    });
-  });
-
   // WebSocket /ws — real-time subscriptions
   app.get('/ws', { websocket: true }, (socket) => {
     let capabilities: Set<number> | null = null;
@@ -586,16 +508,14 @@ export async function buildServer(opts: BuildServerOptions = {}) {
     socket.on('error', () => clearInterval(interval));
   });
 
-  if (opts.installSignalHandlers !== false) {
-    const shutdown = async () => {
-      log.info('shutting down');
-      await app.close();
-      await closeDb();
-      process.exit(0);
-    };
-    process.on('SIGINT', () => void shutdown());
-    process.on('SIGTERM', () => void shutdown());
-  }
+  const shutdown = async () => {
+    log.info('shutting down');
+    await app.close();
+    await closeDb();
+    process.exit(0);
+  };
+  process.on('SIGINT', () => void shutdown());
+  process.on('SIGTERM', () => void shutdown());
 
   return app;
 }
@@ -606,9 +526,7 @@ async function main() {
   log.info({ port: PORT }, 'discovery api up');
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  main().catch((err) => {
-    log.error({ err: err instanceof Error ? err.message : String(err) }, 'fatal');
-    process.exit(1);
-  });
-}
+main().catch((err) => {
+  log.error({ err: err instanceof Error ? err.message : String(err) }, 'fatal');
+  process.exit(1);
+});
