@@ -13,9 +13,21 @@ const COMPACT = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 1,
 });
 
+const FEED_STATUS = {
+  live: {
+    dot: 'bg-lime',
+    label: 'Live indexer feed',
+  },
+  fallback: {
+    dot: 'bg-orange-500',
+    label: 'Mock fallback',
+  },
+} as const;
+
 export default async function AnalyticsPage() {
   const snapshot = await loadAnalyticsSnapshot();
   const live = snapshot.source === 'live';
+  const feedStatus = live ? FEED_STATUS.live : FEED_STATUS.fallback;
 
   return (
     <section className="flex flex-col gap-6 max-w-6xl">
@@ -27,14 +39,10 @@ export default async function AnalyticsPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono uppercase tracking-[0.08em] text-ink/50">
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-2 py-1 ${
-              live ? 'bg-lime/15 text-lime' : 'bg-amber-300/15 text-amber-700'
-            }`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${live ? 'bg-lime' : 'bg-amber-500'}`} />
-            {live ? 'Live indexer feed' : 'Mock fallback'}
+        <div className="flex flex-wrap items-center gap-3 text-[10px] font-mono uppercase tracking-[0.08em] text-ink/50">
+          <span className="inline-flex items-center gap-1.5 border border-ink/10 px-2.5 py-1 text-ink/60">
+            <span className={`h-1.5 w-1.5 rounded-full ${feedStatus.dot}`} />
+            {feedStatus.label}
           </span>
           <span>Devnet</span>
           <span>Updated {new Date(snapshot.fetchedAt).toISOString().slice(11, 19)} UTC</span>
