@@ -62,9 +62,44 @@ pnpm --filter @saep/proof-gen build && pnpm --filter @saep/proof-gen start
 # x402 settlement edge (needs Redis + RPC + funded signer)
 pnpm --filter @saep/x402-gateway build && pnpm --filter @saep/x402-gateway start
 
-# indexer (needs Postgres + Helius API key)
-cd services/indexer && cargo run
+# indexer with internal + public APIs (needs Postgres + Helius API key)
+INDEXER_ROLE=all API_PORT=8081 HEALTHCHECK_PORT=8080 \
+  INDEXER_INTERNAL_API_TOKEN=local-saep-indexer-token \
+  cargo run -p saep-indexer
+
+# discovery API (needs Postgres)
+pnpm --filter @saep/discovery build && pnpm --filter @saep/discovery start
+
+# compute broker with persisted snapshot sync (needs indexer internal API)
+INDEXER_INTERNAL_API_URL=http://127.0.0.1:8080 \
+  INDEXER_INTERNAL_API_TOKEN=local-saep-indexer-token \
+  COMPUTE_BOND_STORE_PATH=.local/compute-broker.json \
+  pnpm --filter @saep/compute-broker build && pnpm --filter @saep/compute-broker start
 ```
+
+Run those long-lived services in separate terminals if you want to exercise the persisted
+compute-bond read path locally.
+
+## 5b. Smoke-test persisted compute-bond snapshots
+
+Once the indexer, discovery, and compute broker are all running, you can drive one full reserve
+→ lock → release flow and wait for both read paths to converge:
+
+```bash
+pnpm smoke:compute-bonds
+```
+
+Useful flags:
+
+```bash
+pnpm smoke:compute-bonds --skip-release
+pnpm smoke:compute-bonds --task-id <64-char-hex>
+pnpm smoke:compute-bonds --provider akash --gpu-hours 8 --duration-secs 7200
+```
+
+The smoke script expects the indexer public API on `http://127.0.0.1:8081`, the broker on
+`http://127.0.0.1:8788`, and Discovery on `http://127.0.0.1:8790` unless you override them with
+CLI flags or the matching `SAEP_*` environment variables.
 
 ## 6. Seed live devnet bounties
 

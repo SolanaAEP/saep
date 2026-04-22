@@ -22,6 +22,8 @@ cp .env.example .env
 cargo install diesel_cli --no-default-features --features postgres
 diesel migration run
 
+INDEXER_ROLE=all API_PORT=8081 HEALTHCHECK_PORT=8080 \
+INDEXER_INTERNAL_API_TOKEN=local-saep-indexer-token \
 cargo run -p saep-indexer
 ```
 
@@ -32,7 +34,9 @@ brew install libpq
 export LIBRARY_PATH="/opt/homebrew/opt/libpq/lib"
 ```
 
-Health: `curl localhost:8080/healthz` · Metrics: `curl localhost:8080/metrics`.
+Internal health: `curl localhost:8080/healthz` · Metrics: `curl localhost:8080/metrics`.
+When `INDEXER_ROLE=all` or `INDEXER_ROLE=api`, the public discovery API listens on
+`http://localhost:8081` by default.
 
 ## Config
 
@@ -42,12 +46,28 @@ Health: `curl localhost:8080/healthz` · Metrics: `curl localhost:8080/metrics`.
 | `HELIUS_API_KEY` | — | Free-tier key works; mainnet + devnet |
 | `SOLANA_CLUSTER` | `devnet` | `mainnet` or `devnet` — selects Helius host |
 | `SOLANA_RPC_URL` | derived | Set to override the Helius-derived URL |
+| `INDEXER_ROLE` | `poller` | `poller`, `api`, or `all`. Use `all` locally when you want ingest plus the public API in one process. |
 | `POLL_INTERVAL_MS` | `2000` | Polling mode: per-cycle sleep between program scans |
 | `RPC_PAGE_LIMIT` | `200` | Polling mode: signatures fetched per call (Helius caps at 1000) |
 | `YELLOWSTONE_ENDPOINT` | unset | When set, switches ingest to Yellowstone gRPC streaming. Unset = JSON-RPC polling. |
 | `YELLOWSTONE_TOKEN` | unset | Bearer token for the Yellowstone endpoint. Required alongside `YELLOWSTONE_ENDPOINT` for managed providers. |
-| `HEALTHCHECK_PORT` | `8080` | `/healthz` + `/metrics` |
+| `HEALTHCHECK_PORT` | `8080` | Internal `/healthz`, `/metrics`, and authenticated sync routes such as `POST /compute-bonds/snapshots` |
+| `API_PORT` | `HEALTHCHECK_PORT + 1` | Public discovery/router port used for `GET /v1/discovery/...` |
+| `INDEXER_INTERNAL_API_TOKEN` | unset | Optional Bearer token required by internal mutation routes, including compute-bond snapshot sync |
 | `REDIS_URL` | unset | When set, decoded events fan out on `saep:events:<program>` + `saep:events:all`. Unset = fanout disabled, ingest unaffected. |
+
+## Local snapshot-sync smoke path
+
+To exercise the persisted compute-bond read model locally:
+
+1. Run the indexer with `INDEXER_ROLE=all` so it serves both internal and public APIs.
+2. Start Discovery against the same Postgres database.
+3. Start the compute broker with `INDEXER_INTERNAL_API_URL=http://127.0.0.1:8080` and the same `INDEXER_INTERNAL_API_TOKEN`.
+4. From the repo root, run `pnpm smoke:compute-bonds`.
+
+The broker pushes lifecycle snapshots to the internal indexer API, the indexer persists them, and
+both Discovery and the public indexer API should converge on the same task-scoped compute-bond
+records.
 
 ## IDL regeneration
 

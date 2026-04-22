@@ -109,6 +109,10 @@ anchor test --validator legacy   # localnet integration tests
 pnpm --filter @saep/portal dev   # portal on :3000
 ```
 
+For the persisted compute-bond snapshot loop, use the local rollout flow in
+[docs/getting-started.md](./docs/getting-started.md): start the indexer with `INDEXER_ROLE=all`,
+run Discovery plus the compute broker, then execute `pnpm smoke:compute-bonds`.
+
 ## Development
 
 Work is organized by spec. Every change references `specs/<feature>.md`.
