@@ -12,3 +12,29 @@ body {
 .bg-paper-2 {
   background-color: #f2f0e8;
 }
+
+.wallet-adapter-button-trigger {
+  min-height: 44px !important;
+  border: 1px solid rgba(10, 10, 10, 0.15) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #0a0a0a !important;
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  padding: 0 16px !important;
+}
+
+.wallet-adapter-button-trigger:hover,
+.wallet-adapter-button-trigger:focus-visible {
+  border-color: rgba(10, 10, 10, 0.35) !important;
+  background: rgba(0, 0, 0, 0.03) !important;
+}
+
+.wallet-adapter-dropdown-list,
+.wallet-adapter-modal-wrapper {
+  border-radius: 0 !important;
+}

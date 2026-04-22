@@ -36,6 +36,7 @@ const MAX_LOCKUP_SECS = 365 * DAY;
 const MAX_MULTIPLIER = 4;
 const CONFIG_SEED = Buffer.from('staking_config');
 const LOCK_PRESETS = [7, 30, 90, 180, 365] as const;
+const MAINNET_SAEP_MINT = 'HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump';
 
 type ProgramStage = 'not-deployed' | 'deployed' | 'configured' | 'ready';
 
@@ -221,6 +222,31 @@ export function StakingShell() {
         ? 'Mainnet staking positions are live, but rewards are not active yet. The current on-chain reward rate is 0, and fee routing into staking remains a later rollout step.'
         : 'This staking pool currently has a reward rate of 0. Position management is live, but rewards are not active on this cluster.'
       : null;
+  const assetLabel = mintQuery.data ? stakeAssetLabel(mintQuery.data.address) : 'stake token';
+  const availableToStake =
+    walletBalanceQuery.data && mintQuery.data
+      ? `${formatTokenAmount(walletBalanceQuery.data.amount, mintQuery.data.decimals, 4)} ${assetLabel}`
+      : walletBalanceQuery.data?.exists === false
+        ? `0 ${assetLabel}`
+        : connected
+          ? 'Loading balance…'
+          : 'Connect wallet';
+  const availableToStakeDetail = !connected
+    ? 'Connect a Solana wallet to read your stake balance'
+    : walletBalanceQuery.data?.exists === false
+      ? 'Create the token account, then fund it before staking'
+      : mintQuery.data && walletBalanceQuery.data
+        ? `Wallet ATA ${truncate(walletBalanceQuery.data.ata.toBase58())}`
+        : 'Reading wallet state';
+  const maxStakeAmount =
+    walletBalanceQuery.data && mintQuery.data
+      ? formatTokenAmount(walletBalanceQuery.data.amount, mintQuery.data.decimals, mintQuery.data.decimals)
+      : null;
+  const walletStatusLabel = !connected
+    ? 'Not connected'
+    : walletBalanceQuery.data?.exists === false
+      ? 'Token account missing'
+      : 'Ready';
 
   const stage: ProgramStage = !programInfo.data
     ? 'not-deployed'
@@ -368,17 +394,16 @@ export function StakingShell() {
     !stakeMutation.isPending;
 
   return (
-    <section className="flex flex-col gap-6 max-w-7xl" data-testid="staking-shell">
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-2">
-          <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-lime">
-            SAEP staking surface
+    <section className="flex max-w-6xl flex-col gap-8" data-testid="staking-shell">
+      <header className="flex flex-col gap-5 border-b border-ink/10 pb-6 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <div className="mb-1 font-mono text-[10px] text-mute tracking-widest uppercase">
+            08 // staking
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight">Stake, lock, and track operator weight</h1>
-          <p className="max-w-3xl text-sm text-ink/65">
-            This page reads the live `nxs_staking` program on the active cluster, shows whether the
-            pool is actually initialized, and only enables transactions when the current deployment
-            can support them.
+          <h1 className="font-display text-2xl tracking-tight">Stake SAEP</h1>
+          <p className="mt-1 max-w-3xl text-sm text-ink/65">
+            Lock SAEP to establish operator weight and future governance eligibility. This page
+            reads live mainnet staking state directly from the deployed `nxs_staking` program.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -389,44 +414,55 @@ export function StakingShell() {
             href={explorerHref('address', program.programId.toBase58(), explorerBase)}
             target="_blank"
             rel="noreferrer"
-            className="rounded-full border border-ink/10 px-3 py-1.5 text-xs font-mono text-ink/70 transition-colors hover:border-ink/25 hover:text-ink"
+            className="inline-flex h-11 items-center border border-ink/15 px-4 font-mono text-[11px] uppercase tracking-[0.08em] text-ink/75 transition-colors hover:border-ink/35 hover:text-ink"
           >
             Program on Explorer
           </a>
+          <WalletMultiButton />
         </div>
       </header>
 
-      <div className="grid gap-4 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          eyebrow="Program"
-          value={programInfo.data ? 'Deployed' : 'Awaiting deploy'}
-          detail={truncate(program.programId.toBase58())}
-          testId="staking-program-card"
-        />
-        <MetricCard
-          eyebrow="Pool"
-          value={poolQuery.data ? 'Initialized' : 'Pending'}
-          detail={truncate(poolPda.toBase58())}
-          testId="staking-pool-card"
-        />
-        <MetricCard
-          eyebrow="Total staked"
-          value={poolQuery.data && mintQuery.data
-            ? formatTokenAmount(poolQuery.data.totalStaked, mintQuery.data.decimals)
-            : '—'}
-          detail={poolQuery.data ? `${poolQuery.data.totalStakers} stakers` : 'No pool data yet'}
-          testId="staking-total-staked-card"
+          eyebrow="Available to stake"
+          value={availableToStake}
+          detail={availableToStakeDetail}
+          testId="staking-available-balance"
         />
         <MetricCard
           eyebrow="Your position"
-          value={position && mintQuery.data ? formatTokenAmount(position.amount, mintQuery.data.decimals) : 'None'}
-          detail={position ? statusHeadline(position.status, now, position.lockupEnd, cooldownEnd) : 'Connect a wallet to act'}
+          value={
+            position && mintQuery.data
+              ? `${formatTokenAmount(position.amount, mintQuery.data.decimals, 4)} ${assetLabel}`
+              : 'No active stake'
+          }
+          detail={
+            position
+              ? statusHeadline(position.status, now, position.lockupEnd, cooldownEnd)
+              : 'Open a first position from the connected wallet'
+          }
           testId="staking-position-card"
+        />
+        <MetricCard
+          eyebrow="Total staked"
+          value={
+            poolQuery.data && mintQuery.data
+              ? `${formatTokenAmount(poolQuery.data.totalStaked, mintQuery.data.decimals, 4)} ${assetLabel}`
+              : '—'
+          }
+          detail={poolQuery.data ? `${poolQuery.data.totalStakers} live stakers` : 'Pool awaiting initialization'}
+          testId="staking-total-staked-card"
+        />
+        <MetricCard
+          eyebrow="Lock window"
+          value={`${formatDuration(MIN_LOCKUP_SECS)} → ${formatDuration(MAX_LOCKUP_SECS)}`}
+          detail="Cooldown unlock begins after the lock expires"
+          testId="staking-lock-window-card"
         />
       </div>
 
       {(programInfo.error || configQuery.error || poolQuery.error || mintQuery.error || positionQuery.error || walletBalanceQuery.error) && (
-        <div className="rounded-2xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+        <div className="border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
           {[
             programInfo.error,
             configQuery.error,
@@ -443,7 +479,7 @@ export function StakingShell() {
 
       {rewardsBanner ? (
         <div
-          className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700"
+          className="border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700"
           data-testid="staking-rewards-banner"
         >
           {rewardsBanner}
@@ -451,188 +487,100 @@ export function StakingShell() {
       ) : null}
 
       {lastAction ? (
-        <div className="rounded-2xl border border-lime/30 bg-lime/5 px-4 py-3 text-sm text-ink/80">
+        <div className="border border-lime/30 bg-lime/5 px-4 py-3 text-sm text-ink/80">
           {lastAction}
         </div>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <Panel
-          title="Stake position"
-          subtitle="Wallet-aware controls with on-chain guardrails"
-          accent="lime"
-        >
-          {!connected ? (
-            <div className="flex flex-col gap-4 rounded-2xl border border-dashed border-ink/15 bg-paper-2/70 p-5">
-              <p className="text-sm text-ink/65">
-                Connect your Solana wallet to create a stake position, begin cooldown, or withdraw
-                unlocked stake.
-              </p>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
+        <div className="flex flex-col gap-6">
+          <Panel title="Open a position" subtitle="Lock SAEP directly from the connected wallet.">
+            {!connected ? (
+              <div className="border border-dashed border-ink/15 px-5 py-5 text-sm text-ink/65">
+                Connect a Solana wallet to see your available SAEP balance, create a token account,
+                and submit a stake transaction.
+              </div>
+            ) : null}
+
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
               <div>
-                <WalletMultiButton />
-              </div>
-            </div>
-          ) : null}
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-2xl border border-ink/10 bg-paper-2/80 p-5">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-medium">Current wallet</h2>
-                {publicKey ? (
-                  <span className="font-mono text-xs text-ink/55">{truncate(publicKey.toBase58())}</span>
-                ) : null}
-              </div>
-
-              <dl className="grid gap-3 text-sm">
-                <Fact label="Stake account" value={stakePda ? truncate(stakePda.toBase58()) : 'Connect wallet'} mono />
-                <Fact
-                  label="Stake mint"
-                  value={mintQuery.data ? truncate(mintQuery.data.address.toBase58()) : 'Awaiting pool init'}
-                  mono
-                />
-                <Fact
-                  label="Wallet balance"
-                  value={walletBalanceQuery.data && mintQuery.data
-                    ? formatTokenAmount(walletBalanceQuery.data.amount, mintQuery.data.decimals)
-                    : walletBalanceQuery.data?.exists === false
-                      ? 'ATA missing'
-                      : '—'}
-                />
-                <Fact
-                  label="Wallet ATA"
-                  value={walletBalanceQuery.data ? truncate(walletBalanceQuery.data.ata.toBase58()) : '—'}
-                  mono
-                />
-              </dl>
-
-              {canCreateAta ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!publicKey || !walletBalanceQuery.data || !mintQuery.data) return;
-                    createAtaMutation.mutate({
-                      ata: walletBalanceQuery.data.ata,
-                      mint: mintQuery.data.address,
-                      owner: publicKey,
-                      tokenProgram: mintQuery.data.tokenProgram,
-                    });
-                  }}
-                  className="mt-4 h-10 w-full rounded-full border border-ink/15 bg-paper px-4 text-sm font-medium transition-colors hover:border-ink/25"
-                >
-                  {createAtaMutation.isPending ? 'Creating token account…' : 'Create stake token account'}
-                </button>
-              ) : null}
-
-              {walletBalanceQuery.data?.exists === false ? (
-                <p className="mt-3 text-xs text-ink/55">
-                  This wallet does not have a stake token account yet. Create the ATA first, then
-                  fund it before staking.
-                </p>
-              ) : null}
-            </div>
-
-            <div className="rounded-2xl border border-ink/10 bg-paper-2/80 p-5">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-medium">Position lifecycle</h2>
-                {position ? <Badge tone={statusTone(position.status)}>{position.status}</Badge> : null}
-              </div>
-
-              {position && mintQuery.data ? (
-                <dl className="grid gap-3 text-sm">
-                  <Fact label="Staked amount" value={formatTokenAmount(position.amount, mintQuery.data.decimals)} />
-                  <Fact label="Voting power" value={formatTokenAmount(position.votingPower, mintQuery.data.decimals)} />
-                  <Fact label="Multiplier" value={`${position.lockupMultiplier}x`} />
-                  <Fact label="Stake vault" value={stakeVault ? truncate(stakeVault.toBase58()) : '—'} mono />
-                  <Fact label="Lockup ends" value={formatTimestamp(position.lockupEnd)} />
-                  <Fact
-                    label="Status detail"
-                    value={statusHeadline(position.status, now, position.lockupEnd, cooldownEnd)}
-                  />
-                </dl>
-              ) : (
-                <p className="text-sm text-ink/60">
-                  No position exists for this wallet yet. The current staking build supports one
-                  position PDA per wallet, so this surface stays conservative about replaying a
-                  withdrawn position.
-                </p>
-              )}
-
-              <div className="mt-4 flex flex-col gap-2">
-                <button
-                  type="button"
-                  disabled={!canBeginUnstake || !publicKey}
-                  onClick={() => publicKey && beginUnstakeMutation.mutate({ owner: publicKey })}
-                  className="h-10 rounded-full border border-ink/15 bg-paper px-4 text-sm font-medium transition-colors hover:border-ink/25 disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  {beginUnstakeMutation.isPending ? 'Starting cooldown…' : 'Begin unstake cooldown'}
-                </button>
-                <button
-                  type="button"
-                  disabled={!canWithdraw || !publicKey || !mintQuery.data || !walletBalanceQuery.data}
-                  onClick={() =>
-                    publicKey &&
-                    mintQuery.data &&
-                    walletBalanceQuery.data &&
-                    withdrawMutation.mutate({
-                      owner: publicKey,
-                      stakeMint: mintQuery.data.address,
-                      ownerTokenAccount: walletBalanceQuery.data.ata,
-                      tokenProgram: mintQuery.data.tokenProgram,
-                    })
-                  }
-                  className="h-10 rounded-full bg-ink px-4 text-sm font-medium text-paper transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  {withdrawMutation.isPending ? 'Withdrawing…' : 'Withdraw unlocked stake'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 rounded-[28px] border border-ink/10 bg-[#11150f] px-5 py-6 text-paper">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-lime/80">
-                  New stake
+                <div className="grid gap-3 border-b border-ink/10 pb-5 sm:grid-cols-2">
+                  <FactBlock label="Connected wallet" value={publicKey ? truncate(publicKey.toBase58()) : 'Awaiting wallet'} mono />
+                  <FactBlock label="Wallet status" value={walletStatusLabel} />
+                  <FactBlock label="Stake token account" value={walletBalanceQuery.data?.exists ? 'Ready' : connected ? 'Missing' : 'Awaiting wallet'} />
+                  <FactBlock label="Pool asset" value={mintQuery.data ? assetLabel : 'Awaiting pool init'} />
                 </div>
-                <h2 className="mt-1 text-xl font-semibold">Open a locked position</h2>
-              </div>
-              <div className="text-right text-xs text-paper/60">
-                <div>Lock range</div>
-                <div>{formatDuration(MIN_LOCKUP_SECS)} → {formatDuration(MAX_LOCKUP_SECS)}</div>
-              </div>
-            </div>
 
-            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="space-y-4">
-                <label className="flex flex-col gap-2">
-                  <span className="text-xs uppercase tracking-[0.16em] text-paper/55">Amount</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={amountInput}
-                    onChange={(event) => setAmountInput(event.target.value)}
-                    placeholder={mintQuery.data ? `0.0 ${mintQuery.data.decimals > 0 ? '' : '(whole tokens)'}` : '0.0'}
-                    className="h-12 rounded-2xl border border-paper/15 bg-paper/8 px-4 font-mono text-lg text-paper placeholder:text-paper/30 focus:border-lime/70 focus:outline-none"
-                  />
-                </label>
+                {canCreateAta ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!publicKey || !walletBalanceQuery.data || !mintQuery.data) return;
+                      createAtaMutation.mutate({
+                        ata: walletBalanceQuery.data.ata,
+                        mint: mintQuery.data.address,
+                        owner: publicKey,
+                        tokenProgram: mintQuery.data.tokenProgram,
+                      });
+                    }}
+                    className="mt-5 inline-flex h-11 items-center border border-ink/15 px-4 font-mono text-[11px] uppercase tracking-[0.08em] text-ink transition-colors hover:border-ink/35 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    {createAtaMutation.isPending ? 'Creating token account…' : 'Create stake token account'}
+                  </button>
+                ) : null}
 
-                <div className="space-y-2">
+                <div className="mt-6">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs uppercase tracking-[0.16em] text-paper/55">Lock duration</span>
-                    <span className="font-mono text-xs text-lime">
-                      {lockDays} days · {previewMultiplier}x weight
-                    </span>
+                    <label
+                      htmlFor="staking-amount"
+                      className="font-mono text-[10px] uppercase tracking-widest text-mute"
+                    >
+                      Amount
+                    </label>
+                    <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+                      Available: <span className="text-ink">{availableToStake}</span>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      id="staking-amount"
+                      type="text"
+                      inputMode="decimal"
+                      value={amountInput}
+                      onChange={(event) => setAmountInput(event.target.value)}
+                      placeholder={mintQuery.data ? `0.0 ${assetLabel}` : '0.0'}
+                      className="h-12 flex-1 border border-ink/15 bg-paper-2 px-4 font-mono text-base text-ink placeholder:text-mute focus:border-ink/35 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      disabled={!maxStakeAmount}
+                      onClick={() => maxStakeAmount && setAmountInput(maxStakeAmount)}
+                      className="inline-flex h-12 items-center border border-ink/15 px-4 font-mono text-[11px] uppercase tracking-[0.08em] text-ink transition-colors hover:border-ink/35 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Max
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+                      Lock duration
+                    </div>
+                    <div className="font-mono text-[10px] uppercase tracking-widest text-ink">
+                      {lockDays} days // {previewMultiplier}x weight
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
                     {LOCK_PRESETS.map((days) => (
                       <button
                         key={days}
                         type="button"
                         onClick={() => setLockDays(days)}
-                        className={`rounded-full border px-3 py-1.5 text-xs font-mono transition-colors ${
+                        className={`inline-flex h-10 items-center border px-4 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors ${
                           lockDays === days
-                            ? 'border-lime bg-lime/10 text-lime'
-                            : 'border-paper/15 text-paper/70 hover:border-paper/35'
+                            ? 'border-ink bg-ink text-paper'
+                            : 'border-ink/15 text-ink/70 hover:border-ink/35 hover:text-ink'
                         }`}
                       >
                         {days}d
@@ -646,55 +594,61 @@ export function StakingShell() {
                     step={1}
                     value={lockDays}
                     onChange={(event) => setLockDays(Number(event.target.value))}
-                    className="w-full accent-lime"
+                    className="mt-4 w-full accent-lime"
                   />
                 </div>
 
-                <button
-                  type="button"
-                  disabled={!canStake || !publicKey || !mintQuery.data || !walletBalanceQuery.data || stakePreviewAmount == null}
-                  onClick={() =>
-                    publicKey &&
-                    mintQuery.data &&
-                    walletBalanceQuery.data &&
-                    stakePreviewAmount != null &&
-                    stakeMutation.mutate({
-                      owner: publicKey,
-                      stakeMint: mintQuery.data.address,
-                      ownerTokenAccount: walletBalanceQuery.data.ata,
-                      amount: stakePreviewAmount,
-                      lockupDurationSecs: BigInt(lockupSecs),
-                      tokenProgram: mintQuery.data.tokenProgram,
-                    })
-                  }
-                  className="h-12 w-full rounded-full bg-lime px-5 text-sm font-semibold text-[#11150f] transition-transform hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:bg-paper/20 disabled:text-paper/45"
-                >
-                  {stakeMutation.isPending ? 'Submitting stake…' : 'Stake tokens'}
-                </button>
-
-                <p className="text-xs text-paper/55">
-                  This page mirrors the current on-chain math: one stake position per wallet, a
-                  3-day cooldown after lock expiry, and voting power boosted by longer lockups.
-                </p>
+                <div className="mt-6 border-t border-ink/10 pt-5">
+                  <button
+                    type="button"
+                    disabled={!canStake || !publicKey || !mintQuery.data || !walletBalanceQuery.data || stakePreviewAmount == null}
+                    onClick={() =>
+                      publicKey &&
+                      mintQuery.data &&
+                      walletBalanceQuery.data &&
+                      stakePreviewAmount != null &&
+                      stakeMutation.mutate({
+                        owner: publicKey,
+                        stakeMint: mintQuery.data.address,
+                        ownerTokenAccount: walletBalanceQuery.data.ata,
+                        amount: stakePreviewAmount,
+                        lockupDurationSecs: BigInt(lockupSecs),
+                        tokenProgram: mintQuery.data.tokenProgram,
+                      })
+                    }
+                    className="inline-flex h-12 items-center bg-ink px-5 font-mono text-[11px] uppercase tracking-[0.08em] text-paper transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    {stakeMutation.isPending ? 'Submitting stake…' : 'Stake tokens'}
+                  </button>
+                  <p className="mt-3 max-w-2xl text-xs text-ink/55">
+                    One position per wallet, lockups between {formatDuration(MIN_LOCKUP_SECS)} and{' '}
+                    {formatDuration(MAX_LOCKUP_SECS)}, and a 3-day cooldown before withdrawal.
+                  </p>
+                </div>
               </div>
 
-              <div className="rounded-3xl border border-paper/10 bg-paper/6 p-4">
-                <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-paper/55">
+              <div className="border-t border-ink/10 pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
                   Preview
                 </div>
-                <div className="space-y-3 text-sm text-paper/75">
+                <div className="mt-4 border border-ink/10">
                   <PreviewRow
                     label="Stake amount"
-                    value={stakePreviewAmount != null && mintQuery.data
-                      ? formatTokenAmount(stakePreviewAmount, mintQuery.data.decimals, 4)
-                      : 'Enter an amount'}
+                    value={
+                      stakePreviewAmount != null && mintQuery.data
+                        ? `${formatTokenAmount(stakePreviewAmount, mintQuery.data.decimals, 4)} ${assetLabel}`
+                        : 'Enter an amount'
+                    }
                   />
-                  <PreviewRow label="Voting power" value={
-                    previewVotingPower != null && mintQuery.data
-                      ? formatTokenAmount(previewVotingPower, mintQuery.data.decimals, 4)
-                      : '—'
-                  } />
-                  <PreviewRow label="Lockup ends" value={formatTimestamp(now + lockupSecs)} />
+                  <PreviewRow
+                    label="Voting power"
+                    value={
+                      previewVotingPower != null && mintQuery.data
+                        ? `${formatTokenAmount(previewVotingPower, mintQuery.data.decimals, 4)} ${assetLabel}`
+                        : '—'
+                    }
+                  />
+                  <PreviewRow label="Lock ends" value={formatTimestamp(now + lockupSecs)} />
                   <PreviewRow label="Cooldown unlock" value={formatTimestamp(now + lockupSecs + COOLDOWN_SECS)} />
                   <PreviewRow
                     label="Wallet sufficiency"
@@ -709,26 +663,64 @@ export function StakingShell() {
                 </div>
               </div>
             </div>
-          </div>
-        </Panel>
+          </Panel>
+
+          <Panel title="Your position" subtitle="Lifecycle and actions for the connected wallet.">
+            {position && mintQuery.data ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <FactBlock label="Staked amount" value={`${formatTokenAmount(position.amount, mintQuery.data.decimals, 4)} ${assetLabel}`} />
+                  <FactBlock label="Voting power" value={`${formatTokenAmount(position.votingPower, mintQuery.data.decimals, 4)} ${assetLabel}`} />
+                  <FactBlock label="Multiplier" value={`${position.lockupMultiplier}x`} />
+                  <FactBlock label="Status" value={statusHeadline(position.status, now, position.lockupEnd, cooldownEnd)} />
+                  <FactBlock label="Lockup ends" value={formatTimestamp(position.lockupEnd)} />
+                  <FactBlock label="Stake vault" value={stakeVault ? truncate(stakeVault.toBase58()) : '—'} mono />
+                </div>
+                <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    disabled={!canBeginUnstake || !publicKey}
+                    onClick={() => publicKey && beginUnstakeMutation.mutate({ owner: publicKey })}
+                    className="inline-flex h-11 items-center justify-center border border-ink/15 px-4 font-mono text-[11px] uppercase tracking-[0.08em] text-ink transition-colors hover:border-ink/35 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    {beginUnstakeMutation.isPending ? 'Starting cooldown…' : 'Begin unstake cooldown'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!canWithdraw || !publicKey || !mintQuery.data || !walletBalanceQuery.data}
+                    onClick={() =>
+                      publicKey &&
+                      mintQuery.data &&
+                      walletBalanceQuery.data &&
+                      withdrawMutation.mutate({
+                        owner: publicKey,
+                        stakeMint: mintQuery.data.address,
+                        ownerTokenAccount: walletBalanceQuery.data.ata,
+                        tokenProgram: mintQuery.data.tokenProgram,
+                      })
+                    }
+                    className="inline-flex h-11 items-center justify-center bg-ink px-4 font-mono text-[11px] uppercase tracking-[0.08em] text-paper transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    {withdrawMutation.isPending ? 'Withdrawing…' : 'Withdraw unlocked stake'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-ink/60">
+                No position exists for this wallet yet. Stake from the form above to create the
+                wallet’s first mainnet staking position.
+              </p>
+            )}
+          </Panel>
+        </div>
 
         <div className="flex flex-col gap-6">
-          <Panel
-            title="Cluster status"
-            subtitle="Real-time rollout state"
-            accent="ink"
-          >
+          <Panel title="Live pool state" subtitle="Current on-chain rollout status on the active cluster.">
             <StatusRow
               label="Program"
               value={programInfo.data ? 'Deployed' : 'Not deployed on this cluster'}
               testId="staking-program-status"
             />
-            <StatusRow label="Config PDA" value={truncate(configPda.toBase58())} mono />
-            <StatusRow
-              label="Config"
-              value={configQuery.data ? `Authority ${truncate(configQuery.data.authority.toBase58())}` : 'Not initialized'}
-            />
-            <StatusRow label="Pool PDA" value={truncate(poolPda.toBase58())} mono />
             <StatusRow
               label="Pool"
               value={
@@ -744,9 +736,11 @@ export function StakingShell() {
             />
             <StatusRow
               label="Reward rate / epoch"
-              value={poolQuery.data && mintQuery.data
-                ? formatTokenAmount(poolQuery.data.rewardRatePerEpoch, mintQuery.data.decimals)
-                : '—'}
+              value={
+                poolQuery.data && mintQuery.data
+                  ? `${formatTokenAmount(poolQuery.data.rewardRatePerEpoch, mintQuery.data.decimals, 4)} ${assetLabel}`
+                  : '—'
+              }
               testId="staking-reward-rate"
             />
             <StatusRow
@@ -760,27 +754,21 @@ export function StakingShell() {
               }
               testId="staking-rewards-status"
             />
+            <StatusRow label="Config authority" value={configQuery.data ? truncate(configQuery.data.authority.toBase58()) : 'Not initialized'} mono />
+            <StatusRow label="Stake mint" value={mintQuery.data ? truncate(mintQuery.data.address.toBase58()) : 'Awaiting pool init'} mono />
           </Panel>
 
-          <Panel
-            title="What this page supports"
-            subtitle="Matched to the current `nxs_staking` program"
-            accent="ink"
-          >
+          <Panel title="How staking works" subtitle="Current rules enforced by the live program.">
             <ul className="space-y-3 text-sm text-ink/70">
-              <li>Live program, config, and pool status detection on the active cluster.</li>
-              <li>Stake position preview with the on-chain lockup multiplier mirrored in the UI.</li>
-              <li>Wallet token account creation, stake, begin-unstake, and withdraw flows.</li>
-              <li>Explicit pending states when the program is deployed but not initialized yet.</li>
+              <li>Locking longer increases voting weight up to 4x.</li>
+              <li>Each wallet currently uses a single stake position PDA.</li>
+              <li>Cooldown starts only after the full lock period expires.</li>
+              <li>Rewards are still off until protocol fee routing goes live.</li>
             </ul>
           </Panel>
 
-          <Panel
-            title="Ops shortcuts"
-            subtitle="Useful addresses while the rollout is still in flight"
-            accent="ink"
-          >
-            <div className="space-y-4 text-sm">
+          <Panel title="Ops shortcuts" subtitle="Useful addresses while the rollout is still maturing.">
+            <div className="border border-ink/10">
               <OpsLink
                 label="Program ID"
                 value={program.programId.toBase58()}
@@ -814,24 +802,24 @@ export function StakingShell() {
 function Panel({
   title,
   subtitle,
-  accent,
   children,
 }: {
   title: string;
   subtitle: string;
-  accent: 'lime' | 'ink';
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[30px] border border-ink/10 bg-paper/80 p-5 shadow-[0_12px_40px_rgba(0,0,0,0.05)] md:p-6">
-      <div className="mb-5 flex items-center justify-between gap-4">
+    <div className="border border-ink/10 bg-paper">
+      <div className="border-b border-ink/10 px-5 py-4 md:px-6">
         <div>
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <p className="text-sm text-ink/55">{subtitle}</p>
+          <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+            Staking
+          </div>
+          <h2 className="mt-1 font-display text-[22px] tracking-[-0.01em]">{title}</h2>
+          <p className="mt-1 text-sm text-ink/55">{subtitle}</p>
         </div>
-        <div className={`h-2 w-16 rounded-full ${accent === 'lime' ? 'bg-lime' : 'bg-ink/15'}`} />
       </div>
-      {children}
+      <div className="px-5 py-5 md:px-6">{children}</div>
     </div>
   );
 }
@@ -848,9 +836,9 @@ function MetricCard({
   testId?: string;
 }) {
   return (
-    <div className="rounded-[26px] border border-ink/10 bg-paper/70 p-4" data-testid={testId}>
-      <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink/45">{eyebrow}</div>
-      <div className="mt-3 text-2xl font-semibold tracking-tight">{value}</div>
+    <div className="border border-ink/10 bg-paper px-4 py-4" data-testid={testId}>
+      <div className="font-mono text-[10px] uppercase tracking-widest text-mute">{eyebrow}</div>
+      <div className="mt-3 font-display text-[24px] leading-[1.05] tracking-[-0.01em]">{value}</div>
       <div className="mt-2 text-xs text-ink/55">{detail}</div>
     </div>
   );
@@ -875,7 +863,7 @@ function Badge({
           : 'border-ink/10 bg-paper text-ink/60';
   return (
     <span
-      className={`rounded-full border px-3 py-1 text-xs font-mono uppercase tracking-[0.12em] ${palette}`}
+      className={`inline-flex items-center border px-3 py-1 font-mono text-[11px] uppercase tracking-[0.08em] ${palette}`}
       data-testid={testId}
     >
       {children}
@@ -883,7 +871,7 @@ function Badge({
   );
 }
 
-function Fact({
+function FactBlock({
   label,
   value,
   mono = false,
@@ -893,18 +881,18 @@ function Fact({
   mono?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <dt className="text-ink/50">{label}</dt>
-      <dd className={mono ? 'font-mono text-right text-xs text-ink/75' : 'text-right text-ink/80'}>{value}</dd>
+    <div className="border border-ink/10 bg-paper-2 px-4 py-3">
+      <dt className="font-mono text-[10px] uppercase tracking-widest text-mute">{label}</dt>
+      <dd className={`mt-2 ${mono ? 'font-mono text-xs text-ink/75' : 'text-sm text-ink/80'}`}>{value}</dd>
     </div>
   );
 }
 
 function PreviewRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-paper/55">{label}</span>
-      <span className="font-mono text-right text-paper">{value}</span>
+    <div className="flex items-center justify-between gap-4 border-b border-ink/10 px-4 py-3 last:border-b-0">
+      <span className="font-mono text-[10px] uppercase tracking-widest text-mute">{label}</span>
+      <span className="font-mono text-right text-sm text-ink">{value}</span>
     </div>
   );
 }
@@ -925,8 +913,8 @@ function StatusRow({
       className="flex items-start justify-between gap-4 border-b border-ink/8 py-2.5 last:border-b-0 last:pb-0"
       data-testid={testId}
     >
-      <span className="text-ink/45">{label}</span>
-      <span className={mono ? 'font-mono text-xs text-right text-ink/75' : 'text-right text-ink/75'}>{value}</span>
+      <span className="font-mono text-[10px] uppercase tracking-widest text-mute">{label}</span>
+      <span className={mono ? 'font-mono text-xs text-right text-ink/75' : 'text-right text-sm text-ink/75'}>{value}</span>
     </div>
   );
 }
@@ -941,15 +929,15 @@ function OpsLink({
   href: string;
 }) {
   return (
-    <div className="rounded-2xl border border-ink/10 px-4 py-3">
-      <div className="text-xs uppercase tracking-[0.16em] text-ink/40">{label}</div>
+    <div className="border-b border-ink/10 px-4 py-3 last:border-b-0">
+      <div className="font-mono text-[10px] uppercase tracking-widest text-mute">{label}</div>
       <div className="mt-2 flex items-center justify-between gap-4">
         <span className="font-mono text-xs text-ink/70">{truncate(value, 14)}</span>
         <a
           href={href}
           target="_blank"
           rel="noreferrer"
-          className="text-xs font-medium text-ink/70 underline decoration-ink/25 underline-offset-4 hover:text-ink"
+          className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink/70 underline decoration-ink/25 underline-offset-4 hover:text-ink"
         >
           Open
         </a>
@@ -1059,6 +1047,10 @@ function toNumber(value: unknown): number {
 function truncate(value: string, chars = 6) {
   if (value.length <= chars * 2 + 1) return value;
   return `${value.slice(0, chars)}…${value.slice(-chars)}`;
+}
+
+function stakeAssetLabel(address: PublicKey) {
+  return address.toBase58() === MAINNET_SAEP_MINT ? 'SAEP' : 'stake token';
 }
 
 function parseTokenAmount(input: string, decimals: number): bigint | null {
