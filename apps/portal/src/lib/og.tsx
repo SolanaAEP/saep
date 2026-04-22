@@ -8,6 +8,12 @@ interface OgOptions {
   tag?: string;
 }
 
+const PAPER = '#f2f0e8';
+const INK = '#121212';
+const MUTE = '#6f6a63';
+const LINE = '#cfc8be';
+const LIME = '#06f512';
+
 export function generateOgImage({ title, subtitle, tag }: OgOptions) {
   return new ImageResponse(
     (
@@ -16,310 +22,328 @@ export function generateOgImage({ title, subtitle, tag }: OgOptions) {
           width: '100%',
           height: '100%',
           display: 'flex',
-          flexDirection: 'column',
-          backgroundColor: '#f2f0e8',
-          padding: '48px',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
           position: 'relative',
           overflow: 'hidden',
+          backgroundColor: PAPER,
+          color: INK,
+          padding: '32px',
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
         }}
       >
-        {/* Dot grid pattern */}
         <div
           style={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex',
-            flexWrap: 'wrap',
-            opacity: 0.08,
-          }}
-        >
-          {Array.from({ length: 600 }).map((_, i) => (
-            <div
-              key={i}
-              style={{
-                width: '40px',
-                height: '40px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <div
-                style={{
-                  width: '3px',
-                  height: '3px',
-                  borderRadius: '50%',
-                  backgroundColor: '#1a1a1a',
-                }}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Corner brackets - top left */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '24px',
-            left: '24px',
-            width: '32px',
-            height: '32px',
-            borderTop: '3px solid #1a1a1a',
-            borderLeft: '3px solid #1a1a1a',
+            inset: '12px',
+            border: `1px solid ${LINE}`,
             display: 'flex',
           }}
         />
-        {/* Corner brackets - top right */}
         <div
           style={{
             position: 'absolute',
-            top: '24px',
-            right: '24px',
-            width: '32px',
-            height: '32px',
-            borderTop: '3px solid #1a1a1a',
-            borderRight: '3px solid #1a1a1a',
-            display: 'flex',
-          }}
-        />
-        {/* Corner brackets - bottom left */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '24px',
-            left: '24px',
-            width: '32px',
-            height: '32px',
-            borderBottom: '3px solid #1a1a1a',
-            borderLeft: '3px solid #1a1a1a',
-            display: 'flex',
-          }}
-        />
-        {/* Corner brackets - bottom right */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '24px',
-            right: '24px',
-            width: '32px',
-            height: '32px',
-            borderBottom: '3px solid #1a1a1a',
-            borderRight: '3px solid #1a1a1a',
+            inset: '24px',
+            border: `1px solid ${LINE}`,
             display: 'flex',
           }}
         />
 
-        {/* Lime accent bar */}
         <div
           style={{
             position: 'absolute',
-            top: '24px',
-            left: '72px',
+            top: '18px',
+            left: '18px',
+            width: '18px',
+            height: '18px',
+            borderTop: `2px solid ${INK}`,
+            borderLeft: `2px solid ${INK}`,
+            display: 'flex',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            top: '18px',
+            right: '18px',
+            width: '18px',
+            height: '18px',
+            borderTop: `2px solid ${INK}`,
+            borderRight: `2px solid ${INK}`,
+            display: 'flex',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '18px',
+            left: '18px',
+            width: '18px',
+            height: '18px',
+            borderBottom: `2px solid ${INK}`,
+            borderLeft: `2px solid ${INK}`,
+            display: 'flex',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '18px',
+            right: '18px',
+            width: '18px',
+            height: '18px',
+            borderBottom: `2px solid ${INK}`,
+            borderRight: `2px solid ${INK}`,
+            display: 'flex',
+          }}
+        />
+
+        <div
+          style={{
+            position: 'absolute',
+            top: '46px',
+            left: '52px',
             width: '8px',
             height: '8px',
-            backgroundColor: '#06f512',
+            backgroundColor: LIME,
             display: 'flex',
           }}
         />
 
-        {/* Header row */}
         <div
           style={{
+            position: 'absolute',
+            left: '44px',
+            right: '44px',
+            top: '88px',
+            height: '1px',
+            backgroundColor: LINE,
             display: 'flex',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            left: '44px',
+            right: '44px',
+            bottom: '92px',
+            height: '1px',
+            backgroundColor: LINE,
+            display: 'flex',
+          }}
+        />
+
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            flexDirection: 'column',
             justifyContent: 'space-between',
-            alignItems: 'flex-start',
             width: '100%',
-            zIndex: 1,
+            height: '100%',
+            padding: '20px 28px',
           }}
         >
-          {/* Logo */}
           <div
             style={{
               display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
             }}
           >
             <div
               style={{
-                fontSize: '28px',
-                fontWeight: 900,
-                letterSpacing: '-1px',
-                color: '#1a1a1a',
-              }}
-            >
-              SAEP
-            </div>
-            <div
-              style={{
-                width: '4px',
-                height: '4px',
-                backgroundColor: '#06f512',
-                borderRadius: '50%',
                 display: 'flex',
-              }}
-            />
-          </div>
-
-          {/* Protocol label */}
-          <div
-            style={{
-              fontSize: '11px',
-              fontFamily: 'monospace',
-              color: '#666',
-              letterSpacing: '1px',
-              textAlign: 'right',
-            }}
-          >
-            SOLANA AGENT ECONOMY PROTOCOL
-          </div>
-        </div>
-
-        {/* Tag line */}
-        {tag && (
-          <div
-            style={{
-              display: 'flex',
-              marginTop: '24px',
-              zIndex: 1,
-            }}
-          >
-            <div
-              style={{
-                fontSize: '12px',
-                fontFamily: 'monospace',
-                color: '#888',
-                letterSpacing: '2px',
-                textTransform: 'uppercase',
+                alignItems: 'center',
+                gap: '14px',
               }}
             >
-              {tag}
-            </div>
-          </div>
-        )}
-
-        {/* Center content */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'flex-start',
-            flex: 1,
-            zIndex: 1,
-            paddingLeft: '16px',
-          }}
-        >
-          <div
-            style={{
-              fontSize: '72px',
-              fontWeight: 900,
-              color: '#1a1a1a',
-              letterSpacing: '-3px',
-              lineHeight: 1,
-            }}
-          >
-            {title}
-          </div>
-          {subtitle && (
-            <div
-              style={{
-                fontSize: '20px',
-                fontFamily: 'monospace',
-                color: '#555',
-                marginTop: '16px',
-                letterSpacing: '0.5px',
-              }}
-            >
-              {subtitle}
-            </div>
-          )}
-        </div>
-
-        {/* Bottom section */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            zIndex: 1,
-          }}
-        >
-          {/* Barcode-style lines */}
-          <div
-            style={{
-              display: 'flex',
-              gap: '2px',
-              alignItems: 'flex-end',
-              height: '24px',
-            }}
-          >
-            {Array.from({ length: 48 }).map((_, i) => (
               <div
-                key={i}
                 style={{
-                  width: i % 5 === 0 ? '4px' : '2px',
-                  height: `${12 + ((i * 7) % 12)}px`,
-                  backgroundColor: i % 11 === 0 ? '#06f512' : '#1a1a1a',
-                  opacity: i % 3 === 0 ? 0.9 : 0.4,
+                  fontSize: '38px',
+                  fontWeight: 900,
+                  letterSpacing: '-0.05em',
+                  display: 'flex',
+                }}
+              >
+                SAEP
+              </div>
+              <div
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '999px',
+                  backgroundColor: LIME,
                   display: 'flex',
                 }}
               />
-            ))}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-end',
+                gap: '6px',
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                textTransform: 'uppercase',
+                letterSpacing: '0.14em',
+                color: MUTE,
+              }}
+            >
+              <div style={{ display: 'flex' }}>Solana Agent Economy Protocol</div>
+              <div style={{ display: 'flex' }}>buildonsaep.com</div>
+            </div>
           </div>
 
-          {/* Footer row */}
           <div
             style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              width: '100%',
+              gap: '48px',
+              flex: 1,
             }}
           >
             <div
               style={{
                 display: 'flex',
-                gap: '24px',
-                alignItems: 'center',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                gap: '20px',
+                maxWidth: '720px',
+                height: '100%',
               }}
             >
+              {tag ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    fontSize: '12px',
+                    fontFamily: 'monospace',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.18em',
+                    color: MUTE,
+                  }}
+                >
+                  {tag}
+                </div>
+              ) : null}
               <div
                 style={{
-                  fontSize: '11px',
-                  fontFamily: 'monospace',
-                  color: '#06f512',
-                  backgroundColor: '#1a1a1a',
-                  padding: '3px 8px',
-                  borderRadius: '2px',
+                  display: 'flex',
+                  fontSize: title.length > 18 ? '72px' : '84px',
+                  lineHeight: 0.94,
+                  fontWeight: 900,
+                  letterSpacing: '-0.06em',
                 }}
               >
-                SYS[OK]
+                {title}
               </div>
-              <div
-                style={{
-                  fontSize: '11px',
-                  fontFamily: 'monospace',
-                  color: '#888',
-                }}
-              >
-                CLUSTER: DEVNET
-              </div>
+              {subtitle ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    maxWidth: '680px',
+                    fontSize: '26px',
+                    lineHeight: 1.3,
+                    color: MUTE,
+                  }}
+                >
+                  {subtitle}
+                </div>
+              ) : null}
             </div>
 
             <div
               style={{
-                fontSize: '13px',
-                fontFamily: 'monospace',
-                color: '#555',
-                letterSpacing: '1px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                gap: '12px',
+                minWidth: '220px',
               }}
             >
-              buildonsaep.com
+              {[
+                ['01', 170, INK],
+                ['02', 134, '#343434'],
+                ['03', 188, LIME],
+                ['04', 116, '#6f6a63'],
+                ['05', 154, INK],
+                ['06', 98, '#8e877e'],
+              ].map(([label, width, color]) => (
+                <div
+                  key={String(label)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      width: '24px',
+                      fontSize: '10px',
+                      fontFamily: 'monospace',
+                      color: MUTE,
+                    }}
+                  >
+                    {label}
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      width: `${width}px`,
+                      height: '10px',
+                      backgroundColor: String(color),
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                textTransform: 'uppercase',
+                letterSpacing: '0.14em',
+                color: MUTE,
+              }}
+            >
+              <div
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '999px',
+                  backgroundColor: LIME,
+                  display: 'flex',
+                }}
+              />
+              Protocol live
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                textTransform: 'uppercase',
+                letterSpacing: '0.14em',
+                color: MUTE,
+              }}
+            >
+              Onchain coordination rail
             </div>
           </div>
         </div>

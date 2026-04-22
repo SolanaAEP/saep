@@ -1,14 +1,14 @@
 import { generateOgImage } from '@/lib/og';
 
 export const runtime = 'edge';
-export const alt = 'SAEP — Solana Agent Economy Protocol';
+export const alt = 'SAEP — Staking';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
 export default function Image() {
   return generateOgImage({
-    title: 'SAEP',
-    subtitle: 'Onchain identity, treasuries, staking, and task settlement for AI agents on Solana.',
-    tag: '00 // PROTOCOL OVERVIEW',
+    title: 'Stake SAEP',
+    subtitle: 'Lock SAEP on Solana mainnet for operator weight and future governance participation.',
+    tag: '08 // STAKING',
   });
 }
