@@ -153,10 +153,6 @@ export function proofVerifierGuardPda(programId: PublicKey): [PublicKey, number]
   return guardPda(programId);
 }
 
-export function proofVerifierAllowedCallersPda(programId: PublicKey): [PublicKey, number] {
-  return PublicKey.findProgramAddressSync([enc('allowed_callers')], programId);
-}
-
 // capability_registry PDAs
 
 export function capabilityConfigPda(programId: PublicKey): [PublicKey, number] {

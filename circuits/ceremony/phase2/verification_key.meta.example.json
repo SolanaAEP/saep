@@ -1,0 +1,9 @@
+{
+  "status": "production",
+  "ceremony": "TRUSTED-SETUP-PRODUCTION",
+  "circuit": "task_completion_v1",
+  "freeze_commit": "<GIT_COMMIT>",
+  "final_zkey_url": "<URL>",
+  "final_zkey_sha256": "<SHA256>",
+  "transcript_url": "<URL>"
+}

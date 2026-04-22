@@ -8,6 +8,17 @@ governance circuits arrive in later milestones.
 ```
 circuits/
 ├── package.json                    # circomlib + snarkjs pins
+├── ceremony/
+│   ├── README.md                   # production trusted-setup workspace
+│   ├── phase1/
+│   │   ├── README.md               # pinned ptau source + verifier attestations
+│   │   └── VERIFY.md               # exact commands to verify the ptau + r1cs
+│   └── phase2/
+│       ├── README.md               # contribution / beacon / export checklist
+│       ├── VERIFY.md               # exact commands to verify the final zkey + VK
+│       ├── BEACON.md               # final randomness-beacon record
+│       └── contributions/
+│           └── TEMPLATE.md         # per-contributor transcript template
 ├── task_completion/
 │   ├── task_completion.circom      # top-level
 │   ├── components/
@@ -106,3 +117,7 @@ Tracked: `task_completion.circom`, components, scripts, `package.json`, this REA
 Gitignored: `build/*.r1cs`, `build/*.wasm`, `build/*.sym`, `build/*.zkey`,
 `build/*.ptau`, `build/task_completion_js/`, `build/proof.json`, `build/public.json`,
 `build/constraints.txt`.
+
+For the real mainnet ceremony, use `circuits/ceremony/`. The current
+`task_completion/build/verification_key.json` remains dev-only and is not a
+drop-in replacement for the production VK.
