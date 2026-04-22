@@ -71,6 +71,12 @@ type StoredDelivery = WebhookDeliveryRecord & {
   timer?: unknown;
 };
 
+export interface WebhookStateSnapshot {
+  subscriptions: StoredSubscription[];
+  deliveries: WebhookDeliveryRecord[];
+  events: WebhookEvent[];
+}
+
 export interface WebhookHubOptions {
   fetchImpl?: typeof fetch;
   now?: () => number;
@@ -80,6 +86,17 @@ export interface WebhookHubOptions {
   maxAttempts?: number;
   userAgent?: string;
   idFactory?: () => string;
+  initialState?: WebhookStateSnapshot;
+  persist?: (snapshot: WebhookStateSnapshot) => void;
+}
+
+export interface WebhookReplayInput {
+  event_id?: string;
+  since?: string;
+  until?: string;
+  event_types?: WebhookEventType[];
+  subscription_ids?: string[];
+  limit?: number;
 }
 
 export class WebhookHub {
@@ -94,6 +111,7 @@ export class WebhookHub {
   private readonly maxAttempts: number;
   private readonly userAgent: string;
   private readonly idFactory: () => string;
+  private readonly persist?: (snapshot: WebhookStateSnapshot) => void;
 
   constructor(opts: WebhookHubOptions = {}) {
     this.fetchImpl = opts.fetchImpl ?? fetch;
@@ -106,6 +124,21 @@ export class WebhookHub {
     this.maxAttempts = Math.max(1, opts.maxAttempts ?? 4);
     this.userAgent = opts.userAgent ?? 'saep-discovery-webhooks/0.1';
     this.idFactory = opts.idFactory ?? randomUUID;
+    this.persist = opts.persist;
+
+    if (opts.initialState) {
+      for (const subscription of opts.initialState.subscriptions) {
+        this.subscriptions.set(subscription.id, { ...subscription });
+      }
+      for (const event of opts.initialState.events) {
+        this.events.set(event.id, { ...event });
+      }
+      for (const delivery of opts.initialState.deliveries) {
+        this.deliveries.set(delivery.id, { ...delivery });
+      }
+      this.resumePendingDeliveries();
+      this.persistState();
+    }
   }
 
   createSubscription(input: WebhookSubscriptionInput): WebhookSubscriptionRecord {
@@ -123,6 +156,7 @@ export class WebhookHub {
       secret: input.secret,
     };
     this.subscriptions.set(id, record);
+    this.persistState();
     return sanitizeSubscription(record);
   }
 
@@ -162,6 +196,32 @@ export class WebhookHub {
     };
   }
 
+  async replay(input: WebhookReplayInput): Promise<{
+    events: WebhookEvent[];
+    deliveries: WebhookDeliveryRecord[];
+  }> {
+    const limit = Math.max(1, input.limit ?? 50);
+    const selectedEvents = Array.from(this.events.values())
+      .filter((event) => this.matchesReplay(event, input))
+      .sort((a, b) => a.emitted_at.localeCompare(b.emitted_at))
+      .slice(0, limit);
+
+    const createdDeliveries: StoredDelivery[] = [];
+    for (const event of selectedEvents) {
+      const subscriptions = this.matchingSubscriptions(event, input.subscription_ids);
+      for (const subscription of subscriptions) {
+        createdDeliveries.push(this.createDelivery(subscription, event));
+      }
+    }
+
+    await Promise.all(createdDeliveries.map((delivery) => this.dispatch(delivery.id)));
+
+    return {
+      events: selectedEvents.map((event) => ({ ...event })),
+      deliveries: createdDeliveries.map(sanitizeDelivery),
+    };
+  }
+
   private createDelivery(
     subscription: StoredSubscription,
     event: WebhookEvent,
@@ -181,7 +241,28 @@ export class WebhookHub {
       last_error: null,
     };
     this.deliveries.set(id, delivery);
+    this.persistState();
     return delivery;
+  }
+
+  private matchesReplay(event: WebhookEvent, input: WebhookReplayInput): boolean {
+    if (input.event_id && event.id !== input.event_id) return false;
+    if (input.since && event.emitted_at < input.since) return false;
+    if (input.until && event.emitted_at > input.until) return false;
+    if (input.event_types && input.event_types.length > 0 && !input.event_types.includes(event.type)) {
+      return false;
+    }
+    return true;
+  }
+
+  private matchingSubscriptions(
+    event: WebhookEvent,
+    subscriptionIds?: string[],
+  ): StoredSubscription[] {
+    const allowed = subscriptionIds ? new Set(subscriptionIds) : null;
+    return Array.from(this.subscriptions.values())
+      .filter((subscription) => subscription.events.includes(event.type))
+      .filter((subscription) => !allowed || allowed.has(subscription.id));
   }
 
   private async dispatch(deliveryId: string): Promise<void> {
@@ -196,6 +277,7 @@ export class WebhookHub {
     delivery.attempt_count += 1;
     delivery.last_attempt_at = this.isoNow();
     delivery.last_error = null;
+    this.persistState();
 
     const body = JSON.stringify(event);
     const timestamp = Math.floor(this.now() / 1000).toString();
@@ -220,6 +302,7 @@ export class WebhookHub {
       delivery.last_status_code = response.status;
       if (response.ok) {
         delivery.state = 'delivered';
+        this.persistState();
         return;
       }
 
@@ -230,6 +313,7 @@ export class WebhookHub {
 
     if (delivery.attempt_count >= this.maxAttempts) {
       delivery.state = 'dead_letter';
+      this.persistState();
       return;
     }
 
@@ -237,10 +321,29 @@ export class WebhookHub {
     const delayMs = this.retryBaseMs * Math.max(1, 2 ** (delivery.attempt_count - 1));
     delivery.next_attempt_at = new Date(this.now() + delayMs).toISOString();
     delivery.timer = this.schedule(() => this.dispatch(delivery.id), delayMs);
+    this.persistState();
   }
 
   private isoNow(): string {
     return new Date(this.now()).toISOString();
+  }
+
+  private resumePendingDeliveries(): void {
+    for (const delivery of this.deliveries.values()) {
+      if (delivery.state !== 'pending' && delivery.state !== 'retrying') continue;
+      const delayMs = delivery.next_attempt_at
+        ? Math.max(0, Date.parse(delivery.next_attempt_at) - this.now())
+        : 0;
+      delivery.timer = this.schedule(() => this.dispatch(delivery.id), delayMs);
+    }
+  }
+
+  private persistState(): void {
+    this.persist?.({
+      subscriptions: Array.from(this.subscriptions.values()).map((subscription) => ({ ...subscription })),
+      deliveries: Array.from(this.deliveries.values()).map((delivery) => sanitizeDelivery(delivery)),
+      events: Array.from(this.events.values()).map((event) => ({ ...event })),
+    });
   }
 }
 

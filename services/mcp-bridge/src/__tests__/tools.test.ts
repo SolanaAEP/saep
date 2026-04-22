@@ -1,12 +1,14 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
   buildTools,
-  ListTasksArgs,
-  GetTaskArgs,
-  GetReputationArgs,
   BidOnTaskArgs,
   ClaimPayoutArgs,
+  GetReputationArgs,
+  GetTaskArgs,
+  ListTasksArgs,
+  RegisterAgentArgs,
   SubmitResultArgs,
+  WithdrawEarningsArgs,
   _resetVelocityWindow,
 } from '../tools.js';
 import { loadConfig } from '../config.js';
@@ -23,9 +25,33 @@ describe('mcp-bridge tools', () => {
       'get_reputation',
       'get_task',
       'list_tasks',
+      'register_agent',
       'reveal_bid',
       'submit_result',
+      'withdraw_earnings',
     ]);
+  });
+
+  it('register_agent validates capability bits, uri, and uint-string fields', () => {
+    expect(() =>
+      RegisterAgentArgs.parse({
+        capability_bits: [],
+        metadata_uri: 'not-a-url',
+        stake_mint: '11111111111111111111111111111111',
+        operator_token_account: '11111111111111111111111111111111',
+      }),
+    ).toThrow();
+    expect(() =>
+      RegisterAgentArgs.parse({
+        capability_bits: [2, 7],
+        metadata_uri: 'https://example.com/agent.json',
+        stake_mint: '11111111111111111111111111111111',
+        operator_token_account: '11111111111111111111111111111111',
+        stake_amount: '1000000',
+        price_lamports: '42',
+        stream_rate: '99',
+      }),
+    ).not.toThrow();
   });
 
   it('validates list_tasks args — capability_bit upper bound', () => {
@@ -72,6 +98,18 @@ describe('mcp-bridge tools', () => {
         task_address: '11111111111111111111111111111111',
         agent_account_address: '11111111111111111111111111111111',
         agent_token_account: '11111111111111111111111111111111',
+      }),
+    ).not.toThrow();
+  });
+
+  it('withdraw_earnings validates base58 accounts when present', () => {
+    expect(() => WithdrawEarningsArgs.parse({ stream_address: 'not-base58' })).toThrow();
+    expect(() =>
+      WithdrawEarningsArgs.parse({
+        stream_address: '11111111111111111111111111111111',
+        jupiter_program: '11111111111111111111111111111111',
+        payer_price_feed: '11111111111111111111111111111111',
+        payout_price_feed: '11111111111111111111111111111111',
       }),
     ).not.toThrow();
   });

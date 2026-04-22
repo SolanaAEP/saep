@@ -11,9 +11,11 @@ import {
   WebhookSubscriptionCreateSchema,
   WebhookDeliveriesQuerySchema,
   WebhookEventEmitSchema,
+  WebhookReplayRequestSchema,
   WsMessageSchema,
   type WsMessage,
 } from './schema.js';
+import { JsonFileWebhookStore } from './webhook-store.js';
 import { WebhookHub, authorizeToken } from './webhooks.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info', name: 'discovery' });
@@ -40,6 +42,7 @@ export interface BuildServerOptions {
   webhookHub?: WebhookHub;
   webhookAdminToken?: string;
   webhookServiceToken?: string;
+  webhookStorePath?: string;
 }
 
 function requireToken(
@@ -52,9 +55,13 @@ function requireToken(
 
 export async function buildServer(opts: BuildServerOptions = {}) {
   const app = Fastify({ loggerInstance: log });
+  const webhookStorePath = opts.webhookStorePath ?? process.env.WEBHOOK_STORE_PATH;
+  const webhookStore = webhookStorePath ? new JsonFileWebhookStore(webhookStorePath) : null;
   const webhookHub = opts.webhookHub ?? new WebhookHub({
     retryBaseMs: Number(process.env.WEBHOOK_RETRY_BASE_MS ?? 1_000),
     maxAttempts: Number(process.env.WEBHOOK_MAX_ATTEMPTS ?? 4),
+    initialState: webhookStore?.load(),
+    persist: webhookStore ? (snapshot) => webhookStore.save(snapshot) : undefined,
   });
   const webhookAdminToken = opts.webhookAdminToken ?? process.env.WEBHOOK_ADMIN_TOKEN;
   const webhookServiceToken = opts.webhookServiceToken ?? process.env.WEBHOOK_SERVICE_TOKEN;
@@ -474,6 +481,25 @@ export async function buildServer(opts: BuildServerOptions = {}) {
       event: emitted.event,
       delivery_count: emitted.deliveries.length,
       deliveries: emitted.deliveries,
+    });
+  });
+
+  app.post('/webhooks/replay', async (req, reply) => {
+    if (!requireToken(req.headers['x-saep-admin-token'], webhookAdminToken)) {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
+
+    const parsed = WebhookReplayRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+    }
+
+    const replayed = await webhookHub.replay(parsed.data);
+    return reply.code(202).send({
+      event_count: replayed.events.length,
+      delivery_count: replayed.deliveries.length,
+      events: replayed.events,
+      deliveries: replayed.deliveries,
     });
   });
 

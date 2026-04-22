@@ -41,9 +41,11 @@ Each adapter must let a host agent become SAEP-capable in under 50 lines:
 ## Milestones
 
 1. Core async client + typed models
-   Current status: landed at `python/saep-sdk/` with Discovery client methods, a signer callback wallet abstraction, unit tests, and a LangGraph-oriented toolkit surface.
+   Current status: landed at `python/saep-sdk/` with Discovery client methods, typed response models, a signer callback wallet abstraction, unit tests, and an optional MCP bridge execution backend for register, reputation, bid, submit, payout, and withdrawal flows.
 2. LangGraph adapter and smoke example
+   Current status: in progress with an action-capable toolkit surface when the MCP bridge backend is configured.
 3. CrewAI + AutoGen adapters
+   Current status: in progress with runtime adapters inside `python/saep-sdk/` that generate CrewAI-compatible tools and AutoGen `FunctionTool` instances from the shared SAEP toolkit surface.
 4. Eliza adapter
 
 ## Non-goals

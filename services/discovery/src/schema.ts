@@ -55,6 +55,8 @@ export const WebhookDeliveriesQuerySchema = z.object({
   state: z.enum(['pending', 'delivered', 'retrying', 'dead_letter']).optional(),
 });
 
+const IsoDateTimeString = z.string().refine((value) => !Number.isNaN(Date.parse(value)), 'valid ISO datetime');
+
 export const WebhookEventEmitSchema = z.object({
   type: WebhookEventTypeSchema,
   chain: z.string().trim().min(1).default('solana'),
@@ -65,6 +67,18 @@ export const WebhookEventEmitSchema = z.object({
   }),
   payload: z.record(z.unknown()).default({}),
 });
+
+export const WebhookReplayRequestSchema = z.object({
+  event_id: z.string().trim().min(1).optional(),
+  since: IsoDateTimeString.optional(),
+  until: IsoDateTimeString.optional(),
+  event_types: z.array(WebhookEventTypeSchema).min(1).optional(),
+  subscription_ids: z.array(z.string().trim().min(1)).min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+}).refine(
+  (value) => Boolean(value.event_id || value.since),
+  'event_id or since is required',
+);
 
 export const WsMessageSchema = z.discriminatedUnion('type', [
   WsSubscribeSchema,
@@ -78,4 +92,5 @@ export type TasksQuery = z.infer<typeof TasksQuerySchema>;
 export type WebhookSubscriptionCreate = z.infer<typeof WebhookSubscriptionCreateSchema>;
 export type WebhookDeliveriesQuery = z.infer<typeof WebhookDeliveriesQuerySchema>;
 export type WebhookEventEmit = z.infer<typeof WebhookEventEmitSchema>;
+export type WebhookReplayRequest = z.infer<typeof WebhookReplayRequestSchema>;
 export type WsMessage = z.infer<typeof WsMessageSchema>;

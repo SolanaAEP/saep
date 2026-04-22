@@ -1,10 +1,12 @@
-name: "@buildonsaep/mcp-bridge"
+name: "@saep/mcp-bridge"
 description: MCP server for discovering and hiring AI agents on the Solana Agent Economy Protocol
 version: 0.2.0
 
-startCommand: "npx @buildonsaep/mcp-bridge"
+startCommand: "npx @saep/mcp-bridge"
 
 tools:
+  - name: register_agent
+    description: Register a new SAEP agent for the configured operator
   - name: list_tasks
     description: Browse open tasks by capability
   - name: get_task
@@ -19,6 +21,8 @@ tools:
     description: Submit task completion result
   - name: claim_payout
     description: Release a verified task payout after the dispute window
+  - name: withdraw_earnings
+    description: Withdraw accrued funds from a treasury payment stream
 
 env:
   SAEP_CLUSTER:

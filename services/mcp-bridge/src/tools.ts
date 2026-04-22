@@ -5,19 +5,36 @@ import { BN } from '@coral-xyz/anchor';
 import { keccak_256 } from '@noble/hashes/sha3.js';
 import {
   agentRegistryProgram,
+  buildRegisterAgentIx,
   buildCommitBidIx,
   buildReleaseIx,
   buildRevealBidIx,
   buildSubmitResultIx,
+  buildWithdrawEarnedIx,
+  encodeAgentId,
   fetchAgentByDid,
+  fetchAgentsByOperator,
   fetchMarketGlobal,
   resolveCluster,
   taskMarketProgram,
+  treasuryStandardProgram,
 } from '@saep/sdk';
 import type { Config } from './config.js';
 
 const Base58 = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
 const Hex32 = z.string().regex(/^[0-9a-f]{64}$/i);
+const UintString = z.string().regex(/^\d+$/);
+
+export const RegisterAgentArgs = z.object({
+  capability_bits: z.array(z.number().int().min(0).max(127)).min(1),
+  metadata_uri: z.string().url(),
+  agent_id_seed: z.string().max(32).optional(),
+  stake_amount: UintString.default('0'),
+  stake_mint: Base58,
+  operator_token_account: Base58,
+  price_lamports: UintString.default('0'),
+  stream_rate: UintString.default('0'),
+});
 
 export const ListTasksArgs = z.object({
   capability_bit: z.number().int().min(0).max(127).optional(),
@@ -56,6 +73,14 @@ export const ClaimPayoutArgs = z.object({
   task_address: Base58,
   agent_account_address: Base58.optional(),
   agent_token_account: Base58.optional(),
+});
+
+export const WithdrawEarningsArgs = z.object({
+  stream_address: Base58,
+  route_data_base64: z.string().optional(),
+  jupiter_program: Base58.optional(),
+  payer_price_feed: Base58.optional(),
+  payout_price_feed: Base58.optional(),
 });
 
 type Tool = {
@@ -97,6 +122,16 @@ function computeCommitHash(amount: bigint, nonce: Uint8Array, agentDid: Uint8Arr
   buf.set(nonce, 8);
   buf.set(agentDid, 40);
   return keccak_256(buf);
+}
+
+function capabilityMaskFrom(bits: number[]): bigint {
+  return bits.reduce((mask, bit) => mask | (1n << BigInt(bit)), 0n);
+}
+
+function randomAgentId(): Uint8Array {
+  const out = new Uint8Array(32);
+  crypto.getRandomValues(out);
+  return out;
 }
 
 const autoSignTimestamps: number[] = [];
@@ -294,6 +329,56 @@ async function resolveReleaseAgentAccount(
 
 export function buildTools(): Tool[] {
   return [
+    {
+      name: 'register_agent',
+      description:
+        'Register a new SAEP agent for the configured operator. Builds the register_agent instruction using capability bits, manifest metadata, pricing, and stake inputs. ' +
+        'Returns a signed signature when auto-sign is enabled or a base64 unsigned transaction payload otherwise.',
+      inputSchema: toJsonSchema(RegisterAgentArgs),
+      handler: async (args, cfg) => {
+        const input = RegisterAgentArgs.parse(args);
+        const config = resolveCluster({ cluster: cfg.cluster });
+        const ar = agentRegistryProgram(cfg.provider, config);
+        const operator = cfg.keypair?.publicKey ?? cfg.provider.wallet.publicKey;
+        const stakeMint = new PublicKey(input.stake_mint);
+        const agentId = input.agent_id_seed ? encodeAgentId(input.agent_id_seed) : randomAgentId();
+        const tokenProgramId = await resolveTokenProgram(cfg, stakeMint);
+
+        const ix = await buildRegisterAgentIx(ar, {
+          operator,
+          agentId,
+          manifestUri: input.metadata_uri,
+          capabilityMask: capabilityMaskFrom(input.capability_bits),
+          priceLamports: BigInt(input.price_lamports),
+          streamRate: BigInt(input.stream_rate),
+          stakeAmount: BigInt(input.stake_amount),
+          stakeMint,
+          operatorTokenAccount: new PublicKey(input.operator_token_account),
+          capabilityRegistryProgramId: config.programIds.capabilityRegistry,
+          tokenProgramId,
+        });
+
+        const outcome = await signOrSerialize(cfg, ix, operator);
+        const response: Record<string, unknown> = {
+          cluster: cfg.cluster,
+          ...outcome,
+          agent_address: null,
+          agent_did_hex: null,
+          agent_id_hex: bytesToHex(agentId),
+        };
+
+        if (outcome.signed) {
+          const registered = await fetchAgentsByOperator(ar, operator);
+          const created = registered.find((item) => Buffer.from(item.agentId).equals(Buffer.from(agentId)));
+          if (created) {
+            response.agent_address = created.address.toBase58();
+            response.agent_did_hex = bytesToHex(created.did);
+          }
+        }
+
+        return response;
+      },
+    },
     {
       name: 'list_tasks',
       description:
@@ -615,6 +700,72 @@ export function buildTools(): Tool[] {
           agent_token_account: agentTokenAccount.toBase58(),
           fee_collector_token_account: feeCollectorTokenAccount.toBase58(),
           solrep_pool_token_account: solrepPoolTokenAccount.toBase58(),
+        };
+      },
+    },
+    {
+      name: 'withdraw_earnings',
+      description:
+        'Withdraw accrued earnings from a treasury payment stream. Same-mint withdrawals work directly; cross-mint withdrawals require route_data_base64 plus Jupiter and oracle accounts.',
+      inputSchema: toJsonSchema(WithdrawEarningsArgs),
+      handler: async (args, cfg) => {
+        const input = WithdrawEarningsArgs.parse(args);
+        const config = resolveCluster({ cluster: cfg.cluster });
+        const treasury = treasuryStandardProgram(cfg.provider, config);
+
+        const streamPk = new PublicKey(input.stream_address);
+        const stream = (await treasury.account.paymentStream.fetchNullable(streamPk)) as
+          | { agentDid: number[]; payerMint: PublicKey; payoutMint: PublicKey }
+          | null;
+        if (!stream) return { cluster: cfg.cluster, error: 'stream_not_found' };
+
+        const agentDid = Uint8Array.from(stream.agentDid);
+        const agentDidHex = bytesToHex(agentDid);
+        const swapped = !stream.payerMint.equals(stream.payoutMint);
+        if (swapped && !input.route_data_base64) {
+          return {
+            cluster: cfg.cluster,
+            error: 'swap_route_required',
+            agent_did_hex: agentDidHex,
+            reason: 'cross-mint withdrawals need route_data_base64 plus Jupiter + oracle accounts',
+          };
+        }
+        if (swapped && (!input.jupiter_program || !input.payer_price_feed || !input.payout_price_feed)) {
+          return {
+            cluster: cfg.cluster,
+            error: 'swap_accounts_required',
+            agent_did_hex: agentDidHex,
+            reason: 'cross-mint withdrawals need jupiter_program, payer_price_feed, and payout_price_feed',
+          };
+        }
+
+        const operator = cfg.keypair?.publicKey ?? cfg.provider.wallet.publicKey;
+        const routeData = input.route_data_base64
+          ? Uint8Array.from(Buffer.from(input.route_data_base64, 'base64'))
+          : new Uint8Array();
+        const tokenProgramId = await resolveTokenProgram(cfg, stream.payerMint);
+        const ix = await buildWithdrawEarnedIx(treasury, {
+          operator,
+          agentDid,
+          stream: streamPk,
+          payerMint: stream.payerMint,
+          payoutMint: stream.payoutMint,
+          jupiterProgram: input.jupiter_program ? new PublicKey(input.jupiter_program) : PublicKey.default,
+          routeData,
+          payerPriceFeed: input.payer_price_feed ? new PublicKey(input.payer_price_feed) : undefined,
+          payoutPriceFeed: input.payout_price_feed ? new PublicKey(input.payout_price_feed) : undefined,
+          tokenProgramId,
+        });
+        const outcome = await signOrSerialize(cfg, ix, operator);
+
+        return {
+          cluster: cfg.cluster,
+          ...outcome,
+          stream_address: streamPk.toBase58(),
+          agent_did_hex: agentDidHex,
+          payer_mint: stream.payerMint.toBase58(),
+          payout_mint: stream.payoutMint.toBase58(),
+          swapped,
         };
       },
     },

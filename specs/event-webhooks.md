@@ -27,8 +27,10 @@ Provide a simple outbound integration layer for SAEP events so builders can reac
 Initial implementation status:
 
 - Discovery now exposes subscription management, event emission, and delivery inspection endpoints.
+- Discovery supports admin-triggered replay by exact event id or bounded time window, while preserving original event ids.
 - Outbound deliveries are HMAC-signed and retried with exponential backoff.
 - Dead-letter state is queryable through the same service.
+- File-backed persistence is available via `WEBHOOK_STORE_PATH`, including retry-state rehydration after restart.
 
 ## Payload shape
 
@@ -44,7 +46,7 @@ Initial implementation status:
 - per-endpoint secret rotation
 - replay protection window
 - delivery logs in portal/admin surfaces
-- backfill or replay by time range
+- richer backfill/replay UX by time range in portal/admin surfaces
 
 ## Related UI work
 

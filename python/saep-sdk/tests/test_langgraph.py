@@ -50,6 +50,23 @@ class FakeTransport:
         }
 
 
+class FakeExecutor:
+    async def call_tool(self, name, arguments=None):
+        if name == "register_agent":
+            return {
+                "cluster": "devnet",
+                "signed": True,
+                "signature": "sig-1",
+                "agent_address": "agent-1",
+                "agent_did_hex": "ab" * 32,
+                "agent_id_hex": "cd" * 32,
+            }
+        raise AssertionError(f"unexpected tool call: {name}")
+
+    async def aclose(self):
+        return None
+
+
 class LangGraphToolkitTests(unittest.TestCase):
     def test_toolkit_exposes_expected_tools(self):
         client = SAEPClient("http://unused", transport=FakeTransport())
@@ -68,6 +85,25 @@ class LangGraphToolkitTests(unittest.TestCase):
 
         self.assertEqual(result["total"], 1)
         self.assertEqual(result["items"][0]["status"], "funded")
+
+    def test_execution_backend_adds_action_tools(self):
+        client = SAEPClient("http://unused", transport=FakeTransport(), executor=FakeExecutor())
+        toolkit = build_toolkit(client)
+
+        self.assertIn("saep_register_agent", [tool.name for tool in toolkit])
+
+        register_tool = next(tool for tool in toolkit if tool.name == "saep_register_agent")
+        result = asyncio.run(
+            register_tool.coroutine(
+                capability_bits=[2],
+                metadata_uri="https://example.com/agent.json",
+                stake_mint="stake-mint",
+                operator_token_account="operator-token-account",
+            )
+        )
+
+        self.assertEqual(result["signature"], "sig-1")
+        self.assertEqual(result["agent_address"], "agent-1")
 
 
 if __name__ == "__main__":

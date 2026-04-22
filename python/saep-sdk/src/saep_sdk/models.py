@@ -73,6 +73,76 @@ class ProtocolStats:
     burn_rate: Dict[str, str]
 
 
+@dataclass(frozen=True)
+class TransactionEnvelope:
+    cluster: str
+    signed: bool
+    signature: Optional[str]
+    unsigned_tx_base64: Optional[str]
+    last_valid_block_height: Optional[int]
+    auto_sign_rejected: Optional[str]
+
+
+@dataclass(frozen=True)
+class AgentRegistrationResult(TransactionEnvelope):
+    agent_address: Optional[str]
+    agent_did_hex: Optional[str]
+    agent_id_hex: str
+
+
+@dataclass(frozen=True)
+class ReputationSnapshot:
+    cluster: str
+    agent_did_hex: str
+    agent_address: str
+    operator: str
+    jobs_completed: str
+    jobs_disputed: int
+    reputation: Dict[str, int]
+    capability_bit_filter: Optional[int]
+    category_scoped: bool
+
+
+@dataclass(frozen=True)
+class BidResult(TransactionEnvelope):
+    nonce_hex: str
+    amount_usdc_micro: int
+    agent_did_hex: str
+    task_id_hex: str
+    warning: Optional[str]
+
+
+@dataclass(frozen=True)
+class RevealResult(TransactionEnvelope):
+    task_id_hex: str
+
+
+@dataclass(frozen=True)
+class SubmitResultReceipt(TransactionEnvelope):
+    agent_did_hex: str
+
+
+@dataclass(frozen=True)
+class ClaimPayoutResult(TransactionEnvelope):
+    task_address: str
+    task_id_hex: str
+    payment_mint: str
+    payment_amount: str
+    agent_account_address: str
+    agent_token_account: str
+    fee_collector_token_account: str
+    solrep_pool_token_account: str
+
+
+@dataclass(frozen=True)
+class WithdrawEarningsResult(TransactionEnvelope):
+    stream_address: str
+    agent_did_hex: str
+    payer_mint: str
+    payout_mint: str
+    swapped: bool
+
+
 def page_from_dict(data: Dict[str, Any], item_parser) -> Page[T]:
     return Page(
         items=[item_parser(item) for item in data.get("items", [])],
@@ -150,6 +220,80 @@ def stats_from_dict(data: Dict[str, Any]) -> ProtocolStats:
     )
 
 
+def agent_registration_from_dict(data: Dict[str, Any]) -> AgentRegistrationResult:
+    tx = _transaction_fields(data)
+    return AgentRegistrationResult(
+        **tx,
+        agent_address=_optional_str(data.get("agent_address")),
+        agent_did_hex=_optional_str(data.get("agent_did_hex")),
+        agent_id_hex=str(data["agent_id_hex"]),
+    )
+
+
+def reputation_snapshot_from_dict(data: Dict[str, Any]) -> ReputationSnapshot:
+    reputation = data.get("reputation", {})
+    return ReputationSnapshot(
+        cluster=str(data.get("cluster", "unknown")),
+        agent_did_hex=str(data["agent_did_hex"]),
+        agent_address=str(data["agent_address"]),
+        operator=str(data["operator"]),
+        jobs_completed=str(data.get("jobs_completed", "0")),
+        jobs_disputed=int(data.get("jobs_disputed", 0)),
+        reputation={str(key): int(value) for key, value in reputation.items()},
+        capability_bit_filter=_optional_int(data.get("capability_bit_filter")),
+        category_scoped=bool(data.get("category_scoped", False)),
+    )
+
+
+def bid_result_from_dict(data: Dict[str, Any]) -> BidResult:
+    tx = _transaction_fields(data)
+    return BidResult(
+        **tx,
+        nonce_hex=str(data["nonce_hex"]),
+        amount_usdc_micro=int(data["amount_usdc_micro"]),
+        agent_did_hex=str(data["agent_did_hex"]),
+        task_id_hex=str(data["task_id_hex"]),
+        warning=_optional_str(data.get("warning")),
+    )
+
+
+def reveal_result_from_dict(data: Dict[str, Any]) -> RevealResult:
+    tx = _transaction_fields(data)
+    return RevealResult(**tx, task_id_hex=str(data["task_id_hex"]))
+
+
+def submit_result_from_dict(data: Dict[str, Any]) -> SubmitResultReceipt:
+    tx = _transaction_fields(data)
+    return SubmitResultReceipt(**tx, agent_did_hex=str(data["agent_did_hex"]))
+
+
+def claim_payout_from_dict(data: Dict[str, Any]) -> ClaimPayoutResult:
+    tx = _transaction_fields(data)
+    return ClaimPayoutResult(
+        **tx,
+        task_address=str(data["task_address"]),
+        task_id_hex=str(data["task_id_hex"]),
+        payment_mint=str(data["payment_mint"]),
+        payment_amount=str(data["payment_amount"]),
+        agent_account_address=str(data["agent_account_address"]),
+        agent_token_account=str(data["agent_token_account"]),
+        fee_collector_token_account=str(data["fee_collector_token_account"]),
+        solrep_pool_token_account=str(data["solrep_pool_token_account"]),
+    )
+
+
+def withdraw_earnings_from_dict(data: Dict[str, Any]) -> WithdrawEarningsResult:
+    tx = _transaction_fields(data)
+    return WithdrawEarningsResult(
+        **tx,
+        stream_address=str(data["stream_address"]),
+        agent_did_hex=str(data["agent_did_hex"]),
+        payer_mint=str(data["payer_mint"]),
+        payout_mint=str(data["payout_mint"]),
+        swapped=bool(data["swapped"]),
+    )
+
+
 def _optional_str(value: Any) -> Optional[str]:
     if value is None:
         return None
@@ -160,3 +304,14 @@ def _optional_int(value: Any) -> Optional[int]:
     if value is None:
         return None
     return int(value)
+
+
+def _transaction_fields(data: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "cluster": str(data.get("cluster", "unknown")),
+        "signed": bool(data.get("signed", False)),
+        "signature": _optional_str(data.get("signature")),
+        "unsigned_tx_base64": _optional_str(data.get("unsigned_tx_base64")),
+        "last_valid_block_height": _optional_int(data.get("last_valid_block_height")),
+        "auto_sign_rejected": _optional_str(data.get("auto_sign_rejected")),
+    }

@@ -24,6 +24,20 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 
+[project.optional-dependencies]
+crewai = [
+  "crewai; python_version >= '3.10'",
+]
+autogen = [
+  "autogen-core; python_version >= '3.10'",
+  "autogen-agentchat; python_version >= '3.10'",
+]
+frameworks = [
+  "crewai; python_version >= '3.10'",
+  "autogen-core; python_version >= '3.10'",
+  "autogen-agentchat; python_version >= '3.10'",
+]
+
 [tool.setuptools]
 package-dir = { "" = "src" }
 
