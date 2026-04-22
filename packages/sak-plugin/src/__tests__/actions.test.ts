@@ -2,12 +2,12 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { Connection, Keypair } from '@solana/web3.js';
 import {
   saepBidAction,
-  saepCheckReputationAction,
+  saepGetReputationAction,
   saepListTasksAction,
   saepPlugin,
   saepRegisterAgentAction,
   saepSubmitResultAction,
-  saepWithdrawAction,
+  saepWithdrawEarningsAction,
   _resetVelocityWindow,
 } from '../actions.js';
 import type { SakAgentLike } from '../types.js';
@@ -32,11 +32,11 @@ describe('sak-plugin actions', () => {
     expect(names).toEqual([
       'SAEP_REGISTER_AGENT',
       'SAEP_LIST_TASKS',
-      'SAEP_CHECK_REPUTATION',
+      'SAEP_GET_REPUTATION',
       'SAEP_BID',
       'SAEP_REVEAL_BID',
       'SAEP_SUBMIT_RESULT',
-      'SAEP_WITHDRAW',
+      'SAEP_WITHDRAW_EARNINGS',
     ]);
   });
 
@@ -88,6 +88,13 @@ describe('sak-plugin actions', () => {
     const a = saepListTasksAction('devnet');
     expect(() => a.schema.parse({ agent_did_hex: 'xx' })).toThrow();
     expect(() => a.schema.parse({ agent_did_hex: 'a'.repeat(64) })).not.toThrow();
+  });
+
+  it('get_reputation allows omitted did and validates provided did', () => {
+    const a = saepGetReputationAction('devnet');
+    expect(() => a.schema.parse({ agent_did_hex: 'xx' })).toThrow();
+    expect(a.schema.parse({})).toMatchObject({});
+    expect(() => a.schema.parse({ agent_did_hex: 'a'.repeat(64), capability_bit: 2 })).not.toThrow();
   });
 
   it('bid rejects non-base58 task_address', () => {
@@ -163,41 +170,18 @@ describe('sak-plugin actions', () => {
     ).not.toThrow();
   });
 
-  it('check_reputation allows missing did', () => {
-    const a = saepCheckReputationAction('devnet');
-    const parsed = a.schema.parse({});
-    expect(parsed.agent_did_hex).toBeUndefined();
-  });
-
-  it('check_reputation validates hex did format', () => {
-    const a = saepCheckReputationAction('devnet');
-    expect(() => a.schema.parse({ agent_did_hex: 'xx' })).toThrow();
-    expect(() => a.schema.parse({ agent_did_hex: 'a'.repeat(64) })).not.toThrow();
-  });
-
-  it('withdraw requires agent_did_hex + mint + destination + amount', () => {
-    const a = saepWithdrawAction('devnet');
-    expect(() => a.schema.parse({})).toThrow();
+  it('withdraw_earnings validates stream address and optional swap fields', () => {
+    const a = saepWithdrawEarningsAction('devnet');
+    expect(() => a.schema.parse({ stream_address: 'bad!!!' })).toThrow();
     expect(() =>
       a.schema.parse({
-        agent_did_hex: 'a'.repeat(64),
-        mint: USDC_DEVNET,
-        destination: SOME_ATA,
-        amount: '1000000',
+        stream_address: '11111111111111111111111111111111',
+        route_data_base64: 'AQID',
+        jupiter_program: '11111111111111111111111111111111',
+        payer_price_feed: '11111111111111111111111111111111',
+        payout_price_feed: '11111111111111111111111111111111',
       }),
     ).not.toThrow();
-  });
-
-  it('withdraw rejects non-numeric amount', () => {
-    const a = saepWithdrawAction('devnet');
-    expect(() =>
-      a.schema.parse({
-        agent_did_hex: 'a'.repeat(64),
-        mint: USDC_DEVNET,
-        destination: SOME_ATA,
-        amount: 'not-a-number',
-      }),
-    ).toThrow();
   });
 
   it('every action carries examples and similes', () => {

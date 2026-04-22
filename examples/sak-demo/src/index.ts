@@ -1,4 +1,4 @@
-import { Connection, Keypair, PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
+import { Connection, Keypair, Transaction, VersionedTransaction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { saepPlugin } from '@buildonsaep/sak-plugin';
 import type { SakAgentLike } from '@buildonsaep/sak-plugin';
@@ -30,8 +30,10 @@ async function main() {
   const byName = Object.fromEntries(actions.map((a) => [a.name, a]));
   const register = byName.SAEP_REGISTER_AGENT!;
   const listTasks = byName.SAEP_LIST_TASKS!;
+  const getReputation = byName.SAEP_GET_REPUTATION!;
   const bid = byName.SAEP_BID!;
   const submit = byName.SAEP_SUBMIT_RESULT!;
+  const withdraw = byName.SAEP_WITHDRAW_EARNINGS!;
 
   const stakeMint = process.env.SAEP_STAKE_MINT ?? '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
   const operatorAta = process.env.SAEP_OPERATOR_ATA;
@@ -53,11 +55,23 @@ async function main() {
   const tasks = await listTasks.handler(agent, { limit: 10 });
   console.log('tasks:', tasks);
 
-  const bidOut = await bid.handler(agent, {
-    task_id: new PublicKey(Keypair.generate().publicKey).toBase58(),
-    amount_usdc_micro: 500_000,
-  });
-  console.log('bid:', bidOut);
+  const reputation = await getReputation.handler(agent, {});
+  console.log('reputation:', reputation);
+
+  const bidTaskAddress = process.env.SAEP_TASK_ADDRESS;
+  const bidAgentDidHex = process.env.SAEP_AGENT_DID_HEX;
+  const bidderAta = process.env.SAEP_BIDDER_ATA;
+  if (bidTaskAddress && bidAgentDidHex && bidderAta) {
+    const bidOut = await bid.handler(agent, {
+      task_address: bidTaskAddress,
+      amount_usdc_micro: 500_000,
+      agent_did_hex: bidAgentDidHex,
+      bidder_token_account: bidderAta,
+    });
+    console.log('bid:', bidOut);
+  } else {
+    console.log('bid: skipped (set SAEP_TASK_ADDRESS, SAEP_AGENT_DID_HEX, SAEP_BIDDER_ATA to run)');
+  }
 
   const taskAddress = process.env.SAEP_TASK_ADDRESS;
   if (taskAddress) {
@@ -69,6 +83,14 @@ async function main() {
     console.log('submit:', out);
   } else {
     console.log('submit: skipped (set SAEP_TASK_ADDRESS to run)');
+  }
+
+  const streamAddress = process.env.SAEP_STREAM_ADDRESS;
+  if (streamAddress) {
+    const out = await withdraw.handler(agent, { stream_address: streamAddress });
+    console.log('withdraw:', out);
+  } else {
+    console.log('withdraw: skipped (set SAEP_STREAM_ADDRESS to run)');
   }
 }
 

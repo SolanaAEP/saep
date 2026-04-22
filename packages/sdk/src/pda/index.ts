@@ -58,6 +58,14 @@ export function treasuryPda(programId: PublicKey, agentDid: Uint8Array): [Public
   return PublicKey.findProgramAddressSync([enc('treasury'), agentDid], programId);
 }
 
+export function treasuryAllowedTargetsPda(
+  programId: PublicKey,
+  agentDid: Uint8Array,
+): [PublicKey, number] {
+  if (agentDid.length !== 32) throw new Error('agentDid must be 32 bytes');
+  return PublicKey.findProgramAddressSync([enc('allowed_targets'), agentDid], programId);
+}
+
 export function vaultPda(
   programId: PublicKey,
   agentDid: Uint8Array,
@@ -127,6 +135,10 @@ export function verifierKeyPda(programId: PublicKey, vkId: Uint8Array): [PublicK
 
 export function verifierModePda(programId: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([enc('mode')], programId);
+}
+
+export function proofVerifierAllowedCallersPda(programId: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([enc('allowed_callers')], programId);
 }
 
 export function batchStatePda(programId: PublicKey): [PublicKey, number] {
@@ -247,6 +259,18 @@ export function executionRecordPda(programId: PublicKey, proposal: PublicKey): [
 
 export function feeConfigPda(programId: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([enc('fee_config')], programId);
+}
+
+export function feeHookAllowlistPda(programId: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([enc('hook_allowlist')], programId);
+}
+
+export function feeAgentHooksPda(
+  programId: PublicKey,
+  agentDid: Uint8Array,
+): [PublicKey, number] {
+  if (agentDid.length !== 32) throw new Error('agentDid must be 32 bytes');
+  return PublicKey.findProgramAddressSync([enc('agent_hooks'), agentDid], programId);
 }
 
 export function epochPda(programId: PublicKey, epochId: bigint): [PublicKey, number] {

@@ -1,7 +1,7 @@
 # integration-x402 — HTTP payment rail over SAEP
 
 Parent: `backlog/P1_protocol_integrations_x402_mcp_sak.md` §x402.
-x402 spec: `HTTP/1.1 402 Payment Required` with a `X-PAYMENT` header carrying a payload the client signs + returns. SAEP role: be both a consumer (agents pay other x402 endpoints) and a provider (SAEP endpoints charge x402 callers). Settlement terminates in `task_market::release` on Solana.
+x402 spec: `HTTP/1.1 402 Payment Required` with a `X-PAYMENT` header carrying a payload the client signs + returns. SAEP role: be both a consumer (agents pay other x402 endpoints) and a provider (SAEP endpoints charge x402 callers). Long-term settlement terminates in `task_market::release` on Solana; the current live slice stops at funded escrow with explicit task correlation metadata.
 
 ## Service
 
@@ -20,7 +20,14 @@ Gateway speaks two x402 schemes:
 
 ## On-chain binding
 
-No program change required. Gateway calls `task_market::create_task` + `fund_task` + `submit_result` + `release` in one bundle (Jito, per pre-audit 06). Task is ephemeral single-shot: `payload.kind = DataFetch` or `Generic` with `args_hash = sha256(request_canonical)`.
+Current live slice creates and funds a real `task_market` task, then returns a backward-compatible receipt carrying:
+
+- `tx_sig`
+- `task`
+- `task_id_hex`
+- `task_status`
+
+The gateway does **not** yet execute `submit_result + verify_task + release` on live traffic because the proof-generation artifacts for that path are still incomplete in-repo. The immediate goal is a fully correlated funded-escrow receipt so callers can tie HTTP payment state back to the on-chain task.
 
 ## Auth + rate limit
 
@@ -33,11 +40,11 @@ No program change required. Gateway calls `task_market::create_task` + `fund_tas
 ```
 POST /proxy
   body: { target_url, method, headers?, body?, budget_lamports, mint }
-  reply: { status, body, payment_receipts: [{ tx_sig, amount, mint }] }
+  reply: { status, body, payment_receipts: [{ tx_sig, amount, mint, task?, task_id_hex?, task_status? }] }
 
 POST /facilitate/verify
   body: { x_payment, resource_ref }
-  reply: { ok, settled_tx_sig? }
+  reply: { ok, settled_tx_sig?, task?, task_id_hex?, task_status? }
 
 GET  /healthz
 GET  /metrics

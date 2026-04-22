@@ -1,5 +1,10 @@
 import { BN, Program } from '@coral-xyz/anchor';
-import { PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
+import {
+  PublicKey,
+  SYSVAR_INSTRUCTIONS_PUBKEY,
+  SystemProgram,
+  TransactionInstruction,
+} from '@solana/web3.js';
 import type { TaskMarket } from '../generated/task_market.js';
 import type { ClusterConfig } from '../cluster/index.js';
 import {
@@ -11,6 +16,8 @@ import {
   verifierConfigPda,
   verifierKeyPda,
   verifierModePda,
+  proofVerifierAllowedCallersPda,
+  reentrancyGuardPda,
   bidBookPda,
   bondEscrowPda,
   bidPda,
@@ -319,6 +326,9 @@ export async function buildVerifyTaskIx(
   const [verConfig] = verifierConfigPda(config.programIds.proofVerifier);
   const [vk] = verifierKeyPda(config.programIds.proofVerifier, input.vkId);
   const [mode] = verifierModePda(config.programIds.proofVerifier);
+  const [guard] = reentrancyGuardPda(program.programId);
+  const [verifierSelfGuard] = reentrancyGuardPda(config.programIds.proofVerifier);
+  const [verifierAllowedCallers] = proofVerifierAllowedCallersPda(config.programIds.proofVerifier);
 
   return program.methods
     .verifyTask(
@@ -333,6 +343,10 @@ export async function buildVerifyTaskIx(
       verifierConfig: verConfig,
       verifierKey: vk,
       verifierMode: mode,
+      guard,
+      verifierSelfGuard,
+      verifierAllowedCallers,
+      instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
       cranker: input.cranker,
     } as never)
     .instruction();
@@ -347,6 +361,7 @@ export interface ReleaseInput {
   solrepPoolTokenAccount: PublicKey;
   agentAccount: PublicKey;
   client: PublicKey;
+  hookAllowlist?: PublicKey | null;
   tokenProgramId?: PublicKey;
 }
 
@@ -358,6 +373,7 @@ export async function buildReleaseIx(
   const [global] = marketGlobalPda(program.programId);
   const [escrow] = taskEscrowPda(program.programId, input.task);
   const [registryGlobal] = agentRegistryGlobalPda(config.programIds.agentRegistry);
+  const [guard] = reentrancyGuardPda(program.programId);
 
   return program.methods
     .release()
@@ -373,6 +389,8 @@ export async function buildReleaseIx(
       registryGlobal,
       agentAccount: input.agentAccount,
       selfProgram: config.programIds.taskMarket,
+      hookAllowlist: input.hookAllowlist ?? null,
+      guard,
       cranker: input.cranker,
       tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
     } as never)

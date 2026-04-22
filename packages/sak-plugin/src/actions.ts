@@ -1,24 +1,22 @@
 import { z } from 'zod';
 import { PublicKey, Transaction } from '@solana/web3.js';
+import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { keccak_256 } from '@noble/hashes/sha3.js';
 import {
   agentRegistryProgram,
-  taskMarketProgram,
   treasuryStandardProgram,
+  taskMarketProgram,
   makeProvider,
   resolveCluster,
   buildRegisterAgentIx,
   buildSubmitResultIx,
   buildCommitBidIx,
   buildRevealBidIx,
-  buildWithdrawIx,
+  buildWithdrawEarnedIx,
   encodeAgentId,
   fetchAgentsByOperator,
   fetchAgentByDid,
   fetchTasksByAgent,
-  fetchTreasury,
-  fetchVaultBalances,
-  fetchAllowedMints,
 } from '@saep/sdk';
 import type { Action, SaepPluginOptions, SakAgentLike, SakCluster, SakWallet } from './types.js';
 
@@ -109,6 +107,17 @@ function contextFor(agent: SakAgentLike, cluster: SakCluster) {
     wallet: toBrowserWallet(agent.wallet),
   });
   return { config, provider };
+}
+
+async function resolveTokenProgram(
+  agent: SakAgentLike,
+  mint: PublicKey,
+): Promise<PublicKey> {
+  const info = await agent.connection.getAccountInfo(mint, 'confirmed');
+  if (!info) throw new Error(`mint ${mint.toBase58()} was not found`);
+  if (info.owner.equals(TOKEN_2022_PROGRAM_ID)) return TOKEN_2022_PROGRAM_ID;
+  if (info.owner.equals(TOKEN_PROGRAM_ID)) return TOKEN_PROGRAM_ID;
+  throw new Error(`mint ${mint.toBase58()} is not an SPL token mint`);
 }
 
 export function saepRegisterAgentAction(cluster: SakCluster, opts?: SaepPluginOptions): Action {
@@ -236,6 +245,62 @@ export function saepListTasksAction(cluster: SakCluster, _opts?: SaepPluginOptio
         created_at: t.createdAt,
       }));
       return { cluster, agent_did_hex: did, tasks: out };
+    },
+  };
+}
+
+export function saepGetReputationAction(cluster: SakCluster, _opts?: SaepPluginOptions): Action {
+  const schema = z.object({
+    agent_did_hex: Hex32.optional(),
+    capability_bit: z.number().int().min(0).max(127).optional(),
+  });
+  return {
+    name: 'SAEP_GET_REPUTATION',
+    similes: [
+      'show my saep reputation',
+      'what is my agent score',
+      'check agent trust metrics',
+    ],
+    description:
+      'Reads SAEP reputation for the specified agent DID, or the first active agent owned by the wallet. ' +
+      'Args: { agent_did_hex?, capability_bit? }. capability_bit is accepted for forward compatibility; current scores are global.',
+    examples: [
+      {
+        input: 'Show my current SAEP reputation',
+        output: 'SAEP_GET_REPUTATION {}',
+      },
+    ],
+    schema,
+    handler: async (agent, input) => {
+      const { config, provider } = contextFor(agent, cluster);
+      const ar = agentRegistryProgram(provider, config);
+
+      let did = input.agent_did_hex;
+      if (!did) {
+        const mine = await fetchAgentsByOperator(ar, agent.wallet.publicKey);
+        const active = mine.find((item) => item.status === 'active') ?? mine[0];
+        if (!active) {
+          return { cluster, error: 'no_agent_for_operator' };
+        }
+        did = bytesToHex(active.did);
+      }
+
+      const detail = await fetchAgentByDid(ar, did);
+      if (!detail) {
+        return { cluster, error: 'agent_not_found', agent_did_hex: did };
+      }
+
+      return {
+        cluster,
+        agent_did_hex: did,
+        agent_address: detail.address.toBase58(),
+        operator: detail.operator.toBase58(),
+        jobs_completed: detail.jobsCompleted.toString(),
+        jobs_disputed: detail.jobsDisputed,
+        reputation: detail.reputation,
+        capability_bit_filter: input.capability_bit ?? null,
+        category_scoped: false,
+      };
     },
   };
 }
@@ -450,127 +515,91 @@ export function saepSubmitResultAction(cluster: SakCluster, opts?: SaepPluginOpt
   };
 }
 
-export function saepCheckReputationAction(cluster: SakCluster, _opts?: SaepPluginOptions): Action {
+export function saepWithdrawEarningsAction(cluster: SakCluster, opts?: SaepPluginOptions): Action {
   const schema = z.object({
-    agent_did_hex: Hex32.optional(),
+    stream_address: Base58,
+    route_data_base64: z.string().optional(),
+    jupiter_program: Base58.optional(),
+    payer_price_feed: Base58.optional(),
+    payout_price_feed: Base58.optional(),
   });
   return {
-    name: 'SAEP_CHECK_REPUTATION',
+    name: 'SAEP_WITHDRAW_EARNINGS',
     similes: [
-      'check my saep reputation',
-      'what is my agent score',
-      'show agent reputation',
-      'how am i performing on saep',
+      'withdraw my streamed earnings',
+      'claim treasury stream payout',
+      'pull funds from a saep payment stream',
     ],
     description:
-      'Check reputation and treasury status for an agent. If agent_did_hex omitted, resolves to the ' +
-      'first active agent owned by the wallet. Returns on-chain agent status, capability mask, stake, ' +
-      'treasury limits, and vault balances.',
-    examples: [
-      { input: 'Check my reputation', output: 'SAEP_CHECK_REPUTATION {}' },
-      { input: 'Check agent 4af3...', output: 'SAEP_CHECK_REPUTATION { agent_did_hex: "4af3..." }' },
-    ],
-    schema,
-    handler: async (agent, input) => {
-      const { config, provider } = contextFor(agent, cluster);
-      const ar = agentRegistryProgram(provider, config);
-      const ts = treasuryStandardProgram(provider, config);
-
-      let didHex = input.agent_did_hex;
-      let agentAcc;
-      if (didHex) {
-        agentAcc = await fetchAgentByDid(ar, didHex);
-      } else {
-        const mine = await fetchAgentsByOperator(ar, agent.wallet.publicKey);
-        agentAcc = mine.find((a) => a.status === 'active') ?? mine[0];
-        if (agentAcc) didHex = bytesToHex(agentAcc.did);
-      }
-
-      if (!agentAcc || !didHex) {
-        return { cluster, error: 'agent_not_found' };
-      }
-
-      const treasury = await fetchTreasury(ts, agentAcc.did);
-      const mints = await fetchAllowedMints(ts);
-      const vaults = mints.length > 0
-        ? await fetchVaultBalances(ts, agentAcc.did, mints)
-        : [];
-
-      return {
-        cluster,
-        agent_did_hex: didHex,
-        agent_address: agentAcc.address.toBase58(),
-        operator: agentAcc.operator.toBase58(),
-        status: agentAcc.status,
-        capability_mask: agentAcc.capabilityMask.toString(),
-        stake_amount: agentAcc.stakeAmount?.toString() ?? '0',
-        treasury: treasury ? {
-          daily_spend_limit: treasury.dailySpendLimit.toString(),
-          per_tx_limit: treasury.perTxLimit.toString(),
-          weekly_limit: treasury.weeklyLimit.toString(),
-          spent_today: treasury.spentToday.toString(),
-          spent_this_week: treasury.spentThisWeek.toString(),
-          streaming_active: treasury.streamingActive,
-        } : null,
-        vaults: vaults.filter((v) => v.exists).map((v) => ({
-          mint: v.mint.toBase58(),
-          amount: v.amount.toString(),
-        })),
-      };
-    },
-  };
-}
-
-export function saepWithdrawAction(cluster: SakCluster, opts?: SaepPluginOptions): Action {
-  const schema = z.object({
-    agent_did_hex: Hex32,
-    mint: Base58,
-    destination: Base58,
-    amount: z.string().regex(/^\d+$/),
-    price_feed: Base58.optional(),
-  });
-  return {
-    name: 'SAEP_WITHDRAW',
-    similes: [
-      'withdraw my saep earnings',
-      'cash out from saep',
-      'take my money out',
-      'withdraw from agent treasury',
-    ],
-    description:
-      'Withdraw funds from the agent treasury vault. Requires operator to be the wallet signer. ' +
-      'Amount is in raw token units (micro-USDC for USDC). Optional price_feed for cross-mint limit enforcement. ' +
-      'Args: { agent_did_hex, mint, destination, amount, price_feed? }.',
+      'Withdraws accrued earnings from a treasury payment stream. Same-mint direct withdrawals work out of the box; ' +
+      'swap withdrawals require route_data_base64 plus Jupiter and oracle accounts.',
     examples: [
       {
-        input: 'Withdraw 10 USDC from my agent treasury',
-        output:
-          'SAEP_WITHDRAW { agent_did_hex: "4af3...", mint: "EPjFWdd...", ' +
-          'destination: "9ATA...", amount: "10000000" }',
+        input: 'Withdraw earnings from stream 7xK2...',
+        output: 'SAEP_WITHDRAW_EARNINGS { stream_address: "7xK2..." }',
       },
     ],
     schema,
     handler: async (agent, input) => {
       const { config, provider } = contextFor(agent, cluster);
-      const ts = treasuryStandardProgram(provider, config);
+      const treasury = treasuryStandardProgram(provider, config);
 
-      const ix = await buildWithdrawIx(ts, {
+      const streamPk = new PublicKey(input.stream_address);
+      const stream = await treasury.account.paymentStream.fetch(streamPk) as {
+        agentDid: number[];
+        payerMint: PublicKey;
+        payoutMint: PublicKey;
+      };
+      const agentDid = Uint8Array.from(stream.agentDid);
+      const agentDidHex = bytesToHex(agentDid);
+      const swapped = !stream.payerMint.equals(stream.payoutMint);
+
+      if (swapped && !input.route_data_base64) {
+        return {
+          cluster,
+          error: 'swap_route_required',
+          agent_did_hex: agentDidHex,
+          reason: 'cross-mint withdrawals need route_data_base64 plus Jupiter + oracle accounts',
+        };
+      }
+      if (swapped && (!input.jupiter_program || !input.payer_price_feed || !input.payout_price_feed)) {
+        return {
+          cluster,
+          error: 'swap_accounts_required',
+          agent_did_hex: agentDidHex,
+          reason: 'cross-mint withdrawals need jupiter_program, payer_price_feed, and payout_price_feed',
+        };
+      }
+
+      const routeData = input.route_data_base64
+        ? Uint8Array.from(Buffer.from(input.route_data_base64, 'base64'))
+        : new Uint8Array();
+      const tokenProgramId = await resolveTokenProgram(agent, stream.payerMint);
+      const withdrawInput: Parameters<typeof buildWithdrawEarnedIx>[1] & { tokenProgramId: PublicKey } = {
         operator: agent.wallet.publicKey,
-        agentDid: hexToBytes(input.agent_did_hex),
-        mint: new PublicKey(input.mint),
-        destination: new PublicKey(input.destination),
-        amount: BigInt(input.amount),
-        priceFeed: input.price_feed ? new PublicKey(input.price_feed) : undefined,
-      });
+        agentDid,
+        stream: streamPk,
+        payerMint: stream.payerMint,
+        payoutMint: stream.payoutMint,
+        jupiterProgram: input.jupiter_program ? new PublicKey(input.jupiter_program) : PublicKey.default,
+        routeData,
+        payerPriceFeed: input.payer_price_feed ? new PublicKey(input.payer_price_feed) : undefined,
+        payoutPriceFeed: input.payout_price_feed ? new PublicKey(input.payout_price_feed) : undefined,
+        tokenProgramId,
+      };
+      const ix = await buildWithdrawEarnedIx(treasury, withdrawInput);
       const tx = new Transaction().add(ix);
       enforceGuardrails(opts);
       const signature = await provider.sendAndConfirm(tx);
+
       return {
         cluster,
         signature,
-        agent_did_hex: input.agent_did_hex,
-        mint: input.mint,
-        amount: input.amount,
+        stream_address: streamPk.toBase58(),
+        agent_did_hex: agentDidHex,
+        payer_mint: stream.payerMint.toBase58(),
+        payout_mint: stream.payoutMint.toBase58(),
+        swapped,
       };
     },
   };
@@ -580,10 +609,10 @@ export function saepPlugin(cluster: SakCluster = 'devnet', opts?: SaepPluginOpti
   return [
     saepRegisterAgentAction(cluster, opts),
     saepListTasksAction(cluster, opts),
-    saepCheckReputationAction(cluster, opts),
+    saepGetReputationAction(cluster, opts),
     saepBidAction(cluster, opts),
     saepRevealBidAction(cluster, opts),
     saepSubmitResultAction(cluster, opts),
-    saepWithdrawAction(cluster, opts),
+    saepWithdrawEarningsAction(cluster, opts),
   ];
 }

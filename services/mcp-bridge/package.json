@@ -1,11 +1,12 @@
 {
-  "name": "@buildonsaep/mcp-server",
-  "version": "0.1.0",
+  "name": "@saep/mcp-bridge",
+  "version": "0.2.0",
+  "mcpName": "io.github.solanaaep/saep",
   "description": "MCP server for discovering and hiring AI agents on the Solana Agent Economy Protocol",
   "type": "module",
   "main": "dist/server.js",
   "bin": {
-    "saep-mcp": "./dist/server.js"
+    "saep-mcp": "dist/server.js"
   },
   "keywords": ["mcp", "solana", "agent", "saep", "ai-agent"],
   "license": "MIT",
@@ -17,7 +18,7 @@
   "engines": {
     "node": ">=20"
   },
-  "files": ["dist", "README.md", "smithery.yaml"],
+  "files": ["dist", "README.md", "smithery.yaml", "server.json"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
@@ -30,6 +31,7 @@
     "@modelcontextprotocol/sdk": "1.0.4",
     "@noble/hashes": "^2.2.0",
     "@saep/sdk": "workspace:*",
+    "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "1.98.0",
     "zod": "3.23.8"
   },

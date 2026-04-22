@@ -9,6 +9,7 @@ import {
   vaultPda,
   agentRegistryGlobalPda,
   agentAccountPda,
+  reentrancyGuardPda,
   streamPda,
   streamEscrowPda,
 } from '../pda/index.js';
@@ -201,6 +202,10 @@ export interface WithdrawEarnedInput {
   routeData: Uint8Array;
   payerPriceFeed?: PublicKey;
   payoutPriceFeed?: PublicKey;
+  allowedTargets?: PublicKey | null;
+  hookAllowlist?: PublicKey | null;
+  agentHooks?: PublicKey | null;
+  tokenProgramId?: PublicKey;
 }
 
 export async function buildWithdrawEarnedIx(
@@ -211,12 +216,14 @@ export async function buildWithdrawEarnedIx(
   const [treasury] = treasuryPda(program.programId, input.agentDid);
   const [escrow] = streamEscrowPda(program.programId, input.stream);
   const [agentVault] = vaultPda(program.programId, input.agentDid, input.payoutMint);
+  const [guard] = reentrancyGuardPda(program.programId);
 
   return program.methods
     .withdrawEarned(Buffer.from(input.routeData))
     .accounts({
       global,
       treasury,
+      allowedTargets: input.allowedTargets ?? null,
       stream: input.stream,
       payerMint: input.payerMint,
       payoutMint: input.payoutMint,
@@ -225,8 +232,11 @@ export async function buildWithdrawEarnedIx(
       jupiterProgram: input.jupiterProgram,
       payerPriceFeed: input.payerPriceFeed ?? null,
       payoutPriceFeed: input.payoutPriceFeed ?? null,
+      hookAllowlist: input.hookAllowlist ?? null,
+      agentHooks: input.agentHooks ?? null,
+      guard,
       operator: input.operator,
-      tokenProgram: TOKEN_2022_PROGRAM_ID,
+      tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
     } as never)
     .instruction();
 }

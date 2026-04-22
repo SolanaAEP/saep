@@ -23,6 +23,14 @@ export const TaskHistoryQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
 });
 
+export const TasksQuerySchema = z.object({
+  capability: z.coerce.number().int().min(0).max(127).optional(),
+  status: z.string().optional(),
+  min_reward: z.string().regex(/^[0-9]+$/).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
+
 export const WsSubscribeSchema = z.object({
   type: z.literal('subscribe'),
   capabilities: z.array(z.number().int().min(0)).optional(),
@@ -41,6 +49,7 @@ export const WsMessageSchema = z.discriminatedUnion('type', [
 export type AgentsQuery = z.infer<typeof AgentsQuerySchema>;
 export type AgentDidParams = z.infer<typeof AgentDidParamsSchema>;
 export type TaskHistoryQuery = z.infer<typeof TaskHistoryQuerySchema>;
+export type TasksQuery = z.infer<typeof TasksQuerySchema>;
 export type WsMessage = z.infer<typeof WsMessageSchema>;
 
 // Webhook schemas

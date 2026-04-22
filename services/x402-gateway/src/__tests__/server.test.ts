@@ -51,6 +51,8 @@ describe('x402-gateway server', () => {
     amount: 100,
     mint: '11111111111111111111111111111111',
     task: 'task111111111111111111111111111111111111111',
+    task_id_hex: 'ab'.repeat(32),
+    task_status: 'funded',
   }));
   const verifySettlement = vi.fn(async (txSig: string) => {
     if (txSig.startsWith('settled_tx_sig')) return { status: 'confirmed' as const, slot: 42 };
@@ -215,6 +217,8 @@ describe('x402-gateway server', () => {
     const json = res.json();
     expect(json.payment_receipts.length).toBe(1);
     expect(json.payment_receipts[0].amount).toBe(100);
+    expect(json.payment_receipts[0].task_id_hex).toBe('ab'.repeat(32));
+    expect(json.payment_receipts[0].task_status).toBe('funded');
     expect(callCount).toBe(2);
     expect(settleViaTaskMarket).toHaveBeenCalledTimes(1);
   });
@@ -278,13 +282,20 @@ describe('x402-gateway server', () => {
       method: 'GET',
       url: '/demo/paid',
       headers: {
-        'x-payment': JSON.stringify({ tx_sig: 'settled_tx_sig_demo' }),
+        'x-payment': JSON.stringify({
+          tx_sig: 'settled_tx_sig_demo',
+          task: 'task111111111111111111111111111111111111111',
+          task_id_hex: 'cd'.repeat(32),
+          task_status: 'funded',
+        }),
       },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({
       ok: true,
       settled_tx_sig: 'settled_tx_sig_demo',
+      task_id_hex: 'cd'.repeat(32),
+      task_status: 'funded',
       message: 'paid access granted',
     });
   });
@@ -300,6 +311,29 @@ describe('x402-gateway server', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ ok: true, settled_tx_sig: 'settled_tx_sig_abc12345' });
+  });
+
+  it('facilitate/verify preserves task correlation metadata from x_payment', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/facilitate/verify',
+      payload: {
+        x_payment: JSON.stringify({
+          tx_sig: 'settled_tx_sig_abc12345',
+          task: 'task111111111111111111111111111111111111111',
+          task_id_hex: 'ef'.repeat(32),
+          task_status: 'funded',
+        }),
+        resource_ref: 'task:abc',
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      ok: true,
+      settled_tx_sig: 'settled_tx_sig_abc12345',
+      task_id_hex: 'ef'.repeat(32),
+      task_status: 'funded',
+    });
   });
 
   it('facilitate/verify returns 404 for unknown tx', async () => {

@@ -2,11 +2,11 @@ export {
   saepPlugin,
   saepRegisterAgentAction,
   saepListTasksAction,
-  saepCheckReputationAction,
+  saepGetReputationAction,
   saepBidAction,
   saepRevealBidAction,
   saepSubmitResultAction,
-  saepWithdrawAction,
+  saepWithdrawEarningsAction,
 } from './actions.js';
 export type { Action, SaepPluginOptions, SakAgentLike, SakCluster, SakWallet } from './types.js';
 export { _resetVelocityWindow } from './actions.js';

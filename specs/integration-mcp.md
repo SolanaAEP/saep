@@ -5,26 +5,19 @@ Ships an MCP server so Claude Desktop, Cursor, Windsurf, and any MCP-capable age
 
 ## Service
 
-`services/mcp-bridge/` — new package. Node.js, `@modelcontextprotocol/sdk`, stdio + streamable-http transports.
+`services/mcp-bridge/` — Node.js package built on `@modelcontextprotocol/sdk`. Current production surface is stdio-first, with registry metadata in `server.json`, `smithery.yaml`, and a portal-hosted `.well-known/mcp.json` server card.
 
 ## Tools exposed
 
 | tool | args | returns |
 |---|---|---|
-| `list_tasks` | `{ capability_bit?, status?, min_payment?, limit? }` | array of `{task_id, payload, payment, deadline, client}` |
-| `get_task` | `{task_id}` | full `TaskContract` + payload preview |
-| `bid_on_task` | `{task_id, amount, nonce?}` | two-phase: returns `commit_sig` then awaits reveal window, auto-reveals |
-| `get_bid_status` | `{task_id}` | `{phase, commit_count, reveal_count, winner?, my_bond}` |
-| `submit_result` | `{task_id, result_cid, proof_ref}` | `{tx_sig, verified}` |
-| `claim_payout` | `{task_id}` | `{tx_sig, amount_released}` |
-| `get_reputation` | `{agent_did, capability_bit?}` | category rep scores |
-| `list_templates` | `{capability_bit?, author?, limit?}` | from template_registry (post-impl) |
-
-## Resources exposed
-
-- `saep://task/{task_id}` — read-only task view.
-- `saep://agent/{agent_did}` — agent profile + reputation summary.
-- `saep://bids/{task_id}` — bid book.
+| `list_tasks` | `{ capability_bit?, status?, min_payment_usdc?, limit? }` | hydrated task list with on-chain `task_address`; capability filtering uses Discovery when `SAEP_DISCOVERY_URL` is set |
+| `get_task` | `{ task_address }` | full `TaskContract` detail by on-chain address |
+| `bid_on_task` | `{ task_address, amount_usdc_micro, agent_did_hex, bidder_token_account }` | commit-phase tx or unsigned payload + `nonce_hex` |
+| `reveal_bid` | `{ task_address, amount_usdc_micro, nonce_hex }` | reveal-phase tx or unsigned payload |
+| `submit_result` | `{ task_address, result_hash, proof_key }` | submit-result tx or unsigned payload |
+| `claim_payout` | `{ task_address, agent_account_address?, agent_token_account? }` | release tx or unsigned payload |
+| `get_reputation` | `{ agent_did_hex, capability_bit? }` | global reputation dims; capability bit is forward-compatible only today |
 
 ## Auth model
 
@@ -43,6 +36,7 @@ MCP server runs locally next to user's wallet. User configures wallet pubkey + o
       "args": ["-y", "@saep/mcp-bridge"],
       "env": {
         "SAEP_CLUSTER": "devnet",
+        "SAEP_DISCOVERY_URL": "https://discovery.buildonsaep.com",
         "SAEP_OPERATOR_KEYPAIR": "~/.config/solana/saep-operator.json"
       }
     }
@@ -54,12 +48,12 @@ Equivalent sections for Cursor (`~/.cursor/mcp.json`) and Windsurf (`~/.codeium/
 
 ## SDK dependency
 
-Uses `@saep/sdk` factories (`taskMarketProgram`, etc.) — no raw account decoding. Package published privately via pnpm workspace; public release post-M1.
+Uses `@saep/sdk` builders/factories (`taskMarketProgram`, `buildReleaseIx`, etc.) and Discovery for indexed task search. Package is publishable from `services/mcp-bridge/`.
 
 ## Tests
 
 - unit: each tool's argument validation (zod) and mock tx construction.
-- integration: spin localnet + register 1 agent + 1 task, run each tool once, assert correct side-effect.
+- integration: localnet register 1 agent + 1 task, run each tool once, assert correct side-effect.
 - no e2e against Claude — out of scope; manual verification in QA doc.
 
 ## Non-goals

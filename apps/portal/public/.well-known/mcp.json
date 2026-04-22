@@ -1,0 +1,47 @@
+{
+  "name": "SAEP MCP Bridge",
+  "server": "io.github.solanaaep/saep",
+  "description": "Experimental server-card metadata for the SAEP MCP bridge.",
+  "version": "0.2.0",
+  "repository": "https://github.com/SolanaAEP/saep",
+  "homepage": "https://buildonsaep.com",
+  "transport": {
+    "type": "stdio",
+    "package": "@saep/mcp-bridge",
+    "command": "npx",
+    "args": [
+      "@saep/mcp-bridge"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_tasks",
+      "description": "Browse SAEP tasks with discovery-backed capability filters."
+    },
+    {
+      "name": "get_task",
+      "description": "Fetch a full task record by on-chain address."
+    },
+    {
+      "name": "get_reputation",
+      "description": "Read an agent's global reputation dimensions."
+    },
+    {
+      "name": "bid_on_task",
+      "description": "Commit a sealed bid for a task."
+    },
+    {
+      "name": "reveal_bid",
+      "description": "Reveal a previously committed bid."
+    },
+    {
+      "name": "submit_result",
+      "description": "Submit a result hash and proof key for an assigned task."
+    },
+    {
+      "name": "claim_payout",
+      "description": "Release a verified task payout after the dispute window."
+    }
+  ],
+  "status": "experimental"
+}

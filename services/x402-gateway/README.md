@@ -10,6 +10,12 @@ HTTP 402 payment gateway for agent-to-agent commerce. Agents expose capabilities
 4. Gateway verifies payment, proxies request to agent
 5. Agent returns result and the paid retry carries the settled receipt in `x-payment`
 
+Receipts remain backward compatible with `tx_sig` and now also include task correlation fields when available:
+
+- `task`
+- `task_id_hex`
+- `task_status`
+
 ## Run
 
 ```bash
@@ -36,4 +42,4 @@ Requires: Redis (`REDIS_URL`), Solana RPC (`SOLANA_RPC_URL`), and a funded signe
 3. The retry includes the payment receipt in `x-payment`.
 4. `/demo/paid` verifies the settled transaction and returns paid content.
 
-The current live settlement slice stops at funded escrow. Full `submit_result + verify_task + release` remains blocked by the proof-verification follow-up noted in `tests/e2e_happy_path.ts`.
+The current live settlement slice stops at funded escrow plus explicit task correlation metadata. Full `submit_result + verify_task + release` remains blocked by the proof-verification follow-up noted in `tests/e2e_happy_path.ts`.

@@ -1,43 +1,19 @@
 import { z } from 'zod';
 import { PublicKey, Transaction } from '@solana/web3.js';
+import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { BN } from '@coral-xyz/anchor';
 import { keccak_256 } from '@noble/hashes/sha3.js';
 import {
   agentRegistryProgram,
   buildCommitBidIx,
+  buildReleaseIx,
   buildRevealBidIx,
   buildSubmitResultIx,
   fetchAgentByDid,
+  fetchMarketGlobal,
   resolveCluster,
   taskMarketProgram,
 } from '@saep/sdk';
-
-// Mirrors the Anchor-decoded TaskContract shape (from @saep/sdk/accounts/anchor-decoded).
-// Defined locally until next SDK build publishes the exported type.
-interface DecodedTaskContract {
-  taskId: number[];
-  client: PublicKey;
-  agentDid: number[];
-  taskNonce: number[];
-  paymentMint: PublicKey;
-  paymentAmount: BN;
-  status: Record<string, Record<string, never>>;
-  deadline: BN;
-  verified: boolean;
-  createdAt: BN;
-  taskHash: number[];
-  resultHash: number[];
-  proofKey: number[];
-  criteriaRoot: number[];
-  protocolFee: BN;
-  solrepFee: BN;
-  milestoneCount: number;
-  milestonesComplete: number;
-  fundedAt: BN;
-  submittedAt: BN;
-  disputeWindowEnd: BN;
-  payload: Record<string, unknown>;
-}
 import type { Config } from './config.js';
 
 const Base58 = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
@@ -76,17 +52,17 @@ export const SubmitResultArgs = z.object({
   proof_key: Hex32,
 });
 
-interface JsonSchema {
-  type: string;
-  properties: Record<string, { type: string; description?: string }>;
-  required: string[];
-}
+export const ClaimPayoutArgs = z.object({
+  task_address: Base58,
+  agent_account_address: Base58.optional(),
+  agent_token_account: Base58.optional(),
+});
 
 type Tool = {
   name: string;
   description: string;
-  inputSchema: JsonSchema;
-  handler: (args: unknown, cfg: Config) => Promise<Record<string, unknown>>;
+  inputSchema: Record<string, unknown>;
+  handler: (args: unknown, cfg: Config) => Promise<unknown>;
 };
 
 const USER_STATUS_MAP: Record<string, string[]> = {
@@ -192,52 +168,181 @@ async function signOrSerialize(
   return serializeUnsigned(tx, operator, bh);
 }
 
+type ListedTask = {
+  task_address: string;
+  task_id_hex: string;
+  client: string;
+  agent_did_hex: string;
+  payment_mint: string;
+  payment_amount: string;
+  status: string;
+  deadline: number;
+  verified: boolean;
+  created_at: number;
+};
+
+type DiscoveryTaskResult = {
+  task_id_hex: string;
+  status: string | null;
+  reward_lamports: string | null;
+  capability_mask: string | null;
+  created_at_unix: number;
+  deadline_unix: number | null;
+};
+
+function mapTaskAccount(
+  publicKey: PublicKey,
+  account: Record<string, unknown>,
+): ListedTask {
+  const status = Object.keys(account.status as Record<string, unknown>)[0] ?? 'unknown';
+  return {
+    task_address: publicKey.toBase58(),
+    task_id_hex: bytesToHex(account.taskId as number[]),
+    client: (account.client as PublicKey).toBase58(),
+    agent_did_hex: bytesToHex(account.agentDid as number[]),
+    payment_mint: (account.paymentMint as PublicKey).toBase58(),
+    payment_amount: (account.paymentAmount as BN).toString(),
+    status,
+    deadline: (account.deadline as BN).toNumber(),
+    verified: account.verified as boolean,
+    created_at: (account.createdAt as BN).toNumber(),
+  };
+}
+
+function discoveryUrl(base: string, path: string): URL {
+  return new URL(path.replace(/^\//, ''), base.endsWith('/') ? base : `${base}/`);
+}
+
+async function resolveTokenProgram(
+  cfg: Config,
+  mint: PublicKey,
+): Promise<PublicKey> {
+  const info = await cfg.connection.getAccountInfo(mint, 'confirmed');
+  if (!info) throw new Error(`payment mint ${mint.toBase58()} was not found`);
+  if (info.owner.equals(TOKEN_2022_PROGRAM_ID)) return TOKEN_2022_PROGRAM_ID;
+  if (info.owner.equals(TOKEN_PROGRAM_ID)) return TOKEN_PROGRAM_ID;
+  throw new Error(`payment mint ${mint.toBase58()} is not an SPL token mint`);
+}
+
+async function searchTasksViaDiscovery(
+  cfg: Config,
+  input: z.infer<typeof ListTasksArgs>,
+): Promise<DiscoveryTaskResult[]> {
+  if (!cfg.discoveryUrl) {
+    throw new Error('SAEP_DISCOVERY_URL is required for discovery-backed task search');
+  }
+
+  const allowed = input.status ? USER_STATUS_MAP[input.status] ?? [] : null;
+  if (input.status === 'bidding') return [];
+
+  const url = discoveryUrl(cfg.discoveryUrl, '/tasks');
+  if (input.capability_bit !== undefined) {
+    url.searchParams.set('capability', String(input.capability_bit));
+  }
+  if (allowed && allowed.length > 0) {
+    url.searchParams.set('status', allowed.join(','));
+  }
+  if (input.min_payment_usdc !== undefined) {
+    url.searchParams.set('min_reward', String(Math.round(input.min_payment_usdc * 1_000_000)));
+  }
+  url.searchParams.set('page', '1');
+  url.searchParams.set('limit', String(input.limit));
+
+  const res = await fetch(url, {
+    headers: { accept: 'application/json' },
+  });
+  if (!res.ok) {
+    throw new Error(`discovery request failed (${res.status})`);
+  }
+
+  const body = await res.json() as { items?: DiscoveryTaskResult[] };
+  return body.items ?? [];
+}
+
+async function resolveReleaseAgentAccount(
+  cfg: Config,
+  task: Record<string, unknown>,
+  explicitAgentAccount?: string,
+): Promise<{ address: PublicKey; operator: PublicKey }> {
+  const config = resolveCluster({ cluster: cfg.cluster });
+  const ar = agentRegistryProgram(cfg.provider, config);
+
+  if (explicitAgentAccount) {
+    const address = new PublicKey(explicitAgentAccount);
+    const raw = await ar.account.agentAccount.fetchNullable(address) as
+      | { operator: PublicKey }
+      | null;
+    if (!raw) throw new Error('agent_account_not_found');
+    return { address, operator: raw.operator };
+  }
+
+  const assignedAgent = (task.assignedAgent as PublicKey | null | undefined) ?? null;
+  if (assignedAgent) {
+    const raw = await ar.account.agentAccount.fetchNullable(assignedAgent) as
+      | { operator: PublicKey }
+      | null;
+    if (raw) {
+      return { address: assignedAgent, operator: raw.operator };
+    }
+  }
+
+  const didHex = bytesToHex(task.agentDid as number[]);
+  const agent = await fetchAgentByDid(ar, didHex);
+  if (!agent) throw new Error(`agent_not_found_for_task:${didHex}`);
+  return { address: agent.address, operator: agent.operator };
+}
+
 export function buildTools(): Tool[] {
   return [
     {
       name: 'list_tasks',
       description:
-        'Scan task_market for tasks matching status/min_payment filters. Returns up to `limit` rows. ' +
-        'Note: `bidding` state is empty until commit-reveal bidding ships. `capability_bit` filter requires joining agent_registry — rejected for M1.',
+        'Browse task_market tasks filtered by discovery-backed status/capability criteria. Returns up to `limit` rows. ' +
+        'When SAEP_DISCOVERY_URL is configured, capability-aware search is served by the discovery index and hydrated with on-chain task addresses.',
       inputSchema: toJsonSchema(ListTasksArgs),
       handler: async (args, cfg) => {
         const input = ListTasksArgs.parse(args);
-        if (input.capability_bit !== undefined) {
-          return {
-            tasks: [],
-            error: 'CAPABILITY_FILTER_NOT_SUPPORTED',
-            reason: 'capability_bit requires per-agent join; deferred to M2 indexer.',
-          };
-        }
         const config = resolveCluster({ cluster: cfg.cluster });
         const tm = taskMarketProgram(cfg.provider, config);
         const allowed = input.status ? USER_STATUS_MAP[input.status] : null;
         const minPay = input.min_payment_usdc !== undefined
           ? BigInt(Math.round(input.min_payment_usdc * 1_000_000))
           : null;
+        const discoveryTasks = cfg.discoveryUrl ? await searchTasksViaDiscovery(cfg, input) : null;
+
+        if (!cfg.discoveryUrl && input.capability_bit !== undefined) {
+          return {
+            cluster: cfg.cluster,
+            tasks: [],
+            error: 'DISCOVERY_URL_REQUIRED',
+            reason: 'capability_bit search now routes through the discovery service; set SAEP_DISCOVERY_URL.',
+          };
+        }
+        if (discoveryTasks && discoveryTasks.length === 0) {
+          return {
+            cluster: cfg.cluster,
+            tasks: [],
+            total_matched: 0,
+          };
+        }
 
         const accounts = await tm.account.taskContract.all();
-        const mapped = accounts.map(({ publicKey, account }) => {
-          const raw = account as DecodedTaskContract;
-          const status = Object.keys(raw.status)[0] ?? 'unknown';
-          return {
-            task_address: publicKey.toBase58(),
-            task_id_hex: bytesToHex(raw.taskId),
-            client: raw.client.toBase58(),
-            agent_did_hex: bytesToHex(raw.agentDid),
-            payment_mint: raw.paymentMint.toBase58(),
-            payment_amount: raw.paymentAmount.toString(),
-            status,
-            deadline: raw.deadline.toNumber(),
-            verified: raw.verified,
-            created_at: raw.createdAt.toNumber(),
-          };
-        });
-        const filtered = mapped.filter((t) => {
-          if (allowed && !allowed.includes(t.status)) return false;
-          if (minPay !== null && BigInt(t.payment_amount) < minPay) return false;
+        const mapped = accounts.map(({ publicKey, account }) =>
+          mapTaskAccount(publicKey, account as unknown as Record<string, unknown>));
+
+        let filtered = mapped.filter((task) => {
+          if (allowed && !allowed.includes(task.status)) return false;
+          if (minPay !== null && BigInt(task.payment_amount) < minPay) return false;
           return true;
         });
+
+        if (discoveryTasks) {
+          const ranks = new Map(discoveryTasks.map((task, index) => [task.task_id_hex, index]));
+          filtered = filtered
+            .filter((task) => ranks.has(task.task_id_hex))
+            .sort((a, b) => (ranks.get(a.task_id_hex) ?? Number.MAX_SAFE_INTEGER) - (ranks.get(b.task_id_hex) ?? Number.MAX_SAFE_INTEGER));
+        }
+
         return {
           cluster: cfg.cluster,
           tasks: filtered.slice(0, input.limit),
@@ -255,29 +360,31 @@ export function buildTools(): Tool[] {
         const config = resolveCluster({ cluster: cfg.cluster });
         const tm = taskMarketProgram(cfg.provider, config);
         const pk = new PublicKey(input.task_address);
-        const raw = (await tm.account.taskContract.fetchNullable(pk)) as DecodedTaskContract | null;
+        const raw = (await tm.account.taskContract.fetchNullable(pk)) as
+          | Record<string, unknown>
+          | null;
         if (!raw) return { cluster: cfg.cluster, error: 'task_not_found' };
-        const status = Object.keys(raw.status)[0] ?? 'unknown';
+        const status = Object.keys(raw.status as Record<string, unknown>)[0] ?? 'unknown';
         return {
           cluster: cfg.cluster,
           task_address: pk.toBase58(),
-          task_id_hex: bytesToHex(raw.taskId),
-          client: raw.client.toBase58(),
-          agent_did_hex: bytesToHex(raw.agentDid),
-          payment_mint: raw.paymentMint.toBase58(),
-          payment_amount: raw.paymentAmount.toString(),
+          task_id_hex: bytesToHex(raw.taskId as number[]),
+          client: (raw.client as PublicKey).toBase58(),
+          agent_did_hex: bytesToHex(raw.agentDid as number[]),
+          payment_mint: (raw.paymentMint as PublicKey).toBase58(),
+          payment_amount: (raw.paymentAmount as BN).toString(),
           status,
-          deadline: raw.deadline.toNumber(),
-          verified: raw.verified,
-          created_at: raw.createdAt.toNumber(),
-          task_hash_hex: bytesToHex(raw.taskHash),
-          result_hash_hex: bytesToHex(raw.resultHash),
-          proof_key_hex: bytesToHex(raw.proofKey),
-          criteria_root_hex: bytesToHex(raw.criteriaRoot),
-          protocol_fee: raw.protocolFee.toString(),
-          solrep_fee: raw.solrepFee.toString(),
-          milestone_count: raw.milestoneCount,
-          milestones_complete: raw.milestonesComplete,
+          deadline: (raw.deadline as BN).toNumber(),
+          verified: raw.verified as boolean,
+          created_at: (raw.createdAt as BN).toNumber(),
+          task_hash_hex: bytesToHex(raw.taskHash as number[]),
+          result_hash_hex: bytesToHex(raw.resultHash as number[]),
+          proof_key_hex: bytesToHex(raw.proofKey as number[]),
+          criteria_root_hex: bytesToHex(raw.criteriaRoot as number[]),
+          protocol_fee: (raw.protocolFee as BN).toString(),
+          solrep_fee: (raw.solrepFee as BN).toString(),
+          milestone_count: raw.milestoneCount as number,
+          milestones_complete: raw.milestonesComplete as number,
         };
       },
     },
@@ -442,10 +549,79 @@ export function buildTools(): Tool[] {
         return { cluster: cfg.cluster, ...outcome, agent_did_hex: didHex };
       },
     },
+    {
+      name: 'claim_payout',
+      description:
+        'Release escrow for a verified task after its dispute window closes. Derives the agent/operator token accounts automatically ' +
+        'when possible and returns a signed signature or unsigned transaction payload.',
+      inputSchema: toJsonSchema(ClaimPayoutArgs),
+      handler: async (args, cfg) => {
+        const input = ClaimPayoutArgs.parse(args);
+        const config = resolveCluster({ cluster: cfg.cluster });
+        const tm = taskMarketProgram(cfg.provider, config);
+
+        const taskPk = new PublicKey(input.task_address);
+        const task = (await tm.account.taskContract.fetchNullable(taskPk)) as
+          | Record<string, unknown>
+          | null;
+        if (!task) return { cluster: cfg.cluster, error: 'task_not_found' };
+
+        const marketGlobal = await fetchMarketGlobal(tm);
+        if (!marketGlobal) {
+          return { cluster: cfg.cluster, error: 'market_global_not_found' };
+        }
+
+        const paymentMint = task.paymentMint as PublicKey;
+        const tokenProgramId = await resolveTokenProgram(cfg, paymentMint);
+        const agentAccount = await resolveReleaseAgentAccount(cfg, task, input.agent_account_address);
+        const agentTokenAccount = input.agent_token_account
+          ? new PublicKey(input.agent_token_account)
+          : getAssociatedTokenAddressSync(paymentMint, agentAccount.operator, true, tokenProgramId);
+        const feeCollectorTokenAccount = getAssociatedTokenAddressSync(
+          paymentMint,
+          marketGlobal.feeCollector,
+          true,
+          tokenProgramId,
+        );
+        const solrepPoolTokenAccount = getAssociatedTokenAddressSync(
+          paymentMint,
+          marketGlobal.solrepPool,
+          true,
+          tokenProgramId,
+        );
+        const cranker = cfg.keypair?.publicKey ?? cfg.provider.wallet.publicKey;
+
+        const ix = await buildReleaseIx(tm, config, {
+          cranker,
+          task: taskPk,
+          paymentMint,
+          agentTokenAccount,
+          feeCollectorTokenAccount,
+          solrepPoolTokenAccount,
+          agentAccount: agentAccount.address,
+          client: task.client as PublicKey,
+          tokenProgramId,
+        });
+        const outcome = await signOrSerialize(cfg, ix, cranker);
+
+        return {
+          cluster: cfg.cluster,
+          ...outcome,
+          task_address: taskPk.toBase58(),
+          task_id_hex: bytesToHex(task.taskId as number[]),
+          payment_mint: paymentMint.toBase58(),
+          payment_amount: (task.paymentAmount as BN).toString(),
+          agent_account_address: agentAccount.address.toBase58(),
+          agent_token_account: agentTokenAccount.toBase58(),
+          fee_collector_token_account: feeCollectorTokenAccount.toBase58(),
+          solrep_pool_token_account: solrepPoolTokenAccount.toBase58(),
+        };
+      },
+    },
   ];
 }
 
-function toJsonSchema(schema: z.ZodTypeAny): JsonSchema {
+function toJsonSchema(schema: z.ZodTypeAny): Record<string, unknown> {
   const def = (schema as z.ZodObject<z.ZodRawShape>)._def;
   const shape =
     def && 'shape' in def && typeof def.shape === 'function' ? def.shape() : {};

@@ -32,6 +32,8 @@ export interface PaymentReceipt {
   amount: number;
   mint: string;
   task?: string;
+  task_id_hex?: string;
+  task_status?: string;
 }
 
 export function parseXPaymentHeader(header: string): PaymentDetails | null {
@@ -53,6 +55,8 @@ export interface SettlementResult {
   amount: number;
   mint: string;
   task?: string;
+  task_id_hex?: string;
+  task_status?: string;
 }
 
 function bytesToHex(bytes: Uint8Array): string {
@@ -320,7 +324,9 @@ export async function settleViaTaskMarket(
 
   const task = await taskMarket.account.taskContract.fetch(taskAddress) as {
     status: Record<string, unknown>;
+    taskId: number[];
   };
+  const taskStatus = Object.keys(task.status)[0] ?? 'unknown';
   if (!('funded' in task.status)) {
     throw new Error(`task ${taskAddress.toBase58()} was created but did not reach funded status`);
   }
@@ -330,6 +336,8 @@ export async function settleViaTaskMarket(
     amount: payment.amount,
     mint: payment.mint,
     task: taskAddress.toBase58(),
+    task_id_hex: bytesToHex(Uint8Array.from(task.taskId)),
+    task_status: taskStatus,
   };
 }
 

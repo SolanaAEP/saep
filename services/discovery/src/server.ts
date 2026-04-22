@@ -6,6 +6,7 @@ import {
   AgentsQuerySchema,
   AgentDidParamsSchema,
   TaskHistoryQuerySchema,
+  TasksQuerySchema,
   WsMessageSchema,
   RegisterWebhookBody,
   RemoveWebhookParams,
@@ -118,6 +119,95 @@ async function buildServer() {
       page: q.page,
       limit: q.limit,
       total,
+    };
+  });
+
+  // GET /tasks — paginated task search backed by discovery views
+  app.get('/tasks', async (req, reply) => {
+    const parsed = TasksQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_query', issues: parsed.error.issues });
+    }
+
+    const q = parsed.data;
+    const offset = (q.page - 1) * q.limit;
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    if (q.status) {
+      const statuses = q.status.split(',').map((s) => s.trim()).filter(Boolean);
+      if (statuses.length > 0) {
+        conditions.push(`t.status = ANY($${idx++})`);
+        values.push(statuses);
+      }
+    }
+
+    if (q.capability != null) {
+      const mask = (1n << BigInt(q.capability)).toString();
+      conditions.push(`(a.capability_mask & $${idx}::numeric) = $${idx}::numeric`);
+      values.push(mask);
+      idx++;
+    }
+
+    if (q.min_reward) {
+      conditions.push(`t.reward_lamports >= $${idx++}::numeric`);
+      values.push(q.min_reward);
+    }
+
+    const from = `
+      FROM task_directory t
+      LEFT JOIN agent_directory a ON a.agent_did = t.agent_did
+    `;
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const countRow = await queryOne<{ total: number }>(
+      `SELECT count(*)::int AS total ${from} ${where}`,
+      values,
+    );
+
+    const rows = await query<{
+      task_id: Buffer;
+      creator: string | null;
+      agent_did: Buffer | null;
+      status: string | null;
+      reward_lamports: string | null;
+      capability_mask: string | null;
+      created_at_unix: string;
+      deadline_unix: string | null;
+      updated_at_unix: string | null;
+    }>(
+      `SELECT t.task_id,
+              t.creator,
+              t.agent_did,
+              t.status,
+              t.reward_lamports::text AS reward_lamports,
+              COALESCE(t.capability_mask::text, a.capability_mask::text) AS capability_mask,
+              t.created_at_unix,
+              t.deadline_unix,
+              t.updated_at_unix
+       ${from}
+       ${where}
+       ORDER BY t.created_at_unix DESC, t.task_id ASC
+       LIMIT $${idx++} OFFSET $${idx++}`,
+      [...values, q.limit, offset],
+    );
+
+    return {
+      items: rows.map((row) => ({
+        task_id_hex: bytesToHex(row.task_id),
+        creator: row.creator,
+        agent_did_hex: row.agent_did ? bytesToHex(row.agent_did) : null,
+        status: row.status,
+        reward_lamports: row.reward_lamports,
+        capability_mask: row.capability_mask,
+        created_at_unix: Number(row.created_at_unix),
+        deadline_unix: row.deadline_unix ? Number(row.deadline_unix) : null,
+        updated_at_unix: row.updated_at_unix ? Number(row.updated_at_unix) : null,
+      })),
+      page: q.page,
+      limit: q.limit,
+      total: countRow?.total ?? 0,
     };
   });
 

@@ -1,6 +1,6 @@
 name: "@buildonsaep/mcp-bridge"
 description: MCP server for discovering and hiring AI agents on the Solana Agent Economy Protocol
-version: 0.1.0
+version: 0.2.0
 
 startCommand: "npx @buildonsaep/mcp-bridge"
 
@@ -17,6 +17,8 @@ tools:
     description: Reveal a previously committed bid
   - name: submit_result
     description: Submit task completion result
+  - name: claim_payout
+    description: Release a verified task payout after the dispute window
 
 env:
   SAEP_CLUSTER:
@@ -27,6 +29,10 @@ env:
     required: false
   SAEP_RPC_URL:
     description: Custom Solana RPC endpoint URL (overrides cluster default)
+    type: string
+    required: false
+  SAEP_DISCOVERY_URL:
+    description: Discovery service base URL for capability-aware task search
     type: string
     required: false
   SAEP_OPERATOR_KEYPAIR:

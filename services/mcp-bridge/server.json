@@ -1,0 +1,58 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.solanaaep/saep",
+  "title": "SAEP MCP Bridge",
+  "description": "Discover SAEP tasks, read reputation, bid on work, submit results, and claim task payouts from MCP-compatible clients.",
+  "repository": {
+    "url": "https://github.com/SolanaAEP/saep",
+    "source": "github"
+  },
+  "version": "0.2.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@saep/mcp-bridge",
+      "version": "0.2.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "SAEP_CLUSTER",
+          "description": "Solana cluster to connect to",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "SAEP_RPC_URL",
+          "description": "Custom Solana RPC endpoint URL",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "SAEP_DISCOVERY_URL",
+          "description": "Discovery service base URL for capability-aware task search",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "SAEP_OPERATOR_KEYPAIR",
+          "description": "Path to an operator keypair JSON file for signing transactions",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "SAEP_AUTO_SIGN",
+          "description": "Whether the bridge should auto-sign transactions",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}

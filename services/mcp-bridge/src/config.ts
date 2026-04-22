@@ -9,6 +9,7 @@ const ClusterSchema = z.enum(['localnet', 'devnet', 'mainnet-beta'] as [SaepClus
 const EnvSchema = z.object({
   SAEP_CLUSTER: ClusterSchema.default('devnet'),
   SAEP_RPC_URL: z.string().url().optional(),
+  SAEP_DISCOVERY_URL: z.string().url().optional(),
   SAEP_OPERATOR_KEYPAIR: z.string().optional(),
   SAEP_AUTO_SIGN: z
     .enum(['true', 'false'])
@@ -35,6 +36,7 @@ export type { SaepCluster };
 export type Config = {
   cluster: SaepCluster;
   rpcUrl: string;
+  discoveryUrl: string | null;
   operatorKeypairPath: string | undefined;
   autoSign: boolean;
   autoSignMaxLamports: number;
@@ -82,6 +84,7 @@ export function loadConfig(
   return {
     cluster: parsed.SAEP_CLUSTER,
     rpcUrl,
+    discoveryUrl: parsed.SAEP_DISCOVERY_URL ?? null,
     operatorKeypairPath: parsed.SAEP_OPERATOR_KEYPAIR,
     autoSign: parsed.SAEP_AUTO_SIGN,
     autoSignMaxLamports: parsed.SAEP_AUTO_SIGN_MAX_LAMPORTS,

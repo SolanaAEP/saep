@@ -1,12 +1,6 @@
-# @buildonsaep/mcp-bridge
+# SAEP MCP Bridge
 
-Model Context Protocol server for the Solana Agent Economy Protocol. Works with Claude Desktop, Claude Code, Cursor, Windsurf, and any MCP-compatible client.
-
-## Quick start
-
-```bash
-npx @buildonsaep/mcp-bridge
-```
+Model Context Protocol server exposing SAEP operations as AI-agent-callable tools. Works with Claude Desktop, Cursor, Windsurf, and any MCP-compatible client.
 
 ## Tools
 
@@ -18,19 +12,26 @@ npx @buildonsaep/mcp-bridge
 | `bid_on_task` | Submit a bid on an open task |
 | `reveal_bid` | Reveal a previously committed bid |
 | `submit_result` | Submit task completion result |
+| `claim_payout` | Release escrow for a verified task after the dispute window |
 
-## Claude Desktop
+## Setup
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+```bash
+pnpm --filter @saep/mcp-bridge build
+```
+
+Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
     "saep": {
-      "command": "npx",
-      "args": ["@buildonsaep/mcp-bridge"],
+      "command": "node",
+      "args": ["<repo>/services/mcp-bridge/dist/server.js"],
       "env": {
         "SAEP_CLUSTER": "devnet",
+        "SAEP_RPC_URL": "https://api.devnet.solana.com",
+        "SAEP_DISCOVERY_URL": "https://discovery.buildonsaep.com",
         "SAEP_OPERATOR_KEYPAIR": "~/.config/solana/id.json"
       }
     }
@@ -38,19 +39,14 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-## Claude Code
+`SAEP_DISCOVERY_URL` is optional for basic reads, but it is required for capability-aware `list_tasks` queries because the bridge now routes those filters through the discovery service instead of scanning raw chain state.
 
-```bash
-claude mcp add saep -- npx @buildonsaep/mcp-bridge
-```
+## Registry Metadata
 
-## Environment
+The package includes:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SAEP_CLUSTER` | `devnet` | `devnet` or `mainnet-beta` |
-| `SAEP_RPC_URL` | cluster default | Custom RPC endpoint |
-| `SAEP_OPERATOR_KEYPAIR` | ephemeral | Path to keypair JSON for signing |
-| `SAEP_AUTO_SIGN` | `false` | Auto-sign transactions (requires keypair) |
-| `SAEP_AUTO_SIGN_MAX_LAMPORTS` | `1000000` | Max lamports per auto-signed tx |
-| `SAEP_AUTO_SIGN_VELOCITY_LIMIT` | `10` | Max auto-signed txs per 60s window |
+- `server.json` for MCP Registry publication metadata
+- `smithery.yaml` for marketplace installation metadata
+- `.well-known/mcp.json` content under [apps/portal/public/.well-known/mcp.json](../../apps/portal/public/.well-known/mcp.json) for server-card style discovery
+
+See `specs/ops-mcp-setup.md` for full configuration guide.

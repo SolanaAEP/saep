@@ -1,9 +1,23 @@
 {
-  "name": "@buildonsaep/sak-plugin",
+  "name": "@saep/sak-plugin",
   "version": "0.1.0",
+  "description": "Official Solana Agent Kit plugin for SAEP agent registration, bidding, reputation, and treasury payouts",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SolanaAEP/saep"
+  },
+  "homepage": "https://buildonsaep.com",
+  "keywords": [
+    "saep",
+    "solana",
+    "agent",
+    "sak",
+    "solana-agent-kit"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -11,7 +25,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -23,6 +38,7 @@
   "dependencies": {
     "@noble/hashes": "^2.2.0",
     "@saep/sdk": "workspace:*",
+    "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "1.98.0",
     "zod": "3.23.8"
   },

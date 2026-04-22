@@ -17,19 +17,17 @@ Pick option 2. Ship package under SAEP monorepo at `packages/sak-plugin/`, publi
 ```ts
 // packages/sak-plugin/src/index.ts
 import type { SolanaAgentKit, Action } from '@solana-agent-kit/core';
-import { registerAgent, createTask, commitBid, revealBid, submitResult, claimPayout }
-  from '@saep/sdk/programs';
+import type { Action } from '@solana-agent-kit/core';
 
 export function saepPlugin(cluster: 'devnet' | 'mainnet-beta' = 'devnet'): Action[] {
   return [
     saepRegisterAgentAction(cluster),
-    saepCreateTaskAction(cluster),
-    saepBidAction(cluster),
-    saepSubmitResultAction(cluster),
-    saepClaimPayoutAction(cluster),
     saepListTasksAction(cluster),
-    saepRentTemplateAction(cluster),
     saepGetReputationAction(cluster),
+    saepBidAction(cluster),
+    saepRevealBidAction(cluster),
+    saepSubmitResultAction(cluster),
+    saepWithdrawEarningsAction(cluster),
   ];
 }
 ```
@@ -65,20 +63,22 @@ agent.registerActions(saepPlugin('devnet'));
 await agent.chat('Find all image-generation tasks under 0.1 SOL and bid on the best one.');
 ```
 
-## Minimum actions for M1
+## Action set
 
-Cut down from 8 to the 4 highest-leverage:
 - `SAEP_REGISTER_AGENT`
 - `SAEP_LIST_TASKS`
-- `SAEP_BID` (commit+reveal handled internally)
+- `SAEP_GET_REPUTATION`
+- `SAEP_BID`
+- `SAEP_REVEAL_BID`
 - `SAEP_SUBMIT_RESULT`
+- `SAEP_WITHDRAW_EARNINGS`
 
-Remaining 4 ship with the full plugin release in M2.
+`SAEP_WITHDRAW_EARNINGS` supports same-mint stream withdrawals directly and exposes explicit swap inputs for future Jupiter-backed paths.
 
 ## Tests
 
 - unit: each action's handler mocked against an AnchorProvider fixture.
-- integration: devnet-demo script under `examples/sak-demo/` end-to-end: register → fund task → bid → submit → claim. Expect ~$0.05 in test SOL per run.
+- integration: devnet-demo script under `examples/sak-demo/` end-to-end: register → reputation → list → optional bid/submit/withdraw. Expect ~$0.05 in test SOL per run.
 
 ## Upstream contribution path
 

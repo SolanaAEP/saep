@@ -125,12 +125,23 @@ export function build(opts: BuildOpts) {
     }
 
     let txSig: string;
+    let taskAddress: string | null = null;
+    let taskIdHex: string | null = null;
+    let taskStatus: string | null = null;
     try {
-      const payload = JSON.parse(xPayment) as { tx_sig?: string };
+      const payload = JSON.parse(xPayment) as {
+        tx_sig?: string;
+        task?: string;
+        task_id_hex?: string;
+        task_status?: string;
+      };
       if (!payload.tx_sig) {
         return requirePayment('x_payment_missing_tx_sig');
       }
       txSig = payload.tx_sig;
+      taskAddress = payload.task ?? null;
+      taskIdHex = payload.task_id_hex ?? null;
+      taskStatus = payload.task_status ?? null;
     } catch {
       return requirePayment('x_payment_invalid_json');
     }
@@ -143,6 +154,9 @@ export function build(opts: BuildOpts) {
         settled_tx_sig: txSig,
         amount: challenge.amount,
         mint: challenge.mint,
+        task: taskAddress,
+        task_id_hex: taskIdHex,
+        task_status: taskStatus,
         slot: verification.slot,
         message: 'paid access granted',
       });
@@ -294,13 +308,24 @@ export function build(opts: BuildOpts) {
 
     const { x_payment } = parsed.data;
     let txSig: string;
+    let taskAddress: string | null = null;
+    let taskIdHex: string | null = null;
+    let taskStatus: string | null = null;
     try {
-      const payload = JSON.parse(x_payment) as { tx_sig?: string };
+      const payload = JSON.parse(x_payment) as {
+        tx_sig?: string;
+        task?: string;
+        task_id_hex?: string;
+        task_status?: string;
+      };
       if (!payload.tx_sig) {
         facilitateVerifyTotal.inc({ result: 'invalid_payload' });
         return reply.code(400).send({ error: 'x_payment missing tx_sig' });
       }
       txSig = payload.tx_sig;
+      taskAddress = payload.task ?? null;
+      taskIdHex = payload.task_id_hex ?? null;
+      taskStatus = payload.task_status ?? null;
     } catch {
       facilitateVerifyTotal.inc({ result: 'invalid_payload' });
       return reply.code(400).send({ error: 'x_payment is not valid JSON' });
@@ -310,7 +335,14 @@ export function build(opts: BuildOpts) {
 
     if (result.status === 'confirmed' || result.status === 'finalized') {
       facilitateVerifyTotal.inc({ result: 'settled' });
-      return reply.send({ ok: true, settled_tx_sig: txSig, slot: result.slot });
+      return reply.send({
+        ok: true,
+        settled_tx_sig: txSig,
+        task: taskAddress,
+        task_id_hex: taskIdHex,
+        task_status: taskStatus,
+        slot: result.slot,
+      });
     }
 
     if (result.status === 'failed') {

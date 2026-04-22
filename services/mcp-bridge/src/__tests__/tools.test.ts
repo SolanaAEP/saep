@@ -5,6 +5,7 @@ import {
   GetTaskArgs,
   GetReputationArgs,
   BidOnTaskArgs,
+  ClaimPayoutArgs,
   SubmitResultArgs,
   _resetVelocityWindow,
 } from '../tools.js';
@@ -18,6 +19,7 @@ describe('mcp-bridge tools', () => {
   it('exposes the expected tool set', () => {
     expect(tools.map((t) => t.name).sort()).toEqual([
       'bid_on_task',
+      'claim_payout',
       'get_reputation',
       'get_task',
       'list_tasks',
@@ -59,6 +61,17 @@ describe('mcp-bridge tools', () => {
         task_address: '11111111111111111111111111111111',
         result_hash: '00'.repeat(32),
         proof_key: '00'.repeat(32),
+      }),
+    ).not.toThrow();
+  });
+
+  it('claim_payout validates base58 fields', () => {
+    expect(() => ClaimPayoutArgs.parse({ task_address: 'not-base58' })).toThrow();
+    expect(() =>
+      ClaimPayoutArgs.parse({
+        task_address: '11111111111111111111111111111111',
+        agent_account_address: '11111111111111111111111111111111',
+        agent_token_account: '11111111111111111111111111111111',
       }),
     ).not.toThrow();
   });
@@ -106,12 +119,12 @@ describe('mcp-bridge tools', () => {
     ).rejects.toThrow();
   });
 
-  it('list_tasks handler short-circuits capability_bit with CAPABILITY_FILTER_NOT_SUPPORTED', async () => {
+  it('list_tasks requires discovery config for capability filtering', async () => {
     const out = (await byName.get('list_tasks')!.handler({ capability_bit: 2 }, cfg)) as {
       error: string;
       tasks: unknown[];
     };
-    expect(out.error).toBe('CAPABILITY_FILTER_NOT_SUPPORTED');
+    expect(out.error).toBe('DISCOVERY_URL_REQUIRED');
     expect(out.tasks).toEqual([]);
   });
 
@@ -129,6 +142,7 @@ describe('mcp-bridge config', () => {
     const cfg = loadConfig({});
     expect(cfg.cluster).toBe('devnet');
     expect(cfg.rpcUrl).toContain('devnet');
+    expect(cfg.discoveryUrl).toBeNull();
     expect(cfg.autoSign).toBe(false);
     expect(cfg.keypair).toBeNull();
   });
@@ -155,6 +169,11 @@ describe('mcp-bridge config', () => {
   it('parses custom SAEP_AUTO_SIGN_VELOCITY_LIMIT', () => {
     const cfg = loadConfig({ SAEP_AUTO_SIGN_VELOCITY_LIMIT: '3' });
     expect(cfg.autoSignVelocityLimit).toBe(3);
+  });
+
+  it('parses SAEP_DISCOVERY_URL', () => {
+    const cfg = loadConfig({ SAEP_DISCOVERY_URL: 'https://discovery.buildonsaep.com' });
+    expect(cfg.discoveryUrl).toBe('https://discovery.buildonsaep.com');
   });
 
   it('exposes a provider even without a keypair (read-only mode)', () => {
