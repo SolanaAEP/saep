@@ -26,6 +26,10 @@ import {
   JsonFileComputeBondStore,
 } from './state.js';
 import {
+  HttpIndexerSnapshotSync,
+  type ComputeBondSnapshotSync,
+} from './sync.js';
+import {
   attestationsSigned,
   bondRequests,
   leaseLifecycleOps,
@@ -99,6 +103,7 @@ export type BuildOpts = {
   cfg: Config;
   providers?: { ionet: ComputeProvider; akash: ComputeProvider };
   bondRegistry?: ComputeBondRegistry;
+  snapshotSync?: ComputeBondSnapshotSync | null;
 };
 
 function serializeBond(
@@ -152,6 +157,33 @@ function assertTransition(
   return validateComputeBondTransition(record, transition);
 }
 
+async function syncBondSnapshot(
+  sync: ComputeBondSnapshotSync | null,
+  bond: ComputeBondRecord,
+  providerStatus: string | null,
+): Promise<void> {
+  if (!sync) return;
+  const providerStatuses = new Map<string, string | null>([[bond.lease_id, providerStatus]]);
+  await sync.syncSnapshots([bond], { providerStatuses });
+}
+
+function inferredProviderStatus(bond: ComputeBondRecord): string | null {
+  switch (bond.status) {
+    case 'reserved':
+      return 'reserved';
+    case 'locked':
+      return 'active';
+    case 'released':
+    case 'slashed':
+    case 'expired':
+      return 'reclaimed';
+    case 'cancelled':
+      return 'cancelled';
+    default:
+      return null;
+  }
+}
+
 export function build(opts: BuildOpts) {
   const cfg = opts.cfg;
   const providers = opts.providers ?? createProviders(cfg);
@@ -160,7 +192,30 @@ export function build(opts: BuildOpts) {
     new ComputeBondRegistry(
       cfg.computeBondStorePath ? new JsonFileComputeBondStore(cfg.computeBondStorePath) : undefined,
     );
+  const snapshotSync =
+    opts.snapshotSync ??
+    (cfg.indexerInternalApiUrl
+      ? new HttpIndexerSnapshotSync(cfg.indexerInternalApiUrl, cfg.indexerInternalApiToken)
+      : null);
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
+
+  app.addHook('onReady', async () => {
+    if (!snapshotSync) return;
+    const bonds = bondRegistry.snapshot().bonds;
+    if (bonds.length === 0) return;
+    try {
+      await snapshotSync.syncSnapshots(bonds, {
+        providerStatuses: new Map(
+          bonds.map((bond) => [bond.lease_id, inferredProviderStatus(bond)]),
+        ),
+      });
+    } catch (err) {
+      app.log.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        'failed to seed compute bond snapshots on startup',
+      );
+    }
+  });
 
   app.get('/healthz', async () => ({
     status: 'ok',
@@ -350,6 +405,14 @@ export function build(opts: BuildOpts) {
       return reply.code(500).send({ error: errors.join('; ') });
     }
     bondRegistry.reserve(record);
+    try {
+      await syncBondSnapshot(snapshotSync, record, 'reserved');
+    } catch (err) {
+      app.log.warn(
+        { err: err instanceof Error ? err.message : String(err), lease_id: record.lease_id },
+        'failed to sync reserved compute bond snapshot',
+      );
+    }
 
     return reply.send({
       lease_id: reservation.leaseId,
@@ -387,6 +450,14 @@ export function build(opts: BuildOpts) {
     const next = bondRegistry.transition(body.lease_id, transition);
     try {
       await provider.activate(body.lease_id);
+      try {
+        await syncBondSnapshot(snapshotSync, next, 'active');
+      } catch (err) {
+        app.log.warn(
+          { err: err instanceof Error ? err.message : String(err), lease_id: next.lease_id },
+          'failed to sync locked compute bond snapshot',
+        );
+      }
       leaseLifecycleOps.inc({ provider: body.provider, operation: 'lock', status: 'ok' });
       return reply.send({ ...next, provider_status: 'active' });
     } catch (err) {
@@ -465,10 +536,18 @@ export function build(opts: BuildOpts) {
     const tracked = bondRegistry.get(lease_id);
     if (tracked) {
       try {
-        bondRegistry.transition(lease_id, {
+        const next = bondRegistry.transition(lease_id, {
           type: 'cancel',
           now_ms: Date.now(),
         });
+        try {
+          await syncBondSnapshot(snapshotSync, next, 'cancelled');
+        } catch (err) {
+          app.log.warn(
+            { err: err instanceof Error ? err.message : String(err), lease_id: next.lease_id },
+            'failed to sync cancelled compute bond snapshot',
+          );
+        }
       } catch (err) {
         return asBondError(reply, err);
       }
@@ -506,6 +585,14 @@ export function build(opts: BuildOpts) {
     const next = bondRegistry.transition(body.lease_id, transition);
     try {
       await provider.reclaim(body.lease_id);
+      try {
+        await syncBondSnapshot(snapshotSync, next, 'reclaimed');
+      } catch (err) {
+        app.log.warn(
+          { err: err instanceof Error ? err.message : String(err), lease_id: next.lease_id },
+          'failed to sync released compute bond snapshot',
+        );
+      }
       leaseLifecycleOps.inc({ provider: body.provider, operation: 'release', status: 'ok' });
       return reply.send({ ...next, provider_status: 'reclaimed' });
     } catch (err) {
@@ -540,6 +627,14 @@ export function build(opts: BuildOpts) {
     const next = bondRegistry.transition(body.lease_id, transition);
     try {
       await provider.reclaim(body.lease_id);
+      try {
+        await syncBondSnapshot(snapshotSync, next, 'reclaimed');
+      } catch (err) {
+        app.log.warn(
+          { err: err instanceof Error ? err.message : String(err), lease_id: next.lease_id },
+          'failed to sync slashed compute bond snapshot',
+        );
+      }
       leaseLifecycleOps.inc({ provider: body.provider, operation: 'slash', status: 'ok' });
       return reply.send({ ...next, provider_status: 'reclaimed' });
     } catch (err) {
@@ -584,10 +679,18 @@ export function build(opts: BuildOpts) {
         await provider.reclaim(lease.lease_id);
         const tracked = bondRegistry.get(lease.lease_id);
         if (tracked) {
-          bondRegistry.transition(lease.lease_id, {
+          const next = bondRegistry.transition(lease.lease_id, {
             type: 'expire',
             now_ms: nowUnix * 1000,
           });
+          try {
+            await syncBondSnapshot(snapshotSync, next, 'reclaimed');
+          } catch (err) {
+            app.log.warn(
+              { err: err instanceof Error ? err.message : String(err), lease_id: next.lease_id },
+              'failed to sync expired compute bond snapshot',
+            );
+          }
         }
         leaseLifecycleOps.inc({
           provider: lease.provider,

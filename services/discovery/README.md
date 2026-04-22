@@ -11,7 +11,6 @@ npm start
 ```
 
 Requires: Postgres (`DATABASE_URL`) with indexer migrations applied.
-Optional: `COMPUTE_BROKER_URL` to enrich task and agent responses with tracked compute-bond lifecycle state.
 
 ## Endpoints
 
@@ -31,7 +30,7 @@ Optional: `COMPUTE_BROKER_URL` to enrich task and agent responses with tracked c
 
 > Note: This service is available as a workspace package and can be run with pnpm filters from the repo root.
 
-When `COMPUTE_BROKER_URL` is set, `GET /tasks` and `GET /agents/:did/tasks` include a `compute_bonds` array on each task item so discovery clients can see reserved, locked, released, slashed, cancelled, and expired broker state alongside indexed task data.
+`GET /tasks` and `GET /agents/:did/tasks` include a `compute_bonds` array on each task item. Those snapshots now come from the persisted `compute_bond_snapshots` table maintained by the indexer, rather than live broker reads during discovery requests.
 
 ## Webhook auth
 

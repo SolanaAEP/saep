@@ -68,7 +68,7 @@ export default function TasksPage() {
       <div className="flex flex-col gap-3">
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-ink/60">Live board</h2>
-          <p className="text-sm text-ink/50">Indexed task flow with broker-backed compute bond state when available.</p>
+          <p className="text-sm text-ink/50">Indexed task flow with persisted compute bond state from the shared read model.</p>
         </div>
 
         {recentError && (

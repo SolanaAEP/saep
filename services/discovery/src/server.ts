@@ -1,12 +1,12 @@
 import { fileURLToPath } from 'node:url';
-import Fastify, { type FastifyReply } from 'fastify';
+import Fastify from 'fastify';
 import websocket from '@fastify/websocket';
 import pino from 'pino';
 import { getPool, query, queryOne, close as closeDb } from './db.js';
 import {
-  HttpComputeBondClient,
-  type ComputeBondClient,
   type ComputeBondSummary,
+  listPersistedComputeBonds,
+  loadComputeBondMapForTaskIds,
 } from './compute-bonds.js';
 import {
   AgentsQuerySchema,
@@ -50,7 +50,6 @@ export interface BuildServerOptions {
   webhookAdminToken?: string;
   webhookServiceToken?: string;
   webhookStorePath?: string;
-  computeBondClient?: ComputeBondClient | null;
   db?: DiscoveryDb;
 }
 
@@ -69,66 +68,14 @@ function requireToken(
   return authorizeToken(token, expected);
 }
 
-function computeBondLimit(taskCount: number): number {
-  return Math.min(200, Math.max(50, taskCount * 4));
-}
-
-function groupComputeBondsByTaskId(
-  bonds: readonly ComputeBondSummary[],
-): Map<string, ComputeBondSummary[]> {
-  const grouped = new Map<string, ComputeBondSummary[]>();
-  for (const bond of bonds) {
-    if (!bond.task_id) continue;
-    const existing = grouped.get(bond.task_id);
-    if (existing) {
-      existing.push(bond);
-      continue;
-    }
-    grouped.set(bond.task_id, [bond]);
-  }
-  return grouped;
-}
-
 async function loadComputeBondsForTaskIds(
-  client: ComputeBondClient | null,
+  db: DiscoveryDb,
   taskIds: readonly string[],
 ): Promise<Map<string, ComputeBondSummary[]>> {
-  if (!client || taskIds.length === 0) {
+  if (taskIds.length === 0) {
     return new Map();
   }
-
-  const uniqueTaskIds = [...new Set(taskIds)];
-  try {
-    const bonds = await client.listBonds({
-      taskIds: uniqueTaskIds,
-      limit: computeBondLimit(uniqueTaskIds.length),
-    });
-    return groupComputeBondsByTaskId(bonds);
-  } catch (err) {
-    log.warn({ err: err instanceof Error ? err.message : String(err) }, 'compute bond enrichment unavailable');
-    return new Map();
-  }
-}
-
-async function listComputeBondsOrReply(
-  reply: FastifyReply,
-  client: ComputeBondClient | null,
-  query: Parameters<ComputeBondClient['listBonds']>[0],
-): Promise<ComputeBondSummary[] | null> {
-  if (!client) {
-    reply.code(503).send({ error: 'compute_bond_client_not_configured' });
-    return null;
-  }
-
-  try {
-    return await client.listBonds(query);
-  } catch (err) {
-    reply.code(502).send({
-      error: 'compute_bond_client_unavailable',
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return null;
-  }
+  return loadComputeBondMapForTaskIds(db.query, taskIds);
 }
 
 export async function buildServer(opts: BuildServerOptions = {}) {
@@ -149,11 +96,6 @@ export async function buildServer(opts: BuildServerOptions = {}) {
   });
   const webhookAdminToken = opts.webhookAdminToken ?? process.env.WEBHOOK_ADMIN_TOKEN;
   const webhookServiceToken = opts.webhookServiceToken ?? process.env.WEBHOOK_SERVICE_TOKEN;
-  const computeBondClient =
-    opts.computeBondClient ??
-    (process.env.COMPUTE_BROKER_URL
-      ? new HttpComputeBondClient(process.env.COMPUTE_BROKER_URL)
-      : null);
   await app.register(websocket);
 
   app.get('/healthz', async () => {
@@ -325,7 +267,7 @@ export async function buildServer(opts: BuildServerOptions = {}) {
       compute_bonds: [] as ComputeBondSummary[],
     }));
     const bondsByTaskId = await loadComputeBondsForTaskIds(
-      computeBondClient,
+      db,
       items.map((item) => item.task_id_hex),
     );
 
@@ -468,7 +410,7 @@ export async function buildServer(opts: BuildServerOptions = {}) {
       compute_bonds: [] as ComputeBondSummary[],
     }));
     const bondsByTaskId = await loadComputeBondsForTaskIds(
-      computeBondClient,
+      db,
       items.map((item) => item.task_id),
     );
 
@@ -510,13 +452,12 @@ export async function buildServer(opts: BuildServerOptions = {}) {
       };
     }
 
-    const items = await listComputeBondsOrReply(reply, computeBondClient, {
+    const items = await listPersistedComputeBonds(db.query, {
       taskIds,
       status: qParsed.data.status,
       provider: qParsed.data.provider,
       limit: qParsed.data.limit,
     });
-    if (!items) return reply;
 
     return {
       agent_did: params.data.did,
@@ -534,13 +475,12 @@ export async function buildServer(opts: BuildServerOptions = {}) {
       return reply.code(400).send({ error: 'invalid_query', issues: qParsed.error.issues });
     }
 
-    const items = await listComputeBondsOrReply(reply, computeBondClient, {
+    const items = await listPersistedComputeBonds(db.query, {
       taskId: params.data.task_id,
       status: qParsed.data.status,
       provider: qParsed.data.provider,
       limit: qParsed.data.limit,
     });
-    if (!items) return reply;
 
     return {
       task_id: params.data.task_id,

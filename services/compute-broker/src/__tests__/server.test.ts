@@ -6,6 +6,7 @@ import { build } from '../server.js';
 import { loadConfig } from '../config.js';
 import { hexToKey, verify } from '../attestation.js';
 import type { ComputeProvider, LeaseRequest, LeaseReservation } from '../providers.js';
+import type { ComputeBondSnapshotSync } from '../sync.js';
 
 class FakeProvider implements ComputeProvider {
   readonly name: 'ionet' | 'akash';
@@ -40,6 +41,23 @@ class FakeProvider implements ComputeProvider {
   }
   async status(leaseId: string): Promise<'reserved' | 'active' | 'cancelled' | 'reclaimed'> {
     return this.statuses.get(leaseId) ?? 'reserved';
+  }
+}
+
+class FakeSnapshotSync implements ComputeBondSnapshotSync {
+  readonly calls: Array<{
+    leaseIds: string[];
+    providerStatuses: Record<string, string | null>;
+  }> = [];
+
+  async syncSnapshots(
+    records: ReadonlyArray<{ lease_id: string }>,
+    options?: { providerStatuses?: ReadonlyMap<string, string | null> },
+  ): Promise<void> {
+    this.calls.push({
+      leaseIds: records.map((record) => record.lease_id),
+      providerStatuses: Object.fromEntries(options?.providerStatuses ?? []),
+    });
   }
 }
 
@@ -238,6 +256,51 @@ describe('compute-broker server', () => {
         }),
       ]),
     );
+  });
+
+  it('syncs compute bond snapshots after reserve and lock transitions', async () => {
+    const sync = new FakeSnapshotSync();
+    const syncApp = build({
+      cfg,
+      providers: { ionet: new FakeProvider('ionet'), akash: new FakeProvider('akash') },
+      snapshotSync: sync,
+    });
+    await syncApp.ready();
+
+    const reserve = await syncApp.inject({
+      method: 'POST',
+      url: '/bonds/request',
+      payload: {
+        agent_did: '11111111111111111111111111111111',
+        provider: 'ionet',
+        gpu_hours: 15,
+        duration_secs: 3600,
+      },
+    });
+    expect(reserve.statusCode).toBe(200);
+    const reserved = reserve.json() as { lease_id: string };
+    expect(sync.calls.at(-1)).toMatchObject({
+      leaseIds: [reserved.lease_id],
+      providerStatuses: { [reserved.lease_id]: 'reserved' },
+    });
+
+    const locked = await syncApp.inject({
+      method: 'POST',
+      url: '/bonds/lock',
+      payload: {
+        lease_id: reserved.lease_id,
+        provider: 'ionet',
+        agent_did: '11111111111111111111111111111111',
+        task_id: 'task-sync',
+      },
+    });
+    expect(locked.statusCode).toBe(200);
+    expect(sync.calls.at(-1)).toMatchObject({
+      leaseIds: [reserved.lease_id],
+      providerStatuses: { [reserved.lease_id]: 'active' },
+    });
+
+    await syncApp.close();
   });
 
   it('bonds/request returns 503 without broker key', async () => {

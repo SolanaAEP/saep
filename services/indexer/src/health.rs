@@ -2,6 +2,7 @@ use axum::{extract::State, response::IntoResponse, routing::get, Router};
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::api::{self, ApiState};
+use crate::compute_bond_snapshots::{self, InternalApiState};
 use crate::db::PgPool;
 use crate::discovery;
 use crate::metrics;
@@ -9,11 +10,16 @@ use crate::stats;
 
 /// Internal router — bind to a separate port not exposed to the public internet.
 /// Contains healthz and prometheus metrics.
-pub fn internal_router(pool: PgPool) -> Router {
+pub fn internal_router(pool: PgPool, internal_api_token: Option<String>) -> Router {
+    let state = InternalApiState {
+        pool: pool.clone(),
+        token: internal_api_token,
+    };
     Router::new()
         .route("/healthz", get(|| async { "ok" }))
         .route("/metrics", get(metrics_handler))
-        .with_state(pool)
+        .merge(compute_bond_snapshots::internal_router())
+        .with_state(state)
 }
 
 /// Public API router — serves leaderboard, reputation, stats.
@@ -36,13 +42,14 @@ pub fn public_router(pool: PgPool, allowed_origins: Vec<String>) -> Router {
         .route("/healthz", get(|| async { "ok" }))
         .merge(api::router(pool))
         .merge(stats::router(state.clone()))
-        .merge(discovery::router(state))
+        .merge(discovery::router(state.clone()))
+        .merge(compute_bond_snapshots::public_router(state))
         .layer(cors)
 }
 
-async fn metrics_handler(State(pool): State<PgPool>) -> impl IntoResponse {
+async fn metrics_handler(State(state): State<InternalApiState>) -> impl IntoResponse {
     (
         [("content-type", "text/plain; version=0.0.4")],
-        metrics::render(&pool),
+        metrics::render(&state.pool),
     )
 }

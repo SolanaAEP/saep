@@ -13,6 +13,8 @@ const EnvSchema = z.object({
   MAX_BOND_DURATION_SECS: z.coerce.number().int().positive().default(14 * 24 * 3600),
   BOND_SLASH_WINDOW_SECS: z.coerce.number().int().positive().default(24 * 3600),
   COMPUTE_BOND_STORE_PATH: z.string().optional(),
+  INDEXER_INTERNAL_API_URL: z.string().url().optional(),
+  INDEXER_INTERNAL_API_TOKEN: z.string().optional(),
 });
 
 export type Config = {
@@ -28,6 +30,8 @@ export type Config = {
   maxBondDurationSecs: number;
   bondSlashWindowSecs: number;
   computeBondStorePath: string | undefined;
+  indexerInternalApiUrl: string | undefined;
+  indexerInternalApiToken: string | undefined;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -45,5 +49,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     maxBondDurationSecs: parsed.MAX_BOND_DURATION_SECS,
     bondSlashWindowSecs: parsed.BOND_SLASH_WINDOW_SECS,
     computeBondStorePath: parsed.COMPUTE_BOND_STORE_PATH,
+    indexerInternalApiUrl: parsed.INDEXER_INTERNAL_API_URL,
+    indexerInternalApiToken: parsed.INDEXER_INTERNAL_API_TOKEN,
   };
 }

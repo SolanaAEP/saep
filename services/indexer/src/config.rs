@@ -16,22 +16,25 @@ pub struct Config {
     pub matview_refresh_interval_s: u64,
     pub yellowstone_endpoint: Option<String>,
     pub yellowstone_token: Option<String>,
+    pub internal_api_token: Option<String>,
 }
 
 impl Config {
     pub fn from_env() -> Result<Self> {
-        let rpc_url = std::env::var("SOLANA_RPC_URL").ok().or_else(|| {
-            let key = std::env::var("HELIUS_API_KEY")
-                .or_else(|_| std::env::var("HELIUS_API_KEY_SAEP"))
-                .ok()?;
-            let cluster = std::env::var("SOLANA_CLUSTER").unwrap_or_else(|_| "devnet".into());
-            let host = match cluster.as_str() {
-                "mainnet" | "mainnet-beta" => "mainnet.helius-rpc.com",
-                _ => "devnet.helius-rpc.com",
-            };
-            Some(format!("https://{host}/?api-key={key}"))
-        })
-        .context("SOLANA_RPC_URL (or HELIUS_API_KEY + SOLANA_CLUSTER)")?;
+        let rpc_url = std::env::var("SOLANA_RPC_URL")
+            .ok()
+            .or_else(|| {
+                let key = std::env::var("HELIUS_API_KEY")
+                    .or_else(|_| std::env::var("HELIUS_API_KEY_SAEP"))
+                    .ok()?;
+                let cluster = std::env::var("SOLANA_CLUSTER").unwrap_or_else(|_| "devnet".into());
+                let host = match cluster.as_str() {
+                    "mainnet" | "mainnet-beta" => "mainnet.helius-rpc.com",
+                    _ => "devnet.helius-rpc.com",
+                };
+                Some(format!("https://{host}/?api-key={key}"))
+            })
+            .context("SOLANA_RPC_URL (or HELIUS_API_KEY + SOLANA_CLUSTER)")?;
 
         Ok(Self {
             database_url: std::env::var("DATABASE_URL").context("DATABASE_URL")?,
@@ -64,9 +67,7 @@ impl Config {
                 .ok()
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty()),
-            api_port: std::env::var("API_PORT")
-                .ok()
-                .and_then(|v| v.parse().ok()),
+            api_port: std::env::var("API_PORT").ok().and_then(|v| v.parse().ok()),
             cors_origins: std::env::var("CORS_ORIGINS")
                 .ok()
                 .map(|s| s.split(',').map(|o| o.trim().to_string()).collect())
@@ -80,6 +81,10 @@ impl Config {
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty()),
             yellowstone_token: std::env::var("YELLOWSTONE_TOKEN")
+                .ok()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty()),
+            internal_api_token: std::env::var("INDEXER_INTERNAL_API_TOKEN")
                 .ok()
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty()),
@@ -101,9 +106,22 @@ impl std::fmt::Debug for Config {
             .field("redis_url", &self.redis_url.as_ref().map(|_| "***"))
             .field("api_port", &self.api_port)
             .field("cors_origins", &self.cors_origins)
-            .field("matview_refresh_interval_s", &self.matview_refresh_interval_s)
-            .field("yellowstone_endpoint", &self.yellowstone_endpoint.as_ref().map(|_| "***"))
-            .field("yellowstone_token", &self.yellowstone_token.as_ref().map(|_| "***"))
+            .field(
+                "matview_refresh_interval_s",
+                &self.matview_refresh_interval_s,
+            )
+            .field(
+                "yellowstone_endpoint",
+                &self.yellowstone_endpoint.as_ref().map(|_| "***"),
+            )
+            .field(
+                "yellowstone_token",
+                &self.yellowstone_token.as_ref().map(|_| "***"),
+            )
+            .field(
+                "internal_api_token",
+                &self.internal_api_token.as_ref().map(|_| "***"),
+            )
             .finish()
     }
 }

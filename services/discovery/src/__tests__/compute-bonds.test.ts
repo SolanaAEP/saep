@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildServer, type DiscoveryDb } from '../server.js';
-import type { ComputeBondClient, ComputeBondSummary } from '../compute-bonds.js';
+import type { ComputeBondSummary } from '../compute-bonds.js';
 
 function makeBond(overrides: Partial<ComputeBondSummary> = {}): ComputeBondSummary {
   return {
@@ -46,14 +46,9 @@ describe('discovery compute bond visibility', () => {
     vi.restoreAllMocks();
   });
 
-  it('enriches /tasks with compute bonds from the broker task batch', async () => {
+  it('enriches /tasks with persisted compute bonds from the snapshot table', async () => {
     const taskId = 'aa'.repeat(32);
     const agentDid = 'bb'.repeat(32);
-    const listBondsMock = vi.fn(async (query: Parameters<ComputeBondClient['listBonds']>[0]) => {
-      expect(query.taskIds).toEqual([taskId]);
-      return [makeBond({ task_id: taskId })];
-    });
-    const listBonds: ComputeBondClient['listBonds'] = listBondsMock;
     const db = createDb({
       async query(text: string) {
         if (text.includes('FROM task_directory t')) {
@@ -71,6 +66,9 @@ describe('discovery compute bond visibility', () => {
             },
           ];
         }
+        if (text.includes('FROM compute_bond_snapshots')) {
+          return [{ ...makeBond({ task_id: taskId }), task_id_hex: taskId }];
+        }
         return [];
       },
       async queryOne(text: string) {
@@ -83,7 +81,6 @@ describe('discovery compute bond visibility', () => {
     const app = await buildServer({
       installSignalHandlers: false,
       db,
-      computeBondClient: { listBonds },
     });
 
     const res = await app.inject({
@@ -107,20 +104,14 @@ describe('discovery compute bond visibility', () => {
       ],
       total: 1,
     });
-    expect(listBondsMock).toHaveBeenCalledTimes(1);
 
     await app.close();
   });
 
-  it('exposes task-linked compute bonds through agent and task routes', async () => {
+  it('exposes task-linked persisted compute bonds through agent and task routes', async () => {
     const taskId = 'cc'.repeat(32);
     const agentDid = 'dd'.repeat(32);
     const bond = makeBond({ lease_id: 'akash-lease-2', provider: 'akash', task_id: taskId });
-    const listBondsMock = vi.fn(async (query: Parameters<ComputeBondClient['listBonds']>[0]) => {
-      expect(query.taskIds ?? [query.taskId]).toContain(taskId);
-      return [bond];
-    });
-    const listBonds: ComputeBondClient['listBonds'] = listBondsMock;
     const db = createDb({
       async query(text: string) {
         if (text.includes('SELECT task_id, creator, status')) {
@@ -139,6 +130,9 @@ describe('discovery compute bond visibility', () => {
         if (text.includes('SELECT task_id') && text.includes('WHERE agent_did = $1')) {
           return [{ task_id: Buffer.from(taskId, 'hex') }];
         }
+        if (text.includes('FROM compute_bond_snapshots')) {
+          return [{ ...bond, task_id_hex: taskId }];
+        }
         return [];
       },
       async queryOne(text: string) {
@@ -151,7 +145,6 @@ describe('discovery compute bond visibility', () => {
     const app = await buildServer({
       installSignalHandlers: false,
       db,
-      computeBondClient: { listBonds },
     });
 
     const agentTasks = await app.inject({
@@ -207,8 +200,9 @@ describe('discovery compute bond visibility', () => {
     await app.close();
   });
 
-  it('keeps task browsing alive without a broker client and fails dedicated bond routes loudly', async () => {
+  it('returns empty compute bond arrays when no persisted snapshots exist', async () => {
     const taskId = 'ee'.repeat(32);
+    const agentDid = 'ff'.repeat(32);
     const db = createDb({
       async query(text: string) {
         if (text.includes('FROM task_directory t')) {
@@ -226,6 +220,9 @@ describe('discovery compute bond visibility', () => {
             },
           ];
         }
+        if (text.includes('SELECT task_id') && text.includes('WHERE agent_did = $1')) {
+          return [{ task_id: Buffer.from(taskId, 'hex') }];
+        }
         return [];
       },
       async queryOne(text: string) {
@@ -238,7 +235,6 @@ describe('discovery compute bond visibility', () => {
     const app = await buildServer({
       installSignalHandlers: false,
       db,
-      computeBondClient: null,
     });
 
     const tasks = await app.inject({
@@ -259,9 +255,20 @@ describe('discovery compute bond visibility', () => {
       method: 'GET',
       url: `/tasks/${taskId}/compute-bonds`,
     });
-    expect(taskBonds.statusCode).toBe(503);
+    expect(taskBonds.statusCode).toBe(200);
     expect(taskBonds.json()).toMatchObject({
-      error: 'compute_bond_client_not_configured',
+      task_id: taskId,
+      items: [],
+    });
+
+    const agentBonds = await app.inject({
+      method: 'GET',
+      url: `/agents/${agentDid}/compute-bonds`,
+    });
+    expect(agentBonds.statusCode).toBe(200);
+    expect(agentBonds.json()).toMatchObject({
+      agent_did: agentDid,
+      items: [],
     });
 
     await app.close();

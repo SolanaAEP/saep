@@ -1,5 +1,6 @@
 pub mod api;
 pub mod borsh_decode;
+pub mod compute_bond_snapshots;
 pub mod config;
 pub mod db;
 pub mod discovery;

@@ -45,3 +45,8 @@ Tracked bond states:
 
 The broker now persists tracked bonds when `COMPUTE_BOND_STORE_PATH` is set, so single-bind task
 locks and terminal release/slash/expiry state survive restarts instead of living only in memory.
+
+When `INDEXER_INTERNAL_API_URL` is set, the broker also pushes persisted compute-bond snapshots to
+the indexer’s internal `POST /compute-bonds/snapshots` route after reserve, lock, release, slash,
+cancel, and expiry transitions. Set `INDEXER_INTERNAL_API_TOKEN` on both services to require a
+shared Bearer token for that sync path.

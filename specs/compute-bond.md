@@ -77,6 +77,9 @@ Node/TS service. Lives alongside other services. Responsibilities:
 4. **Slash reclaim**: subscribes to `bond.slashed` events; on match, calls provider to reclaim the lease allocation back to protocol pool.
 5. **Expiry sweep**: nightly, expires leases that passed `slashable_until`.
 
+The broker now also pushes lifecycle snapshots into the indexer’s persisted `compute_bond_snapshots`
+table so task, agent, and portal reads can come from indexed state instead of live broker enrichment.
+
 ### Broker key model
 
 - One protocol-level broker key = operational risk. Rotate weekly via governance ix `rotate_broker_key`.
@@ -140,6 +143,7 @@ Category bond requirements per capability bit maintained in `capability_registry
   - single-bind task lock tracking
   - release/slash/cancel/expiry terminal states with provider reclaim hooks
   - optional file-backed broker state persistence
+  - persisted snapshot sync into the indexer read model
 - **M3**: capability-level enforcement, dispute integration, Akash fallback.
 - **M4**: auction-based pricing for bond requirements per category.
 

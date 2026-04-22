@@ -4,7 +4,9 @@
 //!
 //! Endpoints:
 //!   - `/v1/discovery/agents` + `/:did` + `/:did/tasks` + `/:did/reputation` + `/:did/streams`
+//!   - `/v1/discovery/agents/:did/compute-bonds`
 //!   - `/v1/discovery/tasks` + `/:task_id_hex` + `/:task_id_hex/timeline`
+//!   - `/v1/discovery/tasks/:task_id_hex/compute-bonds`
 //!   - `/v1/discovery/capabilities` + `/:bit`
 //!   - `/v1/discovery/treasury/:did` + `/:did/vaults`
 //!   - `/v1/discovery/stats`
@@ -25,6 +27,9 @@
 //! label reflects SQL pathway, not HTTP endpoint — `agent_tasks` delegates to
 //! `list_tasks` so its SQL is attributed there.
 
+use axum::body::Body;
+use axum::http::{HeaderMap, Request, StatusCode};
+use axum::response::IntoResponse;
 use axum::{
     extract::{Path, Query, State},
     middleware::{self, Next},
@@ -32,9 +37,6 @@ use axum::{
     routing::get,
     Router,
 };
-use axum::body::Body;
-use axum::http::{HeaderMap, Request, StatusCode};
-use axum::response::IntoResponse;
 use base64::Engine;
 use diesel::prelude::*;
 use diesel::sql_query;
@@ -44,6 +46,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 use crate::api::{ApiError, ApiState};
+use crate::compute_bond_snapshots::{self, ComputeBondSummary};
 use crate::{metrics, rate_limit};
 
 static REQUEST_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -67,10 +70,7 @@ pub fn router(state: ApiState) -> Router {
             "/v1/discovery/agents/:did/reputation",
             get(agent_reputation),
         )
-        .route(
-            "/v1/discovery/agents/:did/streams",
-            get(agent_streams),
-        )
+        .route("/v1/discovery/agents/:did/streams", get(agent_streams))
         .route("/v1/discovery/tasks", get(list_tasks))
         .route("/v1/discovery/tasks/:task_id_hex", get(task_detail))
         .route(
@@ -123,9 +123,8 @@ async fn request_id_mw(req: Request<Body>, next: Next) -> axum::response::Respon
     let mut resp = next.run(req).await;
     resp.headers_mut().insert(
         "x-request-id",
-        axum::http::HeaderValue::from_str(&rid).unwrap_or_else(|_| {
-            axum::http::HeaderValue::from_static("unknown")
-        }),
+        axum::http::HeaderValue::from_str(&rid)
+            .unwrap_or_else(|_| axum::http::HeaderValue::from_static("unknown")),
     );
     resp
 }
@@ -238,7 +237,10 @@ pub async fn list_agents(
 ) -> Result<Json<AgentsPage>, ApiError> {
     let limit = q.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
     let status = q.status.unwrap_or_else(|| "active".to_string());
-    if !matches!(status.as_str(), "active" | "slashed" | "paused" | "suspended") {
+    if !matches!(
+        status.as_str(),
+        "active" | "slashed" | "paused" | "suspended"
+    ) {
         return Err(ApiError::bad_request(
             "status must be active|slashed|paused|suspended",
         ));
@@ -336,14 +338,18 @@ pub async fn list_agents(
             let c = cursor.as_ref().unwrap();
             match sort_owned.as_str() {
                 "recent_desc" => {
-                    let t: i64 = c.sort_value.parse()
+                    let t: i64 = c
+                        .sort_value
+                        .parse()
                         .map_err(|_| ApiError::bad_request("cursor sort_value invalid"))?;
                     let did = hex::decode(&c.last_id)
                         .map_err(|_| ApiError::bad_request("cursor last_id invalid"))?;
                     qb = qb.bind::<BigInt, _>(t).bind::<Bytea, _>(did);
                 }
                 _ => {
-                    let score: i32 = c.sort_value.parse()
+                    let score: i32 = c
+                        .sort_value
+                        .parse()
                         .map_err(|_| ApiError::bad_request("cursor sort_value invalid"))?;
                     let did = hex::decode(&c.last_id)
                         .map_err(|_| ApiError::bad_request("cursor last_id invalid"))?;
@@ -352,7 +358,8 @@ pub async fn list_agents(
             }
         }
         qb = qb.bind::<BigInt, _>(limit + 1);
-        qb.load::<RawAgentRow>(&mut conn).map_err(ApiError::internal)
+        qb.load::<RawAgentRow>(&mut conn)
+            .map_err(ApiError::internal)
     })
     .await
     .map_err(ApiError::internal)??;
@@ -414,6 +421,7 @@ pub struct TaskSummary {
     pub created_at_unix: i64,
     pub deadline_unix: i64,
     pub updated_at_unix: i64,
+    pub compute_bonds: Vec<ComputeBondSummary>,
 }
 
 #[derive(Debug, Serialize)]
@@ -486,9 +494,10 @@ pub async fn list_tasks(
     };
 
     let sort_owned = sort.to_string();
+    let pool = state.pool.clone();
     let qtimer = metrics::time_discovery_query("discovery.list_tasks");
     let rows = tokio::task::spawn_blocking(move || -> Result<Vec<RawTaskRow>, ApiError> {
-        let mut conn = state.pool.get().map_err(ApiError::internal)?;
+        let mut conn = pool.get().map_err(ApiError::internal)?;
         let mut sql = String::from(
             "SELECT task_id, creator, agent_did, status, \
                     reward_lamports::text AS reward_lamports_text, \
@@ -599,7 +608,7 @@ pub async fn list_tasks(
     qtimer.observe_duration();
 
     let has_more = rows.len() as i64 > limit;
-    let items: Vec<TaskSummary> = rows
+    let base_items: Vec<TaskSummary> = rows
         .into_iter()
         .take(limit as usize)
         .map(|r| TaskSummary {
@@ -611,8 +620,24 @@ pub async fn list_tasks(
             created_at_unix: r.created_at_unix,
             deadline_unix: r.deadline_unix,
             updated_at_unix: r.updated_at_unix,
+            compute_bonds: Vec::new(),
         })
         .collect();
+    let bond_map = compute_bond_snapshots::load_task_bond_map(
+        state.pool.clone(),
+        base_items
+            .iter()
+            .map(|item| item.task_id_hex.clone())
+            .collect(),
+    )
+    .await?;
+    let items = base_items
+        .into_iter()
+        .map(|mut item| {
+            item.compute_bonds = bond_map.get(&item.task_id_hex).cloned().unwrap_or_default();
+            item
+        })
+        .collect::<Vec<_>>();
 
     let cursor = if has_more {
         items.last().map(|last| {
@@ -941,6 +966,7 @@ pub struct TaskDetail {
     pub created_at_unix: i64,
     pub deadline_unix: i64,
     pub updated_at_unix: i64,
+    pub compute_bonds: Vec<ComputeBondSummary>,
 }
 
 #[derive(QueryableByName)]
@@ -969,9 +995,10 @@ pub async fn task_detail(
 ) -> Result<Json<TaskDetail>, ApiError> {
     let task_id = parse_hex_32(&task_id_hex).map_err(ApiError::bad_request)?;
 
+    let pool = state.pool.clone();
     let qtimer = metrics::time_discovery_query("discovery.task_detail");
     let row = tokio::task::spawn_blocking(move || -> Result<Option<RawTaskDetailRow>, ApiError> {
-        let mut conn = state.pool.get().map_err(ApiError::internal)?;
+        let mut conn = pool.get().map_err(ApiError::internal)?;
         Ok(sql_query(
             "SELECT task_id, creator, agent_did, status, \
                     reward_lamports::text AS reward_lamports_text, \
@@ -988,6 +1015,9 @@ pub async fn task_detail(
     .map_err(ApiError::internal)??
     .ok_or_else(|| ApiError::not_found("task not found"))?;
     qtimer.observe_duration();
+    let mut bond_map =
+        compute_bond_snapshots::load_task_bond_map(state.pool.clone(), vec![task_id_hex.clone()])
+            .await?;
 
     Ok(Json(TaskDetail {
         task_id_hex: hex::encode(&row.task_id),
@@ -998,6 +1028,7 @@ pub async fn task_detail(
         created_at_unix: row.created_at_unix,
         deadline_unix: row.deadline_unix,
         updated_at_unix: row.updated_at_unix,
+        compute_bonds: bond_map.remove(&task_id_hex).unwrap_or_default(),
     }))
 }
 
@@ -1047,16 +1078,15 @@ pub async fn task_timeline(
     let task_id_for_lookup = task_id.clone();
 
     let qtimer = metrics::time_discovery_query("discovery.task_timeline");
-    let (exists, rows) = tokio::task::spawn_blocking(
-        move || -> Result<(bool, Vec<RawTimelineRow>), ApiError> {
+    let (exists, rows) =
+        tokio::task::spawn_blocking(move || -> Result<(bool, Vec<RawTimelineRow>), ApiError> {
             let mut conn = state.pool.get().map_err(ApiError::internal)?;
-            let exists: i64 = sql_query(
-                "SELECT COUNT(*)::bigint AS n FROM task_directory WHERE task_id = $1",
-            )
-            .bind::<Bytea, _>(task_id_for_lookup)
-            .get_result::<CountRow>(&mut conn)
-            .map_err(ApiError::internal)?
-            .n;
+            let exists: i64 =
+                sql_query("SELECT COUNT(*)::bigint AS n FROM task_directory WHERE task_id = $1")
+                    .bind::<Bytea, _>(task_id_for_lookup)
+                    .get_result::<CountRow>(&mut conn)
+                    .map_err(ApiError::internal)?
+                    .n;
             let rows: Vec<RawTimelineRow> = sql_query(
                 "SELECT event_name, slot, signature, \
                         (data->>'timestamp') AS timestamp_text \
@@ -1067,17 +1097,21 @@ pub async fn task_timeline(
                  LIMIT $3",
             )
             .bind::<diesel::sql_types::Array<Text>, _>(
-                TIMELINE_EVENTS.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+                TIMELINE_EVENTS
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<_>>(),
             )
-            .bind::<Jsonb, _>(serde_json::from_str::<serde_json::Value>(&jsonb_filter).expect("jsonb"))
+            .bind::<Jsonb, _>(
+                serde_json::from_str::<serde_json::Value>(&jsonb_filter).expect("jsonb"),
+            )
             .bind::<BigInt, _>(TIMELINE_MAX)
             .load::<RawTimelineRow>(&mut conn)
             .map_err(ApiError::internal)?;
             Ok((exists > 0, rows))
-        },
-    )
-    .await
-    .map_err(ApiError::internal)??;
+        })
+        .await
+        .map_err(ApiError::internal)??;
     qtimer.observe_duration();
 
     if !exists {
@@ -1176,8 +1210,11 @@ pub async fn list_capabilities(
     let after_bit: Option<i32> = match q.cursor.as_deref() {
         Some(s) => {
             let c = Cursor::decode(s).map_err(ApiError::bad_request)?;
-            Some(c.sort_value.parse::<i32>()
-                .map_err(|_| ApiError::bad_request("cursor sort_value invalid"))?)
+            Some(
+                c.sort_value
+                    .parse::<i32>()
+                    .map_err(|_| ApiError::bad_request("cursor sort_value invalid"))?,
+            )
         }
         None => None,
     };
@@ -1244,26 +1281,27 @@ pub async fn capability_detail(
     }
 
     let qtimer = metrics::time_discovery_query("discovery.capability_detail");
-    let maybe_row = tokio::task::spawn_blocking(move || -> Result<Option<RawCapabilityRow>, ApiError> {
-        let mut conn = state.pool.get().map_err(ApiError::internal)?;
-        let mut sql = String::from(CAPABILITIES_CTE);
-        sql.push_str(
-            " SELECT a.bit, a.slug_bytes, a.added_by, a.approved_at_unix, \
+    let maybe_row =
+        tokio::task::spawn_blocking(move || -> Result<Option<RawCapabilityRow>, ApiError> {
+            let mut conn = state.pool.get().map_err(ApiError::internal)?;
+            let mut sql = String::from(CAPABILITIES_CTE);
+            sql.push_str(
+                " SELECT a.bit, a.slug_bytes, a.added_by, a.approved_at_unix, \
                      (ls.event_name = 'TagRetired') AS retired \
               FROM latest_approved a \
               LEFT JOIN latest_state ls ON ls.bit = a.bit \
               WHERE a.bit = $2",
-        );
-        Ok(sql_query(sql)
-            .bind::<Text, _>(CAPABILITY_REGISTRY_PROGRAM_ID)
-            .bind::<Int4, _>(bit)
-            .load::<RawCapabilityRow>(&mut conn)
-            .map_err(ApiError::internal)?
-            .into_iter()
-            .next())
-    })
-    .await
-    .map_err(ApiError::internal)??;
+            );
+            Ok(sql_query(sql)
+                .bind::<Text, _>(CAPABILITY_REGISTRY_PROGRAM_ID)
+                .bind::<Int4, _>(bit)
+                .load::<RawCapabilityRow>(&mut conn)
+                .map_err(ApiError::internal)?
+                .into_iter()
+                .next())
+        })
+        .await
+        .map_err(ApiError::internal)??;
     qtimer.observe_duration();
 
     let row = maybe_row.ok_or_else(|| ApiError::not_found("capability not found"))?;
@@ -1273,7 +1311,11 @@ pub async fn capability_detail(
 fn row_to_capability(r: RawCapabilityRow) -> Capability {
     Capability {
         bit: r.bit,
-        slug: r.slug_bytes.as_ref().map(slug_from_jsonb).unwrap_or_default(),
+        slug: r
+            .slug_bytes
+            .as_ref()
+            .map(slug_from_jsonb)
+            .unwrap_or_default(),
         added_by: r.added_by,
         approved_at_unix: r.approved_at_unix,
         retired: r.retired,
@@ -1291,7 +1333,11 @@ fn slug_from_jsonb(v: &serde_json::Value) -> String {
         .iter()
         .filter_map(|n| n.as_u64().and_then(|x| u8::try_from(x).ok()))
         .collect();
-    let end = bytes.iter().rposition(|b| *b != 0).map(|p| p + 1).unwrap_or(0);
+    let end = bytes
+        .iter()
+        .rposition(|b| *b != 0)
+        .map(|p| p + 1)
+        .unwrap_or(0);
     String::from_utf8_lossy(&bytes[..end]).into_owned()
 }
 
@@ -1330,11 +1376,10 @@ pub async fn treasury_detail(
     let jsonb_filter = bytes_to_jsonb_array(&did_bytes);
 
     let qtimer = metrics::time_discovery_query("discovery.treasury_detail");
-    let maybe_row = tokio::task::spawn_blocking(
-        move || -> Result<Option<RawTreasuryDetailRow>, ApiError> {
+    let maybe_row =
+        tokio::task::spawn_blocking(move || -> Result<Option<RawTreasuryDetailRow>, ApiError> {
             let mut conn = state.pool.get().map_err(ApiError::internal)?;
-            let jsonb: serde_json::Value =
-                serde_json::from_str(&jsonb_filter).expect("jsonb");
+            let jsonb: serde_json::Value = serde_json::from_str(&jsonb_filter).expect("jsonb");
             Ok(sql_query(
                 "WITH created AS ( \
                    SELECT DISTINCT ON (data->'agent_did') \
@@ -1374,10 +1419,9 @@ pub async fn treasury_detail(
             .map_err(ApiError::internal)?
             .into_iter()
             .next())
-        },
-    )
-    .await
-    .map_err(ApiError::internal)??;
+        })
+        .await
+        .map_err(ApiError::internal)??;
     qtimer.observe_duration();
 
     let row = maybe_row.ok_or_else(|| ApiError::not_found("treasury not found"))?;
@@ -1433,8 +1477,7 @@ pub async fn treasury_vaults(
     let (exists, rows) = tokio::task::spawn_blocking(
         move || -> Result<(bool, Vec<RawTreasuryVaultRow>), ApiError> {
             let mut conn = state.pool.get().map_err(ApiError::internal)?;
-            let jsonb: serde_json::Value =
-                serde_json::from_str(&jsonb_filter).expect("jsonb");
+            let jsonb: serde_json::Value = serde_json::from_str(&jsonb_filter).expect("jsonb");
             let exists: i64 = sql_query(
                 "SELECT COUNT(*)::bigint AS n FROM program_events \
                  WHERE program_id = $1 \
@@ -1499,7 +1542,6 @@ pub async fn treasury_vaults(
     Ok(Json(TreasuryVaults { did_hex, vaults }))
 }
 
-
 #[derive(Debug, Deserialize)]
 pub struct StreamsQuery {
     pub status: Option<String>,
@@ -1556,7 +1598,6 @@ pub async fn agent_streams(
 
     Ok(Json(StreamsList { items: Vec::new() }))
 }
-
 
 #[derive(Debug, Serialize)]
 pub struct ProtocolStats {
@@ -1729,9 +1770,7 @@ mod tests {
         // "mixer" padded to 32 bytes with zero-fill.
         let mut bytes = vec![b'm', b'i', b'x', b'e', b'r'];
         bytes.resize(32, 0);
-        let v = serde_json::Value::Array(
-            bytes.into_iter().map(|b| serde_json::json!(b)).collect(),
-        );
+        let v = serde_json::Value::Array(bytes.into_iter().map(|b| serde_json::json!(b)).collect());
         assert_eq!(slug_from_jsonb(&v), "mixer");
     }
 
@@ -1896,12 +1935,9 @@ mod tests {
 
     #[test]
     fn endpoint_class_maps_every_registered_route() {
-        // Five classes from spec §Rate-limits; must cover the 14 landed routes.
+        // Five classes from spec §Rate-limits; must cover the landed routes.
         assert_eq!(endpoint_class("/v1/discovery/agents"), "agents");
-        assert_eq!(
-            endpoint_class("/v1/discovery/agents/deadbeef"),
-            "agents"
-        );
+        assert_eq!(endpoint_class("/v1/discovery/agents/deadbeef"), "agents");
         assert_eq!(
             endpoint_class("/v1/discovery/agents/deadbeef/tasks"),
             "agents"
@@ -1914,19 +1950,21 @@ mod tests {
             endpoint_class("/v1/discovery/agents/deadbeef/streams"),
             "agents"
         );
-        assert_eq!(endpoint_class("/v1/discovery/tasks"), "tasks");
         assert_eq!(
-            endpoint_class("/v1/discovery/tasks/abc123"),
-            "tasks"
+            endpoint_class("/v1/discovery/agents/deadbeef/compute-bonds"),
+            "agents"
         );
+        assert_eq!(endpoint_class("/v1/discovery/tasks"), "tasks");
+        assert_eq!(endpoint_class("/v1/discovery/tasks/abc123"), "tasks");
         assert_eq!(
             endpoint_class("/v1/discovery/tasks/abc123/timeline"),
             "tasks"
         );
         assert_eq!(
-            endpoint_class("/v1/discovery/capabilities"),
-            "capabilities"
+            endpoint_class("/v1/discovery/tasks/abc123/compute-bonds"),
+            "tasks"
         );
+        assert_eq!(endpoint_class("/v1/discovery/capabilities"), "capabilities");
         assert_eq!(
             endpoint_class("/v1/discovery/capabilities/7"),
             "capabilities"
@@ -1939,10 +1977,7 @@ mod tests {
             endpoint_class("/v1/discovery/treasury/deadbeef/vaults"),
             "treasury"
         );
-        assert_eq!(
-            endpoint_class("/v1/discovery/stats"),
-            "catch_all"
-        );
+        assert_eq!(endpoint_class("/v1/discovery/stats"), "catch_all");
         assert_eq!(endpoint_class("/v1/discovery/unknown"), "catch_all");
         assert_eq!(endpoint_class("/unrelated"), "catch_all");
         assert_eq!(endpoint_class(""), "catch_all");
@@ -1980,8 +2015,7 @@ mod tests {
             .inc();
 
         let mf = prometheus::gather();
-        let names: std::collections::HashSet<_> =
-            mf.iter().map(|f| f.name().to_string()).collect();
+        let names: std::collections::HashSet<_> = mf.iter().map(|f| f.name().to_string()).collect();
         for expected in [
             "saep_discovery_request_total",
             "saep_discovery_request_duration_seconds",
@@ -2112,8 +2146,15 @@ mod tests {
         };
         let j = serde_json::to_value(&s).unwrap();
         for field in [
-            "stream_id_hex", "from", "to", "mint", "rate_per_sec",
-            "start_unix", "end_unix", "total_paid", "status",
+            "stream_id_hex",
+            "from",
+            "to",
+            "mint",
+            "rate_per_sec",
+            "start_unix",
+            "end_unix",
+            "total_paid",
+            "status",
         ] {
             assert!(j.get(field).is_some(), "missing field {field}");
         }
