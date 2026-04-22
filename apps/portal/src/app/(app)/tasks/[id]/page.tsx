@@ -2,7 +2,9 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { useTask } from '@saep/sdk-ui';
+import { useTask, useTaskComputeBonds } from '@saep/sdk-ui';
+import { ComputeBondPanel } from '@/components/compute-bond-summary';
+import { getPortalIndexerUrl } from '@/lib/indexer-url';
 import { TaskStateTimeline } from './task-state-timeline';
 import { EscrowPanel } from './escrow-panel';
 import { ProofViewer } from './proof-viewer';
@@ -20,6 +22,12 @@ export default function TaskDetailPage({
 }) {
   const { id } = use(params);
   const { data: task, isLoading, error } = useTask(id);
+  const indexerUrl = getPortalIndexerUrl();
+  const {
+    data: computeBonds,
+    isLoading: computeBondLoading,
+    error: computeBondError,
+  } = useTaskComputeBonds({ indexerUrl, taskIdHex: id });
 
   if (isLoading) {
     return <p className="font-mono text-[11px] text-mute">Loading task…</p>;
@@ -68,6 +76,12 @@ export default function TaskDetailPage({
         <TaskStateTimeline task={task} />
         <EscrowPanel task={task} />
       </div>
+
+      <ComputeBondPanel
+        bonds={computeBonds}
+        isLoading={computeBondLoading}
+        error={computeBondError as Error | null}
+      />
 
       <BiddingPanel taskIdHex={id} />
 

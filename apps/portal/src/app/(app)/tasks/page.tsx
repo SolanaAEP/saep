@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useRecentTasks, useTasksByClient } from '@saep/sdk-ui';
+import { useDiscoveryTasks, useTasksByClient } from '@saep/sdk-ui';
 import type { TaskSummary } from '@saep/sdk';
+import { ComputeBondSummary } from '@/components/compute-bond-summary';
+import { getPortalIndexerUrl } from '@/lib/indexer-url';
 
 const STATUS_COLOR: Record<string, string> = {
   created: 'text-ink/60 bg-ink/5',
@@ -25,6 +27,11 @@ function fmtLamports(v: bigint): string {
   return (Number(v) / 1e9).toFixed(4);
 }
 
+function fmtLamportsRaw(v: string | null): string {
+  if (!v) return '—';
+  return (Number(v) / 1e9).toFixed(4);
+}
+
 function fmtTs(ts: number): string {
   if (!ts) return '—';
   return new Date(ts * 1000).toLocaleString(undefined, {
@@ -37,12 +44,17 @@ function fmtTs(ts: number): string {
 
 export default function TasksPage() {
   const { publicKey } = useWallet();
+  const indexerUrl = getPortalIndexerUrl();
   const { data, isLoading, error } = useTasksByClient(publicKey ?? null);
   const {
-    data: recentTasks,
+    data: indexedTasks,
     isLoading: recentLoading,
     error: recentError,
-  } = useRecentTasks(20, ['created', 'funded', 'inExecution', 'proofSubmitted', 'verified', 'disputed']);
+  } = useDiscoveryTasks({
+    indexerUrl,
+    limit: 20,
+    statuses: ['created', 'funded', 'inExecution', 'proofSubmitted', 'verified', 'disputed'],
+  });
 
   return (
     <section className="flex flex-col gap-6 max-w-5xl">
@@ -56,7 +68,7 @@ export default function TasksPage() {
       <div className="flex flex-col gap-3">
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-ink/60">Live board</h2>
-          <p className="text-sm text-ink/50">Fresh on-chain bounties across the market.</p>
+          <p className="text-sm text-ink/50">Indexed task flow with persisted compute bond state from the shared read model.</p>
         </div>
 
         {recentError && (
@@ -69,11 +81,11 @@ export default function TasksPage() {
           <p className="text-sm text-ink/50">Loading live tasks...</p>
         )}
 
-        {recentTasks && recentTasks.length === 0 && (
+        {indexedTasks && indexedTasks.length === 0 && (
           <p className="text-sm text-ink/60">No live tasks yet.</p>
         )}
 
-        {recentTasks && recentTasks.length > 0 && (
+        {indexedTasks && indexedTasks.length > 0 && (
           <div className="rounded border border-ink/10 overflow-hidden">
             <table className="w-full text-xs">
               <thead className="bg-ink/5 text-ink/60">
@@ -81,15 +93,16 @@ export default function TasksPage() {
                   <th className="text-left px-3 py-2">Task</th>
                   <th className="text-left px-3 py-2">Agent</th>
                   <th className="text-right px-3 py-2 w-28">Payment</th>
+                  <th className="text-left px-3 py-2 w-40">Compute</th>
                   <th className="text-left px-3 py-2 w-28">Status</th>
                   <th className="text-right px-3 py-2 w-32">Created</th>
                 </tr>
               </thead>
               <tbody>
-                {recentTasks.map((task: TaskSummary) => {
-                  const idHex = hex(task.taskId);
-                  const didHex = hex(task.agentDid);
-                  const badge = STATUS_COLOR[task.status] ?? 'text-ink/60 bg-ink/5';
+                {indexedTasks.map((task) => {
+                  const idHex = task.taskIdHex;
+                  const didHex = task.agentDidHex;
+                  const badge = STATUS_COLOR[task.status ?? ''] ?? 'text-ink/60 bg-ink/5';
                   return (
                     <tr
                       key={`recent-${idHex}`}
@@ -104,15 +117,22 @@ export default function TasksPage() {
                         </Link>
                       </td>
                       <td className="px-3 py-2">
-                        <Link
-                          href={`/agents/${didHex}`}
-                          className="font-mono text-ink/70 hover:text-lime"
-                        >
-                          {didHex.slice(0, 10)}…{didHex.slice(-4)}
-                        </Link>
+                        {didHex ? (
+                          <Link
+                            href={`/agents/${didHex}`}
+                            className="font-mono text-ink/70 hover:text-lime"
+                          >
+                            {didHex.slice(0, 10)}…{didHex.slice(-4)}
+                          </Link>
+                        ) : (
+                          <span className="text-ink/40">—</span>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-right font-mono">
-                        {fmtLamports(task.paymentAmount)}
+                        {fmtLamportsRaw(task.rewardLamports)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <ComputeBondSummary bonds={task.computeBonds} />
                       </td>
                       <td className="px-3 py-2">
                         <span
@@ -122,7 +142,7 @@ export default function TasksPage() {
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right font-mono text-ink/50">
-                        {fmtTs(task.createdAt)}
+                        {fmtTs(task.createdAtUnix)}
                       </td>
                     </tr>
                   );

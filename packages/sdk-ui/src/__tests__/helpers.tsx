@@ -7,6 +7,7 @@ import { ClusterContext } from '../hooks/cluster.js';
 
 export const MOCK_PUBKEY = new PublicKey('11111111111111111111111111111112');
 export const MOCK_PUBKEY_2 = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+const TOKEN_PROGRAM_OWNER = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 
 export const MOCK_CLUSTER = {
   label: 'devnet' as const,
@@ -44,6 +45,7 @@ export function mockConnection(overrides: Record<string, unknown> = {}) {
       value: { err: null, unitsConsumed: 200_000, logs: ['log1'] },
     }),
     confirmTransaction: vi.fn().mockResolvedValue({ value: {} }),
+    getAccountInfo: vi.fn().mockResolvedValue({ owner: TOKEN_PROGRAM_OWNER }),
     _rpcEndpoint: 'https://rpc.example.com',
     ...overrides,
   };

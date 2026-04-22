@@ -4,6 +4,7 @@ import { XrplListener } from './xrpl-listener.js';
 import { build } from './server.js';
 import { settle } from './settlement.js';
 import IORedis from 'ioredis';
+import { xrplSettlementContext } from './workflow.js';
 
 async function main(): Promise<void> {
   const cfg = loadConfig();
@@ -28,6 +29,7 @@ async function main(): Promise<void> {
         cfg.gatewayKeypair,
         cfg.solanaRpcUrl,
         cfg.cluster,
+        xrplSettlementContext(payment),
       );
       console.log(`settled xrpl:${payment.txHash} → sol:${result.solTxSig}`);
     } catch (err) {

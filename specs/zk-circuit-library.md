@@ -1,6 +1,6 @@
 # zk-circuit-library — reusable proofs for agent work and ZK-ML
 
-Status: draft
+Status: in progress
 Parent: internal backlog `M3/M4 — expansion`
 
 ## Goal
@@ -20,6 +20,12 @@ Expand SAEP from a single task-completion proof into a reusable library of circu
 - public-input ordering docs
 - verification-key versioning
 - benchmark data for proving time and gas/compute cost
+
+## Live progress
+
+- machine-readable circuit manifests now live in `circuits/catalog`
+- proof-gen now exposes catalog-backed runtime circuit metadata instead of a single hardcoded circuit id
+- task-completion public-input order is pinned in the catalog and shared by runtime tooling
 
 ## ZK-ML track
 

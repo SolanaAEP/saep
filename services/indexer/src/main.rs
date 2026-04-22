@@ -55,8 +55,14 @@ async fn main() -> Result<()> {
     let internal_addr: SocketAddr = format!("0.0.0.0:{}", cfg.healthcheck_port).parse()?;
     let internal_listener = TcpListener::bind(internal_addr).await?;
     let internal_pool = pool.clone();
+    let internal_api_token = cfg.internal_api_token.clone();
     tokio::spawn(async move {
-        if let Err(e) = axum::serve(internal_listener, health::internal_router(internal_pool)).await {
+        if let Err(e) = axum::serve(
+            internal_listener,
+            health::internal_router(internal_pool, internal_api_token),
+        )
+        .await
+        {
             tracing::error!(error = %e, "internal server crashed");
         }
     });
@@ -68,7 +74,12 @@ async fn main() -> Result<()> {
         let api_pool = pool.clone();
         let allowed_origins = cfg.cors_origins.clone();
         tokio::spawn(async move {
-            if let Err(e) = axum::serve(api_listener, health::public_router(api_pool, allowed_origins)).await {
+            if let Err(e) = axum::serve(
+                api_listener,
+                health::public_router(api_pool, allowed_origins),
+            )
+            .await
+            {
                 tracing::error!(error = %e, "public API server crashed");
             }
         });

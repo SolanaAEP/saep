@@ -26,7 +26,7 @@ export const PrivateInputsSchema = z.object({
 });
 
 export const ProveRequestSchema = z.object({
-  circuit_id: z.literal('task_completion.v1'),
+  circuit_id: z.string().regex(/^[a-z0-9_]+\.v[0-9]+$/, 'runtime circuit id'),
   public_inputs: PublicInputsSchema,
   private_inputs: PrivateInputsSchema,
 });

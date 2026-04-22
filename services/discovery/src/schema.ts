@@ -18,6 +18,10 @@ export const AgentDidParamsSchema = z.object({
   did: HexString.refine((s) => s.length === 64, '32-byte hex'),
 });
 
+export const TaskIdParamsSchema = z.object({
+  task_id: HexString.refine((s) => s.length === 64, '32-byte hex'),
+});
+
 export const TaskHistoryQuerySchema = z.object({
   status: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -29,6 +33,12 @@ export const TasksQuerySchema = z.object({
   status: z.string().optional(),
   min_reward: z.string().regex(/^[0-9]+$/).optional(),
   page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
+
+export const ComputeBondQuerySchema = z.object({
+  status: z.enum(['reserved', 'locked', 'released', 'slashed', 'cancelled', 'expired']).optional(),
+  provider: z.enum(['ionet', 'akash']).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
 });
 
@@ -87,8 +97,10 @@ export const WsMessageSchema = z.discriminatedUnion('type', [
 
 export type AgentsQuery = z.infer<typeof AgentsQuerySchema>;
 export type AgentDidParams = z.infer<typeof AgentDidParamsSchema>;
+export type TaskIdParams = z.infer<typeof TaskIdParamsSchema>;
 export type TaskHistoryQuery = z.infer<typeof TaskHistoryQuerySchema>;
 export type TasksQuery = z.infer<typeof TasksQuerySchema>;
+export type ComputeBondQuery = z.infer<typeof ComputeBondQuerySchema>;
 export type WebhookSubscriptionCreate = z.infer<typeof WebhookSubscriptionCreateSchema>;
 export type WebhookDeliveriesQuery = z.infer<typeof WebhookDeliveriesQuerySchema>;
 export type WebhookEventEmit = z.infer<typeof WebhookEventEmitSchema>;

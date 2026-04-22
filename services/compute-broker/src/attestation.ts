@@ -1,40 +1,25 @@
 import { getPublicKeyAsync, signAsync, verifyAsync, hashes } from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha2.js';
 import bs58 from 'bs58';
+import {
+  canonicalComputeBondAttestation,
+  type ComputeBondAttestationPayload,
+} from '@saep/sdk';
 
 hashes.sha512 = sha512;
 
-export type AttestationPayload = {
-  agent_did: string;
-  provider: 'ionet' | 'akash';
-  lease_id: string;
-  gpu_hours: number;
-  expires_at: number;
-};
-
-export function canonicalAttestation(p: AttestationPayload): Uint8Array {
-  const fixed = {
-    agent_did: p.agent_did,
-    provider: p.provider,
-    lease_id: p.lease_id,
-    gpu_hours: p.gpu_hours,
-    expires_at: p.expires_at,
-  };
-  return new TextEncoder().encode(JSON.stringify(fixed));
-}
-
 export async function sign(
-  p: AttestationPayload,
+  p: ComputeBondAttestationPayload,
   keyBytes: Uint8Array,
 ): Promise<{ signatureBs58: string; pubkeyBs58: string }> {
   if (keyBytes.length !== 32) throw new Error('broker key must be 32 bytes');
   const pk = await getPublicKeyAsync(keyBytes);
-  const sig = await signAsync(canonicalAttestation(p), keyBytes);
+  const sig = await signAsync(canonicalComputeBondAttestation(p), keyBytes);
   return { signatureBs58: bs58.encode(sig), pubkeyBs58: bs58.encode(pk) };
 }
 
 export async function verify(
-  p: AttestationPayload,
+  p: ComputeBondAttestationPayload,
   signatureBs58: string,
   pubkeyBs58: string,
 ): Promise<boolean> {
@@ -42,7 +27,7 @@ export async function verify(
     const sig = bs58.decode(signatureBs58);
     const pk = bs58.decode(pubkeyBs58);
     if (sig.length !== 64 || pk.length !== 32) return false;
-    return await verifyAsync(sig, canonicalAttestation(p), pk);
+    return await verifyAsync(sig, canonicalComputeBondAttestation(p), pk);
   } catch {
     return false;
   }

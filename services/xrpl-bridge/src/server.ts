@@ -3,9 +3,10 @@ import IORedis, { type Redis } from 'ioredis';
 import { z } from 'zod';
 import type { Config } from './config.js';
 import { registry, bridgeRequests } from './metrics.js';
-import { settle, getStatus, type SettlementResult } from './settlement.js';
+import { settle, getStatus } from './settlement.js';
 import { parseVaa, verifyVaa, parseTransferPayload, identifyToken, vaaDigest } from './wormhole-vaa.js';
 import { convertXrpToLamports } from './price-oracle.js';
+import { wormholeSettlementContext, xrplSettlementContext } from './workflow.js';
 
 const XrplSubmitBody = z.object({
   tx_hash: z.string().min(64).max(64),
@@ -62,6 +63,14 @@ export function build(opts: BuildOpts) {
         cfg.gatewayKeypair,
         cfg.solanaRpcUrl,
         cfg.cluster,
+        xrplSettlementContext({
+          txHash: body.tx_hash,
+          sender: body.sender,
+          drops: BigInt(body.drops),
+          solanaPubkey: body.solana_pubkey,
+          agentDid: body.agent_did,
+          ledgerIndex: body.ledger_index,
+        }),
       );
 
       return reply.send({
@@ -70,6 +79,8 @@ export function build(opts: BuildOpts) {
         sol_tx_sig: result.solTxSig,
         lamports: result.lamports.toString(),
         status: result.status,
+        workflow_state: result.workflowState,
+        intent: result.intent,
       });
     } catch (err) {
       bridgeRequests.inc({ status: 'settlement_error' });
@@ -112,6 +123,16 @@ export function build(opts: BuildOpts) {
 
     const token = identifyToken(transfer.tokenAddress);
     const digest = vaaDigest(vaa).toString('hex');
+    const context = wormholeSettlementContext({
+      sourceChainId: transfer.sourceChain,
+      amountAtomic: transfer.amount,
+      beneficiaryDid: parsed.data.agent_did,
+      tokenSymbol: token,
+      digest,
+    });
+    if (!context) {
+      return reply.code(422).send({ error: 'unsupported wormhole source chain', source_chain: transfer.sourceChain });
+    }
 
     const lamports = await convertXrpToLamports(transfer.amount);
 
@@ -129,6 +150,7 @@ export function build(opts: BuildOpts) {
         cfg.gatewayKeypair,
         cfg.solanaRpcUrl,
         cfg.cluster,
+        context,
       );
 
       return reply.send({
@@ -140,6 +162,8 @@ export function build(opts: BuildOpts) {
         sol_tx_sig: result.solTxSig,
         lamports: result.lamports.toString(),
         status: result.status,
+        workflow_state: result.workflowState,
+        intent: result.intent,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -158,6 +182,8 @@ export function build(opts: BuildOpts) {
       sol_tx_sig: result.solTxSig,
       lamports: result.lamports.toString(),
       status: result.status,
+      workflow_state: result.workflowState,
+      intent: result.intent,
     });
   });
 

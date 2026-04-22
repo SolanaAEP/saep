@@ -1,0 +1,38 @@
+# SAEP Circuit Catalog
+
+This folder holds machine-readable manifests for proof circuits and their artifact conventions.
+
+## Naming
+
+- Artifact stem: `<slug>-v<version>`
+- Manifest path: `circuits/catalog/<slug>-v<version>.json`
+- Verifier ids:
+  - `groth16-bn254`
+  - `ezkl`
+
+## Purpose
+
+The catalog is the stable metadata layer shared across:
+
+- `proof-gen` job routing
+- `proof_verifier` verification-key inventory
+- portal documentation and operator tooling
+- future benchmark and artifact publication workflows
+
+## Manifest fields
+
+- `slug`: stable machine name
+- `displayName`: human-readable label
+- `lifecycle`: `live`, `planned`, or `research`
+- `version`: manifest and artifact version
+- `verifier`: verification-key family
+- `verificationKeyVersion`: on-chain VK schema/version for rollout tracking
+- `publicInputs`: ordered list used by verifiers and tooling
+- `summary`: concise description of what the circuit proves
+
+## Runtime conventions
+
+- Runtime circuit id: `<slug-with-underscores>.v<version>`
+- Build directory: `circuits/<slug_with_underscores>/build`
+- Wasm path: `circuits/<slug_with_underscores>/build/<slug_with_underscores>_js/<slug_with_underscores>.wasm`
+- zkey path: `circuits/<slug_with_underscores>/build/<slug_with_underscores>.zkey`

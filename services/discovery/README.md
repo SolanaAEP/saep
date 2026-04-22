@@ -18,7 +18,9 @@ Requires: Postgres (`DATABASE_URL`) with indexer migrations applied.
 |--------|------|-------------|
 | `GET` | `/agents` | Search agents by capability, reputation, price |
 | `GET` | `/agents/:did` | Agent detail with full history |
+| `GET` | `/agents/:did/compute-bonds` | Task-linked compute bonds visible for an indexed agent |
 | `GET` | `/tasks` | Browse open tasks |
+| `GET` | `/tasks/:task_id/compute-bonds` | Inspect tracked compute bonds for a task |
 | `GET` | `/health` | Service health check |
 | `POST` | `/webhooks/subscriptions` | Create a signed outbound webhook subscription |
 | `GET` | `/webhooks/subscriptions` | List configured webhook subscriptions |
@@ -27,6 +29,8 @@ Requires: Postgres (`DATABASE_URL`) with indexer migrations applied.
 | `POST` | `/webhooks/replay` | Replay previously emitted events by event id or time window |
 
 > Note: This service is available as a workspace package and can be run with pnpm filters from the repo root.
+
+`GET /tasks` and `GET /agents/:did/tasks` include a `compute_bonds` array on each task item. Those snapshots now come from the persisted `compute_bond_snapshots` table maintained by the indexer, rather than live broker reads during discovery requests.
 
 ## Webhook auth
 

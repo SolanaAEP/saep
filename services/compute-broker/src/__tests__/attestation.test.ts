@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
-  canonicalAttestation,
+  canonicalComputeBondAttestation,
+  type ComputeBondAttestationPayload,
+} from '@saep/sdk';
+import {
   hexToKey,
   sign,
   verify,
-  type AttestationPayload,
 } from '../attestation.js';
 
 describe('attestation', () => {
-  const payload: AttestationPayload = {
+  const payload: ComputeBondAttestationPayload = {
     agent_did: '11111111111111111111111111111111',
     provider: 'ionet',
     lease_id: 'lease-xyz',
@@ -22,8 +24,8 @@ describe('attestation', () => {
   });
 
   it('canonical form is deterministic and stable under key order', () => {
-    const a = canonicalAttestation(payload);
-    const b = canonicalAttestation({ ...payload, gpu_hours: payload.gpu_hours });
+    const a = canonicalComputeBondAttestation(payload);
+    const b = canonicalComputeBondAttestation({ ...payload, gpu_hours: payload.gpu_hours });
     expect(Buffer.from(a).toString()).toBe(Buffer.from(b).toString());
   });
 

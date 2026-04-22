@@ -18,7 +18,7 @@ Get SAK users to discover SAEP from the canonical SAK README without forking Sen
 - CONTRIBUTING.md says: fork → feature branch → PR against `main` — but since default is now `v2`, confirm target with maintainers via an Issue before PR (see Step 0).
 
 ## Pre-flight (blocking)
-1. Publish `@saep/sak-plugin` to npm under a namespace we control (`@saep/sak-plugin` or rename to `@buildonsaep/sak-plugin`). `packages/sak-plugin/package.json` currently marks the package private and is workspace-linked; will not resolve for SAK users outside the SAEP monorepo.
+1. Publish `@saep/sak-plugin` to npm under a namespace we control (`@saep/sak-plugin` or rename to `@buildonsaep/sak-plugin`). The package metadata is now publish-ready in-repo, but external npm distribution and the SendAI listing still need to happen before users outside the SAEP monorepo can install it directly.
 2. Stand up a live devnet demo agent whose `operator` keypair is pre-funded + registered — the README entry should link to a one-command repro.
 3. Record a 30–60s terminal cast (asciinema or mp4) of `examples/sak-demo/` running register → list → bid → submit. PRs without proof of life get closed.
 

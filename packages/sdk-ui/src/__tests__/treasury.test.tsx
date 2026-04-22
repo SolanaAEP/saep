@@ -8,7 +8,13 @@ import {
   buildSetLimitsIx,
   treasuryStandardProgram,
 } from '@saep/sdk';
-import { useAllowedMints, useAgentStreams, useVaultBalances, useSetLimits } from '../hooks/treasury.js';
+import {
+  useAllowedMints,
+  useAgentStreams,
+  useVaultBalances,
+  useSetLimits,
+  useTreasuryYieldResearch,
+} from '../hooks/treasury.js';
 import { createWrapper, createQueryClient, MOCK_PUBKEY, MOCK_PUBKEY_2, mockConnection, mockWallet, mockAnchorWallet } from './helpers.js';
 
 const mockProgramInstance = { programId: MOCK_PUBKEY } as any;
@@ -174,5 +180,50 @@ describe('useSetLimits', () => {
       }),
     ).rejects.toThrow('Missing wallet publicKey');
     expect(buildSetLimitsIx).not.toHaveBeenCalled();
+  });
+});
+
+describe('useTreasuryYieldResearch', () => {
+  const agentDid = new Uint8Array(32).fill(0xef);
+
+  it('derives idle and deployable stablecoin balances', async () => {
+    vi.mocked(fetchAllowedMints).mockResolvedValue([MOCK_PUBKEY] as any);
+    vi.mocked(fetchVaultBalances).mockResolvedValue([
+      {
+        mint: new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'),
+        vault: MOCK_PUBKEY,
+        amount: 4_200_000n,
+        exists: true,
+      },
+    ] as any);
+
+    const { result } = renderHook(() => useTreasuryYieldResearch(agentDid), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.data.snapshot.idleUsdMicro).toBe(4_200_000n);
+    expect(result.current.data.deployableUsdMicro).toBe(1_050_000n);
+    expect(result.current.data.blockedReasons).toEqual([]);
+  });
+
+  it('reports blocked reasons when no stable balances are available', async () => {
+    vi.mocked(fetchAllowedMints).mockResolvedValue([MOCK_PUBKEY] as any);
+    vi.mocked(fetchVaultBalances).mockResolvedValue([
+      {
+        mint: MOCK_PUBKEY,
+        vault: MOCK_PUBKEY_2,
+        amount: 99n,
+        exists: false,
+      },
+    ] as any);
+
+    const { result } = renderHook(() => useTreasuryYieldResearch(agentDid), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.data.snapshot.status).toBe('inactive');
+    expect(result.current.data.blockedReasons).toContain('no supported stable balances available');
   });
 });

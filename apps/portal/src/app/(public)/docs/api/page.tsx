@@ -124,14 +124,18 @@ export default function ApiDocsPage() {
         <p className="max-w-3xl text-[15px] leading-relaxed text-ink/80">
           Use the same-origin alias when linking the live site or when the portal needs a stable
           indexer host. This surface proxies the deployed indexer API and keeps the public hostname
-          consistent even if the underlying Render service changes.
+          consistent even if the underlying Render service changes. It now also carries compute-bond
+          lifecycle visibility for indexed task flows.
         </p>
         <div className="mt-8">
           <EndpointTable serviceKey="discovery" />
         </div>
         <pre className="mt-8 border border-ink/20 font-mono text-[13px] leading-relaxed p-5 overflow-x-auto">
           <code>{`curl ${siteOrigin}/api/discovery/healthz
+curl '${siteOrigin}/api/discovery/tasks?status=funded,inExecution&limit=5'
+curl ${siteOrigin}/api/discovery/tasks/${exampleTaskId}/compute-bonds
 curl ${siteOrigin}/api/discovery/tasks/${exampleTaskId}/bidding
+curl '${siteOrigin}/api/discovery/agents/${'a'.repeat(64)}/tasks?limit=5'
 curl '${siteOrigin}/api/discovery/v1/discovery/agents?limit=5'`}</code>
         </pre>
       </section>

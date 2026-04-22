@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { loadConfig, type Config } from './config.js';
 import { verifyAsync } from '@noble/ed25519';
@@ -6,16 +6,33 @@ import bs58 from 'bs58';
 import {
   hexToKey,
   sign,
-  type AttestationPayload,
+  verify,
 } from './attestation.js';
+import {
+  validateComputeBondRecord,
+  validateComputeBondTransition,
+  type ComputeBondProvider,
+  type ComputeBondStatus,
+  type ComputeBondRecord,
+  type ComputeBondTransition,
+} from '@saep/sdk';
 import {
   createProviders,
   selectProvider,
   type ComputeProvider,
 } from './providers.js';
 import {
+  ComputeBondRegistry,
+  JsonFileComputeBondStore,
+} from './state.js';
+import {
+  HttpIndexerSnapshotSync,
+  type ComputeBondSnapshotSync,
+} from './sync.js';
+import {
   attestationsSigned,
   bondRequests,
+  leaseLifecycleOps,
   leaseReservationLatency,
   registry,
 } from './metrics.js';
@@ -34,20 +51,178 @@ const BondCancelBody = z.object({
   signed_request: z.string().min(1),
 });
 
+const LeaseActionBody = z.object({
+  lease_id: z.string().min(1),
+  provider: z.enum(['ionet', 'akash']),
+});
+
+const BondVerifyBody = z.object({
+  agent_did: z.string().min(32).max(44),
+  provider: z.enum(['ionet', 'akash']),
+  lease_id: z.string().min(1),
+  gpu_hours: z.number().int().positive(),
+  expires_at: z.number().int().positive(),
+  attestation_sig: z.string().min(1),
+  broker_pubkey: z.string().min(1),
+});
+
+const BondListQuery = z.object({
+  agent_did: z.string().min(32).max(44).optional(),
+  task_id: z.string().min(1).optional(),
+  task_ids: z.string().optional(),
+  status: z.enum(['reserved', 'locked', 'released', 'slashed', 'cancelled', 'expired']).optional(),
+  provider: z.enum(['ionet', 'akash']).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
+
+const BondTaskActionBody = z.object({
+  lease_id: z.string().min(1),
+  provider: z.enum(['ionet', 'akash']),
+  agent_did: z.string().min(32).max(44),
+  task_id: z.string().min(1),
+});
+
+const BondSlashBody = BondTaskActionBody.extend({
+  reason: z.string().min(1).optional(),
+});
+
+const ExpireSweepBody = z.object({
+  now_unix: z.number().int().positive().optional(),
+  leases: z
+    .array(
+      z.object({
+        lease_id: z.string().min(1),
+        provider: z.enum(['ionet', 'akash']),
+        slashable_until: z.number().int().positive(),
+      }),
+    )
+    .min(1),
+});
+
 export type BuildOpts = {
   cfg: Config;
   providers?: { ionet: ComputeProvider; akash: ComputeProvider };
+  bondRegistry?: ComputeBondRegistry;
+  snapshotSync?: ComputeBondSnapshotSync | null;
 };
+
+function serializeBond(
+  bond: ComputeBondRecord,
+  providerStatus: string | null = null,
+) {
+  return {
+    lease_id: bond.lease_id,
+    agent_did: bond.agent_did,
+    provider: bond.provider,
+    gpu_hours: bond.gpu_hours,
+    expires_at: bond.expires_at,
+    slashable_until: bond.slashable_until,
+    task_id: bond.task_id,
+    status: bond.status,
+    status_reason: bond.status_reason,
+    reserved_price_usd_micro: bond.reserved_price_usd_micro,
+    broker_pubkey: bond.broker_pubkey,
+    attestation_sig: bond.attestation_sig,
+    created_at_ms: bond.created_at_ms,
+    updated_at_ms: bond.updated_at_ms,
+    provider_status: providerStatus,
+  };
+}
+
+async function providerStatusFor(
+  bond: ComputeBondRecord,
+  providers: { ionet: ComputeProvider; akash: ComputeProvider },
+): Promise<string | null> {
+  try {
+    const provider = selectProvider(bond.provider, providers);
+    return await provider.status(bond.lease_id);
+  } catch {
+    return null;
+  }
+}
+
+function asBondError(
+  reply: FastifyReply,
+  err: unknown,
+): FastifyReply {
+  const message = asMessage(err);
+  const code = message === 'bond not found' ? 404 : 409;
+  return reply.code(code).send({ error: message });
+}
+
+function assertTransition(
+  record: ComputeBondRecord,
+  transition: ComputeBondTransition,
+): string[] {
+  return validateComputeBondTransition(record, transition);
+}
+
+async function syncBondSnapshot(
+  sync: ComputeBondSnapshotSync | null,
+  bond: ComputeBondRecord,
+  providerStatus: string | null,
+): Promise<void> {
+  if (!sync) return;
+  const providerStatuses = new Map<string, string | null>([[bond.lease_id, providerStatus]]);
+  await sync.syncSnapshots([bond], { providerStatuses });
+}
+
+function inferredProviderStatus(bond: ComputeBondRecord): string | null {
+  switch (bond.status) {
+    case 'reserved':
+      return 'reserved';
+    case 'locked':
+      return 'active';
+    case 'released':
+    case 'slashed':
+    case 'expired':
+      return 'reclaimed';
+    case 'cancelled':
+      return 'cancelled';
+    default:
+      return null;
+  }
+}
 
 export function build(opts: BuildOpts) {
   const cfg = opts.cfg;
   const providers = opts.providers ?? createProviders(cfg);
+  const bondRegistry =
+    opts.bondRegistry ??
+    new ComputeBondRegistry(
+      cfg.computeBondStorePath ? new JsonFileComputeBondStore(cfg.computeBondStorePath) : undefined,
+    );
+  const snapshotSync =
+    opts.snapshotSync ??
+    (cfg.indexerInternalApiUrl
+      ? new HttpIndexerSnapshotSync(cfg.indexerInternalApiUrl, cfg.indexerInternalApiToken)
+      : null);
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
+
+  app.addHook('onReady', async () => {
+    if (!snapshotSync) return;
+    const bonds = bondRegistry.snapshot().bonds;
+    if (bonds.length === 0) return;
+    try {
+      await snapshotSync.syncSnapshots(bonds, {
+        providerStatuses: new Map(
+          bonds.map((bond) => [bond.lease_id, inferredProviderStatus(bond)]),
+        ),
+      });
+    } catch (err) {
+      app.log.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        'failed to seed compute bond snapshots on startup',
+      );
+    }
+  });
 
   app.get('/healthz', async () => ({
     status: 'ok',
     broker_key_loaded: cfg.signingKeyHex !== undefined,
     providers: ['ionet', 'akash'],
+    tracked_bonds: bondRegistry.snapshot().bonds.length,
+    durable_store: cfg.computeBondStorePath !== undefined,
   }));
 
   app.get('/metrics', async (_req, reply) => {
@@ -57,11 +232,103 @@ export function build(opts: BuildOpts) {
 
   app.get('/leases/:id', async (req, reply) => {
     const id = (req.params as { id: string }).id;
+    const tracked = bondRegistry.get(id);
     try {
+      if (tracked) {
+        const provider = selectProvider(tracked.provider, providers);
+        const status = await provider.status(id);
+        return { lease_id: id, provider: tracked.provider, status, tracked_bond_status: tracked.status };
+      }
       const status = await providers.ionet.status(id);
       return { lease_id: id, status };
     } catch (err) {
       return reply.code(501).send({ error: asMessage(err) });
+    }
+  });
+
+  app.get('/bonds/:id', async (req, reply) => {
+    const id = (req.params as { id: string }).id;
+    const bond = bondRegistry.get(id);
+    if (!bond) return reply.code(404).send({ error: 'bond not found' });
+    return reply.send(serializeBond(bond, await providerStatusFor(bond, providers)));
+  });
+
+  app.get('/bonds', async (req, reply) => {
+    const parsed = BondListQuery.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.message });
+    }
+    const q = parsed.data;
+    const taskIds = q.task_ids
+      ? q.task_ids.split(',').map((value) => value.trim()).filter(Boolean)
+      : undefined;
+    const items = bondRegistry.list({
+      agentDid: q.agent_did,
+      taskId: q.task_id,
+      taskIds,
+      status: q.status as ComputeBondStatus | undefined,
+      provider: q.provider as ComputeBondProvider | undefined,
+      limit: q.limit,
+    });
+    const serialized = await Promise.all(
+      items.map(async (bond) => serializeBond(bond, await providerStatusFor(bond, providers))),
+    );
+    return reply.send({ items: serialized });
+  });
+
+  app.post('/bonds/verify', async (req, reply) => {
+    const parsed = BondVerifyBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.message });
+    }
+    const body = parsed.data;
+    const valid = await verify(
+      {
+        agent_did: body.agent_did,
+        provider: body.provider,
+        lease_id: body.lease_id,
+        gpu_hours: body.gpu_hours,
+        expires_at: body.expires_at,
+      },
+      body.attestation_sig,
+      body.broker_pubkey,
+    );
+    return reply.send({ valid });
+  });
+
+  app.post('/leases/activate', async (req, reply) => {
+    const parsed = LeaseActionBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.message });
+    }
+
+    const { lease_id, provider: providerName } = parsed.data;
+    const provider = selectProvider(providerName, providers);
+    try {
+      await provider.activate(lease_id);
+      leaseLifecycleOps.inc({ provider: providerName, operation: 'activate', status: 'ok' });
+      return reply.send({ lease_id, provider: providerName, status: 'active' });
+    } catch (err) {
+      leaseLifecycleOps.inc({ provider: providerName, operation: 'activate', status: 'error' });
+      return reply.code(502).send({ error: asMessage(err) });
+    }
+  });
+
+  app.post('/leases/reclaim', async (req, reply) => {
+    const parsed = LeaseActionBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.message });
+    }
+
+    const { lease_id, provider: providerName } = parsed.data;
+    const provider = selectProvider(providerName, providers);
+    try {
+      await provider.reclaim(lease_id);
+      leaseLifecycleOps.inc({ provider: providerName, operation: 'reclaim', status: 'ok' });
+      return reply.send({ lease_id, provider: providerName, status: 'reclaimed' });
+    } catch (err) {
+      leaseLifecycleOps.inc({ provider: providerName, operation: 'reclaim', status: 'error' });
+      return reply.code(502).send({ error: asMessage(err) });
     }
   });
 
@@ -100,7 +367,7 @@ export function build(opts: BuildOpts) {
       return reply.code(502).send({ error: asMessage(err) });
     }
 
-    const payload: AttestationPayload = {
+    const payload = {
       agent_did: body.agent_did,
       provider: body.provider,
       lease_id: reservation.leaseId,
@@ -119,14 +386,85 @@ export function build(opts: BuildOpts) {
     attestationsSigned.inc({ provider: body.provider });
     bondRequests.inc({ provider: body.provider, status: 'ok' });
 
+    const nowMs = Date.now();
+    const record: ComputeBondRecord = {
+      ...payload,
+      attestation_sig: attestation.signatureBs58,
+      broker_pubkey: attestation.pubkeyBs58,
+      reserved_price_usd_micro: reservation.pricedUsdMicro,
+      slashable_until: reservation.expiresAt + cfg.bondSlashWindowSecs,
+      task_id: null,
+      status: 'reserved',
+      created_at_ms: nowMs,
+      updated_at_ms: nowMs,
+      status_reason: null,
+    };
+    const errors = validateComputeBondRecord(record);
+    if (errors.length > 0) {
+      bondRequests.inc({ provider: body.provider, status: 'record_invalid' });
+      return reply.code(500).send({ error: errors.join('; ') });
+    }
+    bondRegistry.reserve(record);
+    try {
+      await syncBondSnapshot(snapshotSync, record, 'reserved');
+    } catch (err) {
+      app.log.warn(
+        { err: err instanceof Error ? err.message : String(err), lease_id: record.lease_id },
+        'failed to sync reserved compute bond snapshot',
+      );
+    }
+
     return reply.send({
       lease_id: reservation.leaseId,
       attestation_sig: attestation.signatureBs58,
       broker_pubkey: attestation.pubkeyBs58,
       gpu_hours: reservation.gpuHours,
       expires_at: reservation.expiresAt,
+      slashable_until: reservation.expiresAt + cfg.bondSlashWindowSecs,
+      bond_status: 'reserved',
       reserved_price_usd_micro: reservation.pricedUsdMicro,
     });
+  });
+
+  app.post('/bonds/lock', async (req, reply) => {
+    const parsed = BondTaskActionBody.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.message });
+    const body = parsed.data;
+    const record = bondRegistry.get(body.lease_id);
+    if (!record) return reply.code(404).send({ error: 'bond not found' });
+    if (record.provider !== body.provider || record.agent_did !== body.agent_did) {
+      return reply.code(409).send({ error: 'bond request does not match stored reservation' });
+    }
+    const transition: ComputeBondTransition = {
+      type: 'lock',
+      task_id: body.task_id,
+      now_ms: Date.now(),
+    };
+    const errors = assertTransition(record, transition);
+    if (errors.length > 0) {
+      return reply.code(409).send({ error: errors.join('; ') });
+    }
+
+    const provider = selectProvider(body.provider, providers);
+    const previous = record;
+    const next = bondRegistry.transition(body.lease_id, transition);
+    try {
+      await provider.activate(body.lease_id);
+      try {
+        await syncBondSnapshot(snapshotSync, next, 'active');
+      } catch (err) {
+        app.log.warn(
+          { err: err instanceof Error ? err.message : String(err), lease_id: next.lease_id },
+          'failed to sync locked compute bond snapshot',
+        );
+      }
+      leaseLifecycleOps.inc({ provider: body.provider, operation: 'lock', status: 'ok' });
+      return reply.send({ ...next, provider_status: 'active' });
+    } catch (err) {
+      bondRegistry.replace(previous);
+      leaseLifecycleOps.inc({ provider: body.provider, operation: 'lock', status: 'error' });
+      return reply.code(502).send({ error: asMessage(err) });
+    }
   });
 
   app.post('/bonds/cancel', async (req, reply) => {
@@ -195,11 +533,196 @@ export function build(opts: BuildOpts) {
       }
     }
 
+    const tracked = bondRegistry.get(lease_id);
+    if (tracked) {
+      try {
+        const next = bondRegistry.transition(lease_id, {
+          type: 'cancel',
+          now_ms: Date.now(),
+        });
+        try {
+          await syncBondSnapshot(snapshotSync, next, 'cancelled');
+        } catch (err) {
+          app.log.warn(
+            { err: err instanceof Error ? err.message : String(err), lease_id: next.lease_id },
+            'failed to sync cancelled compute bond snapshot',
+          );
+        }
+      } catch (err) {
+        return asBondError(reply, err);
+      }
+    }
+
     bondRequests.inc({ provider: 'unknown', status: 'cancelled' });
     return reply.send({
       lease_id,
       status: 'cancelled',
       refund_usd_micro: refund.refundUsdMicro,
+    });
+  });
+
+  app.post('/bonds/release', async (req, reply) => {
+    const parsed = BondTaskActionBody.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.message });
+    const body = parsed.data;
+    const record = bondRegistry.get(body.lease_id);
+    if (!record) return reply.code(404).send({ error: 'bond not found' });
+    if (record.provider !== body.provider || record.agent_did !== body.agent_did) {
+      return reply.code(409).send({ error: 'bond request does not match stored reservation' });
+    }
+    const transition: ComputeBondTransition = {
+      type: 'release',
+      task_id: body.task_id,
+      now_ms: Date.now(),
+    };
+    const errors = assertTransition(record, transition);
+    if (errors.length > 0) {
+      return reply.code(409).send({ error: errors.join('; ') });
+    }
+
+    const provider = selectProvider(body.provider, providers);
+    const previous = record;
+    const next = bondRegistry.transition(body.lease_id, transition);
+    try {
+      await provider.reclaim(body.lease_id);
+      try {
+        await syncBondSnapshot(snapshotSync, next, 'reclaimed');
+      } catch (err) {
+        app.log.warn(
+          { err: err instanceof Error ? err.message : String(err), lease_id: next.lease_id },
+          'failed to sync released compute bond snapshot',
+        );
+      }
+      leaseLifecycleOps.inc({ provider: body.provider, operation: 'release', status: 'ok' });
+      return reply.send({ ...next, provider_status: 'reclaimed' });
+    } catch (err) {
+      bondRegistry.replace(previous);
+      leaseLifecycleOps.inc({ provider: body.provider, operation: 'release', status: 'error' });
+      return reply.code(502).send({ error: asMessage(err) });
+    }
+  });
+
+  app.post('/bonds/slash', async (req, reply) => {
+    const parsed = BondSlashBody.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.message });
+    const body = parsed.data;
+    const record = bondRegistry.get(body.lease_id);
+    if (!record) return reply.code(404).send({ error: 'bond not found' });
+    if (record.provider !== body.provider || record.agent_did !== body.agent_did) {
+      return reply.code(409).send({ error: 'bond request does not match stored reservation' });
+    }
+    const transition: ComputeBondTransition = {
+      type: 'slash',
+      task_id: body.task_id,
+      now_ms: Date.now(),
+      reason: body.reason,
+    };
+    const errors = assertTransition(record, transition);
+    if (errors.length > 0) {
+      return reply.code(409).send({ error: errors.join('; ') });
+    }
+
+    const provider = selectProvider(body.provider, providers);
+    const previous = record;
+    const next = bondRegistry.transition(body.lease_id, transition);
+    try {
+      await provider.reclaim(body.lease_id);
+      try {
+        await syncBondSnapshot(snapshotSync, next, 'reclaimed');
+      } catch (err) {
+        app.log.warn(
+          { err: err instanceof Error ? err.message : String(err), lease_id: next.lease_id },
+          'failed to sync slashed compute bond snapshot',
+        );
+      }
+      leaseLifecycleOps.inc({ provider: body.provider, operation: 'slash', status: 'ok' });
+      return reply.send({ ...next, provider_status: 'reclaimed' });
+    } catch (err) {
+      bondRegistry.replace(previous);
+      leaseLifecycleOps.inc({ provider: body.provider, operation: 'slash', status: 'error' });
+      return reply.code(502).send({ error: asMessage(err) });
+    }
+  });
+
+  app.post('/leases/expire-sweep', async (req, reply) => {
+    const parsed = ExpireSweepBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.message });
+    }
+
+    const nowUnix = parsed.data.now_unix ?? Math.floor(Date.now() / 1000);
+    const results: Array<{
+      lease_id: string;
+      provider: 'ionet' | 'akash';
+      status: 'reclaimed' | 'skipped' | 'error';
+      reason?: string;
+    }> = [];
+
+    for (const lease of parsed.data.leases) {
+      if (lease.slashable_until > nowUnix) {
+        leaseLifecycleOps.inc({
+          provider: lease.provider,
+          operation: 'expire_sweep',
+          status: 'skipped',
+        });
+        results.push({
+          lease_id: lease.lease_id,
+          provider: lease.provider,
+          status: 'skipped',
+          reason: 'slashable window still active',
+        });
+        continue;
+      }
+
+      const provider = selectProvider(lease.provider, providers);
+      try {
+        await provider.reclaim(lease.lease_id);
+        const tracked = bondRegistry.get(lease.lease_id);
+        if (tracked) {
+          const next = bondRegistry.transition(lease.lease_id, {
+            type: 'expire',
+            now_ms: nowUnix * 1000,
+          });
+          try {
+            await syncBondSnapshot(snapshotSync, next, 'reclaimed');
+          } catch (err) {
+            app.log.warn(
+              { err: err instanceof Error ? err.message : String(err), lease_id: next.lease_id },
+              'failed to sync expired compute bond snapshot',
+            );
+          }
+        }
+        leaseLifecycleOps.inc({
+          provider: lease.provider,
+          operation: 'expire_sweep',
+          status: 'ok',
+        });
+        results.push({
+          lease_id: lease.lease_id,
+          provider: lease.provider,
+          status: 'reclaimed',
+        });
+      } catch (err) {
+        leaseLifecycleOps.inc({
+          provider: lease.provider,
+          operation: 'expire_sweep',
+          status: 'error',
+        });
+        results.push({
+          lease_id: lease.lease_id,
+          provider: lease.provider,
+          status: 'error',
+          reason: asMessage(err),
+        });
+      }
+    }
+
+    return reply.send({
+      now_unix: nowUnix,
+      reclaimed: results.filter((item) => item.status === 'reclaimed').length,
+      skipped: results.filter((item) => item.status === 'skipped').length,
+      errors: results.filter((item) => item.status === 'error').length,
+      results,
     });
   });
 

@@ -11,6 +11,9 @@ const PROGRAMS: { name: string; env: string }[] = [
 ];
 
 const ENDPOINTS = [
+  { method: 'GET', path: '/tasks?status=<csv>&limit=<n>', desc: 'Indexed task feed with compute bond summaries' },
+  { method: 'GET', path: '/tasks/:taskIdHex/compute-bonds', desc: 'Tracked compute bond lifecycle rows for one task' },
+  { method: 'GET', path: '/agents/:did/tasks?status=<csv>&limit=<n>', desc: 'Agent task history enriched with compute bond summaries' },
   { method: 'GET', path: '/v1/discovery/agents', desc: 'List registered agents with capability filters' },
   { method: 'GET', path: '/v1/discovery/tasks', desc: 'Browse open tasks and match criteria' },
   { method: 'GET', path: '/v1/discovery/capabilities', desc: 'Enumerate protocol-wide capability taxonomy' },
@@ -50,11 +53,14 @@ export default function DevelopersPage() {
         <h2 className="font-mono text-[10px] text-mute tracking-widest uppercase">
           Quick Start
         </h2>
-        <p className="text-sm text-mute">Install the packages you need:</p>
+        <p className="text-sm text-mute">
+          Use the published SDK, then build the repo-local integration packages until external
+          distribution is fully finished:
+        </p>
         <div className="flex flex-col gap-2">
           <CodeBlock>npm install @saep/sdk</CodeBlock>
-          <CodeBlock>npm install @saep/mcp-server</CodeBlock>
-          <CodeBlock>npm install @saep/solana-agent-kit-plugin</CodeBlock>
+          <CodeBlock>pnpm --filter @saep/mcp-bridge build</CodeBlock>
+          <CodeBlock>pnpm --filter @saep/sak-plugin build</CodeBlock>
         </div>
       </div>
 
@@ -121,7 +127,8 @@ export default function DevelopersPage() {
           {[
             { label: 'GitHub', href: 'https://github.com/SolanaAEP/saep', desc: 'Source code and IDLs' },
             { label: '@saep/sdk', href: 'https://www.npmjs.com/package/@saep/sdk', desc: 'TypeScript SDK on npm' },
-            { label: '@saep/mcp-server', href: 'https://www.npmjs.com/package/@saep/mcp-server', desc: 'MCP server for agent tooling' },
+            { label: 'MCP Bridge', href: 'https://github.com/SolanaAEP/saep/tree/main/services/mcp-bridge', desc: 'Package name: @saep/mcp-bridge' },
+            { label: 'SAK Plugin', href: 'https://github.com/SolanaAEP/saep/tree/main/packages/sak-plugin', desc: 'Package name: @saep/sak-plugin' },
             { label: 'Documentation', href: 'https://docs.buildonsaep.com', desc: 'Guides, references, tutorials' },
           ].map((r) => (
             <a

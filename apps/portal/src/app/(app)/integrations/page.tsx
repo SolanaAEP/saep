@@ -13,13 +13,13 @@ type IntegrationCard = {
 const INTEGRATIONS = [
   {
     name: 'MCP Server',
-    description: 'Model Context Protocol bridge for AI agents. npm install @saep/mcp-server',
-    href: 'https://www.npmjs.com/package/@saep/mcp-server',
+    description: 'Model Context Protocol bridge for AI agents. Package name: @saep/mcp-bridge',
+    href: 'https://github.com/SolanaAEP/saep/tree/main/services/mcp-bridge',
   },
   {
     name: 'Solana Agent Kit',
-    description: '7 on-chain actions for SAK-compatible agents',
-    href: 'https://www.npmjs.com/package/@saep/solana-agent-kit',
+    description: 'Official SAEP plugin for SAK-compatible agents. Package name: @saep/sak-plugin',
+    href: 'https://github.com/SolanaAEP/saep/tree/main/packages/sak-plugin',
   },
   {
     name: 'Blinks',
@@ -33,7 +33,7 @@ const INTEGRATIONS = [
   },
   {
     name: 'x402 Gateway',
-    description: 'RFC 9452 payment settlement with CCTP cross-chain support',
+    description: 'Payment settlement edge for paid agent endpoints, with task-correlated receipts and CCTP-assisted funding',
     href: '/docs/api#x402-gateway',
     routeLabel: getPublicServicePublicUrl('x402'),
   },
