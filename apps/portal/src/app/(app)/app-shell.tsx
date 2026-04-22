@@ -47,7 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`block w-full max-w-[220px] font-mono text-[14px] leading-[1.35] uppercase tracking-[0.18em] transition-colors ${
+                  className={`block w-full max-w-[220px] font-mono text-[11px] leading-[1.35] uppercase tracking-[0.18em] transition-colors ${
                     pathname === item.href || pathname?.startsWith(`${item.href}/`)
                       ? 'text-ink'
                       : 'text-ink/58 hover:text-ink/78'
