@@ -38,8 +38,6 @@ const CONFIG_SEED = Buffer.from('staking_config');
 const LOCK_PRESETS = [7, 30, 90, 180, 365] as const;
 const MAINNET_SAEP_MINT = 'HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump';
 
-type ProgramStage = 'not-deployed' | 'deployed' | 'configured' | 'ready';
-
 interface ConfigView {
   authority: PublicKey;
   bump: number;
@@ -216,12 +214,6 @@ export function StakingShell() {
   const previewVotingPower =
     stakePreviewAmount != null ? stakePreviewAmount * BigInt(previewMultiplier) : null;
   const rewardsLive = (poolQuery.data?.rewardRatePerEpoch ?? 0n) > 0n;
-  const rewardsBanner =
-    poolQuery.data && !rewardsLive
-      ? cluster.cluster === 'mainnet-beta'
-        ? 'Mainnet staking positions are live, but rewards are not active yet. The current on-chain reward rate is 0, and fee routing into staking remains a later rollout step.'
-        : 'This staking pool currently has a reward rate of 0. Position management is live, but rewards are not active on this cluster.'
-      : null;
   const assetLabel = mintQuery.data ? stakeAssetLabel(mintQuery.data.address) : 'stake token';
   const availableToStake =
     walletBalanceQuery.data && mintQuery.data
@@ -247,14 +239,6 @@ export function StakingShell() {
     : walletBalanceQuery.data?.exists === false
       ? 'Token account missing'
       : 'Ready';
-
-  const stage: ProgramStage = !programInfo.data
-    ? 'not-deployed'
-    : !configQuery.data
-      ? 'deployed'
-      : !poolQuery.data
-        ? 'configured'
-        : 'ready';
 
   const explorerBase = useMemo(() => explorerClusterSuffix(cluster.cluster), [cluster.cluster]);
 
@@ -407,17 +391,6 @@ export function StakingShell() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={stageTone(stage)} testId="staking-stage-badge">
-            {stageLabel(stage)}
-          </Badge>
-          <a
-            href={explorerHref('address', program.programId.toBase58(), explorerBase)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-11 items-center border border-ink/15 px-4 font-mono text-[11px] uppercase tracking-[0.08em] text-ink/75 transition-colors hover:border-ink/35 hover:text-ink"
-          >
-            Program on Explorer
-          </a>
           <WalletMultiButton />
         </div>
       </header>
@@ -477,15 +450,6 @@ export function StakingShell() {
         </div>
       )}
 
-      {rewardsBanner ? (
-        <div
-          className="border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700"
-          data-testid="staking-rewards-banner"
-        >
-          {rewardsBanner}
-        </div>
-      ) : null}
-
       {lastAction ? (
         <div className="border border-lime/30 bg-lime/5 px-4 py-3 text-sm text-ink/80">
           {lastAction}
@@ -496,7 +460,7 @@ export function StakingShell() {
         <div className="flex flex-col gap-6">
           <Panel title="Open a position" subtitle="Lock SAEP directly from the connected wallet.">
             {!connected ? (
-              <div className="border border-dashed border-ink/15 px-5 py-5 text-sm text-ink/65">
+              <div className="mb-6 border border-dashed border-ink/15 px-5 py-5 text-sm text-ink/65">
                 Connect a Solana wallet to see your available SAEP balance, create a token account,
                 and submit a stake transaction.
               </div>
@@ -844,33 +808,6 @@ function MetricCard({
   );
 }
 
-function Badge({
-  tone,
-  children,
-  testId,
-}: {
-  tone: 'lime' | 'amber' | 'danger' | 'muted';
-  children: React.ReactNode;
-  testId?: string;
-}) {
-  const palette =
-    tone === 'lime'
-      ? 'border-lime/30 bg-lime/10 text-lime'
-      : tone === 'amber'
-        ? 'border-amber-500/30 bg-amber-500/10 text-amber-700'
-        : tone === 'danger'
-          ? 'border-danger/30 bg-danger/10 text-danger'
-          : 'border-ink/10 bg-paper text-ink/60';
-  return (
-    <span
-      className={`inline-flex items-center border px-3 py-1 font-mono text-[11px] uppercase tracking-[0.08em] ${palette}`}
-      data-testid={testId}
-    >
-      {children}
-    </span>
-  );
-}
-
 function FactBlock({
   label,
   value,
@@ -1132,26 +1069,6 @@ function statusHeadline(
   }
   if (status === 'withdrawn') return 'Stake withdrawn';
   return 'Status unavailable';
-}
-
-function stageLabel(stage: ProgramStage) {
-  if (stage === 'not-deployed') return 'not deployed';
-  if (stage === 'deployed') return 'program only';
-  if (stage === 'configured') return 'config live';
-  return 'live';
-}
-
-function stageTone(stage: ProgramStage): 'lime' | 'amber' | 'danger' | 'muted' {
-  if (stage === 'ready') return 'lime';
-  if (stage === 'configured' || stage === 'deployed') return 'amber';
-  return 'danger';
-}
-
-function statusTone(status: StakePositionView['status']): 'lime' | 'amber' | 'danger' | 'muted' {
-  if (status === 'active') return 'lime';
-  if (status === 'cooldown') return 'amber';
-  if (status === 'withdrawn') return 'muted';
-  return 'danger';
 }
 
 function explorerClusterSuffix(cluster: string) {
