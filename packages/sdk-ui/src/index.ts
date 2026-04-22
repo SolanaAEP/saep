@@ -26,7 +26,23 @@ export {
   useTemplateForks,
   useTemplateRentals,
 } from './hooks/templates.js';
-export { useTask, useTasksByClient, useRecentTasks, useTaskMarketConfig, useRaiseDispute } from './hooks/tasks.js';
+export {
+  useTask,
+  useTasksByClient,
+  useRecentTasks,
+  useDiscoveryTasks,
+  useDiscoveryAgentTasks,
+  useTaskComputeBonds,
+  useTaskMarketConfig,
+  useRaiseDispute,
+  type DiscoveryComputeBondStatus,
+  type DiscoveryComputeBondProvider,
+  type DiscoveryComputeBondSummary,
+  type IndexedTaskSummary,
+  type UseDiscoveryTasksArgs,
+  type UseDiscoveryAgentTasksArgs,
+  type UseTaskComputeBondsArgs,
+} from './hooks/tasks.js';
 export {
   useBidBook,
   useBid,

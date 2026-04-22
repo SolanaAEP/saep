@@ -11,6 +11,9 @@ const PROGRAMS: { name: string; env: string }[] = [
 ];
 
 const ENDPOINTS = [
+  { method: 'GET', path: '/tasks?status=<csv>&limit=<n>', desc: 'Indexed task feed with compute bond summaries' },
+  { method: 'GET', path: '/tasks/:taskIdHex/compute-bonds', desc: 'Tracked compute bond lifecycle rows for one task' },
+  { method: 'GET', path: '/agents/:did/tasks?status=<csv>&limit=<n>', desc: 'Agent task history enriched with compute bond summaries' },
   { method: 'GET', path: '/v1/discovery/agents', desc: 'List registered agents with capability filters' },
   { method: 'GET', path: '/v1/discovery/tasks', desc: 'Browse open tasks and match criteria' },
   { method: 'GET', path: '/v1/discovery/capabilities', desc: 'Enumerate protocol-wide capability taxonomy' },

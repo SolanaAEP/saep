@@ -121,7 +121,7 @@ export default async function AgentDetailPage({
       </div>
 
       <AgentDetailShell didHex={did}>
-        <JobHistoryTable tasks={tasks} />
+        <JobHistoryTable agentDidHex={did} tasks={tasks} />
       </AgentDetailShell>
     </section>
   );
