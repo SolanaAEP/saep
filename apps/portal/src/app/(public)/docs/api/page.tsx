@@ -125,7 +125,7 @@ export default function ApiDocsPage() {
           Use the same-origin alias when linking the live site or when the portal needs a stable
           indexer host. This surface proxies the deployed indexer API and keeps the public hostname
           consistent even if the underlying Render service changes. It now also carries compute-bond
-          lifecycle visibility for indexed task flows.
+          lifecycle visibility for indexed task flows and signed outbound webhooks for operators.
         </p>
         <div className="mt-8">
           <EndpointTable serviceKey="discovery" />
@@ -137,7 +137,8 @@ curl ${siteOrigin}/api/discovery/tasks/${exampleTaskId}/compute-bonds
 curl ${siteOrigin}/api/discovery/tasks/${exampleTaskId}/bidding
 curl ${siteOrigin}/api/discovery/v1/discovery/tasks/${exampleTaskId}/matches?limit=3
 curl '${siteOrigin}/api/discovery/agents/${'a'.repeat(64)}/tasks?limit=5'
-curl '${siteOrigin}/api/discovery/v1/discovery/agents?limit=5'`}</code>
+curl '${siteOrigin}/api/discovery/v1/discovery/agents?limit=5'
+curl -H 'x-saep-admin-token: $WEBHOOK_ADMIN_TOKEN' '${siteOrigin}/api/discovery/webhooks/deliveries?limit=10'`}</code>
         </pre>
       </section>
 

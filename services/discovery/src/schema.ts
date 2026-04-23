@@ -61,8 +61,20 @@ export const WebhookSubscriptionCreateSchema = z.object({
   description: z.string().trim().min(1).max(120).optional(),
 });
 
+export const WebhookSubscriptionParamsSchema = z.object({
+  id: z.string().trim().min(1),
+});
+
+export const WebhookSubscriptionRotateSecretSchema = z.object({
+  secret: z.string().min(16).max(256),
+});
+
 export const WebhookDeliveriesQuerySchema = z.object({
   state: z.enum(['pending', 'delivered', 'retrying', 'dead_letter']).optional(),
+  subscription_id: z.string().trim().min(1).optional(),
+  event_id: z.string().trim().min(1).optional(),
+  event_type: WebhookEventTypeSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
 });
 
 const IsoDateTimeString = z.string().refine((value) => !Number.isNaN(Date.parse(value)), 'valid ISO datetime');
@@ -102,6 +114,8 @@ export type TaskHistoryQuery = z.infer<typeof TaskHistoryQuerySchema>;
 export type TasksQuery = z.infer<typeof TasksQuerySchema>;
 export type ComputeBondQuery = z.infer<typeof ComputeBondQuerySchema>;
 export type WebhookSubscriptionCreate = z.infer<typeof WebhookSubscriptionCreateSchema>;
+export type WebhookSubscriptionParams = z.infer<typeof WebhookSubscriptionParamsSchema>;
+export type WebhookSubscriptionRotateSecret = z.infer<typeof WebhookSubscriptionRotateSecretSchema>;
 export type WebhookDeliveriesQuery = z.infer<typeof WebhookDeliveriesQuerySchema>;
 export type WebhookEventEmit = z.infer<typeof WebhookEventEmitSchema>;
 export type WebhookReplayRequest = z.infer<typeof WebhookReplayRequestSchema>;

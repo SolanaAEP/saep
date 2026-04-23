@@ -68,6 +68,9 @@ describe('discovery webhooks routes', () => {
     const headers = init.headers as Record<string, string>;
     expect(headers['x-saep-event-type']).toBe('task.created');
     expect(headers['x-saep-event-id']).toBe('id-2');
+    expect(headers['x-saep-delivery-id']).toBe('id-3');
+    expect(headers['x-saep-signature-version']).toBe('1');
+    expect(headers['x-saep-signature-window-seconds']).toBe('300');
     const expectedSignature = createHmac('sha256', 'super-secret-token')
       .update(`${headers['x-saep-event-timestamp']}.${body}`)
       .digest('hex');
@@ -84,8 +87,14 @@ describe('discovery webhooks routes', () => {
         {
           state: 'delivered',
           event_type: 'task.created',
+          event_resource_type: 'task',
+          event_resource_id: 'task-123',
           attempt_count: 1,
           target_url: 'https://hooks.example/saep',
+          created_at: expect.any(String),
+          completed_at: expect.any(String),
+          signature_version: 1,
+          signature_window_seconds: 300,
         },
       ],
     });
@@ -131,6 +140,130 @@ describe('discovery webhooks routes', () => {
       },
     });
     expect(replay.statusCode).toBe(401);
+
+    const rotate = await app.inject({
+      method: 'POST',
+      url: '/webhooks/subscriptions/sub-1/rotate-secret',
+      payload: {
+        secret: 'rotated-super-secret-token',
+      },
+    });
+    expect(rotate.statusCode).toBe(401);
+
+    await app.close();
+  });
+
+  it('rotates endpoint secrets and exposes filterable delivery logs', async () => {
+    const fetchMock = vi.fn(async () => new Response('ok', { status: 200 }));
+    const hub = new WebhookHub({
+      fetchImpl: fetchMock,
+      retryBaseMs: 10,
+      maxAttempts: 2,
+      signatureWindowSeconds: 120,
+      idFactory: sequentialIds(),
+    });
+    const app = await buildServer({
+      installSignalHandlers: false,
+      webhookHub: hub,
+      webhookAdminToken: 'admin-token',
+      webhookServiceToken: 'service-token',
+    });
+
+    const create = await app.inject({
+      method: 'POST',
+      url: '/webhooks/subscriptions',
+      headers: { 'x-saep-admin-token': 'admin-token' },
+      payload: {
+        url: 'https://hooks.example/saep',
+        events: ['task.created'],
+        secret: 'original-super-secret-token',
+      },
+    });
+    expect(create.statusCode).toBe(201);
+    expect(create.json()).toMatchObject({
+      id: 'id-1',
+      secret_version: 1,
+      previous_secret_versions: [],
+    });
+
+    await app.inject({
+      method: 'POST',
+      url: '/webhooks/events',
+      headers: { 'x-saep-service-token': 'service-token' },
+      payload: {
+        type: 'task.created',
+        chain: 'solana',
+        cluster: 'devnet',
+        resource: { type: 'task', id: 'task-before' },
+        payload: {},
+      },
+    });
+
+    const firstCall = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const firstHeaders = firstCall[1].headers as Record<string, string>;
+    const firstBody = firstCall[1].body as string;
+    const firstSignature = createHmac('sha256', 'original-super-secret-token')
+      .update(`${firstHeaders['x-saep-event-timestamp']}.${firstBody}`)
+      .digest('hex');
+    expect(firstHeaders['x-saep-signature']).toBe(`sha256=${firstSignature}`);
+    expect(firstHeaders['x-saep-signature-version']).toBe('1');
+    expect(firstHeaders['x-saep-signature-window-seconds']).toBe('120');
+
+    const rotated = await app.inject({
+      method: 'POST',
+      url: '/webhooks/subscriptions/id-1/rotate-secret',
+      headers: { 'x-saep-admin-token': 'admin-token' },
+      payload: {
+        secret: 'rotated-super-secret-token',
+      },
+    });
+    expect(rotated.statusCode).toBe(200);
+    expect(rotated.json()).toMatchObject({
+      id: 'id-1',
+      secret_version: 2,
+      secret_preview: 'rota...oken',
+      previous_secret_versions: [1],
+      rotated_at: expect.any(String),
+    });
+
+    await app.inject({
+      method: 'POST',
+      url: '/webhooks/events',
+      headers: { 'x-saep-service-token': 'service-token' },
+      payload: {
+        type: 'task.created',
+        chain: 'solana',
+        cluster: 'devnet',
+        resource: { type: 'task', id: 'task-after' },
+        payload: {},
+      },
+    });
+
+    const secondCall = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
+    const secondHeaders = secondCall[1].headers as Record<string, string>;
+    const secondBody = secondCall[1].body as string;
+    const secondSignature = createHmac('sha256', 'rotated-super-secret-token')
+      .update(`${secondHeaders['x-saep-event-timestamp']}.${secondBody}`)
+      .digest('hex');
+    expect(secondHeaders['x-saep-signature']).toBe(`sha256=${secondSignature}`);
+    expect(secondHeaders['x-saep-signature-version']).toBe('2');
+
+    const filteredDeliveries = await app.inject({
+      method: 'GET',
+      url: '/webhooks/deliveries?subscription_id=id-1&event_type=task.created&limit=1',
+      headers: { 'x-saep-admin-token': 'admin-token' },
+    });
+    expect(filteredDeliveries.statusCode).toBe(200);
+    expect(filteredDeliveries.json()).toMatchObject({
+      items: [
+        {
+          subscription_id: 'id-1',
+          event_id: 'id-4',
+          event_resource_id: 'task-after',
+          signature_version: 2,
+        },
+      ],
+    });
 
     await app.close();
   });

@@ -19,6 +19,8 @@ import {
   WebhookDeliveriesQuerySchema,
   WebhookEventEmitSchema,
   WebhookReplayRequestSchema,
+  WebhookSubscriptionParamsSchema,
+  WebhookSubscriptionRotateSecretSchema,
   WsMessageSchema,
   type WsMessage,
 } from './schema.js';
@@ -91,6 +93,7 @@ export async function buildServer(opts: BuildServerOptions = {}) {
   const webhookHub = opts.webhookHub ?? new WebhookHub({
     retryBaseMs: Number(process.env.WEBHOOK_RETRY_BASE_MS ?? 1_000),
     maxAttempts: Number(process.env.WEBHOOK_MAX_ATTEMPTS ?? 4),
+    signatureWindowSeconds: Number(process.env.WEBHOOK_SIGNATURE_WINDOW_SECONDS ?? 300),
     initialState: webhookStore?.load(),
     persist: webhookStore ? (snapshot) => webhookStore.save(snapshot) : undefined,
   });
@@ -567,6 +570,28 @@ export async function buildServer(opts: BuildServerOptions = {}) {
     return { items: webhookHub.listSubscriptions() };
   });
 
+  app.post('/webhooks/subscriptions/:id/rotate-secret', async (req, reply) => {
+    if (!requireToken(req.headers['x-saep-admin-token'], webhookAdminToken)) {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
+
+    const params = WebhookSubscriptionParamsSchema.safeParse(req.params);
+    if (!params.success) {
+      return reply.code(400).send({ error: 'invalid_params', issues: params.error.issues });
+    }
+
+    const parsed = WebhookSubscriptionRotateSecretSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+    }
+
+    const subscription = webhookHub.rotateSubscriptionSecret(params.data.id, parsed.data.secret);
+    if (!subscription) {
+      return reply.code(404).send({ error: 'subscription_not_found' });
+    }
+    return subscription;
+  });
+
   app.get('/webhooks/deliveries', async (req, reply) => {
     if (!requireToken(req.headers['x-saep-admin-token'], webhookAdminToken)) {
       return reply.code(401).send({ error: 'unauthorized' });
@@ -577,7 +602,7 @@ export async function buildServer(opts: BuildServerOptions = {}) {
       return reply.code(400).send({ error: 'invalid_query', issues: parsed.error.issues });
     }
 
-    return { items: webhookHub.listDeliveries(parsed.data.state) };
+    return { items: webhookHub.listDeliveries(parsed.data) };
   });
 
   app.post('/webhooks/events', async (req, reply) => {

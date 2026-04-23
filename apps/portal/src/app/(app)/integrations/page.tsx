@@ -55,6 +55,12 @@ const INTEGRATIONS = [
     routeLabel: getPublicServicePublicUrl('discovery'),
   },
   {
+    name: 'Event Webhooks',
+    description: 'Signed task/proof/operator events with retries, replay, dead-letter logs, and rotating endpoint secrets',
+    href: 'https://github.com/SolanaAEP/saep/tree/main/services/discovery#webhook-auth',
+    routeLabel: getPublicServicePublicUrl('discovery'),
+  },
+  {
     name: 'TypeScript SDK',
     description: 'Full typed SDK generated from on-chain IDLs. npm install @saep/sdk',
     href: 'https://www.npmjs.com/package/@saep/sdk',
