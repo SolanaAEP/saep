@@ -26,6 +26,9 @@ pub fn internal_router(pool: PgPool, internal_api_token: Option<String>) -> Rout
 /// Gated behind CORS with explicit origin allowlist.
 pub fn public_router(pool: PgPool, allowed_origins: Vec<String>) -> Router {
     let state = ApiState { pool: pool.clone() };
+    let metrics_router = Router::new()
+        .route("/metrics", get(public_metrics_handler))
+        .with_state(state.clone());
 
     let origins: Vec<_> = allowed_origins
         .iter()
@@ -40,6 +43,7 @@ pub fn public_router(pool: PgPool, allowed_origins: Vec<String>) -> Router {
 
     Router::new()
         .route("/healthz", get(|| async { "ok" }))
+        .merge(metrics_router)
         .merge(api::router(pool))
         .merge(stats::router(state.clone()))
         .merge(discovery::router(state.clone()))
@@ -48,6 +52,13 @@ pub fn public_router(pool: PgPool, allowed_origins: Vec<String>) -> Router {
 }
 
 async fn metrics_handler(State(state): State<InternalApiState>) -> impl IntoResponse {
+    (
+        [("content-type", "text/plain; version=0.0.4")],
+        metrics::render(&state.pool),
+    )
+}
+
+async fn public_metrics_handler(State(state): State<ApiState>) -> impl IntoResponse {
     (
         [("content-type", "text/plain; version=0.0.4")],
         metrics::render(&state.pool),

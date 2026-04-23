@@ -21,6 +21,7 @@
     "smoke:devnet-verify-claim": "tsx scripts/smoke_devnet_verify_claim.ts",
     "smoke:compute-bonds": "tsx scripts/smoke_compute_bond_snapshots.ts",
     "smoke:compute-bonds:local": "tsx scripts/smoke_compute_bond_snapshots_local.ts",
+    "smoke:indexer:render": "tsx scripts/smoke_render_indexer.ts",
     "smoke:python-distribution": "bash scripts/smoke_python_distribution.sh",
     "clean": "turbo run clean && rm -rf node_modules",
     "size": "node scripts/check-bundle-size.mjs apps/portal --build && node scripts/check-bundle-size.mjs apps/analytics --build",

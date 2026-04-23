@@ -35,9 +35,11 @@ brew install libpq
 export LIBRARY_PATH="/opt/homebrew/opt/libpq/lib"
 ```
 
-Internal health: `curl localhost:8080/healthz` · Metrics: `curl localhost:8080/metrics`.
+Internal health: `curl localhost:8080/healthz` · Internal metrics: `curl localhost:8080/metrics`.
 When `INDEXER_ROLE=all` or `INDEXER_ROLE=api`, the public discovery API listens on
-`http://localhost:8081` by default.
+`http://localhost:8081` by default and now mirrors `/healthz` plus `/metrics` on the public port
+as well. That lets a hosted Render web service be smoke-tested from the outside without exposing
+the internal mutation routes.
 
 ## Config
 
@@ -100,4 +102,50 @@ Writes `target/idl/<program>.json` for every M1 program. Default lookup path is 
 
 ## Deploy
 
-`render.yaml` provisions a Render Background Worker + managed Postgres in Frankfurt. Build via the Dockerfile (Linux has libpq available via apt). After the first deploy, set the `sync: false` envs in the Render dashboard: `HELIUS_API_KEY` (always required) and — to activate streaming — `YELLOWSTONE_ENDPOINT` + `YELLOWSTONE_TOKEN`. Without the Yellowstone vars the worker falls back to JSON-RPC polling automatically.
+`render.yaml` provisions a Render Background Worker + managed Postgres in Frankfurt. Build via the
+Dockerfile (Linux has libpq available via apt).
+
+Current operator path:
+
+1. Install the Render CLI if needed:
+
+   ```sh
+   curl -fsSL https://raw.githubusercontent.com/render-oss/cli/main/bin/install.sh | bash
+   export PATH="$HOME/.local/bin:$PATH"
+   ```
+
+2. Authenticate and select the target workspace:
+
+   ```sh
+   render login
+   render workspace set
+   ```
+
+3. Validate the Blueprint file in this repo:
+
+   ```sh
+   render blueprints validate services/indexer/render.yaml
+   ```
+
+4. In the Render dashboard, create the Blueprint from this repo and point it at
+   `services/indexer/render.yaml` on the branch you want to deploy.
+
+5. After the first deploy, set the `sync: false` worker envs in the Render dashboard:
+   `HELIUS_API_KEY` (always required) and — to activate streaming — `YELLOWSTONE_ENDPOINT` +
+   `YELLOWSTONE_TOKEN`. Without the Yellowstone vars the worker falls back to JSON-RPC polling
+   automatically.
+
+6. Smoke the hosted web service from the repo root:
+
+   ```sh
+   pnpm smoke:indexer:render --public-url https://<your-indexer-api>.onrender.com
+   ```
+
+   If you already expect live program traffic, you can require specific `saep_indexer_last_slot`
+   labels:
+
+   ```sh
+   pnpm smoke:indexer:render \
+     --public-url https://<your-indexer-api>.onrender.com \
+     --expect-programs task_market,proof_verifier
+   ```

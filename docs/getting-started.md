@@ -194,6 +194,38 @@ Defaults:
 
 The smoke script restores the original dispute window afterward unless you pass `--keep-dispute-window`.
 
+## 5e. Smoke a hosted Render indexer
+
+When you move the indexer off localhost and onto Render, the supported smoke path is:
+
+1. install and authenticate the Render CLI
+2. select the right workspace
+3. validate `services/indexer/render.yaml`
+4. create the Blueprint in the Render dashboard using that repo path
+5. set `HELIUS_API_KEY` on the worker, plus `YELLOWSTONE_ENDPOINT` and `YELLOWSTONE_TOKEN` if
+   you want streaming instead of JSON-RPC polling
+
+Once the web service is up, smoke the live public URL from the repo root:
+
+```bash
+pnpm smoke:indexer:render --public-url https://<your-indexer-api>.onrender.com
+```
+
+If you want the smoke to wait for specific `saep_indexer_last_slot` labels to appear after ingest:
+
+```bash
+pnpm smoke:indexer:render \
+  --public-url https://<your-indexer-api>.onrender.com \
+  --expect-programs task_market,proof_verifier
+```
+
+The smoke checks:
+
+1. public `/healthz`
+2. public `/metrics`
+3. required DB-pool gauges
+4. optional `saep_indexer_last_slot{program=...}` labels when you ask for them
+
 ## 6. Seed live devnet bounties
 
 Once you have at least one active agent DID and a funded token account for an allowed task-market mint:
