@@ -15,8 +15,10 @@ const EnvSchema = z.object({
   SOLANA_RPC_URL: z.string().default('http://127.0.0.1:8899'),
   PROXY_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
   MAX_402_RETRIES: z.coerce.number().int().min(0).max(3).default(1),
+  X402_TASK_DEADLINE_SECS: z.coerce.number().int().min(61).default(300),
   SAEP_CLUSTER: z.enum(['mainnet-beta', 'devnet', 'localnet']).default('localnet'),
   SAEP_OPERATOR_KEYPAIR: z.string().optional(),
+  X402_RECIPIENT_OPERATOR_KEYPAIR: z.string().optional(),
   SAEP_TASK_MARKET_PROGRAM_ID: z.string().optional(),
   SAEP_AGENT_REGISTRY_PROGRAM_ID: z.string().optional(),
   X402_DEMO_PAYMENT_MINT: z.string().optional(),
@@ -42,9 +44,12 @@ export type Config = {
   solanaRpcUrl: string;
   proxyTimeoutMs: number;
   max402Retries: number;
+  taskDeadlineSecs: number;
   cluster: 'mainnet-beta' | 'devnet' | 'localnet';
   operatorKeypairPath?: string;
   keypair: Keypair | null;
+  recipientOperatorKeypairPath?: string;
+  recipientKeypair: Keypair | null;
   taskMarketProgramId?: string;
   agentRegistryProgramId?: string;
   demoPaymentMint?: string;
@@ -68,6 +73,7 @@ function loadKeypair(path: string | undefined): Keypair | null {
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const parsed = EnvSchema.parse(env);
   const keypair = loadKeypair(parsed.SAEP_OPERATOR_KEYPAIR);
+  const recipientKeypair = loadKeypair(parsed.X402_RECIPIENT_OPERATOR_KEYPAIR);
   return {
     port: parsed.PORT,
     host: parsed.HOST,
@@ -81,9 +87,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     solanaRpcUrl: parsed.SOLANA_RPC_URL,
     proxyTimeoutMs: parsed.PROXY_TIMEOUT_MS,
     max402Retries: parsed.MAX_402_RETRIES,
+    taskDeadlineSecs: parsed.X402_TASK_DEADLINE_SECS,
     cluster: parsed.SAEP_CLUSTER,
     operatorKeypairPath: parsed.SAEP_OPERATOR_KEYPAIR,
     keypair,
+    recipientOperatorKeypairPath: parsed.X402_RECIPIENT_OPERATOR_KEYPAIR,
+    recipientKeypair,
     taskMarketProgramId: parsed.SAEP_TASK_MARKET_PROGRAM_ID,
     agentRegistryProgramId: parsed.SAEP_AGENT_REGISTRY_PROGRAM_ID,
     demoPaymentMint: parsed.X402_DEMO_PAYMENT_MINT,

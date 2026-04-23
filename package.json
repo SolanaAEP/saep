@@ -17,9 +17,11 @@
     "seed:bounties": "tsx scripts/seed_marketplace_bounties.ts",
     "bootstrap:proof-verifier-devnet": "tsx scripts/bootstrap_proof_verifier_devnet.ts",
     "set:task-market-dispute-window": "tsx scripts/set_task_market_dispute_window.ts",
+    "smoke:devnet-x402": "tsx scripts/smoke_devnet_x402.ts",
     "smoke:devnet-verify-claim": "tsx scripts/smoke_devnet_verify_claim.ts",
     "smoke:compute-bonds": "tsx scripts/smoke_compute_bond_snapshots.ts",
     "smoke:compute-bonds:local": "tsx scripts/smoke_compute_bond_snapshots_local.ts",
+    "smoke:python-distribution": "bash scripts/smoke_python_distribution.sh",
     "clean": "turbo run clean && rm -rf node_modules",
     "size": "node scripts/check-bundle-size.mjs apps/portal --build && node scripts/check-bundle-size.mjs apps/analytics --build",
     "test": "turbo run test"

@@ -60,6 +60,9 @@ pnpm --filter @saep/iacp build && pnpm --filter @saep/iacp start
 pnpm --filter @saep/proof-gen build && pnpm --filter @saep/proof-gen start
 
 # x402 settlement edge (needs Redis + RPC + funded signer)
+# add X402_RECIPIENT_OPERATOR_KEYPAIR when you want the gateway to auto-complete
+# submit_result + verify_task + release for a managed recipient DID
+# lower X402_TASK_DEADLINE_SECS for faster managed devnet smoke runs
 pnpm --filter @saep/x402-gateway build && pnpm --filter @saep/x402-gateway start
 
 # indexer with internal + public APIs
@@ -156,6 +159,40 @@ That command:
 
 The script prints the task address, verification signature, claim signature, final task status, and
 the disposable operator keypair path so you can inspect the run afterward if needed.
+
+## 5d. Smoke the x402 managed and unmanaged devnet paths
+
+This flow proves the live x402 gateway path itself, not just the lower-level verifier and payout
+instructions.
+
+It reuses the same devnet authority wallet, validates or bootstraps the verifier, temporarily
+shortens the dispute window, starts the real x402 gateway locally with a mock Redis backend, then:
+
+1. runs a managed `/proxy -> /demo/paid` flow that reaches `released`
+2. runs an unmanaged `/proxy -> /demo/paid` flow that stops honestly short of release
+3. prints the task address plus settle, submit, verify, and release signatures when present
+
+```bash
+pnpm smoke:devnet-x402
+```
+
+Useful flags:
+
+```bash
+pnpm smoke:devnet-x402 --mode managed
+pnpm smoke:devnet-x402 --mode unmanaged
+pnpm smoke:devnet-x402 --dispute-window-secs 15
+pnpm smoke:devnet-x402 --skip-bootstrap
+```
+
+Defaults:
+
+- `ANCHOR_PROVIDER_URL=https://api.devnet.solana.com`
+- `ANCHOR_WALLET=~/.config/solana/id.json`
+- payment amount `1000000`
+- temporary dispute window `10` seconds
+
+The smoke script restores the original dispute window afterward unless you pass `--keep-dispute-window`.
 
 ## 6. Seed live devnet bounties
 

@@ -54,8 +54,27 @@ describe('x402-gateway server', () => {
     task_id_hex: 'ab'.repeat(32),
     task_status: 'funded',
   }));
-  const verifySettlement = vi.fn(async (txSig: string) => {
-    if (txSig.startsWith('settled_tx_sig')) return { status: 'confirmed' as const, slot: 42 };
+  const finalizeManagedSettlement = vi.fn(async (receipt: {
+    tx_sig: string;
+    amount: number;
+    mint: string;
+    task?: string;
+    task_id_hex?: string;
+    task_status?: string;
+  }) => ({
+    ...receipt,
+    task_status: 'released',
+  }));
+  const verifySettlement = vi.fn(async (receipt: { tx_sig: string; task?: string; task_id_hex?: string }) => {
+    if (receipt.tx_sig.startsWith('settled_tx_sig')) {
+      return {
+        status: 'confirmed' as const,
+        slot: 42,
+        task: receipt.task,
+        task_id_hex: receipt.task_id_hex,
+        task_status: receipt.task ? 'released' : undefined,
+      };
+    }
     return { status: 'not_found' as const, err: 'missing' };
   });
   let app: FastifyInstance;
@@ -78,6 +97,7 @@ describe('x402-gateway server', () => {
       redis,
       settlement: {
         settleViaTaskMarket,
+        finalizeManagedSettlement,
         verifySettlement,
       },
     });
@@ -218,9 +238,10 @@ describe('x402-gateway server', () => {
     expect(json.payment_receipts.length).toBe(1);
     expect(json.payment_receipts[0].amount).toBe(100);
     expect(json.payment_receipts[0].task_id_hex).toBe('ab'.repeat(32));
-    expect(json.payment_receipts[0].task_status).toBe('funded');
+    expect(json.payment_receipts[0].task_status).toBe('released');
     expect(callCount).toBe(2);
     expect(settleViaTaskMarket).toHaveBeenCalledTimes(1);
+    expect(finalizeManagedSettlement).toHaveBeenCalledTimes(1);
   });
 
   it('proxy returns 402 when upstream stays 402 after retries', async () => {
@@ -295,7 +316,7 @@ describe('x402-gateway server', () => {
       ok: true,
       settled_tx_sig: 'settled_tx_sig_demo',
       task_id_hex: 'cd'.repeat(32),
-      task_status: 'funded',
+      task_status: 'released',
       message: 'paid access granted',
     });
   });
@@ -332,7 +353,7 @@ describe('x402-gateway server', () => {
       ok: true,
       settled_tx_sig: 'settled_tx_sig_abc12345',
       task_id_hex: 'ef'.repeat(32),
-      task_status: 'funded',
+      task_status: 'released',
     });
   });
 

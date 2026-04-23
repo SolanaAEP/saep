@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Hermes Agent plugin for SAEP task discovery and MCP-backed actions"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = "MIT"
 authors = [
   { name = "SolanaAEP" }
 ]
@@ -16,7 +16,6 @@ keywords = ["saep", "hermes-agent", "agents", "solana", "plugin"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",

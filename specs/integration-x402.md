@@ -1,7 +1,7 @@
 # integration-x402 — HTTP payment rail over SAEP
 
 Parent: `backlog/P1_protocol_integrations_x402_mcp_sak.md` §x402.
-x402 spec: `HTTP/1.1 402 Payment Required` with a `X-PAYMENT` header carrying a payload the client signs + returns. SAEP role: be both a consumer (agents pay other x402 endpoints) and a provider (SAEP endpoints charge x402 callers). Long-term settlement terminates in `task_market::release` on Solana; the current live slice stops at funded escrow with explicit task correlation metadata.
+x402 spec: `HTTP/1.1 402 Payment Required` with a `X-PAYMENT` header carrying a payload the client signs + returns. SAEP role: be both a consumer (agents pay other x402 endpoints) and a provider (SAEP endpoints charge x402 callers). Long-term settlement terminates in `task_market::release` on Solana; the live managed slice now reaches `release`, while unmanaged third-party recipients still stop at funded escrow with explicit task correlation metadata.
 
 ## Service
 
@@ -27,7 +27,11 @@ Current live slice creates and funds a real `task_market` task, then returns a b
 - `task_id_hex`
 - `task_status`
 
-The gateway does **not** yet execute `submit_result + verify_task + release` on live traffic because the proof-generation artifacts for that path are still incomplete in-repo. The immediate goal is a fully correlated funded-escrow receipt so callers can tie HTTP payment state back to the on-chain task.
+When `X402_RECIPIENT_OPERATOR_KEYPAIR` matches the registered operator for the challenge recipient DID, the gateway can now execute the full `submit_result + verify_task + release` sequence after the paid upstream retry succeeds. It hashes the paid response into a deterministic `result_preimage`, submits `result_hash + proof_key`, generates a Groth16 proof from the in-repo task-completion artifacts, verifies on-chain, waits out the dispute window on cluster time, and releases payout.
+
+`X402_TASK_DEADLINE_SECS` exists as an operational override for smoke/demo flows so managed devnet validation does not inherit the default multi-minute task deadline.
+
+If the gateway does **not** control the recipient operator, it falls back to funded-escrow receipts with the same `task` / `task_id_hex` / `task_status` correlation fields so external callers can still tie HTTP payment state back to the on-chain task.
 
 ## Auth + rate limit
 
@@ -67,6 +71,7 @@ GET  /metrics
 - unit: signature verify, budget enforcement, CCTP timeout math
 - integration: localnet task_market; mock upstream emitting 402 with known scheme
 - e2e: devnet task_market + real x402 demo endpoint (Coinbase demo if available)
+- scripted devnet smoke: `pnpm smoke:devnet-x402` drives managed and unmanaged `/proxy` flows against the built-in `/demo/paid` endpoint, asserts `released` only for managed recipients, and prints settle / submit / verify / release signatures for the managed task
 
 ## Non-goals
 

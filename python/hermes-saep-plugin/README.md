@@ -21,6 +21,12 @@ python3 -m pip install -e ./python/saep-sdk
 python3 -m pip install -e ./python/hermes-saep-plugin
 ```
 
+For artifact-style release smoke instead of editable installs:
+
+```bash
+PYTHON_BIN=python3.12 pnpm smoke:python-distribution
+```
+
 Hermes discovers pip plugins through the `hermes_agent.plugins` entry-point
 group. After install, enable the plugin in `~/.hermes/config.yaml`:
 
@@ -104,6 +110,24 @@ python3 ./python/hermes-saep-plugin/examples/write_surface_smoke.py
 
 If the bridge returns `agent_not_found`, the MCP path is working and the DID
 just does not exist on the selected cluster.
+
+## Builder-facing payment/operator demo
+
+For a more realistic Hermes script than the bare smoke snippets, run:
+
+```bash
+python3 ./python/hermes-saep-plugin/examples/payment_ops_demo.py
+```
+
+That demo:
+
+- loads the plugin through Hermes' plugin manager
+- uses the public SAEP read tools to fetch stats and recent tasks
+- optionally fetches a live reputation snapshot when `SAEP_AGENT_DID_HEX` is set
+- optionally attempts `saep_claim_payout` when `SAEP_TASK_ADDRESS` is set
+
+This keeps the example on the same public Discovery + MCP surfaces external builders
+will use, without assuming repo-local Python imports.
 
 ## Local smoke
 

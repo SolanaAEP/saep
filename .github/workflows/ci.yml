@@ -85,6 +85,23 @@ jobs:
           node scripts/check-bundle-size.mjs apps/portal --build
           node scripts/check-bundle-size.mjs apps/analytics --build
 
+  python-distribution:
+    runs-on: ubuntu-latest
+    needs: public-id-guard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python unit tests
+        env:
+          PYTHONPATH: python/saep-sdk/src:python/hermes-saep-plugin/src
+        run: |
+          python -m unittest discover -s python/saep-sdk/tests
+          python -m unittest discover -s python/hermes-saep-plugin/tests
+      - name: Python package smoke
+        run: PYTHON_BIN=python bash scripts/smoke_python_distribution.sh
+
   rust-fast:
     runs-on: ubuntu-latest
     needs: public-id-guard

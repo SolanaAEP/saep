@@ -12,12 +12,14 @@ import {
   registry,
 } from './metrics.js';
 import {
+  finalizeManagedSettlement,
   parseXPaymentHeader,
   requestHash,
   settleViaTaskMarket,
   verifySettlement,
   type PaymentDetails,
   type PaymentReceipt,
+  type UpstreamResponseSnapshot,
 } from './settlement.js';
 
 const ProxyBody = z.object({
@@ -48,9 +50,20 @@ export type BuildOpts = {
       argsHash: string,
       budgetLamports: number,
     ) => Promise<PaymentReceipt>;
+    finalizeManagedSettlement?: (
+      receipt: PaymentReceipt,
+      upstream: UpstreamResponseSnapshot,
+    ) => Promise<PaymentReceipt>;
     verifySettlement?: (
-      txSig: string,
-    ) => Promise<{ status: 'confirmed' | 'finalized' | 'not_found' | 'failed'; slot?: number; err?: string }>;
+      receipt: Pick<PaymentReceipt, 'tx_sig' | 'task' | 'task_id_hex'>,
+    ) => Promise<{
+      status: 'confirmed' | 'finalized' | 'not_found' | 'failed';
+      slot?: number;
+      err?: string;
+      task?: string;
+      task_id_hex?: string;
+      task_status?: string;
+    }>;
   };
 };
 
@@ -61,8 +74,12 @@ export function build(opts: BuildOpts) {
     settleViaTaskMarket: opts.settlement?.settleViaTaskMarket ??
       ((payment: PaymentDetails, requesterDid: string, argsHash: string, budgetLamports: number) =>
         settleViaTaskMarket(cfg, payment, requesterDid, argsHash, budgetLamports)),
+    finalizeManagedSettlement: opts.settlement?.finalizeManagedSettlement ??
+      ((receipt: PaymentReceipt, upstream: UpstreamResponseSnapshot) =>
+        finalizeManagedSettlement(cfg, receipt, upstream)),
     verifySettlement: opts.settlement?.verifySettlement ??
-      ((txSig: string) => verifySettlement(cfg.solanaRpcUrl, txSig)),
+      ((receipt: Pick<PaymentReceipt, 'tx_sig' | 'task' | 'task_id_hex'>) =>
+        verifySettlement(cfg, receipt)),
   };
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
 
@@ -146,7 +163,11 @@ export function build(opts: BuildOpts) {
       return requirePayment('x_payment_invalid_json');
     }
 
-    const verification = await settlement.verifySettlement(txSig);
+    const verification = await settlement.verifySettlement({
+      tx_sig: txSig,
+      task: taskAddress ?? undefined,
+      task_id_hex: taskIdHex ?? undefined,
+    });
     if (verification.status === 'confirmed' || verification.status === 'finalized') {
       return reply.send({
         ok: true,
@@ -154,9 +175,9 @@ export function build(opts: BuildOpts) {
         settled_tx_sig: txSig,
         amount: challenge.amount,
         mint: challenge.mint,
-        task: taskAddress,
-        task_id_hex: taskIdHex,
-        task_status: taskStatus,
+        task: verification.task ?? taskAddress,
+        task_id_hex: verification.task_id_hex ?? taskIdHex,
+        task_status: verification.task_status ?? taskStatus,
         slot: verification.slot,
         message: 'paid access granted',
       });
@@ -278,6 +299,27 @@ export function build(opts: BuildOpts) {
       }
     }
 
+    if (latestReceipt && lastUpstreamStatus >= 200 && lastUpstreamStatus < 300) {
+      try {
+        const finalized = await settlement.finalizeManagedSettlement(latestReceipt, {
+          status: lastUpstreamStatus,
+          headers: lastUpstreamHeaders,
+          body: lastUpstreamBody,
+        });
+        paymentReceipts[paymentReceipts.length - 1] = finalized;
+        latestReceipt = finalized;
+      } catch (e) {
+        proxyRequests.inc({ status: 'settlement_failed' });
+        end({ status: 'settlement_failed' });
+        console.error('[x402-gateway] settlement finalization failed:', e);
+        return reply.code(502).send({
+          error: 'settlement_finalization_failed',
+          detail: e instanceof Error ? e.message : String(e),
+          payment_receipts: paymentReceipts,
+        });
+      }
+    }
+
     if (lastUpstreamStatus === 402) {
       proxyRequests.inc({ status: 'upstream_402' });
       end({ status: 'upstream_402' });
@@ -331,16 +373,20 @@ export function build(opts: BuildOpts) {
       return reply.code(400).send({ error: 'x_payment is not valid JSON' });
     }
 
-    const result = await settlement.verifySettlement(txSig);
+    const result = await settlement.verifySettlement({
+      tx_sig: txSig,
+      task: taskAddress ?? undefined,
+      task_id_hex: taskIdHex ?? undefined,
+    });
 
     if (result.status === 'confirmed' || result.status === 'finalized') {
       facilitateVerifyTotal.inc({ result: 'settled' });
       return reply.send({
         ok: true,
         settled_tx_sig: txSig,
-        task: taskAddress,
-        task_id_hex: taskIdHex,
-        task_status: taskStatus,
+        task: result.task ?? taskAddress,
+        task_id_hex: result.task_id_hex ?? taskIdHex,
+        task_status: result.task_status ?? taskStatus,
         slot: result.slot,
       });
     }

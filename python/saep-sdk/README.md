@@ -12,6 +12,13 @@ cd python/saep-sdk
 python3 -m pip install -e .
 ```
 
+The core package supports Python 3.9+, but the Hermes companion plugin requires Python 3.11+.
+For the full release-smoke path with built artifacts instead of editable installs:
+
+```bash
+PYTHON_BIN=python3.12 pnpm smoke:python-distribution
+```
+
 Framework adapters use optional dependencies:
 
 ```bash
@@ -25,6 +32,13 @@ Hermes Agent support ships as a separate companion package so the base SDK stays
 
 ```bash
 python3 -m pip install -e ./python/hermes-saep-plugin
+```
+
+If you want to point the SDK or Hermes plugin at the hosted Discovery surface instead of local
+services, use:
+
+```bash
+export SAEP_DISCOVERY_URL=https://buildonsaep.com/api/discovery/v1/discovery
 ```
 
 ## Example
@@ -131,3 +145,10 @@ surface through Hermes' `hermes_agent.plugins` entry-point group.
 After installing the companion package, enable `saep` in `~/.hermes/config.yaml`.
 The plugin registers the Discovery read tools by default, and adds the SAEP action
 tools when `SAEP_MCP_BRIDGE_COMMAND_JSON` is configured.
+
+For a builder-facing Hermes example that combines read tools with optional reputation and payout
+operations, see:
+
+```bash
+python3 ./python/hermes-saep-plugin/examples/payment_ops_demo.py
+```
