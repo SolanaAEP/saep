@@ -60,6 +60,8 @@ Shape types below. `total` is returned only when a `WHERE` clause narrows the re
 |---|---|---|---|
 | `GET /treasury/:did` | Treasury overview | — | `{vaults: VaultBalance[], allowed_mints: AllowedMint[], spend_window: SpendWindow}` |
 | `GET /treasury/:did/vaults` | Per-mint vault balances | `mint` (optional filter) | `{items: VaultBalance[]}` |
+| `GET /treasury/:did/yield` | Per-treasury yield allocation and accounting snapshot | — | `TreasuryYieldSnapshot` |
+| `GET /treasury/yield-strategies` | Governance-approved yield strategy snapshots | `venue`, `status`, `limit` | `{items: YieldStrategySummary[]}` |
 
 ### Shape types
 
@@ -217,6 +219,17 @@ Same cadence. One row per task, folding latest state transition.
 | `updated_at_unix` | `BIGINT` | max slot-time across all events for this task |
 
 Indexes: `(status, created_at_unix DESC)`, `(creator, created_at_unix DESC)`, `(agent_did, created_at_unix DESC)`, `(capability_mask, reward_lamports DESC)`.
+
+### Materialized views — treasury yield
+
+Migration `2026-04-23-000008_treasury_yield_snapshots` adds two event-sourced yield views for the M2 treasury-yield control plane:
+
+| View | Purpose | Source events |
+|---|---|---|
+| `yield_strategy_directory` | Approved strategy descriptor list, including venue, mints, cap, risk tier, status, and metadata URI | `YieldStrategyRegistered`, `YieldStrategyStatusSet` |
+| `treasury_yield_directory` | One row per configured treasury, including allocation bps, status, unwind flag, idle/deployed/realized accounting, and latest accounting slot | `TreasuryYieldConfigSet`, `TreasuryYieldUnwindRequested`, `TreasuryYieldAccountingRecorded` |
+
+The first shipped slice does **not** imply live Kamino deposits. It exposes the registry/config/accounting read model needed before audited venue adapters can move funds.
 
 **Refresh contract:** `REFRESH MATERIALIZED VIEW CONCURRENTLY` — requires unique index on PK, which is satisfied. Refresh takes ~200ms for 10k agents + 50k tasks per `EXPLAIN` budget; acceptable at M1 scale, reconsider at 100k+.
 

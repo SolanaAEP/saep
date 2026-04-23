@@ -1,6 +1,6 @@
 # Treasury Yield Strategies
 
-**Status:** SPEC — M2 implementation target  
+**Status:** SPEC — control plane landed first; venue CPIs remain M2 adapter work  
 **Program:** treasury_standard (extension)  
 **Dependencies:** GovernanceProgram (strategy approval), FeeCollector (yield fee split)
 
@@ -12,13 +12,19 @@ Agent treasuries hold idle capital between task settlements. On a protocol proce
 
 ### Strategy Framework
 
-New instruction surface on treasury_standard:
+Control-plane instruction surface on `treasury_standard`:
 
-- `register_strategy(strategy_program: Pubkey, name: [u8; 32], risk_tier: u8)` — governance-only. Adds an approved lending/yield program to the allowlist.
-- `deposit_to_strategy(strategy_id: Pubkey, amount: u64, vault_mint: Pubkey)` — agent operator. Deposits from treasury vault into an approved strategy. Respects existing spend limits (counts against daily limit). Strategy must be on allowlist.
-- `withdraw_from_strategy(strategy_id: Pubkey, amount: u64)` — agent operator. Withdraws back to treasury vault.
-- `emergency_withdraw_all(strategy_id: Pubkey)` — governance emergency council (4-of-7). Force-withdraws all funds from a strategy if it's compromised.
-- `set_strategy_limits(strategy_id: Pubkey, max_allocation_bps: u16, max_per_vault_bps: u16)` — governance. Caps how much of any treasury can go to one strategy.
+- `register_yield_strategy(...)` — governance-only. Adds a strategy descriptor with venue, program, underlying mint, receipt mint, risk tier, cap, name, and metadata URI.
+- `set_yield_strategy_status(status)` — governance-only pause/revoke control for an approved strategy.
+- `set_treasury_yield_config(agent_did, strategy_id, allocation_bps, paused)` — treasury operator opt-in under the strategy cap.
+- `request_treasury_yield_unwind()` — treasury operator emergency unwind signal.
+- `record_treasury_yield_accounting(idle_amount, deployed_amount, realized_yield_amount, accounting_slot)` — authority-recorded accounting event for indexer snapshots.
+
+Venue adapter instruction surface, still ahead:
+
+- `deposit_to_strategy(strategy_id, amount, vault_mint)` — agent operator. Deposits from treasury vault into an approved strategy. Respects existing spend limits and strategy allocation caps.
+- `withdraw_from_strategy(strategy_id, amount)` — agent operator. Withdraws back to treasury vault.
+- `emergency_withdraw_all(strategy_id)` — governance emergency council. Force-withdraws all funds from a strategy if compromised.
 
 ### Approved Strategy Targets (M2 candidates)
 
@@ -41,8 +47,9 @@ New instruction surface on treasury_standard:
 
 ### PDA Structure
 
-- `StrategyAllowlist` — singleton, stores Vec<ApprovedStrategy>
-- `StrategyPosition` — per (agent_did, strategy_id, vault_mint), tracks deposited amount + entry timestamp
+- `YieldStrategyDescriptor` — per strategy PDA, stores governance-approved descriptor and status.
+- `TreasuryYieldConfig` — per treasury PDA, stores selected strategy, allocation bps, unwind state, and latest accounting fields.
+- `StrategyPosition` — future per `(agent_did, strategy_id, vault_mint)` adapter PDA, tracks deposited amount + entry timestamp once external CPIs land.
 
 ### Open Questions
 

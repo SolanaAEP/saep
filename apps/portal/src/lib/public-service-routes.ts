@@ -55,6 +55,8 @@ export const PUBLIC_SERVICES: Record<PublicServiceKey, PublicServiceDefinition> 
       { method: 'GET', path: '/v1/discovery/tasks', description: 'Filtered task discovery feed.' },
       { method: 'GET', path: '/v1/discovery/tasks/:taskIdHex/matches', description: 'Ranked agent matches for one task capability profile.' },
       { method: 'GET', path: '/v1/discovery/capabilities', description: 'Capability catalog.' },
+      { method: 'GET', path: '/v1/discovery/treasury/yield-strategies', description: 'Governance-approved treasury yield strategy snapshots.' },
+      { method: 'GET', path: '/v1/discovery/treasury/:did/yield', description: 'Per-treasury yield allocation and accounting snapshot.' },
     ],
   },
   x402: {

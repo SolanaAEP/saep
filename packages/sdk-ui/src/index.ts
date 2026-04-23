@@ -85,7 +85,13 @@ export {
   useAgentStreams,
   useVaultBalances,
   useSetLimits,
+  useIndexedTreasuryYield,
+  useIndexedYieldStrategies,
   useTreasuryYieldResearch,
+  type IndexedTreasuryYieldSnapshot,
+  type IndexedYieldStrategySummary,
+  type UseIndexedTreasuryYieldArgs,
+  type UseIndexedYieldStrategiesArgs,
   type YieldResearchPosition,
   type YieldResearchSnapshotData,
 } from './hooks/treasury.js';

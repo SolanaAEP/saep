@@ -15,6 +15,8 @@ pub const DEFAULT_SLIPPAGE_BPS: u64 = 50;
 pub const BPS_DENOM: u64 = 10_000;
 pub const BASE_DECIMALS: u8 = 6;
 pub const MAX_ROUTE_DATA_LEN: usize = 512;
+pub const MAX_YIELD_STRATEGY_NAME_LEN: usize = 48;
+pub const MAX_YIELD_STRATEGY_URI_LEN: usize = 160;
 
 #[account]
 #[derive(InitSpace)]
@@ -99,6 +101,72 @@ pub struct AllowedMints {
     pub bump: u8,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
+pub enum YieldVenue {
+    Kamino,
+    Marginfi,
+    Drift,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
+pub enum YieldRiskTier {
+    Conservative,
+    Moderate,
+    Aggressive,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
+pub enum YieldStrategyStatus {
+    Active,
+    Paused,
+    Revoked,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
+pub enum TreasuryYieldStatus {
+    Inactive,
+    Active,
+    Paused,
+    Unwinding,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct YieldStrategyDescriptor {
+    pub strategy_id: [u8; 32],
+    pub venue: YieldVenue,
+    pub strategy_program: Pubkey,
+    pub underlying_mint: Pubkey,
+    pub receipt_mint: Pubkey,
+    pub max_allocation_bps: u16,
+    pub risk_tier: YieldRiskTier,
+    pub status: YieldStrategyStatus,
+    #[max_len(MAX_YIELD_STRATEGY_NAME_LEN)]
+    pub name: String,
+    #[max_len(MAX_YIELD_STRATEGY_URI_LEN)]
+    pub metadata_uri: String,
+    pub created_at: i64,
+    pub updated_at: i64,
+    pub bump: u8,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct TreasuryYieldConfig {
+    pub agent_did: [u8; 32],
+    pub strategy_id: [u8; 32],
+    pub allocation_bps: u16,
+    pub status: TreasuryYieldStatus,
+    pub unwind_requested: bool,
+    pub idle_amount: u64,
+    pub deployed_amount: u64,
+    pub realized_yield_amount: i64,
+    pub last_accounting_slot: u64,
+    pub created_at: i64,
+    pub updated_at: i64,
+    pub bump: u8,
+}
+
 // Helper: resolve + bind the hook allowlist account passed into a transfer-CPI
 // instruction against the pointer stored on TreasuryGlobal. Returns None if the
 // pointer is unset (warn-only M1 devnet mode), otherwise Some(&HookAllowlist)
@@ -123,10 +191,7 @@ pub fn resolve_hook_allowlist<'a, 'info>(
 
 // Pure-logic variant for unit tests; matches resolve_hook_allowlist's branches
 // without needing an Anchor account harness.
-pub fn hook_gate_active(
-    global_ptr: &Pubkey,
-    passed_key: Option<&Pubkey>,
-) -> Result<bool> {
+pub fn hook_gate_active(global_ptr: &Pubkey, passed_key: Option<&Pubkey>) -> Result<bool> {
     if *global_ptr == Pubkey::default() {
         return Ok(false);
     }
@@ -270,12 +335,13 @@ pub fn read_oracle(feed_info: &AccountInfo, clock: &Clock) -> Result<OraclePrice
     // Pyth Solana Receiver — only accounts owned by this program can hold valid PriceUpdateV2 data.
     // rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ
     const PYTH_RECEIVER: Pubkey = Pubkey::new_from_array([
-        12, 183, 250, 187, 82, 247, 166, 72,
-        187, 91, 49, 125, 154, 1, 139, 144,
-        87, 203, 2, 71, 116, 250, 254, 1,
-        230, 196, 223, 152, 204, 56, 88, 129,
+        12, 183, 250, 187, 82, 247, 166, 72, 187, 91, 49, 125, 154, 1, 139, 144, 87, 203, 2, 71,
+        116, 250, 254, 1, 230, 196, 223, 152, 204, 56, 88, 129,
     ]);
-    require!(feed_info.owner == &PYTH_RECEIVER, TreasuryError::OracleStale);
+    require!(
+        feed_info.owner == &PYTH_RECEIVER,
+        TreasuryError::OracleStale
+    );
 
     let data = feed_info.try_borrow_data()?;
     require!(data.len() >= 8, TreasuryError::OracleStale);
@@ -375,8 +441,7 @@ pub fn normalize_to_base_units(
     mint_decimals: u8,
 ) -> Result<u64> {
     let price = oracle.price as u128;
-    let combined_exp =
-        (oracle.exponent as i64) + (BASE_DECIMALS as i64) - (mint_decimals as i64);
+    let combined_exp = (oracle.exponent as i64) + (BASE_DECIMALS as i64) - (mint_decimals as i64);
 
     let numerator = (raw_amount as u128)
         .checked_mul(price)
@@ -407,7 +472,11 @@ mod proptests {
     use proptest::prelude::*;
 
     fn oracle(price: i64, exponent: i32) -> OraclePrice {
-        OraclePrice { price, conf: 0, exponent }
+        OraclePrice {
+            price,
+            conf: 0,
+            exponent,
+        }
     }
 
     proptest! {
@@ -631,7 +700,11 @@ mod proptests {
     #[test]
     fn assert_call_target_allowed_per_agent_list() {
         let g = empty_global();
-        let at = AllowedTargets { agent_did: [0u8; 32], targets: vec![pk(1), pk(2)], bump: 0 };
+        let at = AllowedTargets {
+            agent_did: [0u8; 32],
+            targets: vec![pk(1), pk(2)],
+            bump: 0,
+        };
         assert!(assert_call_target_allowed(&g, Some(&at), &pk(1)).is_ok());
         assert!(assert_call_target_allowed(&g, Some(&at), &pk(3)).is_err());
     }
@@ -672,7 +745,11 @@ mod proptests {
     #[test]
     fn assert_call_target_allowed_empty_per_agent_denies_all() {
         let g = empty_global();
-        let at = AllowedTargets { agent_did: [0u8; 32], targets: vec![], bump: 0 };
+        let at = AllowedTargets {
+            agent_did: [0u8; 32],
+            targets: vec![],
+            bump: 0,
+        };
         assert!(assert_call_target_allowed(&g, Some(&at), &pk(1)).is_err());
     }
 }

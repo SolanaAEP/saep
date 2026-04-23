@@ -88,4 +88,18 @@ pub enum TreasuryError {
     GuardNotInitialized,
     #[msg("admin reset has not met the 24h timelock")]
     AdminResetNotTimelocked,
+    #[msg("yield strategy name exceeds maximum length")]
+    YieldNameTooLong,
+    #[msg("yield strategy metadata URI exceeds maximum length")]
+    YieldUriTooLong,
+    #[msg("yield allocation must be between 0 and 10_000 bps")]
+    YieldAllocationInvalid,
+    #[msg("yield allocation exceeds the strategy cap")]
+    YieldAllocationExceeded,
+    #[msg("yield strategy is not active")]
+    YieldStrategyNotActive,
+    #[msg("treasury yield config is not active")]
+    TreasuryYieldNotActive,
+    #[msg("treasury yield accounting slot moved backwards")]
+    YieldAccountingStale,
 }

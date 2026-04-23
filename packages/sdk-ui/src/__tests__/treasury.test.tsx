@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { TransactionInstruction, PublicKey } from '@solana/web3.js';
 import {
@@ -13,6 +13,8 @@ import {
   useAgentStreams,
   useVaultBalances,
   useSetLimits,
+  useIndexedTreasuryYield,
+  useIndexedYieldStrategies,
   useTreasuryYieldResearch,
   rawToUsdMicro,
 } from '../hooks/treasury.js';
@@ -26,6 +28,10 @@ beforeEach(() => {
   mockWallet();
   mockAnchorWallet();
   vi.mocked(treasuryStandardProgram).mockReturnValue(mockProgramInstance);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe('useAllowedMints', () => {
@@ -269,6 +275,99 @@ describe('useTreasuryYieldResearch', () => {
     expect(noStrategy.result.current.data.snapshot.status).toBe('inactive');
     expect(noStrategy.result.current.data.snapshot.strategyId).toBeNull();
     expect(noStrategy.result.current.data.blockedReasons).toContain('no active strategy selected');
+  });
+});
+
+describe('indexed treasury yield hooks', () => {
+  const INDEXER = 'https://idx.example.com';
+  const didHex = 'a'.repeat(64);
+  const strategyHex = 'b'.repeat(64);
+
+  it('maps indexed strategy snapshots', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [
+            {
+              strategy_id_hex: strategyHex,
+              venue: 'kamino',
+              strategy_program: 'Kamino111111111111111111111111111111111',
+              underlying_mint: 'USDC11111111111111111111111111111111111',
+              receipt_mint: 'kUSDC1111111111111111111111111111111111',
+              max_allocation_bps: 2500,
+              risk_tier: 'conservative',
+              status: 'active',
+              name: 'Kamino USDC lend',
+              metadata_uri: 'ipfs://kamino',
+              registered_unix: 1700000000,
+              status_updated_unix: null,
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(
+      () => useIndexedYieldStrategies({ indexerUrl: `${INDEXER}/`, venue: 'kamino', status: 'active', limit: 5 }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      `${INDEXER}/v1/discovery/treasury/yield-strategies?venue=kamino&status=active&limit=5`,
+    );
+    expect(result.current.data?.[0]).toMatchObject({
+      strategyIdHex: strategyHex,
+      maxAllocationBps: 2500,
+      metadataUri: 'ipfs://kamino',
+    });
+  });
+
+  it('maps indexed treasury yield snapshots and treats 404 as unconfigured', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            did_hex: didHex,
+            strategy_id_hex: strategyHex,
+            allocation_bps: 1500,
+            status: 'active',
+            unwind_requested: false,
+            idle_amount: '1000000',
+            deployed_amount: '250000',
+            realized_yield_amount: '12345',
+            accounting_slot: 99,
+            configured_unix: 1700000000,
+            unwind_requested_unix: null,
+            accounting_updated_unix: 1700000200,
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(new Response('missing', { status: 404 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(
+      () => useIndexedTreasuryYield({ indexerUrl: INDEXER, agentDidHex: didHex }),
+      { wrapper: createWrapper() },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toMatchObject({
+      didHex,
+      strategyIdHex: strategyHex,
+      allocationBps: 1500,
+      deployedAmount: '250000',
+    });
+
+    const missing = renderHook(
+      () => useIndexedTreasuryYield({ indexerUrl: INDEXER, agentDidHex: 'c'.repeat(64) }),
+      { wrapper: createWrapper() },
+    );
+    await waitFor(() => expect(missing.result.current.isSuccess).toBe(true));
+    expect(missing.result.current.data).toBeNull();
   });
 });
 

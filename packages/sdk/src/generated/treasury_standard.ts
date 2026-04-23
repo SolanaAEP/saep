@@ -1523,6 +1523,239 @@ export type TreasuryStandard = {
       "args": []
     },
     {
+      "name": "recordTreasuryYieldAccounting",
+      "discriminator": [
+        47,
+        242,
+        226,
+        248,
+        199,
+        249,
+        114,
+        201
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "yieldConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "yield_config.agent_did",
+                "account": "treasuryYieldConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "idleAmount",
+          "type": "u64"
+        },
+        {
+          "name": "deployedAmount",
+          "type": "u64"
+        },
+        {
+          "name": "realizedYieldAmount",
+          "type": "i64"
+        },
+        {
+          "name": "accountingSlot",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "registerYieldStrategy",
+      "discriminator": [
+        232,
+        227,
+        174,
+        62,
+        153,
+        242,
+        64,
+        148
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "strategy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  115,
+                  116,
+                  114,
+                  97,
+                  116,
+                  101,
+                  103,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "strategyId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "strategyId",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "venue",
+          "type": {
+            "defined": {
+              "name": "yieldVenue"
+            }
+          }
+        },
+        {
+          "name": "strategyProgram",
+          "type": "pubkey"
+        },
+        {
+          "name": "underlyingMint",
+          "type": "pubkey"
+        },
+        {
+          "name": "receiptMint",
+          "type": "pubkey"
+        },
+        {
+          "name": "maxAllocationBps",
+          "type": "u16"
+        },
+        {
+          "name": "riskTier",
+          "type": {
+            "defined": {
+              "name": "yieldRiskTier"
+            }
+          }
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "metadataUri",
+          "type": "string"
+        }
+      ]
+    },
+    {
       "name": "removeAllowedMint",
       "discriminator": [
         53,
@@ -1602,6 +1835,111 @@ export type TreasuryStandard = {
           "type": "pubkey"
         }
       ]
+    },
+    {
+      "name": "requestTreasuryYieldUnwind",
+      "discriminator": [
+        108,
+        126,
+        41,
+        113,
+        159,
+        18,
+        70,
+        153
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "yieldConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        }
+      ],
+      "args": []
     },
     {
       "name": "setAllowedCallers",
@@ -2118,6 +2456,262 @@ export type TreasuryStandard = {
         {
           "name": "paused",
           "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setTreasuryYieldConfig",
+      "discriminator": [
+        210,
+        165,
+        119,
+        107,
+        224,
+        73,
+        193,
+        252
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agentDid"
+              }
+            ]
+          }
+        },
+        {
+          "name": "strategy",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  115,
+                  116,
+                  114,
+                  97,
+                  116,
+                  101,
+                  103,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "strategyId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "yieldConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agentDid"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "agentDid",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "strategyId",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "allocationBps",
+          "type": "u16"
+        },
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setYieldStrategyStatus",
+      "discriminator": [
+        161,
+        25,
+        86,
+        105,
+        1,
+        69,
+        157,
+        158
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "strategy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  115,
+                  116,
+                  114,
+                  97,
+                  116,
+                  101,
+                  103,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strategy.strategy_id",
+                "account": "yieldStrategyDescriptor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "status",
+          "type": {
+            "defined": {
+              "name": "yieldStrategyStatus"
+            }
+          }
         }
       ]
     },
@@ -2855,6 +3449,32 @@ export type TreasuryStandard = {
         247,
         26
       ]
+    },
+    {
+      "name": "treasuryYieldConfig",
+      "discriminator": [
+        38,
+        100,
+        169,
+        32,
+        57,
+        53,
+        107,
+        165
+      ]
+    },
+    {
+      "name": "yieldStrategyDescriptor",
+      "discriminator": [
+        236,
+        129,
+        244,
+        4,
+        212,
+        134,
+        29,
+        104
+      ]
     }
   ],
   "events": [
@@ -3051,6 +3671,71 @@ export type TreasuryStandard = {
         87,
         41,
         218
+      ]
+    },
+    {
+      "name": "treasuryYieldAccountingRecorded",
+      "discriminator": [
+        7,
+        54,
+        107,
+        48,
+        239,
+        179,
+        150,
+        75
+      ]
+    },
+    {
+      "name": "treasuryYieldConfigSet",
+      "discriminator": [
+        51,
+        28,
+        217,
+        183,
+        7,
+        46,
+        41,
+        31
+      ]
+    },
+    {
+      "name": "treasuryYieldUnwindRequested",
+      "discriminator": [
+        96,
+        246,
+        94,
+        99,
+        23,
+        201,
+        182,
+        0
+      ]
+    },
+    {
+      "name": "yieldStrategyRegistered",
+      "discriminator": [
+        129,
+        221,
+        119,
+        200,
+        66,
+        254,
+        36,
+        53
+      ]
+    },
+    {
+      "name": "yieldStrategyStatusSet",
+      "discriminator": [
+        198,
+        124,
+        167,
+        10,
+        175,
+        187,
+        99,
+        198
       ]
     }
   ],
@@ -3269,6 +3954,41 @@ export type TreasuryStandard = {
       "code": 6042,
       "name": "adminResetNotTimelocked",
       "msg": "admin reset has not met the 24h timelock"
+    },
+    {
+      "code": 6043,
+      "name": "yieldNameTooLong",
+      "msg": "yield strategy name exceeds maximum length"
+    },
+    {
+      "code": 6044,
+      "name": "yieldUriTooLong",
+      "msg": "yield strategy metadata URI exceeds maximum length"
+    },
+    {
+      "code": 6045,
+      "name": "yieldAllocationInvalid",
+      "msg": "yield allocation must be between 0 and 10_000 bps"
+    },
+    {
+      "code": 6046,
+      "name": "yieldAllocationExceeded",
+      "msg": "yield allocation exceeds the strategy cap"
+    },
+    {
+      "code": 6047,
+      "name": "yieldStrategyNotActive",
+      "msg": "yield strategy is not active"
+    },
+    {
+      "code": 6048,
+      "name": "treasuryYieldNotActive",
+      "msg": "treasury yield config is not active"
+    },
+    {
+      "code": 6049,
+      "name": "yieldAccountingStale",
+      "msg": "treasury yield accounting slot moved backwards"
     }
   ],
   "types": [
@@ -4433,6 +5153,424 @@ export type TreasuryStandard = {
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "treasuryYieldAccountingRecorded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "strategyId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "idleAmount",
+            "type": "u64"
+          },
+          {
+            "name": "deployedAmount",
+            "type": "u64"
+          },
+          {
+            "name": "realizedYieldAmount",
+            "type": "i64"
+          },
+          {
+            "name": "accountingSlot",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "treasuryYieldConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "strategyId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "allocationBps",
+            "type": "u16"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "treasuryYieldStatus"
+              }
+            }
+          },
+          {
+            "name": "unwindRequested",
+            "type": "bool"
+          },
+          {
+            "name": "idleAmount",
+            "type": "u64"
+          },
+          {
+            "name": "deployedAmount",
+            "type": "u64"
+          },
+          {
+            "name": "realizedYieldAmount",
+            "type": "i64"
+          },
+          {
+            "name": "lastAccountingSlot",
+            "type": "u64"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          },
+          {
+            "name": "updatedAt",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "treasuryYieldConfigSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "strategyId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "allocationBps",
+            "type": "u16"
+          },
+          {
+            "name": "status",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "treasuryYieldStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "inactive"
+          },
+          {
+            "name": "active"
+          },
+          {
+            "name": "paused"
+          },
+          {
+            "name": "unwinding"
+          }
+        ]
+      }
+    },
+    {
+      "name": "treasuryYieldUnwindRequested",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "strategyId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "yieldRiskTier",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "conservative"
+          },
+          {
+            "name": "moderate"
+          },
+          {
+            "name": "aggressive"
+          }
+        ]
+      }
+    },
+    {
+      "name": "yieldStrategyDescriptor",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "strategyId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "venue",
+            "type": {
+              "defined": {
+                "name": "yieldVenue"
+              }
+            }
+          },
+          {
+            "name": "strategyProgram",
+            "type": "pubkey"
+          },
+          {
+            "name": "underlyingMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "receiptMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "maxAllocationBps",
+            "type": "u16"
+          },
+          {
+            "name": "riskTier",
+            "type": {
+              "defined": {
+                "name": "yieldRiskTier"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "yieldStrategyStatus"
+              }
+            }
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "metadataUri",
+            "type": "string"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          },
+          {
+            "name": "updatedAt",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "yieldStrategyRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "strategyId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "venue",
+            "type": "string"
+          },
+          {
+            "name": "strategyProgram",
+            "type": "pubkey"
+          },
+          {
+            "name": "underlyingMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "receiptMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "maxAllocationBps",
+            "type": "u16"
+          },
+          {
+            "name": "riskTier",
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "type": "string"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "metadataUri",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "yieldStrategyStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "active"
+          },
+          {
+            "name": "paused"
+          },
+          {
+            "name": "revoked"
+          }
+        ]
+      }
+    },
+    {
+      "name": "yieldStrategyStatusSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "strategyId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "yieldVenue",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "kamino"
+          },
+          {
+            "name": "marginfi"
+          },
+          {
+            "name": "drift"
           }
         ]
       }

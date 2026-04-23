@@ -8,7 +8,8 @@
 //!   - `/v1/discovery/tasks` + `/:task_id_hex` + `/:task_id_hex/matches` + `/:task_id_hex/timeline`
 //!   - `/v1/discovery/tasks/:task_id_hex/compute-bonds`
 //!   - `/v1/discovery/capabilities` + `/:bit`
-//!   - `/v1/discovery/treasury/:did` + `/:did/vaults`
+//!   - `/v1/discovery/treasury/:did` + `/:did/vaults` + `/:did/yield`
+//!   - `/v1/discovery/treasury/yield-strategies`
 //!   - `/v1/discovery/stats`
 //!
 //! Middleware stack (outermost → innermost):
@@ -40,7 +41,7 @@ use axum::{
 use base64::Engine;
 use diesel::prelude::*;
 use diesel::sql_query;
-use diesel::sql_types::{BigInt, Bytea, Int2, Int4, Jsonb, Text, Timestamptz};
+use diesel::sql_types::{BigInt, Bool, Bytea, Int2, Int4, Integer, Jsonb, Nullable, Text, Timestamptz};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -84,8 +85,13 @@ pub fn router(state: ApiState) -> Router {
         )
         .route("/v1/discovery/capabilities", get(list_capabilities))
         .route("/v1/discovery/capabilities/:bit", get(capability_detail))
+        .route(
+            "/v1/discovery/treasury/yield-strategies",
+            get(list_yield_strategies),
+        )
         .route("/v1/discovery/treasury/:did", get(treasury_detail))
         .route("/v1/discovery/treasury/:did/vaults", get(treasury_vaults))
+        .route("/v1/discovery/treasury/:did/yield", get(treasury_yield))
         .route("/v1/discovery/stats", get(protocol_stats))
         .layer(middleware::from_fn(request_id_mw))
         .layer(middleware::from_fn(rate_limit_mw))
@@ -1926,6 +1932,212 @@ pub async fn treasury_vaults(
         .collect();
 
     Ok(Json(TreasuryVaults { did_hex, vaults }))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct YieldStrategyQuery {
+    pub venue: Option<String>,
+    pub status: Option<String>,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct YieldStrategySummary {
+    pub strategy_id_hex: String,
+    pub venue: String,
+    pub strategy_program: String,
+    pub underlying_mint: String,
+    pub receipt_mint: String,
+    pub max_allocation_bps: i32,
+    pub risk_tier: String,
+    pub status: String,
+    pub name: String,
+    pub metadata_uri: String,
+    pub registered_unix: i64,
+    pub status_updated_unix: Option<i64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct YieldStrategyList {
+    pub items: Vec<YieldStrategySummary>,
+}
+
+#[derive(QueryableByName)]
+struct RawYieldStrategyRow {
+    #[diesel(sql_type = Bytea)]
+    strategy_id: Vec<u8>,
+    #[diesel(sql_type = Text)]
+    venue: String,
+    #[diesel(sql_type = Text)]
+    strategy_program: String,
+    #[diesel(sql_type = Text)]
+    underlying_mint: String,
+    #[diesel(sql_type = Text)]
+    receipt_mint: String,
+    #[diesel(sql_type = Integer)]
+    max_allocation_bps: i32,
+    #[diesel(sql_type = Text)]
+    risk_tier: String,
+    #[diesel(sql_type = Text)]
+    status: String,
+    #[diesel(sql_type = Text)]
+    name: String,
+    #[diesel(sql_type = Text)]
+    metadata_uri: String,
+    #[diesel(sql_type = BigInt)]
+    registered_unix: i64,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    status_unix: Option<i64>,
+}
+
+pub async fn list_yield_strategies(
+    State(state): State<ApiState>,
+    Query(q): Query<YieldStrategyQuery>,
+) -> Result<Json<YieldStrategyList>, ApiError> {
+    if let Some(venue) = q.venue.as_deref() {
+        if !matches!(venue, "kamino" | "marginfi" | "drift") {
+            return Err(ApiError::bad_request("venue must be kamino|marginfi|drift"));
+        }
+    }
+    if let Some(status) = q.status.as_deref() {
+        if !matches!(status, "active" | "paused" | "revoked") {
+            return Err(ApiError::bad_request("status must be active|paused|revoked"));
+        }
+    }
+    let limit = q.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
+
+    let qtimer = metrics::time_discovery_query("discovery.yield_strategies");
+    let rows = tokio::task::spawn_blocking(move || -> Result<Vec<RawYieldStrategyRow>, ApiError> {
+        let mut conn = state.pool.get().map_err(ApiError::internal)?;
+        sql_query(
+            "SELECT strategy_id, venue, strategy_program, underlying_mint, receipt_mint, \
+                    max_allocation_bps, risk_tier, status, name, metadata_uri, \
+                    registered_unix, status_unix \
+             FROM yield_strategy_directory \
+             WHERE ($1::text IS NULL OR venue = $1) \
+               AND ($2::text IS NULL OR status = $2) \
+             ORDER BY status ASC, venue ASC, registered_unix DESC \
+             LIMIT $3",
+        )
+        .bind::<Nullable<Text>, _>(q.venue)
+        .bind::<Nullable<Text>, _>(q.status)
+        .bind::<BigInt, _>(limit)
+        .load::<RawYieldStrategyRow>(&mut conn)
+        .map_err(ApiError::internal)
+    })
+    .await
+    .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
+
+    Ok(Json(YieldStrategyList {
+        items: rows
+            .into_iter()
+            .map(|row| YieldStrategySummary {
+                strategy_id_hex: hex::encode(row.strategy_id),
+                venue: row.venue,
+                strategy_program: row.strategy_program,
+                underlying_mint: row.underlying_mint,
+                receipt_mint: row.receipt_mint,
+                max_allocation_bps: row.max_allocation_bps,
+                risk_tier: row.risk_tier,
+                status: row.status,
+                name: row.name,
+                metadata_uri: row.metadata_uri,
+                registered_unix: row.registered_unix,
+                status_updated_unix: row.status_unix,
+            })
+            .collect(),
+    }))
+}
+
+#[derive(Debug, Serialize)]
+pub struct TreasuryYieldSnapshot {
+    pub did_hex: String,
+    pub strategy_id_hex: String,
+    pub allocation_bps: i32,
+    pub status: String,
+    pub unwind_requested: bool,
+    pub idle_amount: String,
+    pub deployed_amount: String,
+    pub realized_yield_amount: String,
+    pub accounting_slot: Option<i64>,
+    pub configured_unix: i64,
+    pub unwind_requested_unix: Option<i64>,
+    pub accounting_updated_unix: Option<i64>,
+}
+
+#[derive(QueryableByName)]
+struct RawTreasuryYieldRow {
+    #[diesel(sql_type = Bytea)]
+    agent_did: Vec<u8>,
+    #[diesel(sql_type = Bytea)]
+    strategy_id: Vec<u8>,
+    #[diesel(sql_type = Integer)]
+    allocation_bps: i32,
+    #[diesel(sql_type = Text)]
+    status: String,
+    #[diesel(sql_type = Bool)]
+    unwind_requested: bool,
+    #[diesel(sql_type = Text)]
+    idle_amount: String,
+    #[diesel(sql_type = Text)]
+    deployed_amount: String,
+    #[diesel(sql_type = Text)]
+    realized_yield_amount: String,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    accounting_slot: Option<i64>,
+    #[diesel(sql_type = BigInt)]
+    config_unix: i64,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    unwind_unix: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    accounting_unix: Option<i64>,
+}
+
+pub async fn treasury_yield(
+    State(state): State<ApiState>,
+    Path(did_hex): Path<String>,
+) -> Result<Json<TreasuryYieldSnapshot>, ApiError> {
+    let did_bytes = parse_hex_32(&did_hex).map_err(ApiError::bad_request)?;
+
+    let qtimer = metrics::time_discovery_query("discovery.treasury_yield");
+    let maybe_row =
+        tokio::task::spawn_blocking(move || -> Result<Option<RawTreasuryYieldRow>, ApiError> {
+            let mut conn = state.pool.get().map_err(ApiError::internal)?;
+            Ok(sql_query(
+                "SELECT agent_did, strategy_id, allocation_bps, status, unwind_requested, \
+                        idle_amount::text AS idle_amount, \
+                        deployed_amount::text AS deployed_amount, \
+                        realized_yield_amount::text AS realized_yield_amount, \
+                        accounting_slot, config_unix, unwind_unix, accounting_unix \
+                 FROM treasury_yield_directory \
+                 WHERE agent_did = $1",
+            )
+            .bind::<Bytea, _>(did_bytes)
+            .load::<RawTreasuryYieldRow>(&mut conn)
+            .map_err(ApiError::internal)?
+            .into_iter()
+            .next())
+        })
+        .await
+        .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
+
+    let row = maybe_row.ok_or_else(|| ApiError::not_found("treasury yield config not found"))?;
+    Ok(Json(TreasuryYieldSnapshot {
+        did_hex: hex::encode(row.agent_did),
+        strategy_id_hex: hex::encode(row.strategy_id),
+        allocation_bps: row.allocation_bps,
+        status: row.status,
+        unwind_requested: row.unwind_requested,
+        idle_amount: row.idle_amount,
+        deployed_amount: row.deployed_amount,
+        realized_yield_amount: row.realized_yield_amount,
+        accounting_slot: row.accounting_slot,
+        configured_unix: row.config_unix,
+        unwind_requested_unix: row.unwind_unix,
+        accounting_updated_unix: row.accounting_unix,
+    }))
 }
 
 #[derive(Debug, Deserialize)]

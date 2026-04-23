@@ -6,6 +6,8 @@ import {
   treasuryGlobalPda,
   treasuryPda,
   treasuryAllowedMintsPda,
+  treasuryYieldConfigPda,
+  treasuryYieldStrategyPda,
   vaultPda,
   agentRegistryGlobalPda,
   agentAccountPda,
@@ -19,6 +21,11 @@ import {
   buildInitStreamIx,
   buildCloseStreamIx,
   buildWithdrawEarnedIx,
+  buildRecordTreasuryYieldAccountingIx,
+  buildRegisterYieldStrategyIx,
+  buildRequestTreasuryYieldUnwindIx,
+  buildSetTreasuryYieldConfigIx,
+  buildSetYieldStrategyStatusIx,
 } from '../treasury_standard.js';
 import { makeTestProgram, makeRecordingProgram, decodeIx, expectedDiscriminator, accountKeys } from './helpers.js';
 
@@ -35,6 +42,7 @@ const payoutMint = PublicKey.unique();
 const clientTokenAccount = PublicKey.unique();
 const client = PublicKey.unique();
 const streamNonce = new Uint8Array(8).fill(0xef);
+const strategyId = new Uint8Array(32).fill(0x42);
 
 const clusterConfig = {
   cluster: 'devnet' as const,
@@ -426,5 +434,78 @@ describe('recording-program treasury coverage', () => {
     expect(calls[5]?.accounts.agentHooks).toEqual(customAgentHooks);
     expect((calls[5]?.accounts.tokenProgram as PublicKey).equals(customTokenProgram)).toBe(true);
     expect(calls[5]?.args[0]).toEqual(Buffer.from([4, 5, 6]));
+  });
+});
+
+describe('yield automation builders', () => {
+  it('builds strategy registration with descriptor PDA and args', async () => {
+    const strategyProgram = PublicKey.unique();
+    const underlyingMint = PublicKey.unique();
+    const receiptMint = PublicKey.unique();
+    const ix = await buildRegisterYieldStrategyIx(program, {
+      authority: operator,
+      strategyId,
+      venue: 'kamino',
+      strategyProgram,
+      underlyingMint,
+      receiptMint,
+      maxAllocationBps: 2_500,
+      riskTier: 'conservative',
+      name: 'Kamino USDC lend',
+      metadataUri: 'ipfs://kamino-usdc',
+    });
+
+    expect(Array.from(ix.data.subarray(0, 8))).toEqual(expectedDiscriminator(idl as never, 'register_yield_strategy'));
+    const [global] = treasuryGlobalPda(PROG);
+    const [strategy] = treasuryYieldStrategyPda(PROG, strategyId);
+    const keys = accountKeys(ix);
+    expect(keys[0]).toBe(global.toBase58());
+    expect(keys[1]).toBe(strategy.toBase58());
+    expect(keys).toContain(SystemProgram.programId.toBase58());
+
+    const decoded = decodeIx(idl as Record<string, unknown>, ix);
+    expect(decoded.name).toBe('register_yield_strategy');
+    expect((decoded.data as { venue: { Kamino: Record<string, never> } }).venue).toEqual({ Kamino: {} });
+    expect((decoded.data as { max_allocation_bps: number }).max_allocation_bps).toBe(2_500);
+  });
+
+  it('builds config, unwind, status, and accounting instructions', async () => {
+    const configIx = await buildSetTreasuryYieldConfigIx(program, {
+      operator,
+      agentDid,
+      strategyId,
+      allocationBps: 1_500,
+    });
+    const statusIx = await buildSetYieldStrategyStatusIx(program, {
+      authority: operator,
+      strategyId,
+      status: 'paused',
+    });
+    const unwindIx = await buildRequestTreasuryYieldUnwindIx(program, { operator, agentDid });
+    const accountingIx = await buildRecordTreasuryYieldAccountingIx(program, {
+      authority: operator,
+      agentDid,
+      idleAmount: 1_000_000n,
+      deployedAmount: 250_000n,
+      realizedYieldAmount: 12_345n,
+      accountingSlot: 99n,
+    });
+
+    const [treasury] = treasuryPda(PROG, agentDid);
+    const [strategy] = treasuryYieldStrategyPda(PROG, strategyId);
+    const [yieldConfig] = treasuryYieldConfigPda(PROG, agentDid);
+
+    expect(accountKeys(configIx)).toEqual([
+      treasuryGlobalPda(PROG)[0].toBase58(),
+      treasury.toBase58(),
+      strategy.toBase58(),
+      yieldConfig.toBase58(),
+      operator.toBase58(),
+      SystemProgram.programId.toBase58(),
+    ]);
+    expect(decodeIx(idl as Record<string, unknown>, configIx).name).toBe('set_treasury_yield_config');
+    expect(decodeIx(idl as Record<string, unknown>, statusIx).name).toBe('set_yield_strategy_status');
+    expect(decodeIx(idl as Record<string, unknown>, unwindIx).name).toBe('request_treasury_yield_unwind');
+    expect(decodeIx(idl as Record<string, unknown>, accountingIx).name).toBe('record_treasury_yield_accounting');
   });
 });

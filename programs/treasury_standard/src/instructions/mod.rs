@@ -12,6 +12,7 @@ pub mod pay_task;
 pub mod set_limits;
 pub mod withdraw;
 pub mod withdraw_earned;
+pub mod yield_automation;
 
 pub use allowed_mints::*;
 pub use allowed_targets::*;
@@ -27,3 +28,4 @@ pub use pay_task::*;
 pub use set_limits::*;
 pub use withdraw::*;
 pub use withdraw_earned::*;
+pub use yield_automation::*;

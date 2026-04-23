@@ -65,12 +65,7 @@ pub mod treasury_standard {
         instructions::withdraw::handler(ctx, amount)
     }
 
-    pub fn set_limits(
-        ctx: Context<SetLimits>,
-        daily: u64,
-        per_tx: u64,
-        weekly: u64,
-    ) -> Result<()> {
+    pub fn set_limits(ctx: Context<SetLimits>, daily: u64, per_tx: u64, weekly: u64) -> Result<()> {
         instructions::set_limits::handler(ctx, daily, per_tx, weekly)
     }
 
@@ -83,7 +78,10 @@ pub mod treasury_standard {
         instructions::init_stream::handler(ctx, stream_nonce, rate_per_sec, max_duration)
     }
 
-    pub fn withdraw_earned<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) -> Result<()> {
+    pub fn withdraw_earned<'a>(
+        ctx: Context<'a, WithdrawEarned<'a>>,
+        route_data: Vec<u8>,
+    ) -> Result<()> {
         instructions::withdraw_earned::handler(ctx, route_data)
     }
 
@@ -103,17 +101,11 @@ pub mod treasury_standard {
         instructions::allowed_mints::remove_allowed_mint_handler(ctx, mint)
     }
 
-    pub fn set_default_daily_limit(
-        ctx: Context<GovernanceUpdate>,
-        new_default: u64,
-    ) -> Result<()> {
+    pub fn set_default_daily_limit(ctx: Context<GovernanceUpdate>, new_default: u64) -> Result<()> {
         instructions::governance::set_default_daily_limit_handler(ctx, new_default)
     }
 
-    pub fn set_max_daily_limit(
-        ctx: Context<GovernanceUpdate>,
-        new_max: u64,
-    ) -> Result<()> {
+    pub fn set_max_daily_limit(ctx: Context<GovernanceUpdate>, new_max: u64) -> Result<()> {
         instructions::governance::set_max_daily_limit_handler(ctx, new_max)
     }
 
@@ -170,10 +162,7 @@ pub mod treasury_standard {
         instructions::authority::accept_authority_handler(ctx)
     }
 
-    pub fn init_guard(
-        ctx: Context<InitGuard>,
-        initial_callers: Vec<Pubkey>,
-    ) -> Result<()> {
+    pub fn init_guard(ctx: Context<InitGuard>, initial_callers: Vec<Pubkey>) -> Result<()> {
         instructions::guard::init_guard_handler(ctx, initial_callers)
     }
 
@@ -190,5 +179,74 @@ pub mod treasury_standard {
 
     pub fn admin_reset_guard(ctx: Context<AdminResetGuard>) -> Result<()> {
         instructions::guard::admin_reset_guard_handler(ctx)
+    }
+
+    pub fn register_yield_strategy(
+        ctx: Context<RegisterYieldStrategy>,
+        strategy_id: [u8; 32],
+        venue: state::YieldVenue,
+        strategy_program: Pubkey,
+        underlying_mint: Pubkey,
+        receipt_mint: Pubkey,
+        max_allocation_bps: u16,
+        risk_tier: state::YieldRiskTier,
+        name: String,
+        metadata_uri: String,
+    ) -> Result<()> {
+        instructions::yield_automation::register_strategy_handler(
+            ctx,
+            strategy_id,
+            venue,
+            strategy_program,
+            underlying_mint,
+            receipt_mint,
+            max_allocation_bps,
+            risk_tier,
+            name,
+            metadata_uri,
+        )
+    }
+
+    pub fn set_yield_strategy_status(
+        ctx: Context<SetYieldStrategyStatus>,
+        status: state::YieldStrategyStatus,
+    ) -> Result<()> {
+        instructions::yield_automation::set_strategy_status_handler(ctx, status)
+    }
+
+    pub fn set_treasury_yield_config(
+        ctx: Context<SetTreasuryYieldConfig>,
+        agent_did: [u8; 32],
+        strategy_id: [u8; 32],
+        allocation_bps: u16,
+        paused: bool,
+    ) -> Result<()> {
+        instructions::yield_automation::set_treasury_config_handler(
+            ctx,
+            agent_did,
+            strategy_id,
+            allocation_bps,
+            paused,
+        )
+    }
+
+    pub fn request_treasury_yield_unwind(ctx: Context<RequestTreasuryYieldUnwind>) -> Result<()> {
+        instructions::yield_automation::request_unwind_handler(ctx)
+    }
+
+    pub fn record_treasury_yield_accounting(
+        ctx: Context<RecordTreasuryYieldAccounting>,
+        idle_amount: u64,
+        deployed_amount: u64,
+        realized_yield_amount: i64,
+        accounting_slot: u64,
+    ) -> Result<()> {
+        instructions::yield_automation::record_accounting_handler(
+            ctx,
+            idle_amount,
+            deployed_amount,
+            realized_yield_amount,
+            accounting_slot,
+        )
     }
 }

@@ -6,6 +6,8 @@ import {
   treasuryGlobalPda,
   treasuryAllowedMintsPda,
   treasuryPda,
+  treasuryYieldConfigPda,
+  treasuryYieldStrategyPda,
   vaultPda,
   agentRegistryGlobalPda,
   agentAccountPda,
@@ -16,6 +18,28 @@ import {
 
 const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
 const SYSVAR_RENT = new PublicKey('SysvarRent111111111111111111111111111111111');
+
+export type TreasuryYieldVenue = 'kamino' | 'marginfi' | 'drift';
+export type TreasuryYieldRiskTier = 'conservative' | 'moderate' | 'aggressive';
+export type TreasuryYieldStrategyStatus = 'active' | 'paused' | 'revoked';
+
+type AnchorEnum<T extends string> = Record<T, Record<string, never>>;
+
+function yieldVenueArg(venue: TreasuryYieldVenue): AnchorEnum<'kamino' | 'marginfi' | 'drift'> {
+  return { [venue]: {} } as AnchorEnum<'kamino' | 'marginfi' | 'drift'>;
+}
+
+function yieldRiskTierArg(
+  riskTier: TreasuryYieldRiskTier,
+): AnchorEnum<'conservative' | 'moderate' | 'aggressive'> {
+  return { [riskTier]: {} } as AnchorEnum<'conservative' | 'moderate' | 'aggressive'>;
+}
+
+function yieldStrategyStatusArg(
+  status: TreasuryYieldStrategyStatus,
+): AnchorEnum<'active' | 'paused' | 'revoked'> {
+  return { [status]: {} } as AnchorEnum<'active' | 'paused' | 'revoked'>;
+}
 
 export interface InitTreasuryInput {
   operator: PublicKey;
@@ -237,6 +261,160 @@ export async function buildWithdrawEarnedIx(
       guard,
       operator: input.operator,
       tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
+    } as never)
+    .instruction();
+}
+
+export interface RegisterYieldStrategyInput {
+  authority: PublicKey;
+  strategyId: Uint8Array;
+  venue: TreasuryYieldVenue;
+  strategyProgram: PublicKey;
+  underlyingMint: PublicKey;
+  receiptMint: PublicKey;
+  maxAllocationBps: number;
+  riskTier: TreasuryYieldRiskTier;
+  name: string;
+  metadataUri: string;
+}
+
+export async function buildRegisterYieldStrategyIx(
+  program: Program<TreasuryStandard>,
+  input: RegisterYieldStrategyInput,
+): Promise<TransactionInstruction> {
+  const [global] = treasuryGlobalPda(program.programId);
+  const [strategy] = treasuryYieldStrategyPda(program.programId, input.strategyId);
+
+  return program.methods
+    .registerYieldStrategy(
+      Array.from(input.strategyId),
+      yieldVenueArg(input.venue),
+      input.strategyProgram,
+      input.underlyingMint,
+      input.receiptMint,
+      input.maxAllocationBps,
+      yieldRiskTierArg(input.riskTier),
+      input.name,
+      input.metadataUri,
+    )
+    .accounts({
+      global,
+      strategy,
+      authority: input.authority,
+      systemProgram: SystemProgram.programId,
+    } as never)
+    .instruction();
+}
+
+export interface SetYieldStrategyStatusInput {
+  authority: PublicKey;
+  strategyId: Uint8Array;
+  status: TreasuryYieldStrategyStatus;
+}
+
+export async function buildSetYieldStrategyStatusIx(
+  program: Program<TreasuryStandard>,
+  input: SetYieldStrategyStatusInput,
+): Promise<TransactionInstruction> {
+  const [global] = treasuryGlobalPda(program.programId);
+  const [strategy] = treasuryYieldStrategyPda(program.programId, input.strategyId);
+
+  return program.methods
+    .setYieldStrategyStatus(yieldStrategyStatusArg(input.status))
+    .accounts({
+      global,
+      strategy,
+      authority: input.authority,
+    } as never)
+    .instruction();
+}
+
+export interface SetTreasuryYieldConfigInput {
+  operator: PublicKey;
+  agentDid: Uint8Array;
+  strategyId: Uint8Array;
+  allocationBps: number;
+  paused?: boolean;
+}
+
+export async function buildSetTreasuryYieldConfigIx(
+  program: Program<TreasuryStandard>,
+  input: SetTreasuryYieldConfigInput,
+): Promise<TransactionInstruction> {
+  const [global] = treasuryGlobalPda(program.programId);
+  const [treasury] = treasuryPda(program.programId, input.agentDid);
+  const [strategy] = treasuryYieldStrategyPda(program.programId, input.strategyId);
+  const [yieldConfig] = treasuryYieldConfigPda(program.programId, input.agentDid);
+
+  return program.methods
+    .setTreasuryYieldConfig(
+      Array.from(input.agentDid),
+      Array.from(input.strategyId),
+      input.allocationBps,
+      input.paused ?? false,
+    )
+    .accounts({
+      global,
+      treasury,
+      strategy,
+      yieldConfig,
+      operator: input.operator,
+      systemProgram: SystemProgram.programId,
+    } as never)
+    .instruction();
+}
+
+export interface RequestTreasuryYieldUnwindInput {
+  operator: PublicKey;
+  agentDid: Uint8Array;
+}
+
+export async function buildRequestTreasuryYieldUnwindIx(
+  program: Program<TreasuryStandard>,
+  input: RequestTreasuryYieldUnwindInput,
+): Promise<TransactionInstruction> {
+  const [global] = treasuryGlobalPda(program.programId);
+  const [treasury] = treasuryPda(program.programId, input.agentDid);
+  const [yieldConfig] = treasuryYieldConfigPda(program.programId, input.agentDid);
+
+  return program.methods
+    .requestTreasuryYieldUnwind()
+    .accounts({
+      global,
+      treasury,
+      yieldConfig,
+      operator: input.operator,
+    } as never)
+    .instruction();
+}
+
+export interface RecordTreasuryYieldAccountingInput {
+  authority: PublicKey;
+  agentDid: Uint8Array;
+  idleAmount: bigint;
+  deployedAmount: bigint;
+  realizedYieldAmount: bigint;
+  accountingSlot: bigint;
+}
+
+export async function buildRecordTreasuryYieldAccountingIx(
+  program: Program<TreasuryStandard>,
+  input: RecordTreasuryYieldAccountingInput,
+): Promise<TransactionInstruction> {
+  const [global] = treasuryGlobalPda(program.programId);
+  const [yieldConfig] = treasuryYieldConfigPda(program.programId, input.agentDid);
+
+  return program.methods
+    .recordTreasuryYieldAccounting(
+      new BN(input.idleAmount.toString()),
+      new BN(input.deployedAmount.toString()),
+      new BN(input.realizedYieldAmount.toString()),
+      new BN(input.accountingSlot.toString()),
+    )
+    .accounts({
+      global,
+      yieldConfig,
+      authority: input.authority,
     } as never)
     .instruction();
 }

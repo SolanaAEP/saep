@@ -124,3 +124,53 @@ pub struct ReentrancyRejected {
     pub offending_caller: Pubkey,
     pub slot: u64,
 }
+
+#[event]
+pub struct YieldStrategyRegistered {
+    pub strategy_id: [u8; 32],
+    pub venue: String,
+    pub strategy_program: Pubkey,
+    pub underlying_mint: Pubkey,
+    pub receipt_mint: Pubkey,
+    pub max_allocation_bps: u16,
+    pub risk_tier: String,
+    pub status: String,
+    pub name: String,
+    pub metadata_uri: String,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct YieldStrategyStatusSet {
+    pub strategy_id: [u8; 32],
+    pub status: String,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct TreasuryYieldConfigSet {
+    pub agent_did: [u8; 32],
+    pub strategy_id: [u8; 32],
+    pub allocation_bps: u16,
+    pub status: String,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct TreasuryYieldUnwindRequested {
+    pub agent_did: [u8; 32],
+    pub strategy_id: [u8; 32],
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct TreasuryYieldAccountingRecorded {
+    pub agent_did: [u8; 32],
+    pub strategy_id: [u8; 32],
+    pub idle_amount: u64,
+    pub deployed_amount: u64,
+    pub realized_yield_amount: i64,
+    pub accounting_slot: u64,
+    pub status: String,
+    pub timestamp: i64,
+}

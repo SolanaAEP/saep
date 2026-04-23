@@ -1,6 +1,6 @@
 //! Materialized-view refresh worker.
 //!
-//! Drives `REFRESH MATERIALIZED VIEW CONCURRENTLY` across the three matviews
+//! Drives `REFRESH MATERIALIZED VIEW CONCURRENTLY` across the materialized views
 //! that back read APIs:
 //!
 //!   1. `reputation_rollup` (migration `2026-04-16-000003_reputation_rollup`)
@@ -9,13 +9,15 @@
 //!      — backs Discovery API `GET /v1/discovery/agents`. Joins
 //!      `reputation_rollup`, so must refresh after it.
 //!   3. `task_directory` (same migration) — backs `GET /v1/discovery/tasks`.
-//!      Independent of the other two; last for parallelism.
+//!   4. `yield_strategy_directory` + `treasury_yield_directory`
+//!      (migration `2026-04-23-000008_treasury_yield_snapshots`) — back the
+//!      treasury yield control-plane read APIs.
 //!
 //! Also folds `reputation_samples` → `category_reputation` each tick via
 //! `jobs::reputation_rollup::run` so fresh samples land before the matview
 //! re-projects them.
 //!
-//! CONCURRENTLY requires a unique index on each matview (all three have one)
+//! CONCURRENTLY requires a unique index on each matview
 //! and does not block concurrent readers. Failure on any individual view
 //! logs + increments its error counter and continues — a transient connection
 //! blip should not knock the whole refresh pipeline out.
@@ -33,7 +35,13 @@ use crate::metrics;
 
 /// Order matters: `agent_directory` joins `reputation_rollup`. `task_directory`
 /// is independent but listed last to keep any DB lock bursts near the start.
-const MATVIEWS: &[&str] = &["reputation_rollup", "agent_directory", "task_directory"];
+const MATVIEWS: &[&str] = &[
+    "reputation_rollup",
+    "agent_directory",
+    "task_directory",
+    "yield_strategy_directory",
+    "treasury_yield_directory",
+];
 
 pub async fn run(pool: PgPool, interval: Duration) -> Result<()> {
     let mut ticker = tokio::time::interval(interval);
@@ -109,10 +117,12 @@ mod tests {
     }
 
     #[test]
-    fn all_three_matviews_listed() {
-        assert_eq!(MATVIEWS.len(), 3);
+    fn all_matviews_listed() {
+        assert_eq!(MATVIEWS.len(), 5);
         assert!(MATVIEWS.contains(&"reputation_rollup"));
         assert!(MATVIEWS.contains(&"agent_directory"));
         assert!(MATVIEWS.contains(&"task_directory"));
+        assert!(MATVIEWS.contains(&"yield_strategy_directory"));
+        assert!(MATVIEWS.contains(&"treasury_yield_directory"));
     }
 }
