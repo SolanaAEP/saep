@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { findMarketplaceBountyByTaskHash } from '@saep/sdk';
 import type { SerializedTask } from '@/lib/agent-serializer';
@@ -41,7 +43,13 @@ function statusLabel(status: string): string {
     .replace(/^./, (char) => char.toUpperCase());
 }
 
-export function LiveBountiesPanel({ tasks }: { tasks: SerializedTask[] }) {
+interface Props {
+  tasks: SerializedTask[];
+  selectedTaskId: string | null;
+  onSelectTask: (taskId: string) => void;
+}
+
+export function LiveBountiesPanel({ tasks, selectedTaskId, onSelectTask }: Props) {
   return (
     <section className="border border-ink/10 bg-paper">
       <div className="flex flex-col gap-4 border-b border-ink/10 px-5 py-4 md:flex-row md:items-end md:justify-between md:px-6">
@@ -71,11 +79,15 @@ export function LiveBountiesPanel({ tasks }: { tasks: SerializedTask[] }) {
             {tasks.map((task) => {
               const badge = STATUS_TONE[task.status] ?? 'border-ink/15 text-ink/55';
               const bounty = findMarketplaceBountyByTaskHash(task.catalogHash ?? task.taskHash);
+              const isSelected = selectedTaskId === task.taskId;
               return (
-                <Link
+                <article
                   key={task.address}
-                  href={`/tasks/${task.taskId}`}
-                  className="flex h-full flex-col border border-ink/10 bg-paper-2 px-4 py-4 transition-colors hover:border-ink/30"
+                  className={`flex h-full flex-col border px-4 py-4 transition-colors ${
+                    isSelected
+                      ? 'border-ink bg-paper'
+                      : 'border-ink/10 bg-paper-2 hover:border-ink/30'
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
@@ -89,11 +101,18 @@ export function LiveBountiesPanel({ tasks }: { tasks: SerializedTask[] }) {
                         {bounty?.summary ?? 'On-chain bounty tracked through task_market.'}
                       </p>
                     </div>
-                    <span
-                      className={`inline-flex items-center border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] ${badge}`}
-                    >
-                      {statusLabel(task.status)}
-                    </span>
+                    <div className="flex flex-col items-end gap-2">
+                      <span
+                        className={`inline-flex items-center border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] ${badge}`}
+                      >
+                        {statusLabel(task.status)}
+                      </span>
+                      {isSelected ? (
+                        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink/55">
+                          Ranking active
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className="mt-4 border-t border-ink/10 pt-4">
@@ -118,7 +137,27 @@ export function LiveBountiesPanel({ tasks }: { tasks: SerializedTask[] }) {
                   <div className="mt-4">
                     <TaskMatchPreview taskIdHex={task.taskId} />
                   </div>
-                </Link>
+
+                  <div className="mt-4 flex flex-col gap-3 border-t border-ink/10 pt-4 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => onSelectTask(task.taskId)}
+                      className={`inline-flex h-11 items-center justify-center px-4 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors ${
+                        isSelected
+                          ? 'border border-ink/15 text-ink/70 hover:border-ink/35 hover:text-ink'
+                          : 'bg-ink text-paper hover:opacity-90'
+                      }`}
+                    >
+                      {isSelected ? 'Using for ranking' : 'Rank agents for this task'}
+                    </button>
+                    <Link
+                      href={`/tasks/${task.taskId}`}
+                      className="inline-flex h-11 items-center justify-center border border-ink/15 px-4 font-mono text-[11px] uppercase tracking-[0.08em] text-ink/75 transition-colors hover:border-ink/35 hover:text-ink"
+                    >
+                      Open task
+                    </Link>
+                  </div>
+                </article>
               );
             })}
           </div>

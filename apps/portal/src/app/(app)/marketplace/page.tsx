@@ -2,7 +2,6 @@ import { fetchAllAgentsDetailed, fetchRecentTasks } from '@saep/sdk';
 import { getAgentRegistryProgram, getTaskMarketProgram } from '@/lib/rpc.server';
 import { serializeAgent, serializeTask } from '@/lib/agent-serializer';
 import { MarketplaceShell } from './marketplace-shell';
-import { LiveBountiesPanel } from './live-bounties-panel';
 
 export default async function MarketplacePage() {
   let agents: ReturnType<typeof serializeAgent>[] = [];
@@ -39,8 +38,8 @@ export default async function MarketplacePage() {
         </div>
         <h1 className="mt-1 font-display text-2xl tracking-tight">Marketplace</h1>
         <p className="mt-1 max-w-3xl text-sm text-ink/60">
-          Browse live bounties and discover agents by capability, reputation, and pricing without
-          leaving the operator surface.
+          Browse live bounties and instantly rank matching agents by task fit, reputation, and
+          pricing without leaving the operator surface.
         </p>
       </header>
 
@@ -50,15 +49,13 @@ export default async function MarketplacePage() {
         </div>
       )}
 
-      {!taskError && <LiveBountiesPanel tasks={tasks} />}
-
       {agentError && (
         <div className="border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
           Failed to load agents: {agentError}
         </div>
       )}
 
-      {!agentError && <MarketplaceShell initialAgents={agents} />}
+      {!agentError && <MarketplaceShell initialAgents={agents} tasks={tasks} />}
     </section>
   );
 }

@@ -1,11 +1,21 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useDiscoveryAgents, type DiscoveryAgentMatchSummary } from '@saep/sdk-ui';
-import type { SerializedAgent } from '@/lib/agent-serializer';
+import {
+  useDiscoveryAgents,
+  useDiscoveryTaskMatches,
+  type DiscoveryAgentMatchSummary,
+} from '@saep/sdk-ui';
+import type { SerializedAgent, SerializedTask } from '@/lib/agent-serializer';
 import { getPortalIndexerUrl } from '@/lib/indexer-url';
-import { sanitize } from '@/lib/sanitize';
-import { maskToTags } from '../dashboard/capability-tags';
+import { CAPABILITY_LABELS, maskToTags } from '../dashboard/capability-tags';
+import {
+  agentSubtitle,
+  agentTitle,
+  avgReputationScore,
+  compositeScore,
+  fmtSol,
+} from './agent-card-utils';
 
 const STATUS_STYLE: Record<string, string> = {
   active: 'text-lime border-lime/30',
@@ -14,52 +24,12 @@ const STATUS_STYLE: Record<string, string> = {
   deregistered: 'text-mute border-ink/15',
 };
 
-function fmtSol(lamports: string): string {
-  return `${(Number(lamports) / 1e9).toFixed(2)}`;
-}
-
-function compositeScore(agent: SerializedAgent): number {
-  const r = agent.reputation;
-  const avgRep = (r.quality + r.timeliness + r.availability + r.costEfficiency + r.honesty + r.volume) / 6;
-  const price = Number(agent.priceLamports);
-  const priceNorm = price > 0 ? Math.max(0, 1 - price / 10e9) : 0;
-  return avgRep * 0.7 + priceNorm * 10000 * 0.3;
-}
-
-function humanizeSlug(value: string): string {
-  return value
-    .replace(/\.[a-z0-9]+$/i, '')
-    .replace(/[-_]+/g, ' ')
-    .trim();
-}
-
-function agentTitle(agent: SerializedAgent): string {
-  const manifest = sanitize(agent.manifestUri)?.trim();
-  if (!manifest) return `${agent.did.slice(0, 16)}…`;
-  try {
-    const url = new URL(manifest);
-    const last = url.pathname.split('/').filter(Boolean).pop();
-    if (last) return humanizeSlug(last);
-    return url.hostname.replace(/^www\./, '');
-  } catch {
-    return humanizeSlug(manifest);
-  }
-}
-
-function agentSubtitle(agent: SerializedAgent): string {
-  const manifest = sanitize(agent.manifestUri)?.trim();
-  if (!manifest) return `${agent.address.slice(0, 6)}…${agent.address.slice(-4)}`;
-  try {
-    const url = new URL(manifest);
-    return url.hostname.replace(/^www\./, '');
-  } catch {
-    return manifest;
-  }
-}
-
 interface Props {
   agents: SerializedAgent[];
   selectedBits: number[];
+  selectedTask: SerializedTask | null;
+  selectedTaskTitle: string | null;
+  sortMode: 'best_fit' | 'reputation' | 'price_asc' | 'recent';
   onHire: (agent: SerializedAgent) => void;
 }
 
@@ -76,6 +46,15 @@ function selectedMaskHex(selectedBits: number[]): string | null {
   return mask.toString(16);
 }
 
+function summarizeBits(bits: number[]): string | null {
+  if (bits.length === 0) return null;
+  const labels = bits
+    .slice(0, 2)
+    .map((bit) => CAPABILITY_LABELS[bit] ?? `bit ${bit}`)
+    .join(', ');
+  return bits.length > 2 ? `${labels} +${bits.length - 2}` : labels;
+}
+
 function explainMatch(matchSummary: DiscoveryAgentMatchSummary): string {
   const segments = [
     `${Math.round(matchSummary.coverageBps / 100)}% capability coverage`,
@@ -87,33 +66,101 @@ function explainMatch(matchSummary: DiscoveryAgentMatchSummary): string {
   if (matchSummary.availability != null) {
     segments.push(`availability ${toPct(matchSummary.availability)}`);
   }
+  const missing = summarizeBits(matchSummary.missingCapabilityBits);
+  if (missing) {
+    segments.push(`missing ${missing}`);
+  }
   return segments.join(' • ');
 }
 
-export function AgentResultsGrid({ agents, selectedBits, onHire }: Props) {
+export function AgentResultsGrid({
+  agents,
+  selectedBits,
+  selectedTask,
+  selectedTaskTitle,
+  sortMode,
+  onHire,
+}: Props) {
   const capabilityMaskHex = useMemo(() => selectedMaskHex(selectedBits), [selectedBits]);
-  const { data: rankedAgents, isLoading: isLoadingMatches } = useDiscoveryAgents({
+
+  const { data: taskMatches, isLoading: isLoadingTaskMatches } = useDiscoveryTaskMatches({
+    indexerUrl: INDEXER_URL,
+    taskIdHex: selectedTask?.taskId ?? null,
+    limit: Math.min(Math.max(agents.length, 25), 200),
+    enabled: Boolean(selectedTask?.taskId),
+  });
+
+  const { data: rankedAgents, isLoading: isLoadingCapabilityMatches } = useDiscoveryAgents({
     indexerUrl: INDEXER_URL,
     capabilityMaskHex,
     limit: Math.min(Math.max(agents.length, 25), 200),
-    enabled: selectedBits.length > 0,
+    enabled: !selectedTask && selectedBits.length > 0,
   });
 
-  const matchMap = useMemo(() => {
-    return new Map((rankedAgents ?? []).map((agent) => [agent.didHex, agent.matchSummary]));
-  }, [rankedAgents]);
-
-  const sorted = useMemo(
-    () =>
-      [...agents].sort((a, b) => {
-        const aMatch = matchMap.get(a.did) ?? null;
-        const bMatch = matchMap.get(b.did) ?? null;
-        const aScore = aMatch?.fitScore ?? compositeScore(a);
-        const bScore = bMatch?.fitScore ?? compositeScore(b);
-        return bScore - aScore;
-      }),
-    [agents, matchMap],
+  const capabilityMatchMap = useMemo(
+    () => new Map((rankedAgents ?? []).map((agent) => [agent.didHex, agent.matchSummary])),
+    [rankedAgents],
   );
+  const capabilityRankMap = useMemo(
+    () => new Map((rankedAgents ?? []).map((agent, index) => [agent.didHex, index])),
+    [rankedAgents],
+  );
+  const taskMatchMap = useMemo(
+    () =>
+      new Map(
+        (taskMatches?.items ?? []).map((candidate) => [candidate.didHex, candidate.matchSummary]),
+      ),
+    [taskMatches],
+  );
+  const taskRankMap = useMemo(
+    () => new Map((taskMatches?.items ?? []).map((candidate, index) => [candidate.didHex, index])),
+    [taskMatches],
+  );
+
+  const contextMatchMap = selectedTask ? taskMatchMap : capabilityMatchMap;
+  const contextRankMap = selectedTask ? taskRankMap : capabilityRankMap;
+  const hasRecommendationContext = Boolean(selectedTask) || selectedBits.length > 0;
+  const showLoadingMatches = selectedTask ? isLoadingTaskMatches : isLoadingCapabilityMatches;
+
+  const sorted = useMemo(() => {
+    const compareDesc = (a: number, b: number) => b - a;
+    const compareAsc = (a: number, b: number) => a - b;
+
+    return [...agents].sort((a, b) => {
+      const aRank = contextRankMap.get(a.did);
+      const bRank = contextRankMap.get(b.did);
+      const aHasMatch = aRank != null;
+      const bHasMatch = bRank != null;
+
+      if (hasRecommendationContext && aHasMatch !== bHasMatch) {
+        return aHasMatch ? -1 : 1;
+      }
+
+      if (sortMode === 'best_fit' && aHasMatch && bHasMatch && aRank !== bRank) {
+        return aRank - bRank;
+      }
+
+      if (sortMode === 'reputation') {
+        const rep = compareDesc(avgReputationScore(a), avgReputationScore(b));
+        if (rep !== 0) return rep;
+      } else if (sortMode === 'price_asc') {
+        const price = compareAsc(Number(a.priceLamports), Number(b.priceLamports));
+        if (price !== 0) return price;
+      } else if (sortMode === 'recent') {
+        const recent = compareDesc(a.lastActive, b.lastActive);
+        if (recent !== 0) return recent;
+      }
+
+      const aMatch = contextMatchMap.get(a.did) ?? null;
+      const bMatch = contextMatchMap.get(b.did) ?? null;
+      const aScore = aMatch?.fitScore ?? compositeScore(a);
+      const bScore = bMatch?.fitScore ?? compositeScore(b);
+      const fit = compareDesc(aScore, bScore);
+      if (fit !== 0) return fit;
+
+      return compareDesc(avgReputationScore(a), avgReputationScore(b));
+    });
+  }, [agents, contextMatchMap, contextRankMap, hasRecommendationContext, sortMode]);
 
   return (
     <section className="border border-ink/10 bg-paper">
@@ -124,9 +171,15 @@ export function AgentResultsGrid({ agents, selectedBits, onHire }: Props) {
           <p className="mt-1 text-sm text-ink/60">
             Compare operators by score, pricing, capability coverage, and recorded reputation.
           </p>
-          {selectedBits.length > 0 ? (
+          {selectedTaskTitle ? (
             <p className="mt-2 text-xs text-ink/45">
-              {isLoadingMatches
+              {showLoadingMatches
+                ? `Ranking agents against ${selectedTaskTitle}...`
+                : `Task-led mode is active for ${selectedTaskTitle}. Stronger fits float to the top.`}
+            </p>
+          ) : selectedBits.length > 0 ? (
+            <p className="mt-2 text-xs text-ink/45">
+              {showLoadingMatches
                 ? 'Refreshing indexed fit scores for the selected capability set...'
                 : 'Ranked by indexed fit score for the selected capability set.'}
             </p>
@@ -146,11 +199,9 @@ export function AgentResultsGrid({ agents, selectedBits, onHire }: Props) {
           <div className="grid gap-4 xl:grid-cols-2">
             {sorted.map((agent) => {
               const tags = maskToTags(BigInt(agent.capabilityMask));
-              const score = compositeScore(agent);
-              const matchSummary = matchMap.get(agent.did) ?? null;
+              const matchSummary = contextMatchMap.get(agent.did) ?? null;
+              const matchRank = contextRankMap.get(agent.did);
               const statusClass = STATUS_STYLE[agent.status] ?? 'text-ink/55 border-ink/15';
-              const title = agentTitle(agent);
-              const subtitle = agentSubtitle(agent);
 
               return (
                 <article
@@ -162,14 +213,19 @@ export function AgentResultsGrid({ agents, selectedBits, onHire }: Props) {
                       <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
                         Agent
                       </div>
+                      {matchRank != null ? (
+                        <div className="mt-2 inline-flex items-center border border-ink/15 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-ink/65">
+                          #{matchRank + 1} {matchRank === 0 ? 'best fit' : 'ranked match'}
+                        </div>
+                      ) : null}
                       <a
                         href={`/agents/${agent.did}`}
                         className="mt-2 block font-display text-[22px] leading-tight tracking-[-0.01em] text-ink transition-colors hover:text-ink/70"
                       >
-                        {title}
+                        {agentTitle(agent)}
                       </a>
                       <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.08em] text-ink/55">
-                        {subtitle}
+                        {agentSubtitle(agent)}
                       </div>
                     </div>
                     <span
@@ -200,11 +256,13 @@ export function AgentResultsGrid({ agents, selectedBits, onHire }: Props) {
 
                     <div className="grid gap-0 border border-ink/10 sm:grid-cols-3">
                       <StatCell
-                        label={matchSummary ? 'Fit' : 'Score'}
+                        label={matchSummary ? 'Fit' : sortMode === 'reputation' ? 'Rep' : 'Score'}
                         value={
                           matchSummary
                             ? toPct(matchSummary.fitScore)
-                            : Math.round(score).toLocaleString()
+                            : sortMode === 'reputation'
+                              ? toPct(avgReputationScore(agent))
+                              : Math.round(compositeScore(agent)).toLocaleString()
                         }
                       />
                       <StatCell label="Price" value={`${fmtSol(agent.priceLamports)} SOL`} />
@@ -233,7 +291,15 @@ export function AgentResultsGrid({ agents, selectedBits, onHire }: Props) {
 
                     {matchSummary ? (
                       <div className="border border-ink/10 bg-paper px-3 py-3 text-sm text-ink/60">
-                        {explainMatch(matchSummary)}
+                        <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+                          Why this agent fits
+                        </div>
+                        <div className="mt-2">{explainMatch(matchSummary)}</div>
+                      </div>
+                    ) : hasRecommendationContext ? (
+                      <div className="border border-ink/10 bg-paper px-3 py-3 text-sm text-ink/45">
+                        No indexed fit explanation surfaced for this agent under the current
+                        recommendation context.
                       </div>
                     ) : null}
 
