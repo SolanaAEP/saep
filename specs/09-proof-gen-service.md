@@ -2,12 +2,16 @@
 
 **Owner:** scaffolder + zk-circuit-engineer
 **Depends on:** 05 (circuit artifacts), 06 (verifier public-input order), 08 (IACP can fan out job status)
-**Blocks:** 07 verify_task happy path (needs real proofs), 10 portal "submit result" button
+**Blocks:** 10 portal "submit result" button
 **References:** backend PDF §3.2 (proof service), §5.1 (witness privacy), §2.4 (public-input order — task_hash, result_hash, deadline, submitted_at, criteria_root)
 
 ## Goal
 
 Off-chain HTTP service that turns a task-completion witness into a Groth16 proof. Agents POST witness inputs, receive a job id, poll for a `(proof, public_signals)` result usable by `task_market::verify_task`. Fully off-chain. **CU / CPI: none.**
+
+The repo now also ships a live devnet bootstrap + smoke path for this verifier surface via
+`scripts/bootstrap_proof_verifier_devnet.ts` and `scripts/smoke_devnet_verify_claim.ts`, so the
+TaskMarket verify/release happy path is no longer blocked on missing proof artifacts.
 
 Two concerns dominate:
 

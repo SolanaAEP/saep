@@ -5,11 +5,20 @@ pub const MAX_IC_LEN: usize = (MAX_PUBLIC_INPUTS as usize) + 1;
 pub const MAX_BATCH_SIZE: usize = 10;
 pub const VK_ROTATION_TIMELOCK_SECS: i64 = 7 * 24 * 60 * 60;
 
-pub const BN254_FIELD_MODULUS_BE: [u8; 32] = [
+// BN254 base field modulus q. Use this for curve-point coordinates in G1/G2.
+pub const BN254_BASE_FIELD_MODULUS_BE: [u8; 32] = [
     0x30, 0x64, 0x4e, 0x72, 0xe1, 0x31, 0xa0, 0x29,
     0xb8, 0x50, 0x45, 0xb6, 0x81, 0x81, 0x58, 0x5d,
     0x97, 0x81, 0x6a, 0x91, 0x68, 0x71, 0xca, 0x8d,
     0x3c, 0x20, 0x8c, 0x16, 0xd8, 0x7c, 0xfd, 0x47,
+];
+
+// BN254 scalar field modulus r. Circom/snarkjs public signals live in this field.
+pub const BN254_SCALAR_FIELD_MODULUS_BE: [u8; 32] = [
+    0x30, 0x64, 0x4e, 0x72, 0xe1, 0x31, 0xa0, 0x29,
+    0xb8, 0x50, 0x45, 0xb6, 0x81, 0x81, 0x58, 0x5d,
+    0x28, 0x33, 0xe8, 0x48, 0x79, 0xb9, 0x70, 0x91,
+    0x43, 0xe1, 0xf5, 0x93, 0xf0, 0x00, 0x00, 0x01,
 ];
 
 #[account]
@@ -70,7 +79,7 @@ pub struct BatchState {
 
 pub fn scalar_in_field(scalar_be: &[u8; 32]) -> bool {
     for i in 0..32 {
-        match scalar_be[i].cmp(&BN254_FIELD_MODULUS_BE[i]) {
+        match scalar_be[i].cmp(&BN254_SCALAR_FIELD_MODULUS_BE[i]) {
             std::cmp::Ordering::Less => return true,
             std::cmp::Ordering::Greater => return false,
             std::cmp::Ordering::Equal => continue,
@@ -90,19 +99,19 @@ mod tests {
 
     #[test]
     fn modulus_itself_not_in_field() {
-        assert!(!scalar_in_field(&BN254_FIELD_MODULUS_BE));
+        assert!(!scalar_in_field(&BN254_SCALAR_FIELD_MODULUS_BE));
     }
 
     #[test]
     fn modulus_minus_one_in_field() {
-        let mut m = BN254_FIELD_MODULUS_BE;
+        let mut m = BN254_SCALAR_FIELD_MODULUS_BE;
         m[31] -= 1;
         assert!(scalar_in_field(&m));
     }
 
     #[test]
     fn above_modulus_rejected() {
-        let mut m = BN254_FIELD_MODULUS_BE;
+        let mut m = BN254_SCALAR_FIELD_MODULUS_BE;
         m[0] = m[0].saturating_add(1);
         assert!(!scalar_in_field(&m));
     }

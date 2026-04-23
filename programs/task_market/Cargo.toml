@@ -21,7 +21,7 @@ anchor-lang = "1.0.0"
 anchor-spl = { version = "1.0.0", features = ["token_2022"] }
 solana-instructions-sysvar = "3.0.0"
 solana-keccak-hasher = "2.2.1"
-proof_verifier = { path = "../proof_verifier", features = ["cpi"] }
+proof_verifier = { path = "../proof_verifier", default-features = false, features = ["cpi"] }
 agent_registry = { path = "../agent_registry", features = ["cpi"] }
 capability_registry = { path = "../capability_registry", features = ["cpi"] }
 fee_collector = { path = "../fee_collector", features = ["cpi"] }

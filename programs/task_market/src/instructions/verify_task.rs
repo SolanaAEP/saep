@@ -4,7 +4,9 @@ use solana_instructions_sysvar::ID as IX_SYSVAR_ID;
 use proof_verifier::cpi::accounts::VerifyProof;
 use proof_verifier::cpi::verify_proof;
 use proof_verifier::program::ProofVerifier;
-use proof_verifier::state::{GlobalMode, VerifierConfig, VerifierKey};
+use proof_verifier::state::{
+    scalar_in_field, GlobalMode, VerifierConfig, VerifierKey, BN254_SCALAR_FIELD_MODULUS_BE,
+};
 
 use crate::errors::TaskMarketError;
 use crate::events::{GuardEntered, TaskVerified, VerificationFailed};
@@ -74,6 +76,28 @@ fn i64_to_scalar_be(val: i64) -> [u8; 32] {
     buf
 }
 
+fn sub_be(mut lhs: [u8; 32], rhs: &[u8; 32]) -> [u8; 32] {
+    let mut borrow = 0i16;
+    for i in (0..32).rev() {
+        let diff = lhs[i] as i16 - rhs[i] as i16 - borrow;
+        if diff < 0 {
+            lhs[i] = (diff + 256) as u8;
+            borrow = 1;
+        } else {
+            lhs[i] = diff as u8;
+            borrow = 0;
+        }
+    }
+    lhs
+}
+
+fn canonical_field_input(mut scalar: [u8; 32]) -> [u8; 32] {
+    while !scalar_in_field(&scalar) {
+        scalar = sub_be(scalar, &BN254_SCALAR_FIELD_MODULUS_BE);
+    }
+    scalar
+}
+
 pub fn handler(
     ctx: Context<VerifyTask>,
     proof_a: [u8; 64],
@@ -88,6 +112,7 @@ pub fn handler(
         slot: clock.slot,
         stack_height: 1,
     });
+    anchor_lang::AccountsExit::exit(&ctx.accounts.guard, &crate::ID)?;
 
     let t = &mut ctx.accounts.task;
     require!(
@@ -98,11 +123,11 @@ pub fn handler(
     let now = clock.unix_timestamp;
 
     let public_inputs = vec![
-        t.task_hash,
-        t.result_hash,
+        canonical_field_input(t.task_hash),
+        canonical_field_input(t.result_hash),
         i64_to_scalar_be(t.deadline),
         i64_to_scalar_be(t.submitted_at),
-        t.criteria_root,
+        canonical_field_input(t.criteria_root),
     ];
 
     let cpi_ctx = CpiContext::new(

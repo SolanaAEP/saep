@@ -7,7 +7,8 @@
  *   pnpm tsx scripts/bootstrap_devnet.ts
  *
  * Checks each program's global account; calls init_global only when missing.
- * Skips proof_verifier (already init'd on devnet per task-market-audit report).
+ * Proof-verifier bootstrap now lives in `scripts/bootstrap_proof_verifier_devnet.ts`
+ * because it also needs guard + allowed-caller + VK activation setup.
  */
 
 import * as anchor from '@coral-xyz/anchor';

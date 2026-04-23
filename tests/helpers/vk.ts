@@ -47,8 +47,8 @@ export function loadDevVk() {
 }
 
 // Chunked VK registration: init_vk (header) + append_vk_ic (IC points).
-// Required because full VK data (1166 bytes for 9 public inputs) exceeds
-// Solana's 1232-byte transaction size limit.
+// Required because the full VK payload still exceeds Solana's 1232-byte
+// transaction size limit even with the current 5-public-input task circuit.
 export async function registerDevVk(
   program: anchor.Program<ProofVerifier>,
   authority: anchor.web3.PublicKey,

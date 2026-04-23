@@ -1,66 +1,30 @@
 use anchor_lang::prelude::*;
+use solana_bn254::prelude::{
+    alt_bn128_addition,
+    alt_bn128_multiplication,
+    alt_bn128_pairing,
+};
 
 use crate::errors::ProofVerifierError;
-use crate::state::{VerifierKey, BN254_FIELD_MODULUS_BE};
-
-const ALT_BN128_ADD: u64 = 0;
-const ALT_BN128_MUL: u64 = 1;
-const ALT_BN128_PAIRING: u64 = 2;
-
-#[cfg(target_os = "solana")]
-extern "C" {
-    fn sol_alt_bn128_group_op(
-        group_op: u64,
-        input: *const u8,
-        input_size: u64,
-        result: *mut u8,
-    ) -> u64;
-}
-
-#[cfg(not(target_os = "solana"))]
-unsafe fn sol_alt_bn128_group_op(
-    _group_op: u64,
-    _input: *const u8,
-    _input_size: u64,
-    _result: *mut u8,
-) -> u64 {
-    panic!("alt_bn128 syscall unavailable outside solana runtime")
-}
+use crate::state::{VerifierKey, BN254_BASE_FIELD_MODULUS_BE};
 
 pub(crate) fn g1_add(a: &[u8; 64], b: &[u8; 64]) -> std::result::Result<[u8; 64], ()> {
-    let mut buf = [0u8; 128];
-    buf[..64].copy_from_slice(a);
-    buf[64..].copy_from_slice(b);
-    let mut out = [0u8; 64];
-    // nosemgrep: rust.lang.security.unsafe-usage.unsafe-usage — direct syscall to alt_bn128 group op; arguments are fixed-size stack buffers, bounds statically provable (128 in, 64 out).
-    if unsafe { sol_alt_bn128_group_op(ALT_BN128_ADD, buf.as_ptr(), 128, out.as_mut_ptr()) } != 0 {
-        return Err(());
-    }
-    Ok(out)
+    let out = alt_bn128_addition(&[a.as_slice(), b.as_slice()].concat()).map_err(|_| ())?;
+    out.try_into().map_err(|_| ())
 }
 
-pub(crate) fn g1_scalar_mul(point: &[u8; 64], scalar: &[u8; 32]) -> std::result::Result<[u8; 64], ()> {
-    let mut buf = [0u8; 96];
-    buf[..64].copy_from_slice(point);
-    buf[64..].copy_from_slice(scalar);
-    let mut out = [0u8; 64];
-    // nosemgrep: rust.lang.security.unsafe-usage.unsafe-usage — direct syscall to alt_bn128 group op; arguments are fixed-size stack buffers, bounds statically provable (96 in, 64 out).
-    if unsafe { sol_alt_bn128_group_op(ALT_BN128_MUL, buf.as_ptr(), 96, out.as_mut_ptr()) } != 0 {
-        return Err(());
-    }
-    Ok(out)
+pub(crate) fn g1_scalar_mul(
+    point: &[u8; 64],
+    scalar: &[u8; 32],
+) -> std::result::Result<[u8; 64], ()> {
+    let out = alt_bn128_multiplication(&[point.as_slice(), scalar.as_slice()].concat())
+        .map_err(|_| ())?;
+    out.try_into().map_err(|_| ())
 }
 
 pub(crate) fn pairing_check(input: &[u8]) -> std::result::Result<bool, ()> {
-    let mut out = [0u8; 32];
-    // nosemgrep: rust.lang.security.unsafe-usage.unsafe-usage — direct syscall to alt_bn128 pairing; input is a rust &[u8] slice so .as_ptr()/.len() are valid; out is fixed 32-byte stack buffer.
-    if unsafe {
-        sol_alt_bn128_group_op(ALT_BN128_PAIRING, input.as_ptr(), input.len() as u64, out.as_mut_ptr())
-    } != 0
-    {
-        return Err(());
-    }
-    Ok(out[31] == 1)
+    let out = alt_bn128_pairing(input).map_err(|_| ())?;
+    Ok(out.get(31).copied() == Some(1))
 }
 
 pub(crate) fn negate_g1(point: &[u8; 64]) -> [u8; 64] {
@@ -73,8 +37,9 @@ pub(crate) fn negate_g1(point: &[u8; 64]) -> [u8; 64] {
 
     let mut borrow: u16 = 0;
     for i in (0..32).rev() {
-        // nosemgrep: saep.solana.wrapping-arithmetic — bn254 field-element subtraction; wrap is the defined modular behavior, not silent financial overflow.
-        let diff = (BN254_FIELD_MODULUS_BE[i] as u16)
+        // nosemgrep: saep.solana.wrapping-arithmetic — bn254 field-element subtraction; wrap is
+        // the defined modular behavior, not silent financial overflow.
+        let diff = (BN254_BASE_FIELD_MODULUS_BE[i] as u16)
             .wrapping_sub(point[32 + i] as u16)
             .wrapping_sub(borrow);
         out[32 + i] = diff as u8;
@@ -95,26 +60,32 @@ pub fn verify_groth16(
     for (i, input) in public_inputs.iter().enumerate() {
         let term = g1_scalar_mul(&vk.ic[i + 1], input)
             .map_err(|_| error!(ProofVerifierError::ProofMalformed))?;
-        vk_x = g1_add(&vk_x, &term)
-            .map_err(|_| error!(ProofVerifierError::ProofMalformed))?;
+        vk_x = g1_add(&vk_x, &term).map_err(|_| error!(ProofVerifierError::ProofMalformed))?;
     }
 
     let neg_a = negate_g1(proof_a);
 
-    // e(-A, B) * e(alpha, beta) * e(vk_x, gamma) * e(C, delta) == 1
+    // Match the pair ordering used by groth16-solana's verified reference path:
+    // e(-A, B) * e(vk_x, gamma) * e(C, delta) * e(alpha, beta) == 1
     let mut buf = [0u8; 768];
     let mut o = 0;
-    buf[o..o + 64].copy_from_slice(&neg_a);       o += 64;
-    buf[o..o + 128].copy_from_slice(proof_b);      o += 128;
-    buf[o..o + 64].copy_from_slice(&vk.alpha_g1);  o += 64;
-    buf[o..o + 128].copy_from_slice(&vk.beta_g2);  o += 128;
-    buf[o..o + 64].copy_from_slice(&vk_x);         o += 64;
-    buf[o..o + 128].copy_from_slice(&vk.gamma_g2); o += 128;
-    buf[o..o + 64].copy_from_slice(proof_c);        o += 64;
+    buf[o..o + 64].copy_from_slice(&neg_a);
+    o += 64;
+    buf[o..o + 128].copy_from_slice(proof_b);
+    o += 128;
+    buf[o..o + 64].copy_from_slice(&vk_x);
+    o += 64;
+    buf[o..o + 128].copy_from_slice(&vk.gamma_g2);
+    o += 128;
+    buf[o..o + 64].copy_from_slice(proof_c);
+    o += 64;
     buf[o..o + 128].copy_from_slice(&vk.delta_g2);
+    o += 128;
+    buf[o..o + 64].copy_from_slice(&vk.alpha_g1);
+    o += 64;
+    buf[o..o + 128].copy_from_slice(&vk.beta_g2);
 
-    let valid = pairing_check(&buf)
-        .map_err(|_| error!(ProofVerifierError::ProofMalformed))?;
+    let valid = pairing_check(&buf).map_err(|_| error!(ProofVerifierError::ProofMalformed))?;
 
     require!(valid, ProofVerifierError::ProofInvalid);
     Ok(())

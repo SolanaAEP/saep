@@ -160,6 +160,7 @@ pub mod proof_verifier {
         instructions::authority::accept_authority_handler(ctx)
     }
 
+    #[cfg(feature = "reputation-update")]
     #[allow(clippy::too_many_arguments)]
     pub fn verify_and_update_reputation(
         ctx: Context<VerifyAndUpdateReputation>,

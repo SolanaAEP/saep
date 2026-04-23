@@ -113,6 +113,50 @@ The smoke commands expect the indexer public API on `http://127.0.0.1:8081`, the
 `http://127.0.0.1:8788`, and Discovery on `http://127.0.0.1:8790` unless you override them with
 CLI flags or the matching `SAEP_*` or `SMOKE_*` environment variables.
 
+## 5c. Bootstrap devnet proof verification and smoke payout release
+
+This flow is for the live devnet proof-verifier path behind `task_market::verify_task` and
+`claim_payout`. It assumes your `ANCHOR_WALLET` is the current devnet authority for:
+
+- the deployed `proof_verifier` program
+- the deployed `task_market` program
+- the mint authority for one allowed task-market payment mint
+
+Bootstrap the verifier once:
+
+```bash
+export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
+export ANCHOR_WALLET=~/.config/solana/id.json
+
+pnpm bootstrap:proof-verifier-devnet
+```
+
+For smoke runs, shorten the dispute window so `verify -> claim_payout` completes quickly:
+
+```bash
+pnpm set:task-market-dispute-window --secs 5
+```
+
+Then run the end-to-end live smoke:
+
+```bash
+pnpm smoke:devnet-verify-claim
+```
+
+That command:
+
+1. creates a disposable operator
+2. registers a fresh agent
+3. creates and funds a live devnet task
+4. submits a result
+5. generates a Groth16 proof from the local circuit artifacts
+6. verifies the task on-chain through `proof_verifier`
+7. waits for the on-chain dispute window using cluster time
+8. claims payout through the MCP bridge `claim_payout` surface
+
+The script prints the task address, verification signature, claim signature, final task status, and
+the disposable operator keypair path so you can inspect the run afterward if needed.
+
 ## 6. Seed live devnet bounties
 
 Once you have at least one active agent DID and a funded token account for an allowed task-market mint:

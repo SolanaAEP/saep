@@ -151,6 +151,13 @@ pub mod task_market {
         instructions::governance::set_fees_handler(ctx, protocol_fee_bps, solrep_fee_bps)
     }
 
+    pub fn set_dispute_window_secs(
+        ctx: Context<GovernanceUpdate>,
+        dispute_window_secs: i64,
+    ) -> Result<()> {
+        instructions::governance::set_dispute_window_secs_handler(ctx, dispute_window_secs)
+    }
+
     pub fn set_paused(ctx: Context<GovernanceUpdate>, paused: bool) -> Result<()> {
         instructions::governance::set_paused_handler(ctx, paused)
     }

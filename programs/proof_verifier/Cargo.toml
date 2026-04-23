@@ -9,11 +9,12 @@ crate-type = ["cdylib", "lib"]
 name = "proof_verifier"
 
 [features]
+reputation-update = ["dep:light-poseidon", "dep:ark-bn254"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
-default = []
+default = ["reputation-update"]
 idl-build = ["anchor-lang/idl-build", "agent_registry/idl-build"]
 
 [dependencies]
@@ -21,8 +22,9 @@ anchor-lang = "1.0.0"
 agent_registry = { path = "../agent_registry", features = ["cpi"] }
 solana-instructions-sysvar = "3.0.0"
 solana-keccak-hasher = "2.2.1"
-light-poseidon = "0.4.0"
-ark-bn254 = "0.5.0"
+solana-bn254 = "2.2.2"
+light-poseidon = { version = "0.4.0", optional = true }
+ark-bn254 = { version = "0.5.0", optional = true }
 
 [dev-dependencies]
 proptest = "1"

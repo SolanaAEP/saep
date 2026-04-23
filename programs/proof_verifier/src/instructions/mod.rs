@@ -5,6 +5,7 @@ pub mod guard;
 pub mod init_config;
 pub mod init_vk;
 pub mod register_vk;
+#[cfg(feature = "reputation-update")]
 pub mod reputation_cpi;
 pub mod set_paused;
 pub mod verify_proof;
@@ -17,6 +18,7 @@ pub use guard::*;
 pub use init_config::*;
 pub use init_vk::*;
 pub use register_vk::*;
+#[cfg(feature = "reputation-update")]
 pub use reputation_cpi::*;
 pub use set_paused::*;
 pub use verify_proof::*;

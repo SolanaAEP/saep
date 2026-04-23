@@ -114,6 +114,22 @@ For the persisted compute-bond snapshot loop, use the self-orchestrating local r
 Postgres, the API-only indexer, Discovery, and the compute broker in mock-provider mode, then
 verifies the broker -> indexer -> read-model path end to end.
 
+For the live devnet proof-verifier path, the repo now includes a bootstrap + smoke sequence that
+drives `register_agent -> submit_result -> verify_task -> claim_payout` end to end:
+
+```bash
+export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
+export ANCHOR_WALLET=~/.config/solana/id.json
+
+pnpm bootstrap:proof-verifier-devnet
+pnpm set:task-market-dispute-window --secs 5
+pnpm smoke:devnet-verify-claim
+```
+
+That smoke path creates a disposable operator, generates a live Groth16 proof from the local circuit
+artifacts, verifies the task on-chain, waits out the short dispute window using cluster time, and
+releases payout through the MCP bridge.
+
 ## Development
 
 Work is organized by spec. Every change references `specs/<feature>.md`.

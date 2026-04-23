@@ -53,6 +53,18 @@ pub fn set_fees_handler(
     Ok(())
 }
 
+pub fn set_dispute_window_secs_handler(
+    ctx: Context<GovernanceUpdate>,
+    dispute_window_secs: i64,
+) -> Result<()> {
+    require!(dispute_window_secs > 0, TaskMarketError::InvalidDeadline);
+    ctx.accounts.global.dispute_window_secs = dispute_window_secs;
+    emit!(GlobalParamsUpdated {
+        timestamp: Clock::get()?.unix_timestamp,
+    });
+    Ok(())
+}
+
 pub fn set_paused_handler(ctx: Context<GovernanceUpdate>, paused: bool) -> Result<()> {
     ctx.accounts.global.paused = paused;
     emit!(PausedSet {

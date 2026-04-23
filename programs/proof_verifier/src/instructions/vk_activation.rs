@@ -38,7 +38,16 @@ pub fn propose_handler(ctx: Context<ProposeVkActivation>) -> Result<()> {
     }
 
     let now = Clock::get()?.unix_timestamp;
-    let activates_at = now.saturating_add(VK_ROTATION_TIMELOCK_SECS);
+    // Devnet/localnet bootstrap: allow the very first activation to execute
+    // immediately when the verifier has never had an active VK. Subsequent
+    // rotations, and all mainnet activations, still honor the full timelock.
+    let first_activation_bootstrap = !ctx.accounts.mode.is_mainnet
+        && config.active_vk == Pubkey::default();
+    let activates_at = if first_activation_bootstrap {
+        now
+    } else {
+        now.saturating_add(VK_ROTATION_TIMELOCK_SECS)
+    };
     config.pending_vk = Some(ctx.accounts.vk.key());
     config.pending_activates_at = activates_at;
 

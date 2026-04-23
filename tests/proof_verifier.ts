@@ -58,7 +58,7 @@ describe('proof_verifier', () => {
       .to.equal(CIRCUIT_LABEL);
   });
 
-  it('propose_vk_activation: sets pending VK with 7-day timelock', async () => {
+  it('propose_vk_activation: first non-mainnet activation becomes immediately executable', async () => {
     const [cfgPda] = proofVerifier.config();
     const [modePda] = proofVerifier.mode();
 
@@ -73,10 +73,11 @@ describe('proof_verifier', () => {
 
     const cfg = await program.account.verifierConfig.fetch(cfgPda);
     expect(cfg.pendingVk?.toBase58()).to.equal(vkPda.toBase58());
-    expect(cfg.pendingActivatesAt.toNumber()).to.be.greaterThan(0);
+    const now = Math.floor(Date.now() / 1000);
+    expect(cfg.pendingActivatesAt.toNumber()).to.be.within(now - 5, now + 5);
   });
 
-  // execute_vk_activation 7-day timelock coverage lives in
+  // execute_vk_activation timing coverage lives in
   // `tests/bankrun_timelocks.ts` (in-process clock warp, no localnet).
 
   it.skip('verify_proof: happy-path with real VK + real proof (integration-gated)', async () => {
