@@ -325,6 +325,43 @@ describe('indexed treasury yield hooks', () => {
     });
   });
 
+  it('uses default strategy query params and stays idle when disabled', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(
+      () => useIndexedYieldStrategies({ indexerUrl: `${INDEXER}/`, enabled: false }),
+      { wrapper: createWrapper() },
+    );
+
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const enabled = renderHook(
+      () => useIndexedYieldStrategies({ indexerUrl: `${INDEXER}/` }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(enabled.result.current.isSuccess).toBe(true));
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      `${INDEXER}/v1/discovery/treasury/yield-strategies?limit=50`,
+    );
+    expect(enabled.result.current.data).toEqual([]);
+  });
+
+  it('surfaces indexed strategy fetch errors with response bodies', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('database unavailable', { status: 503 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(
+      () => useIndexedYieldStrategies({ indexerUrl: INDEXER }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toEqual(new Error('indexer 503: database unavailable'));
+  });
+
   it('maps indexed treasury yield snapshots and treats 404 as unconfigured', async () => {
     const fetchMock = vi
       .fn()
@@ -369,11 +406,42 @@ describe('indexed treasury yield hooks', () => {
     await waitFor(() => expect(missing.result.current.isSuccess).toBe(true));
     expect(missing.result.current.data).toBeNull();
   });
+
+  it('keeps treasury yield idle for missing DIDs and rethrows non-404 errors', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('', { status: 500, statusText: 'boom' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const disabled = renderHook(
+      () => useIndexedTreasuryYield({ indexerUrl: INDEXER, agentDidHex: null }),
+      { wrapper: createWrapper() },
+    );
+
+    expect(disabled.result.current.fetchStatus).toBe('idle');
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const malformedDid = renderHook(
+      () => useIndexedTreasuryYield({ indexerUrl: INDEXER, agentDidHex: 'too-short' }),
+      { wrapper: createWrapper() },
+    );
+
+    expect(malformedDid.result.current.fetchStatus).toBe('idle');
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const failing = renderHook(
+      () => useIndexedTreasuryYield({ indexerUrl: `${INDEXER}/`, agentDidHex: didHex }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(failing.result.current.isError).toBe(true));
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`${INDEXER}/v1/discovery/treasury/${didHex}/yield`);
+    expect(failing.result.current.error).toEqual(new Error('indexer 500: boom'));
+  });
 });
 
 describe('rawToUsdMicro', () => {
   it('returns zero for non-stable mints and rescales stable decimals around 6', () => {
     expect(rawToUsdMicro(123n, 9, false)).toBe(0n);
+    expect(rawToUsdMicro(1_234_567n, 6, true)).toBe(1_234_567n);
     expect(rawToUsdMicro(1_234_567_890n, 9, true)).toBe(1_234_567n);
     expect(rawToUsdMicro(12_345n, 4, true)).toBe(1_234_500n);
   });
