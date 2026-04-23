@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { simulateTemplateEconomics } from '@saep/sdk-ui';
+import { simulateTemplateEconomics } from '@saep/sdk-ui/template-simulator';
 import type {
   SerializedTemplate,
   SerializedTemplateRegistryConfig,

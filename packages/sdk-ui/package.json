@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./template-simulator": {
+      "types": "./dist/template-simulator.d.ts",
+      "default": "./dist/template-simulator.js"
     }
   },
   "files": [
