@@ -54,7 +54,6 @@ function bpsMul(value: bigint, bps: number): bigint {
 }
 
 function ceilDiv(numerator: bigint, denominator: bigint): bigint {
-  if (denominator <= 0n) return 0n;
   return (numerator + denominator - 1n) / denominator;
 }
 
