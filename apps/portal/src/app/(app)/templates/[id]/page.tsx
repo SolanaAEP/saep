@@ -4,6 +4,7 @@ import {
   fetchTemplateRegistryConfig,
   fetchTemplateRentals,
 } from '@saep/sdk';
+import Link from 'next/link';
 import { getTemplateRegistryProgram } from '@/lib/rpc.server';
 import {
   serializeTemplate,
@@ -108,7 +109,15 @@ export default async function TemplateDetailPage({
               {template.status}
             </span>
           </div>
-          <p className="text-xs font-mono text-ink/50 break-all">{template.templateId}</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs font-mono text-ink/50 break-all">{template.templateId}</p>
+            <Link
+              href={`/templates/simulator?template=${template.templateId}`}
+              className="inline-flex items-center justify-center border border-ink/15 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink transition-colors hover:border-lime/40 hover:bg-lime/10"
+            >
+              Simulate economics
+            </Link>
+          </div>
         </header>
 
         <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">

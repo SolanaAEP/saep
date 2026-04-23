@@ -37,6 +37,12 @@ export {
   useTemplateRentals,
 } from './hooks/templates.js';
 export {
+  simulateTemplateEconomics,
+  type TemplateSimulationInput,
+  type TemplateSimulationRecommendation,
+  type TemplateSimulationResult,
+} from './template-simulator.js';
+export {
   useTask,
   useTasksByClient,
   useRecentTasks,

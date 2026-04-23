@@ -7,6 +7,7 @@ import {
   serializeTemplate,
   serializeTemplateRegistryConfig,
 } from '@/lib/template-serializer';
+import Link from 'next/link';
 import { TemplateCatalog } from './template-catalog';
 
 function formatBps(bps: number): string {
@@ -44,11 +45,19 @@ export default async function TemplatesPage() {
             Discover reusable agent templates, rental economics, and the primitives behind template-based agent markets.
           </p>
         </div>
-        <div className="font-mono text-[10px] text-mute sm:text-right leading-relaxed">
-          <div>{registry ? 'REGISTRY LIVE' : 'REGISTRY PENDING'}</div>
-          <div className={registry?.paused ? 'text-yellow-500' : 'text-lime'}>
-            {published} PUBLISHED / {templates.length} TOTAL
+        <div className="flex flex-col gap-3 sm:items-end">
+          <div className="font-mono text-[10px] text-mute sm:text-right leading-relaxed">
+            <div>{registry ? 'REGISTRY LIVE' : 'REGISTRY PENDING'}</div>
+            <div className={registry?.paused ? 'text-yellow-500' : 'text-lime'}>
+              {published} PUBLISHED / {templates.length} TOTAL
+            </div>
           </div>
+          <Link
+            href="/templates/simulator"
+            className="inline-flex items-center justify-center border border-ink/15 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink transition-colors hover:border-lime/40 hover:bg-lime/10"
+          >
+            Open simulator
+          </Link>
         </div>
       </header>
 
