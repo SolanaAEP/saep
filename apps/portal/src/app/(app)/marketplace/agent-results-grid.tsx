@@ -1,6 +1,9 @@
 'use client';
 
+import { useMemo } from 'react';
+import { useDiscoveryAgents, type DiscoveryAgentMatchSummary } from '@saep/sdk-ui';
 import type { SerializedAgent } from '@/lib/agent-serializer';
+import { getPortalIndexerUrl } from '@/lib/indexer-url';
 import { sanitize } from '@/lib/sanitize';
 import { maskToTags } from '../dashboard/capability-tags';
 
@@ -56,11 +59,61 @@ function agentSubtitle(agent: SerializedAgent): string {
 
 interface Props {
   agents: SerializedAgent[];
+  selectedBits: number[];
   onHire: (agent: SerializedAgent) => void;
 }
 
-export function AgentResultsGrid({ agents, onHire }: Props) {
-  const sorted = [...agents].sort((a, b) => compositeScore(b) - compositeScore(a));
+const INDEXER_URL = getPortalIndexerUrl();
+
+function toPct(value: number | null | undefined, max = 10_000): string {
+  if (value == null) return 'n/a';
+  return `${Math.round((Math.max(0, Math.min(value, max)) / max) * 100)}%`;
+}
+
+function selectedMaskHex(selectedBits: number[]): string | null {
+  if (selectedBits.length === 0) return null;
+  const mask = selectedBits.reduce((acc, bit) => acc | (1n << BigInt(bit)), 0n);
+  return mask.toString(16);
+}
+
+function explainMatch(matchSummary: DiscoveryAgentMatchSummary): string {
+  const segments = [
+    `${Math.round(matchSummary.coverageBps / 100)}% capability coverage`,
+    `fit ${toPct(matchSummary.fitScore)}`,
+  ];
+  if (matchSummary.capabilityReputationComposite != null) {
+    segments.push(`cap rep ${toPct(matchSummary.capabilityReputationComposite)}`);
+  }
+  if (matchSummary.availability != null) {
+    segments.push(`availability ${toPct(matchSummary.availability)}`);
+  }
+  return segments.join(' • ');
+}
+
+export function AgentResultsGrid({ agents, selectedBits, onHire }: Props) {
+  const capabilityMaskHex = useMemo(() => selectedMaskHex(selectedBits), [selectedBits]);
+  const { data: rankedAgents, isLoading: isLoadingMatches } = useDiscoveryAgents({
+    indexerUrl: INDEXER_URL,
+    capabilityMaskHex,
+    limit: Math.min(Math.max(agents.length, 25), 200),
+    enabled: selectedBits.length > 0,
+  });
+
+  const matchMap = useMemo(() => {
+    return new Map((rankedAgents ?? []).map((agent) => [agent.didHex, agent.matchSummary]));
+  }, [rankedAgents]);
+
+  const sorted = useMemo(
+    () =>
+      [...agents].sort((a, b) => {
+        const aMatch = matchMap.get(a.did) ?? null;
+        const bMatch = matchMap.get(b.did) ?? null;
+        const aScore = aMatch?.fitScore ?? compositeScore(a);
+        const bScore = bMatch?.fitScore ?? compositeScore(b);
+        return bScore - aScore;
+      }),
+    [agents, matchMap],
+  );
 
   return (
     <section className="border border-ink/10 bg-paper">
@@ -71,6 +124,13 @@ export function AgentResultsGrid({ agents, onHire }: Props) {
           <p className="mt-1 text-sm text-ink/60">
             Compare operators by score, pricing, capability coverage, and recorded reputation.
           </p>
+          {selectedBits.length > 0 ? (
+            <p className="mt-2 text-xs text-ink/45">
+              {isLoadingMatches
+                ? 'Refreshing indexed fit scores for the selected capability set...'
+                : 'Ranked by indexed fit score for the selected capability set.'}
+            </p>
+          ) : null}
         </div>
         <div className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink/70">
           {sorted.length} result{sorted.length !== 1 ? 's' : ''}
@@ -87,6 +147,7 @@ export function AgentResultsGrid({ agents, onHire }: Props) {
             {sorted.map((agent) => {
               const tags = maskToTags(BigInt(agent.capabilityMask));
               const score = compositeScore(agent);
+              const matchSummary = matchMap.get(agent.did) ?? null;
               const statusClass = STATUS_STYLE[agent.status] ?? 'text-ink/55 border-ink/15';
               const title = agentTitle(agent);
               const subtitle = agentSubtitle(agent);
@@ -138,16 +199,43 @@ export function AgentResultsGrid({ agents, onHire }: Props) {
                     ) : null}
 
                     <div className="grid gap-0 border border-ink/10 sm:grid-cols-3">
-                      <StatCell label="Score" value={Math.round(score).toLocaleString()} />
+                      <StatCell
+                        label={matchSummary ? 'Fit' : 'Score'}
+                        value={
+                          matchSummary
+                            ? toPct(matchSummary.fitScore)
+                            : Math.round(score).toLocaleString()
+                        }
+                      />
                       <StatCell label="Price" value={`${fmtSol(agent.priceLamports)} SOL`} />
                       <StatCell label="Jobs" value={String(agent.jobsCompleted)} />
                     </div>
 
                     <div className="grid gap-0 border border-ink/10 sm:grid-cols-3">
-                      <StatCell label="Quality" value={agent.reputation.quality.toLocaleString()} />
-                      <StatCell label="Time" value={agent.reputation.timeliness.toLocaleString()} />
+                      <StatCell
+                        label={matchSummary ? 'Coverage' : 'Quality'}
+                        value={
+                          matchSummary
+                            ? `${Math.round(matchSummary.coverageBps / 100)}%`
+                            : agent.reputation.quality.toLocaleString()
+                        }
+                      />
+                      <StatCell
+                        label={matchSummary ? 'Cap Rep' : 'Time'}
+                        value={
+                          matchSummary
+                            ? toPct(matchSummary.capabilityReputationComposite)
+                            : agent.reputation.timeliness.toLocaleString()
+                        }
+                      />
                       <StatCell label="Stake" value={`${fmtSol(agent.stakeAmount)} SOL`} />
                     </div>
+
+                    {matchSummary ? (
+                      <div className="border border-ink/10 bg-paper px-3 py-3 text-sm text-ink/60">
+                        {explainMatch(matchSummary)}
+                      </div>
+                    ) : null}
 
                     <button
                       type="button"

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { findMarketplaceBountyByTaskHash } from '@saep/sdk';
 import type { SerializedTask } from '@/lib/agent-serializer';
+import { TaskMatchPreview } from './task-match-preview';
 
 const STATUS_TONE: Record<string, string> = {
   created: 'border-ink/15 text-ink/55',
@@ -113,6 +114,10 @@ export function LiveBountiesPanel({ tasks }: { tasks: SerializedTask[] }) {
                       value={`${task.paymentMint.slice(0, 8)}…${task.paymentMint.slice(-4)}`}
                     />
                   </dl>
+
+                  <div className="mt-4">
+                    <TaskMatchPreview taskIdHex={task.taskId} />
+                  </div>
                 </Link>
               );
             })}

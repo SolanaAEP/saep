@@ -135,6 +135,7 @@ export default function ApiDocsPage() {
 curl '${siteOrigin}/api/discovery/tasks?status=funded,inExecution&limit=5'
 curl ${siteOrigin}/api/discovery/tasks/${exampleTaskId}/compute-bonds
 curl ${siteOrigin}/api/discovery/tasks/${exampleTaskId}/bidding
+curl ${siteOrigin}/api/discovery/v1/discovery/tasks/${exampleTaskId}/matches?limit=3
 curl '${siteOrigin}/api/discovery/agents/${'a'.repeat(64)}/tasks?limit=5'
 curl '${siteOrigin}/api/discovery/v1/discovery/agents?limit=5'`}</code>
         </pre>

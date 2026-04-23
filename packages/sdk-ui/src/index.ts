@@ -18,7 +18,17 @@ export {
   type AccountUpdateHandler,
   type UseYellowstoneSubscriptionOptions,
 } from './hooks/subscription.js';
-export { useAgentsByOperator, useAgent, useAgentTasks, useAllAgents, useTreasury } from './hooks/agents.js';
+export {
+  useAgentsByOperator,
+  useAgent,
+  useAgentTasks,
+  useAllAgents,
+  useDiscoveryAgents,
+  useTreasury,
+  type DiscoveryAgentMatchSummary,
+  type DiscoveryAgentSummary,
+  type UseDiscoveryAgentsArgs,
+} from './hooks/agents.js';
 export {
   useTemplateRegistryConfig,
   useAllTemplates,
@@ -32,6 +42,7 @@ export {
   useRecentTasks,
   useDiscoveryTasks,
   useDiscoveryAgentTasks,
+  useDiscoveryTaskMatches,
   useTaskComputeBonds,
   useTaskMarketConfig,
   useRaiseDispute,
@@ -39,8 +50,12 @@ export {
   type DiscoveryComputeBondProvider,
   type DiscoveryComputeBondSummary,
   type IndexedTaskSummary,
+  type DiscoveryTaskMatchSummary,
+  type DiscoveryTaskMatchCandidate,
+  type IndexedTaskMatches,
   type UseDiscoveryTasksArgs,
   type UseDiscoveryAgentTasksArgs,
+  type UseDiscoveryTaskMatchesArgs,
   type UseTaskComputeBondsArgs,
 } from './hooks/tasks.js';
 export {

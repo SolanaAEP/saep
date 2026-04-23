@@ -53,6 +53,37 @@ export interface IndexedTaskSummary {
   computeBonds: DiscoveryComputeBondSummary[];
 }
 
+export interface DiscoveryTaskMatchSummary {
+  requiredCapabilityBits: number[];
+  matchedCapabilityBits: number[];
+  missingCapabilityBits: number[];
+  coverageBps: number;
+  fitScore: number;
+  capabilityReputationComposite: number | null;
+  availability: number | null;
+  costEfficiency: number | null;
+  jobsCompleted: number;
+  jobsDisputed: number;
+}
+
+export interface DiscoveryTaskMatchCandidate {
+  didHex: string;
+  operator: string | null;
+  capabilityMask: string | null;
+  stakeLamports: string | null;
+  reputationComposite: number;
+  status: string;
+  lastActiveUnix: number;
+  matchSummary: DiscoveryTaskMatchSummary;
+}
+
+export interface IndexedTaskMatches {
+  taskIdHex: string;
+  taskStatus: string | null;
+  capabilityBit: number;
+  items: DiscoveryTaskMatchCandidate[];
+}
+
 interface RawDiscoveryComputeBondSummary {
   lease_id: string;
   agent_did: string;
@@ -87,6 +118,37 @@ interface RawIndexedTaskSummary {
 
 interface RawTaskBondsResponse {
   items: RawDiscoveryComputeBondSummary[];
+}
+
+interface RawDiscoveryTaskMatchSummary {
+  required_capability_bits: number[];
+  matched_capability_bits: number[];
+  missing_capability_bits: number[];
+  coverage_bps: number;
+  fit_score: number;
+  capability_reputation_composite: number | null;
+  availability: number | null;
+  cost_efficiency: number | null;
+  jobs_completed: number;
+  jobs_disputed: number;
+}
+
+interface RawDiscoveryTaskMatchCandidate {
+  did_hex: string;
+  operator: string | null;
+  capability_mask: string | null;
+  stake_lamports: string | null;
+  reputation_composite: number;
+  status: string;
+  last_active_unix: number;
+  match_summary: RawDiscoveryTaskMatchSummary;
+}
+
+interface RawIndexedTaskMatches {
+  task_id_hex: string;
+  task_status: string | null;
+  capability_bit: number;
+  items: RawDiscoveryTaskMatchCandidate[];
 }
 
 async function fetchIndexerJson<T>(url: string, signal?: AbortSignal): Promise<T> {
@@ -161,6 +223,13 @@ export interface UseTaskComputeBondsArgs {
   enabled?: boolean;
 }
 
+export interface UseDiscoveryTaskMatchesArgs {
+  indexerUrl: string;
+  taskIdHex: string | null;
+  limit?: number;
+  enabled?: boolean;
+}
+
 function buildTasksUrl(baseUrl: string, args: UseDiscoveryTasksArgs): string {
   const params = new URLSearchParams();
   if (args.statuses && args.statuses.length > 0) params.set('status', args.statuses.join(','));
@@ -185,6 +254,40 @@ function buildTaskComputeBondsUrl(baseUrl: string, args: UseTaskComputeBondsArgs
   if (args.provider) params.set('provider', args.provider);
   params.set('limit', String(args.limit ?? 50));
   return `${baseUrl.replace(/\/$/, '')}/tasks/${args.taskIdHex}/compute-bonds?${params.toString()}`;
+}
+
+function buildTaskMatchesUrl(baseUrl: string, args: UseDiscoveryTaskMatchesArgs): string {
+  const params = new URLSearchParams();
+  params.set('limit', String(args.limit ?? 5));
+  return `${baseUrl.replace(/\/$/, '')}/v1/discovery/tasks/${args.taskIdHex}/matches?${params.toString()}`;
+}
+
+function mapTaskMatchSummary(raw: RawDiscoveryTaskMatchSummary): DiscoveryTaskMatchSummary {
+  return {
+    requiredCapabilityBits: raw.required_capability_bits,
+    matchedCapabilityBits: raw.matched_capability_bits,
+    missingCapabilityBits: raw.missing_capability_bits,
+    coverageBps: raw.coverage_bps,
+    fitScore: raw.fit_score,
+    capabilityReputationComposite: raw.capability_reputation_composite,
+    availability: raw.availability,
+    costEfficiency: raw.cost_efficiency,
+    jobsCompleted: raw.jobs_completed,
+    jobsDisputed: raw.jobs_disputed,
+  };
+}
+
+function mapTaskMatchCandidate(raw: RawDiscoveryTaskMatchCandidate): DiscoveryTaskMatchCandidate {
+  return {
+    didHex: raw.did_hex,
+    operator: raw.operator,
+    capabilityMask: raw.capability_mask,
+    stakeLamports: raw.stake_lamports,
+    reputationComposite: raw.reputation_composite,
+    status: raw.status,
+    lastActiveUnix: raw.last_active_unix,
+    matchSummary: mapTaskMatchSummary(raw.match_summary),
+  };
 }
 
 export function useTask(taskIdHex: string | null) {
@@ -281,6 +384,31 @@ export function useTaskComputeBonds({
         buildTaskComputeBondsUrl(indexerUrl, { indexerUrl, taskIdHex, status, provider, limit, enabled }),
         signal,
       ).then((raw) => raw.items.map(mapComputeBond)),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useDiscoveryTaskMatches({
+  indexerUrl,
+  taskIdHex,
+  limit = 5,
+  enabled = true,
+}: UseDiscoveryTaskMatchesArgs) {
+  const ready = Boolean(taskIdHex && taskIdHex.length === 64);
+  return useQuery<IndexedTaskMatches>({
+    queryKey: ['discovery-task-matches', indexerUrl, taskIdHex, limit],
+    enabled: enabled && ready,
+    queryFn: ({ signal }) =>
+      fetchIndexerJson<RawIndexedTaskMatches>(
+        buildTaskMatchesUrl(indexerUrl, { indexerUrl, taskIdHex, limit, enabled }),
+        signal,
+      ).then((raw) => ({
+        taskIdHex: raw.task_id_hex,
+        taskStatus: raw.task_status,
+        capabilityBit: raw.capability_bit,
+        items: raw.items.map(mapTaskMatchCandidate),
+      })),
     staleTime: 15_000,
     refetchInterval: 30_000,
   });

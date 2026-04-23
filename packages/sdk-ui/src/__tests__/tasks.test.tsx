@@ -16,6 +16,7 @@ import {
   useRaiseDispute,
   useDiscoveryTasks,
   useDiscoveryAgentTasks,
+  useDiscoveryTaskMatches,
   useTaskComputeBonds,
   useRecentTasks,
   useTaskMarketConfig,
@@ -273,6 +274,81 @@ describe('discovery task hooks', () => {
       { wrapper: createWrapper() },
     );
     expect(disabled.result.current.fetchStatus).toBe('idle');
+  });
+
+  it('fetches ranked task matches for one indexed task', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          task_id_hex: taskIdHex,
+          task_status: 'funded',
+          capability_bit: 2,
+          items: [
+            {
+              did_hex: agentDidHex,
+              operator: 'operator-1',
+              capability_mask: '4',
+              stake_lamports: '1100000000',
+              reputation_composite: 5300,
+              status: 'active',
+              last_active_unix: 1700000200,
+              match_summary: {
+                required_capability_bits: [2],
+                matched_capability_bits: [2],
+                missing_capability_bits: [],
+                coverage_bps: 10000,
+                fit_score: 5900,
+                capability_reputation_composite: 5750,
+                availability: 5400,
+                cost_efficiency: 5200,
+                jobs_completed: 15,
+                jobs_disputed: 0,
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(
+      () => useDiscoveryTaskMatches({ indexerUrl: INDEXER, taskIdHex, limit: 3 }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      `${INDEXER}/v1/discovery/tasks/${taskIdHex}/matches?limit=3`,
+    );
+    expect(result.current.data).toEqual({
+      taskIdHex,
+      taskStatus: 'funded',
+      capabilityBit: 2,
+      items: [
+        {
+          didHex: agentDidHex,
+          operator: 'operator-1',
+          capabilityMask: '4',
+          stakeLamports: '1100000000',
+          reputationComposite: 5300,
+          status: 'active',
+          lastActiveUnix: 1700000200,
+          matchSummary: {
+            requiredCapabilityBits: [2],
+            matchedCapabilityBits: [2],
+            missingCapabilityBits: [],
+            coverageBps: 10000,
+            fitScore: 5900,
+            capabilityReputationComposite: 5750,
+            availability: 5400,
+            costEfficiency: 5200,
+            jobsCompleted: 15,
+            jobsDisputed: 0,
+          },
+        },
+      ],
+    });
   });
 
   it('uses default discovery query params and falls back cleanly when ids or fetch bodies are invalid', async () => {

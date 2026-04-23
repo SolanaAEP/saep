@@ -5,7 +5,7 @@
 //! Endpoints:
 //!   - `/v1/discovery/agents` + `/:did` + `/:did/tasks` + `/:did/reputation` + `/:did/streams`
 //!   - `/v1/discovery/agents/:did/compute-bonds`
-//!   - `/v1/discovery/tasks` + `/:task_id_hex` + `/:task_id_hex/timeline`
+//!   - `/v1/discovery/tasks` + `/:task_id_hex` + `/:task_id_hex/matches` + `/:task_id_hex/timeline`
 //!   - `/v1/discovery/tasks/:task_id_hex/compute-bonds`
 //!   - `/v1/discovery/capabilities` + `/:bit`
 //!   - `/v1/discovery/treasury/:did` + `/:did/vaults`
@@ -42,6 +42,7 @@ use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sql_types::{BigInt, Bytea, Int2, Int4, Jsonb, Text, Timestamptz};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
@@ -73,6 +74,10 @@ pub fn router(state: ApiState) -> Router {
         .route("/v1/discovery/agents/:did/streams", get(agent_streams))
         .route("/v1/discovery/tasks", get(list_tasks))
         .route("/v1/discovery/tasks/:task_id_hex", get(task_detail))
+        .route(
+            "/v1/discovery/tasks/:task_id_hex/matches",
+            get(task_matches),
+        )
         .route(
             "/v1/discovery/tasks/:task_id_hex/timeline",
             get(task_timeline),
@@ -205,6 +210,7 @@ pub struct AgentSummary {
     pub reputation_composite: i32,
     pub status: String,
     pub last_active_unix: i64,
+    pub match_summary: Option<AgentMatchSummary>,
 }
 
 #[derive(Debug, Serialize)]
@@ -231,6 +237,58 @@ struct RawAgentRow {
     last_active_unix: i64,
 }
 
+#[derive(QueryableByName)]
+struct RawAgentMatchMetricsRow {
+    #[diesel(sql_type = Bytea)]
+    agent_did: Vec<u8>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Int4>)]
+    capability_reputation_composite: Option<i32>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Int2>)]
+    availability: Option<i16>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Int2>)]
+    cost_efficiency: Option<i16>,
+    #[diesel(sql_type = BigInt)]
+    jobs_completed: i64,
+    #[diesel(sql_type = BigInt)]
+    jobs_disputed: i64,
+}
+
+async fn load_agent_match_metrics(
+    state: &ApiState,
+    required_bits: &[i16],
+    agent_dids: Vec<Vec<u8>>,
+) -> Result<HashMap<String, AgentMatchMetrics>, ApiError> {
+    if required_bits.is_empty() || agent_dids.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let pool = state.pool.clone();
+    let required_bits = required_bits.to_vec();
+    let rows =
+        tokio::task::spawn_blocking(move || -> Result<Vec<RawAgentMatchMetricsRow>, ApiError> {
+            let mut conn = pool.get().map_err(ApiError::internal)?;
+            sql_query(
+                "SELECT agent_did,
+                    ROUND(AVG(composite_score))::int AS capability_reputation_composite,
+                    ROUND(AVG(availability))::int::smallint AS availability,
+                    ROUND(AVG(cost_efficiency))::int::smallint AS cost_efficiency,
+                    COALESCE(SUM(jobs_completed), 0)::bigint AS jobs_completed,
+                    COALESCE(SUM(jobs_disputed), 0)::bigint AS jobs_disputed
+             FROM reputation_rollup
+             WHERE capability_bit = ANY($1)
+               AND agent_did = ANY($2)
+             GROUP BY agent_did",
+            )
+            .bind::<diesel::sql_types::Array<Int2>, _>(required_bits)
+            .bind::<diesel::sql_types::Array<Bytea>, _>(agent_dids)
+            .load::<RawAgentMatchMetricsRow>(&mut conn)
+            .map_err(ApiError::internal)
+        })
+        .await
+        .map_err(ApiError::internal)??;
+
+    Ok(match_metrics_map(rows))
+}
+
 pub async fn list_agents(
     State(state): State<ApiState>,
     Query(q): Query<AgentsQuery>,
@@ -255,15 +313,20 @@ pub async fn list_agents(
         Some(s) => Some(parse_hex_to_decimal(s).map_err(ApiError::bad_request)?),
         None => None,
     };
+    let required_bits = match q.capability_mask.as_deref() {
+        Some(s) => bits_from_hex_mask(s).map_err(ApiError::bad_request)?,
+        None => Vec::new(),
+    };
     let cursor = match q.cursor.as_deref() {
         Some(s) => Some(Cursor::decode(s).map_err(ApiError::bad_request)?),
         None => None,
     };
 
     let sort_owned = sort.to_string();
+    let pool = state.pool.clone();
     let qtimer = metrics::time_discovery_query("discovery.list_agents");
     let rows = tokio::task::spawn_blocking(move || -> Result<Vec<RawAgentRow>, ApiError> {
-        let mut conn = state.pool.get().map_err(ApiError::internal)?;
+        let mut conn = pool.get().map_err(ApiError::internal)?;
         let mut sql = String::from(
             "SELECT agent_did, operator, \
                     capability_mask::text AS capability_mask_text, \
@@ -365,20 +428,42 @@ pub async fn list_agents(
     .map_err(ApiError::internal)??;
     qtimer.observe_duration();
 
+    let agent_dids = rows
+        .iter()
+        .map(|row| row.agent_did.clone())
+        .collect::<Vec<_>>();
+    let match_metrics = load_agent_match_metrics(&state, &required_bits, agent_dids).await?;
+
     let has_more = rows.len() as i64 > limit;
     let items: Vec<AgentSummary> = rows
         .into_iter()
         .take(limit as usize)
-        .map(|r| AgentSummary {
-            did_hex: hex::encode(&r.agent_did),
-            operator: r.operator,
-            capability_mask: r.capability_mask_text.as_deref().map(decimal_to_hex),
-            stake_lamports: r.stake_amount_text,
-            reputation_composite: r.reputation_composite,
-            status: r.status,
-            last_active_unix: r.last_active_unix,
+        .map(|r| -> Result<AgentSummary, ApiError> {
+            let did_hex = hex::encode(&r.agent_did);
+            let capability_mask_hex = r.capability_mask_text.as_deref().map(decimal_to_hex);
+            let match_summary = if required_bits.is_empty() {
+                None
+            } else {
+                build_agent_match_summary(
+                    r.capability_mask_text.as_deref(),
+                    r.reputation_composite,
+                    &required_bits,
+                    match_metrics.get(&did_hex),
+                )
+                .map(Some)?
+            };
+            Ok(AgentSummary {
+                did_hex,
+                operator: r.operator,
+                capability_mask: capability_mask_hex,
+                stake_lamports: r.stake_amount_text,
+                reputation_composite: r.reputation_composite,
+                status: r.status,
+                last_active_unix: r.last_active_unix,
+                match_summary,
+            })
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
     let cursor = if has_more {
         items.last().map(|last| {
@@ -806,6 +891,127 @@ fn decimal_to_hex(s: &str) -> String {
         .unwrap_or_else(|_| s.to_string())
 }
 
+fn bits_from_mask(mask: u128) -> Vec<i16> {
+    (0..128)
+        .filter(|bit| (mask & (1u128 << bit)) != 0)
+        .map(|bit| bit as i16)
+        .collect()
+}
+
+fn bits_from_hex_mask(s: &str) -> Result<Vec<i16>, &'static str> {
+    let mask = u128::from_str_radix(s, 16).map_err(|_| "capability_mask must be hex u128")?;
+    Ok(bits_from_mask(mask))
+}
+
+fn bits_from_decimal_mask(s: &str) -> Result<Vec<i16>, &'static str> {
+    let mask = s
+        .parse::<u128>()
+        .map_err(|_| "capability_mask out of range")?;
+    Ok(bits_from_mask(mask))
+}
+
+fn decimal_mask_from_bits(bits: &[i16]) -> Result<String, &'static str> {
+    let mut mask = 0u128;
+    for bit in bits {
+        if *bit < 0 || *bit >= 128 {
+            return Err("capability bit out of range");
+        }
+        mask |= 1u128 << (*bit as u32);
+    }
+    Ok(mask.to_string())
+}
+
+#[derive(Debug, Clone, Default)]
+struct AgentMatchMetrics {
+    capability_reputation_composite: Option<i32>,
+    availability: Option<i16>,
+    cost_efficiency: Option<i16>,
+    jobs_completed: i64,
+    jobs_disputed: i64,
+}
+
+fn match_metrics_map(rows: Vec<RawAgentMatchMetricsRow>) -> HashMap<String, AgentMatchMetrics> {
+    rows.into_iter()
+        .map(|row| {
+            (
+                hex::encode(row.agent_did),
+                AgentMatchMetrics {
+                    capability_reputation_composite: row.capability_reputation_composite,
+                    availability: row.availability,
+                    cost_efficiency: row.cost_efficiency,
+                    jobs_completed: row.jobs_completed,
+                    jobs_disputed: row.jobs_disputed,
+                },
+            )
+        })
+        .collect()
+}
+
+fn build_agent_match_summary(
+    capability_mask: Option<&str>,
+    reputation_composite: i32,
+    required_bits: &[i16],
+    metrics: Option<&AgentMatchMetrics>,
+) -> Result<AgentMatchSummary, ApiError> {
+    let required: Vec<i16> = required_bits.to_vec();
+    let agent_bits = capability_mask
+        .map(bits_from_decimal_mask)
+        .transpose()
+        .map_err(ApiError::internal)?
+        .unwrap_or_default();
+    let matched_capability_bits = required
+        .iter()
+        .copied()
+        .filter(|bit| agent_bits.contains(bit))
+        .collect::<Vec<_>>();
+    let missing_capability_bits = required
+        .iter()
+        .copied()
+        .filter(|bit| !matched_capability_bits.contains(bit))
+        .collect::<Vec<_>>();
+    let coverage_bps = if required.is_empty() {
+        0
+    } else {
+        ((matched_capability_bits.len() as i32) * 10_000) / (required.len() as i32)
+    };
+    let capability_reputation_composite = metrics
+        .and_then(|m| m.capability_reputation_composite)
+        .or(Some(reputation_composite));
+    let availability = metrics.and_then(|m| m.availability);
+    let cost_efficiency = metrics.and_then(|m| m.cost_efficiency);
+    let jobs_completed = metrics.map(|m| m.jobs_completed).unwrap_or(0);
+    let jobs_disputed = metrics.map(|m| m.jobs_disputed).unwrap_or(0);
+    let capability_component = capability_reputation_composite
+        .unwrap_or(reputation_composite)
+        .clamp(0, 10_000);
+    let availability_component = (availability.unwrap_or(0) as i32).clamp(0, 10_000);
+    let cost_component = (cost_efficiency.unwrap_or(0) as i32).clamp(0, 10_000);
+    let dispute_penalty = if jobs_completed > 0 {
+        (((jobs_disputed.min(jobs_completed) as i64) * 1_500) / jobs_completed.max(1)) as i32
+    } else {
+        0
+    };
+    let fit_score = (((coverage_bps as i64) * 25
+        + (capability_component as i64) * 40
+        + (availability_component as i64) * 20
+        + (cost_component as i64) * 15)
+        / 100) as i32
+        - dispute_penalty;
+
+    Ok(AgentMatchSummary {
+        required_capability_bits: required,
+        matched_capability_bits,
+        missing_capability_bits,
+        coverage_bps,
+        fit_score: fit_score.max(0),
+        capability_reputation_composite,
+        availability,
+        cost_efficiency,
+        jobs_completed,
+        jobs_disputed,
+    })
+}
+
 /// JSONB encoding of a 32-byte id for filtering `program_events.data->'<field>'`.
 /// Matches `borsh_decode`'s `[u8;32] → JSON array-of-u8` convention.
 fn bytes_to_jsonb_array(bytes: &[u8]) -> String {
@@ -969,6 +1175,40 @@ pub struct TaskDetail {
     pub compute_bonds: Vec<ComputeBondSummary>,
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct AgentMatchSummary {
+    pub required_capability_bits: Vec<i16>,
+    pub matched_capability_bits: Vec<i16>,
+    pub missing_capability_bits: Vec<i16>,
+    pub coverage_bps: i32,
+    pub fit_score: i32,
+    pub capability_reputation_composite: Option<i32>,
+    pub availability: Option<i16>,
+    pub cost_efficiency: Option<i16>,
+    pub jobs_completed: i64,
+    pub jobs_disputed: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TaskMatchCandidate {
+    pub did_hex: String,
+    pub operator: Option<String>,
+    pub capability_mask: Option<String>,
+    pub stake_lamports: Option<String>,
+    pub reputation_composite: i32,
+    pub status: String,
+    pub last_active_unix: i64,
+    pub match_summary: AgentMatchSummary,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TaskMatches {
+    pub task_id_hex: String,
+    pub task_status: Option<String>,
+    pub capability_bit: i16,
+    pub items: Vec<TaskMatchCandidate>,
+}
+
 #[derive(QueryableByName)]
 struct RawTaskDetailRow {
     #[diesel(sql_type = Bytea)]
@@ -1029,6 +1269,152 @@ pub async fn task_detail(
         deadline_unix: row.deadline_unix,
         updated_at_unix: row.updated_at_unix,
         compute_bonds: bond_map.remove(&task_id_hex).unwrap_or_default(),
+    }))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TaskMatchQuery {
+    pub limit: Option<i64>,
+}
+
+#[derive(QueryableByName)]
+struct RawTaskMatchContextRow {
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    status: Option<String>,
+    #[diesel(sql_type = Int2)]
+    capability_bit: i16,
+}
+
+pub async fn task_matches(
+    State(state): State<ApiState>,
+    Path(task_id_hex): Path<String>,
+    Query(q): Query<TaskMatchQuery>,
+) -> Result<Json<TaskMatches>, ApiError> {
+    let task_id = parse_hex_32(&task_id_hex).map_err(ApiError::bad_request)?;
+    let limit = q.limit.unwrap_or(5).clamp(1, 20);
+    let task_id_json = bytes_to_jsonb_array(&task_id);
+    let task_id_for_query = task_id.clone();
+    let pool = state.pool.clone();
+
+    let qtimer = metrics::time_discovery_query("discovery.task_matches");
+    let context = tokio::task::spawn_blocking(
+        move || -> Result<Option<RawTaskMatchContextRow>, ApiError> {
+            let mut conn = pool.get().map_err(ApiError::internal)?;
+            sql_query(
+                "SELECT td.status,
+                        payload.capability_bit
+                 FROM task_directory td
+                 JOIN LATERAL (
+                    SELECT (data->>'capability_bit')::smallint AS capability_bit
+                    FROM program_events
+                    WHERE event_name = 'TaskPayloadStored'
+                      AND data->'task_id' = $2::jsonb
+                    ORDER BY slot DESC, id DESC
+                    LIMIT 1
+                 ) payload ON TRUE
+                 WHERE td.task_id = $1
+                 LIMIT 1",
+            )
+            .bind::<Bytea, _>(task_id_for_query)
+            .bind::<Jsonb, _>(
+                serde_json::from_str::<serde_json::Value>(&task_id_json).expect("jsonb"),
+            )
+            .load::<RawTaskMatchContextRow>(&mut conn)
+            .map_err(ApiError::internal)
+            .map(|mut rows| rows.drain(..).next())
+        },
+    )
+    .await
+    .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
+
+    let context = context.ok_or_else(|| ApiError::not_found("task not found"))?;
+    let required_bits = vec![context.capability_bit];
+    let required_mask_text = decimal_mask_from_bits(&required_bits).map_err(ApiError::internal)?;
+
+    let pool = state.pool.clone();
+    let candidate_limit = (limit * 5).clamp(10, MAX_LIMIT);
+    let qtimer = metrics::time_discovery_query("discovery.task_matches_candidates");
+    let rows = tokio::task::spawn_blocking(move || -> Result<Vec<RawAgentRow>, ApiError> {
+        let mut conn = pool.get().map_err(ApiError::internal)?;
+        sql_query(
+            "SELECT agent_did, operator,
+                    capability_mask::text AS capability_mask_text,
+                    stake_amount::text    AS stake_amount_text,
+                    reputation_composite, status, last_active_unix
+             FROM agent_directory
+             WHERE status = 'active'
+               AND ($1::numeric = 0::numeric OR (capability_mask & $1::numeric) <> 0::numeric)
+             ORDER BY reputation_composite DESC, last_active_unix DESC, agent_did ASC
+             LIMIT $2",
+        )
+        .bind::<Text, _>(required_mask_text)
+        .bind::<BigInt, _>(candidate_limit)
+        .load::<RawAgentRow>(&mut conn)
+        .map_err(ApiError::internal)
+    })
+    .await
+    .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
+
+    let agent_dids = rows
+        .iter()
+        .map(|row| row.agent_did.clone())
+        .collect::<Vec<_>>();
+    let match_metrics = load_agent_match_metrics(&state, &required_bits, agent_dids).await?;
+
+    let mut items = rows
+        .into_iter()
+        .map(|row| -> Result<TaskMatchCandidate, ApiError> {
+            let did_hex = hex::encode(&row.agent_did);
+            let match_summary = build_agent_match_summary(
+                row.capability_mask_text.as_deref(),
+                row.reputation_composite,
+                &required_bits,
+                match_metrics.get(&did_hex),
+            )?;
+            Ok(TaskMatchCandidate {
+                did_hex,
+                operator: row.operator,
+                capability_mask: row.capability_mask_text.as_deref().map(decimal_to_hex),
+                stake_lamports: row.stake_amount_text,
+                reputation_composite: row.reputation_composite,
+                status: row.status,
+                last_active_unix: row.last_active_unix,
+                match_summary,
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    items.sort_by(|a, b| {
+        b.match_summary
+            .fit_score
+            .cmp(&a.match_summary.fit_score)
+            .then(
+                b.match_summary
+                    .coverage_bps
+                    .cmp(&a.match_summary.coverage_bps),
+            )
+            .then(
+                b.match_summary
+                    .capability_reputation_composite
+                    .unwrap_or(b.reputation_composite)
+                    .cmp(
+                        &a.match_summary
+                            .capability_reputation_composite
+                            .unwrap_or(a.reputation_composite),
+                    ),
+            )
+            .then(b.last_active_unix.cmp(&a.last_active_unix))
+            .then(a.did_hex.cmp(&b.did_hex))
+    });
+    items.truncate(limit as usize);
+
+    Ok(Json(TaskMatches {
+        task_id_hex,
+        task_status: context.status,
+        capability_bit: context.capability_bit,
+        items,
     }))
 }
 
@@ -1856,6 +2242,74 @@ mod tests {
     }
 
     #[test]
+    fn capability_mask_bit_helpers_round_trip() {
+        let bits = vec![0, 2, 7, 15];
+        let decimal = decimal_mask_from_bits(&bits).unwrap();
+        let round_tripped = bits_from_decimal_mask(&decimal).unwrap();
+        assert_eq!(round_tripped, bits);
+    }
+
+    #[test]
+    fn agent_match_summary_tracks_missing_bits_and_fit_score() {
+        let metrics = AgentMatchMetrics {
+            capability_reputation_composite: Some(8_200),
+            availability: Some(7_800),
+            cost_efficiency: Some(7_200),
+            jobs_completed: 12,
+            jobs_disputed: 1,
+        };
+        let summary = build_agent_match_summary(
+            Some(&(1u128 << 2).to_string()),
+            7_000,
+            &[2, 3],
+            Some(&metrics),
+        )
+        .expect("match summary");
+        assert_eq!(summary.required_capability_bits, vec![2, 3]);
+        assert_eq!(summary.matched_capability_bits, vec![2]);
+        assert_eq!(summary.missing_capability_bits, vec![3]);
+        assert_eq!(summary.coverage_bps, 5_000);
+        assert!(summary.fit_score > 0);
+        assert_eq!(summary.jobs_completed, 12);
+        assert_eq!(summary.jobs_disputed, 1);
+    }
+
+    #[test]
+    fn task_matches_response_shape() {
+        let payload = TaskMatches {
+            task_id_hex: "ab".repeat(32),
+            task_status: Some("funded".into()),
+            capability_bit: 2,
+            items: vec![TaskMatchCandidate {
+                did_hex: "cd".repeat(32),
+                operator: Some("operator".into()),
+                capability_mask: Some("4".into()),
+                stake_lamports: Some("1000".into()),
+                reputation_composite: 8_200,
+                status: "active".into(),
+                last_active_unix: 1_700_000_000,
+                match_summary: AgentMatchSummary {
+                    required_capability_bits: vec![2],
+                    matched_capability_bits: vec![2],
+                    missing_capability_bits: vec![],
+                    coverage_bps: 10_000,
+                    fit_score: 8_700,
+                    capability_reputation_composite: Some(8_900),
+                    availability: Some(8_400),
+                    cost_efficiency: Some(8_100),
+                    jobs_completed: 8,
+                    jobs_disputed: 0,
+                },
+            }],
+        };
+        let json = serde_json::to_value(&payload).unwrap();
+        assert_eq!(json["task_id_hex"], "ab".repeat(32));
+        assert_eq!(json["capability_bit"], 2);
+        assert_eq!(json["items"][0]["match_summary"]["coverage_bps"], 10_000);
+        assert_eq!(json["items"][0]["match_summary"]["fit_score"], 8_700);
+    }
+
+    #[test]
     fn capability_registry_program_id_matches_programs_rs() {
         // Drift guard: the CTE binds this constant; if programs.rs rotates,
         // this assert catches the mismatch before handlers silently return
@@ -1956,6 +2410,10 @@ mod tests {
         );
         assert_eq!(endpoint_class("/v1/discovery/tasks"), "tasks");
         assert_eq!(endpoint_class("/v1/discovery/tasks/abc123"), "tasks");
+        assert_eq!(
+            endpoint_class("/v1/discovery/tasks/abc123/matches"),
+            "tasks"
+        );
         assert_eq!(
             endpoint_class("/v1/discovery/tasks/abc123/timeline"),
             "tasks"

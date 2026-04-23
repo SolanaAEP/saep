@@ -12,7 +12,14 @@ import {
   fetchTreasury,
 } from '@saep/sdk';
 import { useAnchorWallet, useConnection } from '@solana/wallet-adapter-react';
-import { useAgentsByOperator, useAgent, useAllAgents, useAgentTasks, useTreasury } from '../hooks/agents.js';
+import {
+  useAgentsByOperator,
+  useAgent,
+  useAllAgents,
+  useAgentTasks,
+  useDiscoveryAgents,
+  useTreasury,
+} from '../hooks/agents.js';
 import { createWrapper, MOCK_PUBKEY, mockAnchorWallet, mockConnection } from './helpers.js';
 
 const mockProgramInstance = { programId: MOCK_PUBKEY } as any;
@@ -116,6 +123,81 @@ describe('useAllAgents', () => {
     });
 
     expect(result.current.fetchStatus).toBe('idle');
+  });
+});
+
+describe('useDiscoveryAgents', () => {
+  const INDEXER = 'https://idx.example.com';
+
+  it('fetches indexed agents with explainable match summaries', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [
+            {
+              did_hex: 'a'.repeat(64),
+              operator: MOCK_PUBKEY.toBase58(),
+              capability_mask: '5',
+              stake_lamports: '900000000',
+              reputation_composite: 5400,
+              status: 'active',
+              last_active_unix: 1700000000,
+              match_summary: {
+                required_capability_bits: [0, 2],
+                matched_capability_bits: [0, 2],
+                missing_capability_bits: [],
+                coverage_bps: 10000,
+                fit_score: 6012,
+                capability_reputation_composite: 5520,
+                availability: 5300,
+                cost_efficiency: 5100,
+                jobs_completed: 12,
+                jobs_disputed: 1,
+              },
+            },
+          ],
+          cursor: null,
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(
+      () =>
+        useDiscoveryAgents({
+          indexerUrl: INDEXER,
+          capabilityMaskHex: '5',
+          limit: 25,
+        }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      `${INDEXER}/v1/discovery/agents?capability_mask=5&status=active&sort=reputation_desc&limit=25`,
+    );
+    expect(result.current.data?.[0]).toEqual({
+      didHex: 'a'.repeat(64),
+      operator: MOCK_PUBKEY.toBase58(),
+      capabilityMask: '5',
+      stakeLamports: '900000000',
+      reputationComposite: 5400,
+      status: 'active',
+      lastActiveUnix: 1700000000,
+      matchSummary: {
+        requiredCapabilityBits: [0, 2],
+        matchedCapabilityBits: [0, 2],
+        missingCapabilityBits: [],
+        coverageBps: 10000,
+        fitScore: 6012,
+        capabilityReputationComposite: 5520,
+        availability: 5300,
+        costEfficiency: 5100,
+        jobsCompleted: 12,
+        jobsDisputed: 1,
+      },
+    });
   });
 });
 

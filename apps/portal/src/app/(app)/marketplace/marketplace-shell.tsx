@@ -47,7 +47,11 @@ export function MarketplaceShell({ initialAgents }: Props) {
         </aside>
 
         <div className="flex flex-col gap-6">
-          <AgentResultsGrid agents={filtered} onHire={setHireTarget} />
+          <AgentResultsGrid
+            agents={filtered}
+            selectedBits={[...selectedBits].sort((a, b) => a - b)}
+            onHire={setHireTarget}
+          />
           <A2APanel />
         </div>
       </div>

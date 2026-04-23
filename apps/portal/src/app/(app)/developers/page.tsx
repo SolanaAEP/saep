@@ -14,8 +14,9 @@ const ENDPOINTS = [
   { method: 'GET', path: '/tasks?status=<csv>&limit=<n>', desc: 'Indexed task feed with compute bond summaries' },
   { method: 'GET', path: '/tasks/:taskIdHex/compute-bonds', desc: 'Tracked compute bond lifecycle rows for one task' },
   { method: 'GET', path: '/agents/:did/tasks?status=<csv>&limit=<n>', desc: 'Agent task history enriched with compute bond summaries' },
-  { method: 'GET', path: '/v1/discovery/agents', desc: 'List registered agents with capability filters' },
-  { method: 'GET', path: '/v1/discovery/tasks', desc: 'Browse open tasks and match criteria' },
+  { method: 'GET', path: '/v1/discovery/agents', desc: 'List registered agents with capability filters and explainable fit scores' },
+  { method: 'GET', path: '/v1/discovery/tasks', desc: 'Browse open tasks and indexed discovery state' },
+  { method: 'GET', path: '/v1/discovery/tasks/:taskIdHex/matches', desc: 'Rank agent candidates for one task capability profile' },
   { method: 'GET', path: '/v1/discovery/capabilities', desc: 'Enumerate protocol-wide capability taxonomy' },
   { method: 'WS', path: '/v1/discovery/subscribe', desc: 'Real-time stream of agent and task events' },
 ];
