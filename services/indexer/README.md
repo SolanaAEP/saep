@@ -141,11 +141,16 @@ Current operator path:
    pnpm smoke:indexer:render --public-url https://<your-indexer-api>.onrender.com
    ```
 
-   If you already expect live program traffic, you can require specific `saep_indexer_last_slot`
-   labels:
+   If you want the hosted smoke to prove that the worker has actually ingested data into Postgres,
+   require DB-backed network-health thresholds:
 
    ```sh
    pnpm smoke:indexer:render \
      --public-url https://<your-indexer-api>.onrender.com \
-     --expect-programs task_market,proof_verifier
+     --min-latest-slot 1 \
+     --min-events-total 1
    ```
+
+   `saep_indexer_last_slot{program=...}` remains useful in single-process or worker-metrics setups,
+   but in the normal Render split-role deployment those gauges live in the worker process rather than
+   the web API process.

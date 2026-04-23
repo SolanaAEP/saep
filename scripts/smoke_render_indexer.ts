@@ -3,8 +3,18 @@ type CliOptions = {
   timeoutMs: number;
   pollMs: number;
   expectPrograms: string[];
+  minLatestSlot: number | null;
+  minEventsTotal: number | null;
   minLastSlot: number;
   help: boolean;
+};
+
+type NetworkHealth = {
+  latest_slot: number;
+  reorgs_24h: number;
+  events_per_min: number;
+  events_total: number;
+  blocks_total: number;
 };
 
 const REQUIRED_METRICS = [
@@ -24,6 +34,8 @@ function usage(): string {
     'Options:',
     '  --public-url <url>         Hosted indexer API base URL',
     '  --expect-programs <csv>    Comma-separated program labels expected in saep_indexer_last_slot',
+    '  --min-latest-slot <n>      Require /stats/network-health latest_slot >= n',
+    '  --min-events-total <n>     Require /stats/network-health events_total >= n',
     '  --min-last-slot <n>        Minimum last-slot value for expected programs (default: 1)',
     '  --timeout-ms <n>           Poll timeout when waiting for expected programs (default: 60000)',
     '  --poll-ms <n>              Poll interval while waiting (default: 3000)',
@@ -35,7 +47,13 @@ function usage(): string {
     'Examples:',
     '  pnpm smoke:indexer:render --public-url https://saep-indexer-api.onrender.com',
     '  pnpm smoke:indexer:render --public-url https://saep-indexer-api.onrender.com \\',
-    '    --expect-programs task_market,proof_verifier',
+    '    --min-latest-slot 1 --min-events-total 1',
+    '',
+    'Note:',
+    '  In the normal Render split-role setup, saep_indexer_last_slot lives on the worker,',
+    '  not the web API process. Use --min-latest-slot / --min-events-total to validate',
+    '  DB-backed ingest through the public API. --expect-programs is mainly useful for',
+    '  single-process or worker-metrics setups.',
   ].join('\n');
 }
 
@@ -45,6 +63,8 @@ function parseArgs(argv: string[]): CliOptions {
     timeoutMs: 60_000,
     pollMs: 3_000,
     expectPrograms: [],
+    minLatestSlot: null,
+    minEventsTotal: null,
     minLastSlot: 1,
     help: false,
   };
@@ -60,6 +80,12 @@ function parseArgs(argv: string[]): CliOptions {
           .split(',')
           .map((value) => value.trim())
           .filter((value) => value.length > 0);
+        break;
+      case '--min-latest-slot':
+        opts.minLatestSlot = Number(argv[++i]);
+        break;
+      case '--min-events-total':
+        opts.minEventsTotal = Number(argv[++i]);
         break;
       case '--min-last-slot':
         opts.minLastSlot = Number(argv[++i]);
@@ -95,6 +121,12 @@ function parseArgs(argv: string[]): CliOptions {
   if (!Number.isInteger(opts.minLastSlot) || opts.minLastSlot < 0) {
     throw new Error('min-last-slot must be a non-negative integer');
   }
+  if (opts.minLatestSlot !== null && (!Number.isInteger(opts.minLatestSlot) || opts.minLatestSlot < 0)) {
+    throw new Error('min-latest-slot must be a non-negative integer');
+  }
+  if (opts.minEventsTotal !== null && (!Number.isInteger(opts.minEventsTotal) || opts.minEventsTotal < 0)) {
+    throw new Error('min-events-total must be a non-negative integer');
+  }
 
   return opts;
 }
@@ -106,6 +138,11 @@ async function fetchText(url: string): Promise<string> {
     throw new Error(`GET ${url} failed: ${res.status} ${text}`);
   }
   return text;
+}
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const text = await fetchText(url);
+  return JSON.parse(text) as T;
 }
 
 async function healthcheck(baseUrl: string): Promise<void> {
@@ -215,12 +252,34 @@ async function main() {
     });
   }
 
+  let networkHealth: NetworkHealth | null = null;
+  if (opts.minLatestSlot !== null || opts.minEventsTotal !== null) {
+    const networkHealthUrl = new URL('/stats/network-health', opts.publicUrl).toString();
+    console.log(`Checking DB-backed network health at ${networkHealthUrl} ...`);
+    await pollFor('network-health ingest thresholds', opts.timeoutMs, opts.pollMs, async () => {
+      networkHealth = await fetchJson<NetworkHealth>(networkHealthUrl);
+      const latestSlotOk =
+        opts.minLatestSlot === null || networkHealth.latest_slot >= opts.minLatestSlot;
+      const eventsTotalOk =
+        opts.minEventsTotal === null || networkHealth.events_total >= opts.minEventsTotal;
+      return latestSlotOk && eventsTotalOk;
+    });
+  }
+
   const lastSlots = parseLastSlotMetrics(metrics);
   console.log('render_indexer_smoke_summary:');
   console.log(`  public_url: ${opts.publicUrl}`);
   console.log(`  db_pool_connections: ${parseGaugeValue(metrics, 'saep_indexer_db_pool_connections') ?? 'n/a'}`);
   console.log(`  db_pool_idle: ${parseGaugeValue(metrics, 'saep_indexer_db_pool_idle') ?? 'n/a'}`);
   console.log(`  db_pool_max: ${parseGaugeValue(metrics, 'saep_indexer_db_pool_max') ?? 'n/a'}`);
+  if (networkHealth) {
+    console.log('  network_health:');
+    console.log(`    latest_slot: ${networkHealth.latest_slot}`);
+    console.log(`    reorgs_24h: ${networkHealth.reorgs_24h}`);
+    console.log(`    events_per_min: ${networkHealth.events_per_min}`);
+    console.log(`    events_total: ${networkHealth.events_total}`);
+    console.log(`    blocks_total: ${networkHealth.blocks_total}`);
+  }
   if (lastSlots.size === 0) {
     console.log('  last_slot_programs: none yet');
   } else {

@@ -211,12 +211,13 @@ Once the web service is up, smoke the live public URL from the repo root:
 pnpm smoke:indexer:render --public-url https://<your-indexer-api>.onrender.com
 ```
 
-If you want the smoke to wait for specific `saep_indexer_last_slot` labels to appear after ingest:
+If you want the smoke to prove that ingest is actually reaching Postgres through the worker path:
 
 ```bash
 pnpm smoke:indexer:render \
   --public-url https://<your-indexer-api>.onrender.com \
-  --expect-programs task_market,proof_verifier
+  --min-latest-slot 1 \
+  --min-events-total 1
 ```
 
 The smoke checks:
@@ -224,7 +225,11 @@ The smoke checks:
 1. public `/healthz`
 2. public `/metrics`
 3. required DB-pool gauges
-4. optional `saep_indexer_last_slot{program=...}` labels when you ask for them
+4. optional DB-backed `/stats/network-health` thresholds when you ask for them
+
+`saep_indexer_last_slot{program=...}` is still useful locally or in single-process setups, but the
+normal Render split-role deployment keeps those gauges on the worker process rather than the web API
+process.
 
 ## 6. Seed live devnet bounties
 
