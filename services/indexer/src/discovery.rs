@@ -41,7 +41,9 @@ use axum::{
 use base64::Engine;
 use diesel::prelude::*;
 use diesel::sql_query;
-use diesel::sql_types::{BigInt, Bool, Bytea, Int2, Int4, Integer, Jsonb, Nullable, Text, Timestamptz};
+use diesel::sql_types::{
+    BigInt, Bool, Bytea, Int2, Int4, Integer, Jsonb, Nullable, Text, Timestamptz,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -49,6 +51,7 @@ use std::time::Instant;
 
 use crate::api::{ApiError, ApiState};
 use crate::compute_bond_snapshots::{self, ComputeBondSummary};
+use crate::trust::{self, TrustState};
 use crate::{metrics, rate_limit};
 
 static REQUEST_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -191,7 +194,7 @@ const CAPABILITY_REGISTRY_PROGRAM_ID: &str = "GW161Wce7z4S2rdcSCPNGixn2YQajefNc4
 const TREASURY_STANDARD_PROGRAM_ID: &str = "6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ";
 
 /// Validated sort modes for agent listings. Default: `reputation_desc`.
-const AGENT_SORTS: &[&str] = &["reputation_desc", "recent_desc"];
+const AGENT_SORTS: &[&str] = &["reputation_desc", "recent_desc", "best_fit_desc"];
 
 /// Validated sort modes for task listings. Default: `created_desc`.
 const TASK_SORTS: &[&str] = &["created_desc", "deadline_asc", "reward_desc"];
@@ -253,6 +256,8 @@ struct RawAgentMatchMetricsRow {
     availability: Option<i16>,
     #[diesel(sql_type = diesel::sql_types::Nullable<Int2>)]
     cost_efficiency: Option<i16>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Int2>)]
+    honesty: Option<i16>,
     #[diesel(sql_type = BigInt)]
     jobs_completed: i64,
     #[diesel(sql_type = BigInt)]
@@ -277,6 +282,7 @@ async fn load_agent_match_metrics(
                     ROUND(AVG(composite_score))::int AS capability_reputation_composite,
                     ROUND(AVG(availability))::int::smallint AS availability,
                     ROUND(AVG(cost_efficiency))::int::smallint AS cost_efficiency,
+                    ROUND(AVG(honesty))::int::smallint AS honesty,
                     COALESCE(SUM(jobs_completed), 0)::bigint AS jobs_completed,
                     COALESCE(SUM(jobs_disputed), 0)::bigint AS jobs_disputed
              FROM reputation_rollup
@@ -312,7 +318,7 @@ pub async fn list_agents(
     let sort = q.sort.as_deref().unwrap_or("reputation_desc");
     if !AGENT_SORTS.contains(&sort) {
         return Err(ApiError::bad_request(
-            "sort must be reputation_desc|recent_desc",
+            "sort must be reputation_desc|recent_desc|best_fit_desc",
         ));
     }
     let cap_mask_text = match q.capability_mask.as_deref() {
@@ -323,6 +329,11 @@ pub async fn list_agents(
         Some(s) => bits_from_hex_mask(s).map_err(ApiError::bad_request)?,
         None => Vec::new(),
     };
+    if sort == "best_fit_desc" && required_bits.is_empty() {
+        return Err(ApiError::bad_request(
+            "best_fit_desc requires capability_mask",
+        ));
+    }
     let cursor = match q.cursor.as_deref() {
         Some(s) => Some(Cursor::decode(s).map_err(ApiError::bad_request)?),
         None => None,
@@ -372,6 +383,10 @@ pub async fn list_agents(
                 "last_active_unix DESC, agent_did ASC",
                 "(last_active_unix < ${} OR (last_active_unix = ${} AND agent_did > ${}))",
             ),
+            "best_fit_desc" => (
+                "reputation_composite DESC, last_active_unix DESC, agent_did ASC",
+                "(reputation_composite < ${} OR (reputation_composite = ${} AND agent_did > ${}))",
+            ),
             // reputation_desc (default)
             _ => (
                 "reputation_composite DESC, agent_did ASC",
@@ -379,7 +394,7 @@ pub async fn list_agents(
             ),
         };
 
-        if cursor.is_some() {
+        if cursor.is_some() && sort_owned != "best_fit_desc" {
             let c = cursor_clause
                 .replacen("${}", &format!("${}", next), 1)
                 .replacen("${}", &format!("${}", next), 1)
@@ -426,7 +441,12 @@ pub async fn list_agents(
                 }
             }
         }
-        qb = qb.bind::<BigInt, _>(limit + 1);
+        let query_limit = if sort_owned == "best_fit_desc" {
+            (limit * 5).clamp(limit, MAX_LIMIT)
+        } else {
+            limit + 1
+        };
+        qb = qb.bind::<BigInt, _>(query_limit);
         qb.load::<RawAgentRow>(&mut conn)
             .map_err(ApiError::internal)
     })
@@ -440,10 +460,15 @@ pub async fn list_agents(
         .collect::<Vec<_>>();
     let match_metrics = load_agent_match_metrics(&state, &required_bits, agent_dids).await?;
 
-    let has_more = rows.len() as i64 > limit;
-    let items: Vec<AgentSummary> = rows
+    let best_fit_sort = sort == "best_fit_desc";
+    let has_more = !best_fit_sort && rows.len() as i64 > limit;
+    let mut items: Vec<AgentSummary> = rows
         .into_iter()
-        .take(limit as usize)
+        .take(if best_fit_sort {
+            usize::MAX
+        } else {
+            limit as usize
+        })
         .map(|r| -> Result<AgentSummary, ApiError> {
             let did_hex = hex::encode(&r.agent_did);
             let capability_mask_hex = r.capability_mask_text.as_deref().map(decimal_to_hex);
@@ -470,6 +495,36 @@ pub async fn list_agents(
             })
         })
         .collect::<Result<Vec<_>, _>>()?;
+
+    if best_fit_sort {
+        items.sort_by(|a, b| {
+            b.match_summary
+                .as_ref()
+                .map(|summary| summary.fit_score)
+                .unwrap_or_default()
+                .cmp(
+                    &a.match_summary
+                        .as_ref()
+                        .map(|summary| summary.fit_score)
+                        .unwrap_or_default(),
+                )
+                .then(
+                    b.match_summary
+                        .as_ref()
+                        .and_then(|summary| summary.capability_reputation_composite)
+                        .unwrap_or(b.reputation_composite)
+                        .cmp(
+                            &a.match_summary
+                                .as_ref()
+                                .and_then(|summary| summary.capability_reputation_composite)
+                                .unwrap_or(a.reputation_composite),
+                        ),
+                )
+                .then(b.last_active_unix.cmp(&a.last_active_unix))
+                .then(a.did_hex.cmp(&b.did_hex))
+        });
+        items.truncate(limit as usize);
+    }
 
     let cursor = if has_more {
         items.last().map(|last| {
@@ -932,6 +987,7 @@ struct AgentMatchMetrics {
     capability_reputation_composite: Option<i32>,
     availability: Option<i16>,
     cost_efficiency: Option<i16>,
+    honesty: Option<i16>,
     jobs_completed: i64,
     jobs_disputed: i64,
 }
@@ -945,6 +1001,7 @@ fn match_metrics_map(rows: Vec<RawAgentMatchMetricsRow>) -> HashMap<String, Agen
                     capability_reputation_composite: row.capability_reputation_composite,
                     availability: row.availability,
                     cost_efficiency: row.cost_efficiency,
+                    honesty: row.honesty,
                     jobs_completed: row.jobs_completed,
                     jobs_disputed: row.jobs_disputed,
                 },
@@ -985,36 +1042,44 @@ fn build_agent_match_summary(
         .or(Some(reputation_composite));
     let availability = metrics.and_then(|m| m.availability);
     let cost_efficiency = metrics.and_then(|m| m.cost_efficiency);
+    let honesty = metrics.and_then(|m| m.honesty);
     let jobs_completed = metrics.map(|m| m.jobs_completed).unwrap_or(0);
     let jobs_disputed = metrics.map(|m| m.jobs_disputed).unwrap_or(0);
-    let capability_component = capability_reputation_composite
-        .unwrap_or(reputation_composite)
-        .clamp(0, 10_000);
-    let availability_component = (availability.unwrap_or(0) as i32).clamp(0, 10_000);
-    let cost_component = (cost_efficiency.unwrap_or(0) as i32).clamp(0, 10_000);
-    let dispute_penalty = if jobs_completed > 0 {
-        (((jobs_disputed.min(jobs_completed) as i64) * 1_500) / jobs_completed.max(1)) as i32
-    } else {
-        0
-    };
-    let fit_score = (((coverage_bps as i64) * 25
-        + (capability_component as i64) * 40
-        + (availability_component as i64) * 20
-        + (cost_component as i64) * 15)
-        / 100) as i32
-        - dispute_penalty;
+    let scored = trust::score_match(trust::MatchScoreInputs {
+        coverage_bps,
+        capability_reputation_bps: capability_reputation_composite
+            .unwrap_or(reputation_composite)
+            .clamp(0, 10_000),
+        availability_bps: (availability.unwrap_or(0) as i32).clamp(0, 10_000),
+        cost_efficiency_bps: (cost_efficiency.unwrap_or(0) as i32).clamp(0, 10_000),
+        honesty_bps: (honesty.unwrap_or(0) as i32).clamp(0, 10_000),
+        jobs_completed,
+        jobs_disputed,
+    });
 
     Ok(AgentMatchSummary {
         required_capability_bits: required,
         matched_capability_bits,
         missing_capability_bits,
         coverage_bps,
-        fit_score: fit_score.max(0),
+        fit_score: scored.fit_score_bps,
+        base_fit_score_bps: scored.base_fit_score_bps,
         capability_reputation_composite,
         availability,
         cost_efficiency,
+        honesty,
         jobs_completed,
         jobs_disputed,
+        confidence_bps: scored.signals.confidence_bps,
+        dispute_rate_bps: scored.signals.dispute_rate_bps,
+        low_history: scored.signals.low_history,
+        low_confidence: scored.signals.low_confidence,
+        availability_warning: scored.signals.availability_warning,
+        dispute_warning: scored.signals.dispute_warning,
+        trust_state: scored.signals.trust_state,
+        low_history_penalty_bps: scored.signals.low_history_penalty_bps,
+        dispute_penalty_bps: scored.signals.dispute_penalty_bps,
+        availability_penalty_bps: scored.signals.availability_penalty_bps,
     })
 }
 
@@ -1188,11 +1253,23 @@ pub struct AgentMatchSummary {
     pub missing_capability_bits: Vec<i16>,
     pub coverage_bps: i32,
     pub fit_score: i32,
+    pub base_fit_score_bps: i32,
     pub capability_reputation_composite: Option<i32>,
     pub availability: Option<i16>,
     pub cost_efficiency: Option<i16>,
+    pub honesty: Option<i16>,
     pub jobs_completed: i64,
     pub jobs_disputed: i64,
+    pub confidence_bps: i32,
+    pub dispute_rate_bps: i32,
+    pub low_history: bool,
+    pub low_confidence: bool,
+    pub availability_warning: bool,
+    pub dispute_warning: bool,
+    pub trust_state: TrustState,
+    pub low_history_penalty_bps: i32,
+    pub dispute_penalty_bps: i32,
+    pub availability_penalty_bps: i32,
 }
 
 #[derive(Debug, Serialize)]
@@ -2001,16 +2078,19 @@ pub async fn list_yield_strategies(
     }
     if let Some(status) = q.status.as_deref() {
         if !matches!(status, "active" | "paused" | "revoked") {
-            return Err(ApiError::bad_request("status must be active|paused|revoked"));
+            return Err(ApiError::bad_request(
+                "status must be active|paused|revoked",
+            ));
         }
     }
     let limit = q.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
 
     let qtimer = metrics::time_discovery_query("discovery.yield_strategies");
-    let rows = tokio::task::spawn_blocking(move || -> Result<Vec<RawYieldStrategyRow>, ApiError> {
-        let mut conn = state.pool.get().map_err(ApiError::internal)?;
-        sql_query(
-            "SELECT strategy_id, venue, strategy_program, underlying_mint, receipt_mint, \
+    let rows =
+        tokio::task::spawn_blocking(move || -> Result<Vec<RawYieldStrategyRow>, ApiError> {
+            let mut conn = state.pool.get().map_err(ApiError::internal)?;
+            sql_query(
+                "SELECT strategy_id, venue, strategy_program, underlying_mint, receipt_mint, \
                     max_allocation_bps, risk_tier, status, name, metadata_uri, \
                     registered_unix, status_unix \
              FROM yield_strategy_directory \
@@ -2018,15 +2098,15 @@ pub async fn list_yield_strategies(
                AND ($2::text IS NULL OR status = $2) \
              ORDER BY status ASC, venue ASC, registered_unix DESC \
              LIMIT $3",
-        )
-        .bind::<Nullable<Text>, _>(q.venue)
-        .bind::<Nullable<Text>, _>(q.status)
-        .bind::<BigInt, _>(limit)
-        .load::<RawYieldStrategyRow>(&mut conn)
-        .map_err(ApiError::internal)
-    })
-    .await
-    .map_err(ApiError::internal)??;
+            )
+            .bind::<Nullable<Text>, _>(q.venue)
+            .bind::<Nullable<Text>, _>(q.status)
+            .bind::<BigInt, _>(limit)
+            .load::<RawYieldStrategyRow>(&mut conn)
+            .map_err(ApiError::internal)
+        })
+        .await
+        .map_err(ApiError::internal)??;
     qtimer.observe_duration();
 
     Ok(Json(YieldStrategyList {
@@ -2467,6 +2547,7 @@ mod tests {
             capability_reputation_composite: Some(8_200),
             availability: Some(7_800),
             cost_efficiency: Some(7_200),
+            honesty: Some(9_100),
             jobs_completed: 12,
             jobs_disputed: 1,
         };
@@ -2482,8 +2563,10 @@ mod tests {
         assert_eq!(summary.missing_capability_bits, vec![3]);
         assert_eq!(summary.coverage_bps, 5_000);
         assert!(summary.fit_score > 0);
+        assert!(summary.base_fit_score_bps >= summary.fit_score);
         assert_eq!(summary.jobs_completed, 12);
         assert_eq!(summary.jobs_disputed, 1);
+        assert!(summary.confidence_bps > 0);
     }
 
     #[test]
@@ -2506,11 +2589,23 @@ mod tests {
                     missing_capability_bits: vec![],
                     coverage_bps: 10_000,
                     fit_score: 8_700,
+                    base_fit_score_bps: 9_000,
                     capability_reputation_composite: Some(8_900),
                     availability: Some(8_400),
                     cost_efficiency: Some(8_100),
+                    honesty: Some(9_200),
                     jobs_completed: 8,
                     jobs_disputed: 0,
+                    confidence_bps: 4_000,
+                    dispute_rate_bps: 0,
+                    low_history: false,
+                    low_confidence: true,
+                    availability_warning: false,
+                    dispute_warning: false,
+                    trust_state: TrustState::Watch,
+                    low_history_penalty_bps: 1_440,
+                    dispute_penalty_bps: 0,
+                    availability_penalty_bps: 0,
                 },
             }],
         };
@@ -2519,6 +2614,7 @@ mod tests {
         assert_eq!(json["capability_bit"], 2);
         assert_eq!(json["items"][0]["match_summary"]["coverage_bps"], 10_000);
         assert_eq!(json["items"][0]["match_summary"]["fit_score"], 8_700);
+        assert_eq!(json["items"][0]["match_summary"]["trust_state"], "watch");
     }
 
     #[test]

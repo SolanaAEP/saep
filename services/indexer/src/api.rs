@@ -21,6 +21,7 @@ use std::collections::BTreeMap;
 
 use crate::db::PgPool;
 use crate::programs::SAEP_PROGRAMS;
+use crate::trust::{self, TrustState};
 
 const DEFAULT_LIMIT: u32 = 50;
 const MAX_LIMIT: u32 = 500;
@@ -75,7 +76,20 @@ pub struct LeaderboardRow {
     pub jobs_completed: i64,
     pub jobs_disputed: i64,
     pub composite_score: i32,
+    pub base_score_bps: i32,
+    pub trust_score: i32,
+    pub rank_delta: i32,
     pub last_update_unix: i64,
+    pub confidence_bps: i32,
+    pub dispute_rate_bps: i32,
+    pub low_history: bool,
+    pub low_confidence: bool,
+    pub availability_warning: bool,
+    pub dispute_warning: bool,
+    pub trust_state: TrustState,
+    pub low_history_penalty_bps: i32,
+    pub dispute_penalty_bps: i32,
+    pub availability_penalty_bps: i32,
 }
 
 #[derive(QueryableByName, Debug)]
@@ -104,21 +118,40 @@ struct RawLeaderboardRow {
     last_update: chrono::DateTime<chrono::Utc>,
 }
 
-impl From<RawLeaderboardRow> for LeaderboardRow {
-    fn from(r: RawLeaderboardRow) -> Self {
-        Self {
-            agent_did_hex: hex::encode(&r.agent_did),
-            capability_bit: r.capability_bit,
-            quality: r.quality,
-            timeliness: r.timeliness,
-            availability: r.availability,
-            cost_efficiency: r.cost_efficiency,
-            honesty: r.honesty,
-            jobs_completed: r.jobs_completed,
-            jobs_disputed: r.jobs_disputed,
-            composite_score: r.composite_score,
-            last_update_unix: r.last_update.timestamp(),
-        }
+fn row_with_trust(r: RawLeaderboardRow) -> LeaderboardRow {
+    let scored = trust::score_leaderboard(trust::LeaderboardScoreInputs {
+        reputation_bps: r.composite_score.clamp(0, 10_000),
+        availability_bps: (r.availability as i32).clamp(0, 10_000),
+        honesty_bps: (r.honesty as i32).clamp(0, 10_000),
+        jobs_completed: r.jobs_completed,
+        jobs_disputed: r.jobs_disputed,
+    });
+
+    LeaderboardRow {
+        agent_did_hex: hex::encode(&r.agent_did),
+        capability_bit: r.capability_bit,
+        quality: r.quality,
+        timeliness: r.timeliness,
+        availability: r.availability,
+        cost_efficiency: r.cost_efficiency,
+        honesty: r.honesty,
+        jobs_completed: r.jobs_completed,
+        jobs_disputed: r.jobs_disputed,
+        composite_score: r.composite_score,
+        base_score_bps: scored.base_score_bps,
+        trust_score: scored.trust_score_bps,
+        rank_delta: 0,
+        last_update_unix: r.last_update.timestamp(),
+        confidence_bps: scored.signals.confidence_bps,
+        dispute_rate_bps: scored.signals.dispute_rate_bps,
+        low_history: scored.signals.low_history,
+        low_confidence: scored.signals.low_confidence,
+        availability_warning: scored.signals.availability_warning,
+        dispute_warning: scored.signals.dispute_warning,
+        trust_state: scored.signals.trust_state,
+        low_history_penalty_bps: scored.signals.low_history_penalty_bps,
+        dispute_penalty_bps: scored.signals.dispute_penalty_bps,
+        availability_penalty_bps: scored.signals.availability_penalty_bps,
     }
 }
 
@@ -129,38 +162,46 @@ pub async fn leaderboard(
     let limit = q.limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as i64;
     let rows = tokio::task::spawn_blocking(move || -> Result<Vec<RawLeaderboardRow>, ApiError> {
         let mut conn = state.pool.get().map_err(ApiError::internal)?;
-        let rows = match q.cursor {
-            Some(cursor) => sql_query(
-                "SELECT agent_did, capability_bit, quality, timeliness, availability,
-                        cost_efficiency, honesty, jobs_completed, jobs_disputed,
-                        composite_score, last_update
-                 FROM reputation_rollup
-                 WHERE capability_bit = $1 AND composite_score < $2
-                 ORDER BY composite_score DESC
-                 LIMIT $3",
-            )
-            .bind::<Int2, _>(q.capability)
-            .bind::<Int4, _>(cursor as i32)
-            .bind::<BigInt, _>(limit)
-            .load::<RawLeaderboardRow>(&mut conn),
-            None => sql_query(
-                "SELECT agent_did, capability_bit, quality, timeliness, availability,
-                        cost_efficiency, honesty, jobs_completed, jobs_disputed,
-                        composite_score, last_update
-                 FROM reputation_rollup
-                 WHERE capability_bit = $1
-                 ORDER BY composite_score DESC
-                 LIMIT $2",
-            )
-            .bind::<Int2, _>(q.capability)
-            .bind::<BigInt, _>(limit)
-            .load::<RawLeaderboardRow>(&mut conn),
-        };
-        rows.map_err(ApiError::internal)
+        sql_query(
+            "SELECT agent_did, capability_bit, quality, timeliness, availability,
+                    cost_efficiency, honesty, jobs_completed, jobs_disputed,
+                    composite_score, last_update
+             FROM reputation_rollup
+             WHERE capability_bit = $1
+             ORDER BY composite_score DESC, agent_did ASC
+             LIMIT $2",
+        )
+        .bind::<Int2, _>(q.capability)
+        .bind::<BigInt, _>(MAX_LIMIT as i64)
+        .load::<RawLeaderboardRow>(&mut conn)
+        .map_err(ApiError::internal)
     })
     .await
     .map_err(ApiError::internal)??;
-    Ok(Json(rows.into_iter().map(LeaderboardRow::from).collect()))
+    let raw_rank = rows
+        .iter()
+        .enumerate()
+        .map(|(idx, row)| (hex::encode(&row.agent_did), idx as i32))
+        .collect::<BTreeMap<_, _>>();
+    let mut ranked = rows.into_iter().map(row_with_trust).collect::<Vec<_>>();
+    ranked.sort_by(|a, b| {
+        b.trust_score
+            .cmp(&a.trust_score)
+            .then(b.confidence_bps.cmp(&a.confidence_bps))
+            .then(b.composite_score.cmp(&a.composite_score))
+            .then(b.last_update_unix.cmp(&a.last_update_unix))
+            .then(a.agent_did_hex.cmp(&b.agent_did_hex))
+    });
+    for (idx, row) in ranked.iter_mut().enumerate() {
+        if let Some(raw_idx) = raw_rank.get(&row.agent_did_hex) {
+            row.rank_delta = *raw_idx - idx as i32;
+        }
+    }
+    if let Some(cursor) = q.cursor {
+        ranked.retain(|row| row.trust_score < cursor as i32);
+    }
+    ranked.truncate(limit as usize);
+    Ok(Json(ranked))
 }
 
 pub async fn agent_reputation(
@@ -187,7 +228,7 @@ pub async fn agent_reputation(
     })
     .await
     .map_err(ApiError::internal)??;
-    Ok(Json(rows.into_iter().map(LeaderboardRow::from).collect()))
+    Ok(Json(rows.into_iter().map(row_with_trust).collect()))
 }
 
 #[derive(Debug, Serialize)]
@@ -278,10 +319,7 @@ struct RawBidEvent {
     data: serde_json::Value,
 }
 
-fn load_bid_events(
-    pool: &PgPool,
-    task_jsonb: String,
-) -> Result<Vec<RawBidEvent>, ApiError> {
+fn load_bid_events(pool: &PgPool, task_jsonb: String) -> Result<Vec<RawBidEvent>, ApiError> {
     let mut conn = pool.get().map_err(ApiError::internal)?;
     sql_query(
         "SELECT event_name, data
@@ -349,7 +387,11 @@ pub async fn task_bidding_state(
     let phase: &'static str = if closed.is_some() {
         "settled"
     } else if opened.is_some() {
-        if reveal_count > 0 { "reveal" } else { "commit" }
+        if reveal_count > 0 {
+            "reveal"
+        } else {
+            "commit"
+        }
     } else if slashed_count > 0 {
         "slashed"
     } else {
@@ -359,7 +401,13 @@ pub async fn task_bidding_state(
     let winner_agent = closed
         .as_ref()
         .and_then(|d| d.get("winner_agent"))
-        .and_then(|v| if v.is_null() { None } else { v.as_str().map(String::from) });
+        .and_then(|v| {
+            if v.is_null() {
+                None
+            } else {
+                v.as_str().map(String::from)
+            }
+        });
     let winner_amount = closed.as_ref().and_then(|d| str_field(d, "winner_amount"));
 
     Ok(Json(BiddingStateRow {
@@ -399,12 +447,14 @@ pub async fn task_bids(
             Some(b) => b,
             None => continue,
         };
-        let row = by_bidder.entry(bidder.clone()).or_insert_with(|| TaskBidRow {
-            bidder: bidder.clone(),
-            bond_paid: None,
-            revealed_amount: None,
-            slashed: false,
-        });
+        let row = by_bidder
+            .entry(bidder.clone())
+            .or_insert_with(|| TaskBidRow {
+                bidder: bidder.clone(),
+                bond_paid: None,
+                revealed_amount: None,
+                slashed: false,
+            });
         match e.event_name.as_str() {
             "BidCommitted" => row.bond_paid = str_field(&e.data, "bond_paid"),
             "BidRevealed" => row.revealed_amount = str_field(&e.data, "amount"),
@@ -463,5 +513,35 @@ impl IntoResponse for ApiError {
             body["detail"] = serde_json::json!(d);
         }
         (self.status, Json(body)).into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{TimeZone, Utc};
+
+    #[test]
+    fn leaderboard_row_exposes_trust_fields() {
+        let row = row_with_trust(RawLeaderboardRow {
+            agent_did: vec![0xab; 32],
+            capability_bit: 2,
+            quality: 8_700,
+            timeliness: 8_600,
+            availability: 8_200,
+            cost_efficiency: 7_900,
+            honesty: 9_100,
+            jobs_completed: 18,
+            jobs_disputed: 1,
+            composite_score: 8_500,
+            last_update: Utc.timestamp_opt(1_700_000_000, 0).single().unwrap(),
+        });
+
+        let json = serde_json::to_value(&row).unwrap();
+        assert_eq!(json["agent_did_hex"], hex::encode(vec![0xab; 32]));
+        assert_eq!(json["trust_state"], "watch");
+        assert!(json["trust_score"].as_i64().unwrap() > 0);
+        assert!(json["confidence_bps"].as_i64().unwrap() > 0);
+        assert!(json["base_score_bps"].as_i64().unwrap() >= json["trust_score"].as_i64().unwrap());
     }
 }

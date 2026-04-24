@@ -3,7 +3,27 @@ import { getAgentRegistryProgram, getTaskMarketProgram } from '@/lib/rpc.server'
 import { serializeAgent, serializeTask } from '@/lib/agent-serializer';
 import { MarketplaceShell } from './marketplace-shell';
 
-export default async function MarketplacePage() {
+function normalizeParam(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
+function parseSelectedBits(raw: string | null): number[] {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((value) => Number(value.trim()))
+    .filter((value) => Number.isInteger(value) && value >= 0);
+}
+
+export default async function MarketplacePage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const initialSelectedBits = parseSelectedBits(normalizeParam(resolvedSearchParams.capability));
+  const initialSelectedTaskId = normalizeParam(resolvedSearchParams.task);
   let agents: ReturnType<typeof serializeAgent>[] = [];
   let tasks: ReturnType<typeof serializeTask>[] = [];
   let agentError: string | null = null;
@@ -55,7 +75,14 @@ export default async function MarketplacePage() {
         </div>
       )}
 
-      {!agentError && <MarketplaceShell initialAgents={agents} tasks={tasks} />}
+      {!agentError && (
+        <MarketplaceShell
+          initialAgents={agents}
+          tasks={tasks}
+          initialSelectedBits={initialSelectedBits}
+          initialSelectedTaskId={initialSelectedTaskId}
+        />
+      )}
     </section>
   );
 }

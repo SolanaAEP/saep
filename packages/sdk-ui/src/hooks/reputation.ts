@@ -19,7 +19,20 @@ export interface LeaderboardRow {
   jobsCompleted: number;
   jobsDisputed: number;
   compositeScore: number;
+  baseScoreBps: number;
+  trustScore: number;
+  rankDelta: number;
   lastUpdateUnix: number;
+  confidenceBps: number;
+  disputeRateBps: number;
+  lowHistory: boolean;
+  lowConfidence: boolean;
+  availabilityWarning: boolean;
+  disputeWarning: boolean;
+  trustState: 'strong' | 'watch' | 'caution';
+  lowHistoryPenaltyBps: number;
+  disputePenaltyBps: number;
+  availabilityPenaltyBps: number;
 }
 
 export interface RetroEligibility {
@@ -45,7 +58,20 @@ interface RawLeaderboardRow {
   jobs_completed: number;
   jobs_disputed: number;
   composite_score: number;
+  base_score_bps?: number;
+  trust_score?: number;
+  rank_delta?: number;
   last_update_unix: number;
+  confidence_bps?: number;
+  dispute_rate_bps?: number;
+  low_history?: boolean;
+  low_confidence?: boolean;
+  availability_warning?: boolean;
+  dispute_warning?: boolean;
+  trust_state?: 'strong' | 'watch' | 'caution';
+  low_history_penalty_bps?: number;
+  dispute_penalty_bps?: number;
+  availability_penalty_bps?: number;
 }
 
 interface RawRetroRow {
@@ -71,7 +97,20 @@ const toRow = (r: RawLeaderboardRow): LeaderboardRow => ({
   jobsCompleted: r.jobs_completed,
   jobsDisputed: r.jobs_disputed,
   compositeScore: r.composite_score,
+  baseScoreBps: r.base_score_bps ?? r.composite_score,
+  trustScore: r.trust_score ?? r.composite_score,
+  rankDelta: r.rank_delta ?? 0,
   lastUpdateUnix: r.last_update_unix,
+  confidenceBps: r.confidence_bps ?? 0,
+  disputeRateBps: r.dispute_rate_bps ?? 0,
+  lowHistory: r.low_history ?? false,
+  lowConfidence: r.low_confidence ?? false,
+  availabilityWarning: r.availability_warning ?? false,
+  disputeWarning: r.dispute_warning ?? false,
+  trustState: r.trust_state ?? 'watch',
+  lowHistoryPenaltyBps: r.low_history_penalty_bps ?? 0,
+  disputePenaltyBps: r.dispute_penalty_bps ?? 0,
+  availabilityPenaltyBps: r.availability_penalty_bps ?? 0,
 });
 
 const toRetro = (r: RawRetroRow): RetroEligibility => ({
@@ -103,14 +142,10 @@ export interface UseLeaderboardArgs {
   enabled?: boolean;
 }
 
-export function useLeaderboard({
-  indexerUrl,
-  capabilityBit,
-  limit,
-  cursor,
-  enabled = true,
-}: UseLeaderboardArgs,
-options?: Omit<UseQueryOptions<LeaderboardRow[]>, 'queryKey' | 'queryFn'>) {
+export function useLeaderboard(
+  { indexerUrl, capabilityBit, limit, cursor, enabled = true }: UseLeaderboardArgs,
+  options?: Omit<UseQueryOptions<LeaderboardRow[]>, 'queryKey' | 'queryFn'>,
+) {
   const params = new URLSearchParams({ capability: String(capabilityBit) });
   if (limit != null) params.set('limit', String(limit));
   if (cursor != null) params.set('cursor', String(cursor));
@@ -118,7 +153,8 @@ options?: Omit<UseQueryOptions<LeaderboardRow[]>, 'queryKey' | 'queryFn'>) {
   return useQuery<LeaderboardRow[]>({
     queryKey: ['leaderboard', capabilityBit, limit ?? null, cursor ?? null],
     enabled,
-    queryFn: ({ signal }) => fetchJson<RawLeaderboardRow[]>(url, signal).then((rs) => rs.map(toRow)),
+    queryFn: ({ signal }) =>
+      fetchJson<RawLeaderboardRow[]>(url, signal).then((rs) => rs.map(toRow)),
     staleTime: 30_000,
     ...options,
   });
@@ -136,13 +172,12 @@ export function useAgentReputation({
   enabled = true,
 }: UseAgentReputationArgs) {
   const ready = Boolean(agentDidHex && agentDidHex.length === 64);
-  const url = ready
-    ? `${indexerUrl.replace(/\/$/, '')}/agents/${agentDidHex}/reputation`
-    : '';
+  const url = ready ? `${indexerUrl.replace(/\/$/, '')}/agents/${agentDidHex}/reputation` : '';
   return useQuery<LeaderboardRow[]>({
     queryKey: ['agent-reputation', agentDidHex],
     enabled: enabled && ready,
-    queryFn: ({ signal }) => fetchJson<RawLeaderboardRow[]>(url, signal).then((rs) => rs.map(toRow)),
+    queryFn: ({ signal }) =>
+      fetchJson<RawLeaderboardRow[]>(url, signal).then((rs) => rs.map(toRow)),
     staleTime: 30_000,
   });
 }
@@ -203,9 +238,7 @@ export function useRetroEligibility({
   enabled = true,
 }: UseRetroEligibilityArgs) {
   const ready = Boolean(operatorHex && operatorHex.length === 64);
-  const url = ready
-    ? `${indexerUrl.replace(/\/$/, '')}/retro/eligibility/${operatorHex}`
-    : '';
+  const url = ready ? `${indexerUrl.replace(/\/$/, '')}/retro/eligibility/${operatorHex}` : '';
   return useQuery<RetroEligibility | null>({
     queryKey: ['retro-eligibility', operatorHex],
     enabled: enabled && ready,

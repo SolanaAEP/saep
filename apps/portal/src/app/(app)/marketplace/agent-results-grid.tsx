@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo } from 'react';
 import {
   useDiscoveryAgents,
@@ -8,6 +9,14 @@ import {
 } from '@saep/sdk-ui';
 import type { SerializedAgent, SerializedTask } from '@/lib/agent-serializer';
 import { getPortalIndexerUrl } from '@/lib/indexer-url';
+import {
+  confidenceLabel,
+  explainMatchSummary,
+  summarizeTrustSignals,
+  toPct,
+  trustLabel,
+  trustTone,
+} from '@/lib/trust';
 import { CAPABILITY_LABELS, maskToTags } from '../dashboard/capability-tags';
 import {
   agentSubtitle,
@@ -35,11 +44,6 @@ interface Props {
 
 const INDEXER_URL = getPortalIndexerUrl();
 
-function toPct(value: number | null | undefined, max = 10_000): string {
-  if (value == null) return 'n/a';
-  return `${Math.round((Math.max(0, Math.min(value, max)) / max) * 100)}%`;
-}
-
 function selectedMaskHex(selectedBits: number[]): string | null {
   if (selectedBits.length === 0) return null;
   const mask = selectedBits.reduce((acc, bit) => acc | (1n << BigInt(bit)), 0n);
@@ -53,24 +57,6 @@ function summarizeBits(bits: number[]): string | null {
     .map((bit) => CAPABILITY_LABELS[bit] ?? `bit ${bit}`)
     .join(', ');
   return bits.length > 2 ? `${labels} +${bits.length - 2}` : labels;
-}
-
-function explainMatch(matchSummary: DiscoveryAgentMatchSummary): string {
-  const segments = [
-    `${Math.round(matchSummary.coverageBps / 100)}% capability coverage`,
-    `fit ${toPct(matchSummary.fitScore)}`,
-  ];
-  if (matchSummary.capabilityReputationComposite != null) {
-    segments.push(`cap rep ${toPct(matchSummary.capabilityReputationComposite)}`);
-  }
-  if (matchSummary.availability != null) {
-    segments.push(`availability ${toPct(matchSummary.availability)}`);
-  }
-  const missing = summarizeBits(matchSummary.missingCapabilityBits);
-  if (missing) {
-    segments.push(`missing ${missing}`);
-  }
-  return segments.join(' • ');
 }
 
 export function AgentResultsGrid({
@@ -93,6 +79,7 @@ export function AgentResultsGrid({
   const { data: rankedAgents, isLoading: isLoadingCapabilityMatches } = useDiscoveryAgents({
     indexerUrl: INDEXER_URL,
     capabilityMaskHex,
+    sort: 'best_fit_desc',
     limit: Math.min(Math.max(agents.length, 25), 200),
     enabled: !selectedTask && selectedBits.length > 0,
   });
@@ -218,12 +205,12 @@ export function AgentResultsGrid({
                           #{matchRank + 1} {matchRank === 0 ? 'best fit' : 'ranked match'}
                         </div>
                       ) : null}
-                      <a
+                      <Link
                         href={`/agents/${agent.did}`}
                         className="mt-2 block font-display text-[22px] leading-tight tracking-[-0.01em] text-ink transition-colors hover:text-ink/70"
                       >
                         {agentTitle(agent)}
-                      </a>
+                      </Link>
                       <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.08em] text-ink/55">
                         {agentSubtitle(agent)}
                       </div>
@@ -251,6 +238,29 @@ export function AgentResultsGrid({
                             +{tags.length - 4}
                           </span>
                         ) : null}
+                      </div>
+                    ) : null}
+
+                    {matchSummary ? (
+                      <div className="flex flex-wrap gap-2">
+                        <span
+                          className={`inline-flex items-center border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] ${trustTone(matchSummary.trustState)}`}
+                        >
+                          {trustLabel(matchSummary.trustState)}
+                        </span>
+                        <span className="inline-flex items-center border border-ink/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-ink/60">
+                          {confidenceLabel(matchSummary.confidenceBps)}
+                        </span>
+                        {summarizeTrustSignals(matchSummary)
+                          .slice(0, 2)
+                          .map((signal) => (
+                            <span
+                              key={signal}
+                              className="inline-flex items-center border border-ink/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-ink/55"
+                            >
+                              {signal}
+                            </span>
+                          ))}
                       </div>
                     ) : null}
 
@@ -290,11 +300,27 @@ export function AgentResultsGrid({
                     </div>
 
                     {matchSummary ? (
+                      <div className="grid gap-0 border border-ink/10 sm:grid-cols-3">
+                        <StatCell label="Confidence" value={toPct(matchSummary.confidenceBps)} />
+                        <StatCell label="Disputes" value={toPct(matchSummary.disputeRateBps)} />
+                        <StatCell
+                          label="Honesty"
+                          value={matchSummary.honesty != null ? toPct(matchSummary.honesty) : 'n/a'}
+                        />
+                      </div>
+                    ) : null}
+
+                    {matchSummary ? (
                       <div className="border border-ink/10 bg-paper px-3 py-3 text-sm text-ink/60">
                         <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
                           Why this agent fits
                         </div>
-                        <div className="mt-2">{explainMatch(matchSummary)}</div>
+                        <div className="mt-2">{explainMatchSummary(matchSummary)}</div>
+                        {matchSummary.missingCapabilityBits.length > 0 ? (
+                          <div className="mt-2 text-xs text-ink/45">
+                            Missing {summarizeBits(matchSummary.missingCapabilityBits)}.
+                          </div>
+                        ) : null}
                       </div>
                     ) : hasRecommendationContext ? (
                       <div className="border border-ink/10 bg-paper px-3 py-3 text-sm text-ink/45">

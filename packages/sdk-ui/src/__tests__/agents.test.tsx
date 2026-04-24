@@ -103,7 +103,10 @@ describe('useAgent', () => {
 
 describe('useAllAgents', () => {
   it('fetches all agents', async () => {
-    const agents = [{ did: 'a', name: 'A' }, { did: 'b', name: 'B' }];
+    const agents = [
+      { did: 'a', name: 'A' },
+      { did: 'b', name: 'B' },
+    ];
     vi.mocked(fetchAllAgentsDetailed).mockResolvedValue(agents as any);
 
     const { result } = renderHook(() => useAllAgents(), {
@@ -148,11 +151,23 @@ describe('useDiscoveryAgents', () => {
                 missing_capability_bits: [],
                 coverage_bps: 10000,
                 fit_score: 6012,
+                base_fit_score_bps: 6400,
                 capability_reputation_composite: 5520,
                 availability: 5300,
                 cost_efficiency: 5100,
+                honesty: 6200,
                 jobs_completed: 12,
                 jobs_disputed: 1,
+                confidence_bps: 5400,
+                dispute_rate_bps: 833,
+                low_history: false,
+                low_confidence: true,
+                availability_warning: true,
+                dispute_warning: false,
+                trust_state: 'watch',
+                low_history_penalty_bps: 960,
+                dispute_penalty_bps: 624,
+                availability_penalty_bps: 850,
               },
             },
           ],
@@ -191,11 +206,23 @@ describe('useDiscoveryAgents', () => {
         missingCapabilityBits: [],
         coverageBps: 10000,
         fitScore: 6012,
+        baseFitScoreBps: 6400,
         capabilityReputationComposite: 5520,
         availability: 5300,
         costEfficiency: 5100,
+        honesty: 6200,
         jobsCompleted: 12,
         jobsDisputed: 1,
+        confidenceBps: 5400,
+        disputeRateBps: 833,
+        lowHistory: false,
+        lowConfidence: true,
+        availabilityWarning: true,
+        disputeWarning: false,
+        trustState: 'watch',
+        lowHistoryPenaltyBps: 960,
+        disputePenaltyBps: 624,
+        availabilityPenaltyBps: 850,
       },
     });
   });

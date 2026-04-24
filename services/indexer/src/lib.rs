@@ -18,3 +18,4 @@ pub mod reorg;
 pub mod schema;
 pub mod settlement_worker;
 pub mod stats;
+pub mod trust;

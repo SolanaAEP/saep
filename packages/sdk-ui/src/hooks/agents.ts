@@ -17,11 +17,23 @@ export interface DiscoveryAgentMatchSummary {
   missingCapabilityBits: number[];
   coverageBps: number;
   fitScore: number;
+  baseFitScoreBps: number;
   capabilityReputationComposite: number | null;
   availability: number | null;
   costEfficiency: number | null;
+  honesty: number | null;
   jobsCompleted: number;
   jobsDisputed: number;
+  confidenceBps: number;
+  disputeRateBps: number;
+  lowHistory: boolean;
+  lowConfidence: boolean;
+  availabilityWarning: boolean;
+  disputeWarning: boolean;
+  trustState: 'strong' | 'watch' | 'caution';
+  lowHistoryPenaltyBps: number;
+  disputePenaltyBps: number;
+  availabilityPenaltyBps: number;
 }
 
 export interface DiscoveryAgentSummary {
@@ -40,7 +52,7 @@ export interface UseDiscoveryAgentsArgs {
   capabilityMaskHex?: string | null;
   minReputation?: number;
   status?: 'active' | 'slashed' | 'paused' | 'suspended';
-  sort?: 'reputation_desc' | 'recent_desc';
+  sort?: 'reputation_desc' | 'recent_desc' | 'best_fit_desc';
   limit?: number;
   enabled?: boolean;
 }
@@ -51,11 +63,23 @@ interface RawDiscoveryAgentMatchSummary {
   missing_capability_bits: number[];
   coverage_bps: number;
   fit_score: number;
+  base_fit_score_bps?: number;
   capability_reputation_composite: number | null;
   availability: number | null;
   cost_efficiency: number | null;
+  honesty?: number | null;
   jobs_completed: number;
   jobs_disputed: number;
+  confidence_bps?: number;
+  dispute_rate_bps?: number;
+  low_history?: boolean;
+  low_confidence?: boolean;
+  availability_warning?: boolean;
+  dispute_warning?: boolean;
+  trust_state?: 'strong' | 'watch' | 'caution';
+  low_history_penalty_bps?: number;
+  dispute_penalty_bps?: number;
+  availability_penalty_bps?: number;
 }
 
 interface RawDiscoveryAgentSummary {
@@ -103,11 +127,23 @@ function mapDiscoveryMatchSummary(
     missingCapabilityBits: raw.missing_capability_bits,
     coverageBps: raw.coverage_bps,
     fitScore: raw.fit_score,
+    baseFitScoreBps: raw.base_fit_score_bps ?? raw.fit_score,
     capabilityReputationComposite: raw.capability_reputation_composite,
     availability: raw.availability,
     costEfficiency: raw.cost_efficiency,
+    honesty: raw.honesty ?? null,
     jobsCompleted: raw.jobs_completed,
     jobsDisputed: raw.jobs_disputed,
+    confidenceBps: raw.confidence_bps ?? 0,
+    disputeRateBps: raw.dispute_rate_bps ?? 0,
+    lowHistory: raw.low_history ?? false,
+    lowConfidence: raw.low_confidence ?? false,
+    availabilityWarning: raw.availability_warning ?? false,
+    disputeWarning: raw.dispute_warning ?? false,
+    trustState: raw.trust_state ?? 'watch',
+    lowHistoryPenaltyBps: raw.low_history_penalty_bps ?? 0,
+    disputePenaltyBps: raw.dispute_penalty_bps ?? 0,
+    availabilityPenaltyBps: raw.availability_penalty_bps ?? 0,
   };
 }
 
@@ -171,7 +207,15 @@ export function useDiscoveryAgents({
   enabled = true,
 }: UseDiscoveryAgentsArgs) {
   return useQuery<DiscoveryAgentSummary[]>({
-    queryKey: ['discovery-agents', indexerUrl, capabilityMaskHex ?? null, minReputation ?? null, status, sort, limit],
+    queryKey: [
+      'discovery-agents',
+      indexerUrl,
+      capabilityMaskHex ?? null,
+      minReputation ?? null,
+      status,
+      sort,
+      limit,
+    ],
     enabled,
     queryFn: ({ signal }) =>
       fetchDiscoveryJson<RawDiscoveryAgentsPage>(

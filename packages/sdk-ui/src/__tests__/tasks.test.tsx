@@ -148,7 +148,8 @@ describe('discovery task hooks', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const { result } = renderHook(
-      () => useDiscoveryTasks({ indexerUrl: INDEXER, statuses: ['funded', 'inExecution'], limit: 10 }),
+      () =>
+        useDiscoveryTasks({ indexerUrl: INDEXER, statuses: ['funded', 'inExecution'], limit: 10 }),
       { wrapper: createWrapper() },
     );
 
@@ -255,7 +256,14 @@ describe('discovery task hooks', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const { result } = renderHook(
-      () => useTaskComputeBonds({ indexerUrl: INDEXER, taskIdHex, status: 'slashed', provider: 'akash', limit: 2 }),
+      () =>
+        useTaskComputeBonds({
+          indexerUrl: INDEXER,
+          taskIdHex,
+          status: 'slashed',
+          provider: 'akash',
+          limit: 2,
+        }),
       { wrapper: createWrapper() },
     );
 
@@ -298,11 +306,23 @@ describe('discovery task hooks', () => {
                 missing_capability_bits: [],
                 coverage_bps: 10000,
                 fit_score: 5900,
+                base_fit_score_bps: 6400,
                 capability_reputation_composite: 5750,
                 availability: 5400,
                 cost_efficiency: 5200,
+                honesty: 7000,
                 jobs_completed: 15,
                 jobs_disputed: 0,
+                confidence_bps: 7500,
+                dispute_rate_bps: 0,
+                low_history: false,
+                low_confidence: false,
+                availability_warning: true,
+                dispute_warning: false,
+                trust_state: 'watch',
+                low_history_penalty_bps: 600,
+                dispute_penalty_bps: 0,
+                availability_penalty_bps: 800,
               },
             },
           ],
@@ -340,11 +360,23 @@ describe('discovery task hooks', () => {
             missingCapabilityBits: [],
             coverageBps: 10000,
             fitScore: 5900,
+            baseFitScoreBps: 6400,
             capabilityReputationComposite: 5750,
             availability: 5400,
             costEfficiency: 5200,
+            honesty: 7000,
             jobsCompleted: 15,
             jobsDisputed: 0,
+            confidenceBps: 7500,
+            disputeRateBps: 0,
+            lowHistory: false,
+            lowConfidence: false,
+            availabilityWarning: true,
+            disputeWarning: false,
+            trustState: 'watch',
+            lowHistoryPenaltyBps: 600,
+            disputePenaltyBps: 0,
+            availabilityPenaltyBps: 800,
           },
         },
       ],
@@ -393,16 +425,20 @@ describe('discovery task hooks', () => {
     });
 
     const errored = renderHook(
-      () => useDiscoveryTasks({ indexerUrl: INDEXER, capability: 0, minReward: '0', enabled: true }),
+      () =>
+        useDiscoveryTasks({ indexerUrl: INDEXER, capability: 0, minReward: '0', enabled: true }),
       { wrapper: createWrapper() },
     );
 
     await waitFor(() => expect(errored.result.current.isError).toBe(true));
-    expect(fetchMock.mock.calls[1]?.[0]).toBe(`${INDEXER}/tasks?capability=0&min_reward=0&page=1&limit=20`);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      `${INDEXER}/tasks?capability=0&min_reward=0&page=1&limit=20`,
+    );
     expect(errored.result.current.error?.message).toBe('indexer 503: Service Unavailable');
 
     const invalidDid = renderHook(
-      () => useDiscoveryAgentTasks({ indexerUrl: INDEXER, agentDidHex: 'too-short', enabled: true }),
+      () =>
+        useDiscoveryAgentTasks({ indexerUrl: INDEXER, agentDidHex: 'too-short', enabled: true }),
       { wrapper: createWrapper() },
     );
     expect(invalidDid.result.current.fetchStatus).toBe('idle');

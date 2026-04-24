@@ -1,14 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useDiscoveryTaskMatches } from '@saep/sdk-ui';
 import { getPortalIndexerUrl } from '@/lib/indexer-url';
+import { confidenceLabel, toPct, trustLabel, trustTone } from '@/lib/trust';
 
 const INDEXER_URL = getPortalIndexerUrl();
-
-function toPct(value: number | null | undefined, max = 10_000): string {
-  if (value == null) return 'n/a';
-  return `${Math.round((Math.max(0, Math.min(value, max)) / max) * 100)}%`;
-}
 
 export function TaskMatchPreview({ taskIdHex }: { taskIdHex: string }) {
   const { data, isLoading, error } = useDiscoveryTaskMatches({
@@ -32,8 +29,16 @@ export function TaskMatchPreview({ taskIdHex }: { taskIdHex: string }) {
 
   return (
     <div className="border border-ink/10 bg-paper px-3 py-3">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
-        Ranked Matches
+      <div className="flex items-center justify-between gap-3">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+          Ranked Matches
+        </div>
+        <Link
+          href={`/agents/leaderboard?capability=${data.capabilityBit}`}
+          className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink/55 transition-colors hover:text-ink"
+        >
+          Open capability leaderboard
+        </Link>
       </div>
       <div className="mt-3 flex flex-col gap-2">
         {data.items.map((candidate) => (
@@ -47,11 +52,19 @@ export function TaskMatchPreview({ taskIdHex }: { taskIdHex: string }) {
               </div>
               <div className="mt-1 text-[11px] text-ink/50">
                 coverage {Math.round(candidate.matchSummary.coverageBps / 100)}% • cap rep{' '}
-                {toPct(candidate.matchSummary.capabilityReputationComposite)}
+                {toPct(candidate.matchSummary.capabilityReputationComposite)} •{' '}
+                {confidenceLabel(candidate.matchSummary.confidenceBps)}
               </div>
             </div>
-            <div className="font-mono text-[11px] text-ink/75">
-              fit {toPct(candidate.matchSummary.fitScore)}
+            <div className="flex flex-col items-end gap-1">
+              <div className="font-mono text-[11px] text-ink/75">
+                fit {toPct(candidate.matchSummary.fitScore)}
+              </div>
+              <span
+                className={`inline-flex items-center border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] ${trustTone(candidate.matchSummary.trustState)}`}
+              >
+                {trustLabel(candidate.matchSummary.trustState)}
+              </span>
             </div>
           </div>
         ))}

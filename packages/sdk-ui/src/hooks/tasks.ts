@@ -59,11 +59,23 @@ export interface DiscoveryTaskMatchSummary {
   missingCapabilityBits: number[];
   coverageBps: number;
   fitScore: number;
+  baseFitScoreBps: number;
   capabilityReputationComposite: number | null;
   availability: number | null;
   costEfficiency: number | null;
+  honesty: number | null;
   jobsCompleted: number;
   jobsDisputed: number;
+  confidenceBps: number;
+  disputeRateBps: number;
+  lowHistory: boolean;
+  lowConfidence: boolean;
+  availabilityWarning: boolean;
+  disputeWarning: boolean;
+  trustState: 'strong' | 'watch' | 'caution';
+  lowHistoryPenaltyBps: number;
+  disputePenaltyBps: number;
+  availabilityPenaltyBps: number;
 }
 
 export interface DiscoveryTaskMatchCandidate {
@@ -126,11 +138,23 @@ interface RawDiscoveryTaskMatchSummary {
   missing_capability_bits: number[];
   coverage_bps: number;
   fit_score: number;
+  base_fit_score_bps?: number;
   capability_reputation_composite: number | null;
   availability: number | null;
   cost_efficiency: number | null;
+  honesty?: number | null;
   jobs_completed: number;
   jobs_disputed: number;
+  confidence_bps?: number;
+  dispute_rate_bps?: number;
+  low_history?: boolean;
+  low_confidence?: boolean;
+  availability_warning?: boolean;
+  dispute_warning?: boolean;
+  trust_state?: 'strong' | 'watch' | 'caution';
+  low_history_penalty_bps?: number;
+  dispute_penalty_bps?: number;
+  availability_penalty_bps?: number;
 }
 
 interface RawDiscoveryTaskMatchCandidate {
@@ -269,11 +293,23 @@ function mapTaskMatchSummary(raw: RawDiscoveryTaskMatchSummary): DiscoveryTaskMa
     missingCapabilityBits: raw.missing_capability_bits,
     coverageBps: raw.coverage_bps,
     fitScore: raw.fit_score,
+    baseFitScoreBps: raw.base_fit_score_bps ?? raw.fit_score,
     capabilityReputationComposite: raw.capability_reputation_composite,
     availability: raw.availability,
     costEfficiency: raw.cost_efficiency,
+    honesty: raw.honesty ?? null,
     jobsCompleted: raw.jobs_completed,
     jobsDisputed: raw.jobs_disputed,
+    confidenceBps: raw.confidence_bps ?? 0,
+    disputeRateBps: raw.dispute_rate_bps ?? 0,
+    lowHistory: raw.low_history ?? false,
+    lowConfidence: raw.low_confidence ?? false,
+    availabilityWarning: raw.availability_warning ?? false,
+    disputeWarning: raw.dispute_warning ?? false,
+    trustState: raw.trust_state ?? 'watch',
+    lowHistoryPenaltyBps: raw.low_history_penalty_bps ?? 0,
+    disputePenaltyBps: raw.dispute_penalty_bps ?? 0,
+    availabilityPenaltyBps: raw.availability_penalty_bps ?? 0,
   };
 }
 
@@ -333,11 +369,27 @@ export function useDiscoveryTasks({
   enabled = true,
 }: UseDiscoveryTasksArgs) {
   return useQuery<IndexedTaskSummary[]>({
-    queryKey: ['discovery-tasks', indexerUrl, statuses?.join(',') ?? null, capability ?? null, minReward ?? null, page, limit],
+    queryKey: [
+      'discovery-tasks',
+      indexerUrl,
+      statuses?.join(',') ?? null,
+      capability ?? null,
+      minReward ?? null,
+      page,
+      limit,
+    ],
     enabled,
     queryFn: ({ signal }) =>
       fetchIndexerJson<{ items: RawIndexedTaskSummary[] }>(
-        buildTasksUrl(indexerUrl, { indexerUrl, statuses, capability, minReward, page, limit, enabled }),
+        buildTasksUrl(indexerUrl, {
+          indexerUrl,
+          statuses,
+          capability,
+          minReward,
+          page,
+          limit,
+          enabled,
+        }),
         signal,
       ).then((raw) => raw.items.map(mapIndexedTask)),
     staleTime: 15_000,
@@ -355,7 +407,14 @@ export function useDiscoveryAgentTasks({
 }: UseDiscoveryAgentTasksArgs) {
   const ready = Boolean(agentDidHex && agentDidHex.length === 64);
   return useQuery<IndexedTaskSummary[]>({
-    queryKey: ['discovery-agent-tasks', indexerUrl, agentDidHex, statuses?.join(',') ?? null, page, limit],
+    queryKey: [
+      'discovery-agent-tasks',
+      indexerUrl,
+      agentDidHex,
+      statuses?.join(',') ?? null,
+      page,
+      limit,
+    ],
     enabled: enabled && ready,
     queryFn: ({ signal }) =>
       fetchIndexerJson<{ items: RawIndexedTaskSummary[] }>(
@@ -377,11 +436,25 @@ export function useTaskComputeBonds({
 }: UseTaskComputeBondsArgs) {
   const ready = Boolean(taskIdHex && taskIdHex.length === 64);
   return useQuery<DiscoveryComputeBondSummary[]>({
-    queryKey: ['task-compute-bonds', indexerUrl, taskIdHex, status ?? null, provider ?? null, limit],
+    queryKey: [
+      'task-compute-bonds',
+      indexerUrl,
+      taskIdHex,
+      status ?? null,
+      provider ?? null,
+      limit,
+    ],
     enabled: enabled && ready,
     queryFn: ({ signal }) =>
       fetchIndexerJson<RawTaskBondsResponse>(
-        buildTaskComputeBondsUrl(indexerUrl, { indexerUrl, taskIdHex, status, provider, limit, enabled }),
+        buildTaskComputeBondsUrl(indexerUrl, {
+          indexerUrl,
+          taskIdHex,
+          status,
+          provider,
+          limit,
+          enabled,
+        }),
         signal,
       ).then((raw) => raw.items.map(mapComputeBond)),
     staleTime: 15_000,
@@ -440,7 +513,10 @@ export function useRaiseDispute() {
       tx.recentBlockhash = blockhash;
       tx.feePayer = publicKey;
       const sig = await sendTransaction(tx, connection);
-      await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
+      await connection.confirmTransaction(
+        { signature: sig, blockhash, lastValidBlockHeight },
+        'confirmed',
+      );
       return sig;
     },
     onSuccess: () => {

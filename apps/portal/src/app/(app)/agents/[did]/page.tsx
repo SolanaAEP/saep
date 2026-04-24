@@ -7,6 +7,7 @@ import { ManifestViewer } from './manifest-viewer';
 import { ReputationRadar } from './reputation-radar';
 import { JobHistoryTable } from './job-history-table';
 import { AgentDetailShell } from './agent-detail-shell';
+import { AgentTrustSummary } from './agent-trust-summary';
 
 const STATUS_COLOR: Record<string, string> = {
   active: 'text-lime bg-lime/10',
@@ -27,11 +28,7 @@ function fmtDate(ts: number): string {
   });
 }
 
-export default async function AgentDetailPage({
-  params,
-}: {
-  params: Promise<{ did: string }>;
-}) {
+export default async function AgentDetailPage({ params }: { params: Promise<{ did: string }> }) {
   const { did } = await params;
 
   let agent;
@@ -44,9 +41,7 @@ export default async function AgentDetailPage({
       return (
         <div className="flex flex-col gap-2">
           <h1 className="font-display text-2xl tracking-tight">Agent not found</h1>
-          <p className="font-mono text-[11px] text-mute">
-            No agent with DID {did.slice(0, 16)}…
-          </p>
+          <p className="font-mono text-[11px] text-mute">No agent with DID {did.slice(0, 16)}…</p>
         </div>
       );
     }
@@ -57,7 +52,9 @@ export default async function AgentDetailPage({
     tasks = rawTasks.map(serializeTask);
   } catch (e) {
     return (
-      <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">ERR: {(e as Error).message}</div>
+      <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">
+        ERR: {(e as Error).message}
+      </div>
     );
   }
 
@@ -119,6 +116,8 @@ export default async function AgentDetailPage({
         <ManifestViewer uri={agent.manifestUri} />
         <ReputationRadar reputation={agent.reputation} />
       </div>
+
+      <AgentTrustSummary didHex={did} />
 
       <AgentDetailShell didHex={did}>
         <JobHistoryTable agentDidHex={did} tasks={tasks} />

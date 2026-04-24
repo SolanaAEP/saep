@@ -14,12 +14,23 @@ import { agentSearchIndex, avgReputationScore } from './agent-card-utils';
 interface Props {
   initialAgents: SerializedAgent[];
   tasks: SerializedTask[];
+  initialSelectedBits?: number[];
+  initialSelectedTaskId?: string | null;
 }
 
-export function MarketplaceShell({ initialAgents, tasks }: Props) {
-  const [selectedBits, setSelectedBits] = useState<Set<number>>(new Set());
+export function MarketplaceShell({
+  initialAgents,
+  tasks,
+  initialSelectedBits = [],
+  initialSelectedTaskId = null,
+}: Props) {
+  const [selectedBits, setSelectedBits] = useState<Set<number>>(new Set(initialSelectedBits));
   const [hireTarget, setHireTarget] = useState<SerializedAgent | null>(null);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(tasks[0]?.taskId ?? null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(
+    tasks.some((task) => task.taskId === initialSelectedTaskId)
+      ? initialSelectedTaskId
+      : (tasks[0]?.taskId ?? null),
+  );
   const [query, setQuery] = useState('');
   const [minReputation, setMinReputation] = useState(0);
   const [sortMode, setSortMode] = useState<'best_fit' | 'reputation' | 'price_asc' | 'recent'>(
@@ -53,7 +64,9 @@ export function MarketplaceShell({ initialAgents, tasks }: Props) {
 
   const selectedTaskTitle = useMemo(() => {
     if (!selectedTask) return null;
-    const bounty = findMarketplaceBountyByTaskHash(selectedTask.catalogHash ?? selectedTask.taskHash);
+    const bounty = findMarketplaceBountyByTaskHash(
+      selectedTask.catalogHash ?? selectedTask.taskHash,
+    );
     return bounty?.title ?? `Bounty ${selectedTask.taskId.slice(0, 10)}…`;
   }, [selectedTask]);
 
@@ -131,9 +144,7 @@ export function MarketplaceShell({ initialAgents, tasks }: Props) {
         </div>
       </div>
 
-      {hireTarget && (
-        <QuickHireModal agent={hireTarget} onClose={() => setHireTarget(null)} />
-      )}
+      {hireTarget && <QuickHireModal agent={hireTarget} onClose={() => setHireTarget(null)} />}
     </>
   );
 }
