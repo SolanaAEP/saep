@@ -5,6 +5,7 @@ import {
   fetchTemplateRentals,
 } from '@saep/sdk';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { getTemplateRegistryProgram } from '@/lib/rpc.server';
 import {
   serializeTemplate,
@@ -12,7 +13,22 @@ import {
   serializeTemplateRental,
   serializeTemplateRegistryConfig,
 } from '@/lib/template-serializer';
-import { maskToTags } from '../../dashboard/capability-tags';
+import {
+  formatTemplateBps,
+  formatTemplateDuration,
+  formatTemplateRatePerDay,
+  formatTemplateRevenue,
+  templateBestFor,
+  templateCapabilityTags,
+  templateLeaderboardHref,
+  templateMarketplaceHref,
+  templateMotionLabel,
+  templatePrimaryCapabilityLabel,
+  templateSignalLabel,
+  templateSubtitle,
+  templateTitle,
+  templateUseCase,
+} from '@/lib/template-marketplace';
 
 function shortKey(value: string): string {
   return `${value.slice(0, 4)}…${value.slice(-4)}`;
@@ -24,24 +40,6 @@ function formatDate(ts: number): string {
     day: 'numeric',
     year: 'numeric',
   });
-}
-
-function formatDuration(seconds: number): string {
-  if (seconds <= 0) return '0s';
-  if (seconds % 86_400 === 0) return `${seconds / 86_400} days`;
-  if (seconds % 3_600 === 0) return `${seconds / 3_600} hours`;
-  if (seconds % 60 === 0) return `${seconds / 60} minutes`;
-  return `${seconds} seconds`;
-}
-
-function formatBps(bps: number): string {
-  return `${(bps / 100).toFixed(2)}%`;
-}
-
-function formatRatePerDay(ratePerSec: string): string {
-  const perDay = Number(ratePerSec) * 86_400;
-  if (!Number.isFinite(perDay)) return ratePerSec;
-  return `${perDay.toLocaleString()} / day`;
 }
 
 function normalizeUri(uri: string): string | null {
@@ -92,139 +90,181 @@ export default async function TemplateDetailPage({
     const registry = rawRegistry ? serializeTemplateRegistryConfig(rawRegistry) : null;
     const forks = rawForks.map(serializeTemplateFork);
     const rentals = rawRentals.map(serializeTemplateRental);
-    const tags = maskToTags(BigInt(template.capabilityMask));
+    const tags = templateCapabilityTags(template);
     const configLink = normalizeUri(template.configUri);
+    const marketplaceHref = templateMarketplaceHref(template);
+    const leaderboardHref = templateLeaderboardHref(template);
 
     return (
-      <section className="flex flex-col gap-6 max-w-5xl">
-        <header className="flex flex-col gap-2 border-b border-ink/10 pb-6">
-          <div className="font-mono text-[10px] text-mute tracking-widest uppercase">
+      <section className="flex max-w-6xl flex-col gap-6">
+        <header className="border-b border-ink/10 pb-6">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
             template // {template.templateId.slice(0, 12)}
           </div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-2xl tracking-tight">
-              {template.configUri || `Template ${template.templateId.slice(0, 8)}…`}
-            </h1>
-            <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 border border-ink/10 text-mute">
-              {template.status}
-            </span>
+          <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl">
+              <h1 className="font-display text-3xl tracking-tight">{templateTitle(template)}</h1>
+              <p className="mt-2 text-sm text-ink/55">{templateSubtitle(template)}</p>
+              <p className="mt-4 text-sm leading-6 text-ink/70">{templateBestFor(template)}</p>
+            </div>
+            <div className="flex flex-wrap gap-2 lg:max-w-sm lg:justify-end">
+              <Badge>{template.status}</Badge>
+              <Badge>{templateSignalLabel(template)}</Badge>
+              <Badge>{templateMotionLabel(template)}</Badge>
+              {templatePrimaryCapabilityLabel(template) ? (
+                <Badge>{templatePrimaryCapabilityLabel(template)}</Badge>
+              ) : null}
+            </div>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs font-mono text-ink/50 break-all">{template.templateId}</p>
-            <Link
-              href={`/templates/simulator?template=${template.templateId}`}
-              className="inline-flex items-center justify-center border border-ink/15 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink transition-colors hover:border-lime/40 hover:bg-lime/10"
-            >
-              Simulate economics
-            </Link>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="break-all font-mono text-[11px] text-ink/50">{template.templateId}</p>
+            <div className="flex flex-wrap gap-2">
+              <ActionLink href={`/templates/simulator?template=${template.templateId}`} emphasis>
+                Simulate economics
+              </ActionLink>
+              {marketplaceHref ? (
+                <ActionLink href={marketplaceHref}>Open matching marketplace</ActionLink>
+              ) : null}
+              {leaderboardHref ? (
+                <ActionLink href={leaderboardHref}>Open capability leaderboard</ActionLink>
+              ) : null}
+            </div>
           </div>
         </header>
 
-        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-          <div>
-            <dt className="text-ink/50">Author</dt>
-            <dd className="font-mono truncate">{template.author}</dd>
-          </div>
-          <div>
-            <dt className="text-ink/50">Royalty</dt>
-            <dd>{formatBps(template.royaltyBps)}</dd>
-          </div>
-          <div>
-            <dt className="text-ink/50">Rent</dt>
-            <dd className="font-mono">{formatRatePerDay(template.rentPricePerSec)}</dd>
-          </div>
-          <div>
-            <dt className="text-ink/50">Updated</dt>
-            <dd>{formatDate(template.updatedAt)}</dd>
-          </div>
-        </dl>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard label="Primary use case" value={templateUseCase(template)} />
+          <SummaryCard label="Royalty" value={formatTemplateBps(template.royaltyBps)} />
+          <SummaryCard label="Daily rent" value={formatTemplateRatePerDay(template.rentPricePerSec)} />
+          <SummaryCard label="Recorded revenue" value={formatTemplateRevenue(template.totalRevenue)} />
+        </div>
 
-        {tags.length > 0 && (
+        {tags.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {tags.map((tag) => (
-              <span key={tag} className="text-[10px] px-2 py-0.5 bg-ink/5 text-ink/70">
+              <span key={tag} className="bg-ink/5 px-2 py-0.5 text-[10px] text-ink/70">
                 {tag}
               </span>
             ))}
           </div>
-        )}
+        ) : null}
 
-        <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
-          <div className="border border-ink/10 p-4 flex flex-col gap-4">
-            <div>
-              <div className="font-mono text-[10px] text-mute uppercase tracking-widest">Config URI</div>
-              {configLink ? (
-                <a
-                  href={configLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm mt-2 inline-flex items-center gap-2 hover:text-lime transition-colors break-all"
-                >
-                  {template.configUri}
-                  <span className="font-mono text-[10px] text-mute">↗</span>
-                </a>
-              ) : (
-                <p className="text-sm mt-2 break-all">{template.configUri || 'No config URI published'}</p>
-              )}
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="border border-ink/10 bg-paper p-4">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+              Builder path
             </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              <PathStep
+                eyebrow="1 // inspect"
+                title="Check the capability fit"
+                description="Use the capability tags and trust links to confirm this template maps cleanly to live demand."
+              />
+              <PathStep
+                eyebrow="2 // simulate"
+                title="Stress the economics"
+                description="Model fork setup cost, rent duration, reward size, and dispute pressure before you commit."
+              />
+              <PathStep
+                eyebrow="3 // launch"
+                title="Choose rent or fork"
+                description="Use rent-first when you want low-friction validation, or fork-first when you need a durable custom branch."
+              />
+            </div>
+          </div>
 
-            <div className="grid sm:grid-cols-2 gap-4 text-sm border-t border-ink/10 pt-4">
+          <div className="border border-ink/10 bg-paper p-4">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+              Registry stats
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <StatPair label="Forks" value={String(template.forkCount)} />
+              <StatPair label="Rentals" value={String(template.rentCount)} />
+              <StatPair label="Lineage depth" value={String(template.lineageDepth)} />
+              <StatPair label="Updated" value={formatDate(template.updatedAt)} />
+            </div>
+            {registry ? (
+              <div className="mt-4 border-t border-ink/10 pt-4 text-sm">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+                  Policy rails
+                </div>
+                <div className="mt-2">Royalty cap: {formatTemplateBps(registry.royaltyCapBps)}</div>
+                <div>Platform fee: {formatTemplateBps(registry.platformFeeBps)}</div>
+                <div className="mt-2 break-all font-mono text-[11px]">
+                  Escrow mint: {registry.rentEscrowMint}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="border border-ink/10 bg-paper p-4">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-mute">Config URI</div>
+            {configLink ? (
+              <a
+                href={configLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-2 break-all text-sm transition-colors hover:text-lime"
+              >
+                {template.configUri}
+                <span className="font-mono text-[10px] text-mute">↗</span>
+              </a>
+            ) : (
+              <p className="mt-2 break-all text-sm">{template.configUri || 'No config URI published'}</p>
+            )}
+
+            <div className="mt-4 grid gap-4 border-t border-ink/10 pt-4 sm:grid-cols-2 text-sm">
               <div>
-                <div className="font-mono text-[10px] text-mute uppercase tracking-widest">Rental Window</div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+                  Rental window
+                </div>
                 <div className="mt-1">
-                  {formatDuration(template.minRentDuration)} - {formatDuration(template.maxRentDuration)}
+                  {formatTemplateDuration(template.minRentDuration)} -{' '}
+                  {formatTemplateDuration(template.maxRentDuration)}
                 </div>
               </div>
               <div>
-                <div className="font-mono text-[10px] text-mute uppercase tracking-widest">Parent Template</div>
-                <div className="mt-1 font-mono break-all">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+                  Parent template
+                </div>
+                <div className="mt-1 break-all font-mono text-[11px]">
                   {template.parentTemplate ?? 'Original template'}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="border border-ink/10 p-4 flex flex-col gap-4">
-            <div className="font-mono text-[10px] text-mute uppercase tracking-widest">Registry Stats</div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <div className="text-ink/50">Forks</div>
-                <div>{template.forkCount}</div>
-              </div>
-              <div>
-                <div className="text-ink/50">Rentals</div>
-                <div>{template.rentCount}</div>
-              </div>
-              <div>
-                <div className="text-ink/50">Revenue</div>
-                <div className="font-mono">{Number(template.totalRevenue).toLocaleString()}</div>
-              </div>
-              <div>
-                <div className="text-ink/50">Depth</div>
-                <div>{template.lineageDepth}</div>
-              </div>
+          <div className="border border-ink/10 bg-paper p-4">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+              Template fit snapshot
             </div>
-            {registry && (
-              <div className="border-t border-ink/10 pt-4 text-sm">
-                <div className="font-mono text-[10px] text-mute uppercase tracking-widest mb-2">
-                  Policy
-                </div>
-                <div>Royalty cap: {formatBps(registry.royaltyCapBps)}</div>
-                <div>Platform fee: {formatBps(registry.platformFeeBps)}</div>
-                <div className="font-mono text-[11px] mt-2 break-all">
-                  Escrow mint: {registry.rentEscrowMint}
-                </div>
-              </div>
-            )}
+            <div className="mt-4 flex flex-col gap-3">
+              <SnapshotRow
+                label="Use this when"
+                value={templateBestFor(template)}
+              />
+              <SnapshotRow
+                label="Capability focus"
+                value={templatePrimaryCapabilityLabel(template) ?? 'Mixed capability profile'}
+              />
+              <SnapshotRow
+                label="Commercial motion"
+                value={`${templateMotionLabel(template)} with ${templateSignalLabel(template)}`}
+              />
+            </div>
           </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="border border-ink/10">
-            <div className="px-4 py-3 border-b border-ink/10 flex items-center justify-between">
+            <div className="flex items-center justify-between border-b border-ink/10 px-4 py-3">
               <div>
-                <div className="font-mono text-[10px] text-mute uppercase tracking-widest">Fork lineage</div>
-                <div className="text-sm mt-1">Agents forked from this template</div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+                  Fork lineage
+                </div>
+                <div className="mt-1 text-sm">Agents forked from this template</div>
               </div>
               <div className="font-mono text-[10px] text-mute">{forks.length} forks</div>
             </div>
@@ -233,14 +273,14 @@ export default async function TemplateDetailPage({
             ) : (
               <div className="divide-y divide-ink/10">
                 {forks.map((fork) => (
-                  <div key={fork.address} className="px-4 py-3 text-sm flex items-start justify-between gap-4">
+                  <div key={fork.address} className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
                     <div className="min-w-0">
-                      <div className="font-mono text-[11px] break-all">{fork.childAgentDid}</div>
-                      <div className="text-mute text-xs mt-1">Forker {shortKey(fork.forker)}</div>
+                      <div className="break-all font-mono text-[11px]">{fork.childAgentDid}</div>
+                      <div className="mt-1 text-xs text-mute">Forker {shortKey(fork.forker)}</div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-mono text-[11px]">{formatBps(fork.royaltyBpsSnapshot)}</div>
-                      <div className="text-xs text-mute mt-1">{formatDate(fork.forkedAt)}</div>
+                    <div className="shrink-0 text-right">
+                      <div className="font-mono text-[11px]">{formatTemplateBps(fork.royaltyBpsSnapshot)}</div>
+                      <div className="mt-1 text-xs text-mute">{formatDate(fork.forkedAt)}</div>
                     </div>
                   </div>
                 ))}
@@ -249,10 +289,12 @@ export default async function TemplateDetailPage({
           </div>
 
           <div className="border border-ink/10">
-            <div className="px-4 py-3 border-b border-ink/10 flex items-center justify-between">
+            <div className="flex items-center justify-between border-b border-ink/10 px-4 py-3">
               <div>
-                <div className="font-mono text-[10px] text-mute uppercase tracking-widest">Rental activity</div>
-                <div className="text-sm mt-1">On-chain template rentals and revenue flow</div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-mute">
+                  Rental activity
+                </div>
+                <div className="mt-1 text-sm">On-chain rentals and revenue flow</div>
               </div>
               <div className="font-mono text-[10px] text-mute">{rentals.length} rentals</div>
             </div>
@@ -261,16 +303,18 @@ export default async function TemplateDetailPage({
             ) : (
               <div className="divide-y divide-ink/10">
                 {rentals.map((rental) => (
-                  <div key={rental.address} className="px-4 py-3 text-sm flex items-start justify-between gap-4">
+                  <div key={rental.address} className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
                     <div className="min-w-0">
                       <div className="font-mono text-[11px]">{shortKey(rental.renter)}</div>
-                      <div className="text-xs text-mute mt-1">
+                      <div className="mt-1 text-xs text-mute">
                         {formatDate(rental.startTime)} - {formatDate(rental.endTime)}
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-mono text-[11px]">{Number(rental.prepaidAmount).toLocaleString()}</div>
-                      <div className="text-xs text-mute mt-1 uppercase">{rental.status}</div>
+                    <div className="shrink-0 text-right">
+                      <div className="font-mono text-[11px]">
+                        {formatTemplateRevenue(rental.prepaidAmount)}
+                      </div>
+                      <div className="mt-1 text-xs uppercase text-mute">{rental.status}</div>
                     </div>
                   </div>
                 ))}
@@ -282,9 +326,85 @@ export default async function TemplateDetailPage({
     );
   } catch (e) {
     return (
-      <div className="font-mono text-[11px] text-danger border border-danger/30 bg-danger/5 px-3 py-2">
+      <div className="border border-danger/30 bg-danger/5 px-3 py-2 font-mono text-[11px] text-danger">
         ERR: {(e as Error).message}
       </div>
     );
   }
+}
+
+function Badge({ children }: { children: ReactNode }) {
+  return (
+    <span className="border border-ink/10 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-mute">
+      {children}
+    </span>
+  );
+}
+
+function ActionLink({
+  href,
+  children,
+  emphasis = false,
+}: {
+  href: string;
+  children: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`inline-flex items-center justify-center border px-3 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors ${
+        emphasis
+          ? 'border-lime/30 bg-lime/10 text-lime hover:border-lime/50 hover:bg-lime/15'
+          : 'border-ink/15 text-ink hover:border-ink/30 hover:bg-ink/5'
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function SummaryCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border border-ink/10 bg-paper p-4">
+      <div className="font-mono text-[10px] uppercase tracking-widest text-mute">{label}</div>
+      <div className="mt-2 font-display text-xl tracking-tight">{value}</div>
+    </div>
+  );
+}
+
+function PathStep({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="font-mono text-[10px] uppercase tracking-widest text-mute">{eyebrow}</div>
+      <h2 className="font-display text-xl tracking-tight">{title}</h2>
+      <p className="text-sm leading-6 text-ink/65">{description}</p>
+    </div>
+  );
+}
+
+function StatPair({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-ink/50">{label}</div>
+      <div>{value}</div>
+    </div>
+  );
+}
+
+function SnapshotRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border border-ink/10 bg-paper-2 px-3 py-3">
+      <div className="font-mono text-[10px] uppercase tracking-widest text-mute">{label}</div>
+      <p className="mt-2 text-sm leading-6 text-ink/70">{value}</p>
+    </div>
+  );
 }
