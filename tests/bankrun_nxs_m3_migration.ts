@@ -43,6 +43,11 @@ const INITIAL_BALANCE = 10_000_000;
 const STAKE_AMOUNT = 100_000;
 
 const pdas = {
+  stakingConfig: (): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync(
+      [Buffer.from('staking_config')],
+      NXS_STAKING_PROGRAM_ID,
+    ),
   apyAuthority: (): [PublicKey, number] =>
     PublicKey.findProgramAddressSync(
       [Buffer.from('apy_authority')],
@@ -85,6 +90,7 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
   let owner2Ata: PublicKey;
   let poolPda: PublicKey;
   let owner1StakePda: PublicKey;
+  let configPda: PublicKey;
 
   before(async () => {
     context = await startAnchor('.', [], []);
@@ -114,10 +120,16 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
     await mintTokens(context, authority, stakeMint, owner1Ata, mintAuthority, INITIAL_BALANCE);
     await mintTokens(context, authority, stakeMint, owner2Ata, mintAuthority, INITIAL_BALANCE);
 
+    await program.methods
+      .initialize(authority.publicKey)
+      .accountsPartial({ payer: authority.publicKey })
+      .rpc();
+
+    [configPda] = pdas.stakingConfig();
     [poolPda] = pdas.stakingPoolSingleton();
     await program.methods
       .initPool(stakeMint, new BN(86_400), new BN(0))
-      .accountsPartial({ authority: authority.publicKey })
+      .accountsPartial({ config: configPda, authority: authority.publicKey })
       .rpc();
 
     // owner1 seed stake — exercises step 3's withdraw-path-remains-open assertion
@@ -438,10 +450,15 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
         const ownerXAta = await createATA(ctxX, authX, stakeMintX, ownerX.publicKey);
         await mintTokens(ctxX, authX, stakeMintX, ownerXAta, mintAuthX, INITIAL_BALANCE);
 
+        const [configPdaX] = pdas.stakingConfig();
         [poolPdaX] = pdas.stakingPoolSingleton();
         await programX.methods
+          .initialize(authX.publicKey)
+          .accountsPartial({ payer: authX.publicKey })
+          .rpc();
+        await programX.methods
           .initPool(stakeMintX, new BN(86_400), new BN(0))
-          .accountsPartial({ authority: authX.publicKey })
+          .accountsPartial({ config: configPdaX, authority: authX.publicKey })
           .rpc();
         await programX.methods
           .stake(new BN(STAKE_AMOUNT), new BN(MIN_LOCKUP_SECS))
@@ -518,13 +535,6 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
   });
 
   describe('§Events — migrate_apy_authority attestation', () => {
-    before(async () => {
-      await program.methods
-        .initialize(authority.publicKey)
-        .accountsPartial({ payer: authority.publicKey })
-        .rpc();
-    });
-
     it('migrate_apy_authority emits ApyAuthorityMigrated { old_mint, new_mint, attested_at }', async () => {
       const oldMint = Keypair.generate().publicKey;
       const newMint = Keypair.generate().publicKey;
@@ -534,7 +544,7 @@ describe('bankrun: nxs_staking — M3 migration scaffold (spec/nxs-m3-migration.
 
       const migrateBuilder = program.methods
         .migrateApyAuthority(oldMint, newMint)
-        .accountsPartial({ authority: authority.publicKey });
+        .accountsPartial({ config: configPda, authority: authority.publicKey });
       const migrateCu = await measureCU(context, migrateBuilder, authority);
       logCU('migrate_apy_authority', migrateCu);
       assertWithinBudget('migrate_apy_authority', migrateCu, CU_BUDGETS.migrate_apy_authority);
