@@ -12,6 +12,8 @@
     "test:coverage": "vitest run --coverage",
     "e2e": "npx playwright test",
     "e2e:headed": "npx playwright test --headed",
+    "e2e:wallet": "PLAYWRIGHT_WALLET_ONLY=1 ENABLE_WALLET_SESSION_E2E=1 npx playwright test e2e/wallet-session.spec.ts",
+    "e2e:wallet:open": "bash ./scripts/launch-wallet-chrome.sh",
     "clean": "rm -rf .next",
     "analyze": "ANALYZE=true next build"
   },

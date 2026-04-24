@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const globalCluster = process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? 'devnet';
+const walletSessionOnly = process.env.PLAYWRIGHT_WALLET_ONLY === '1';
 const globalRpcUrl =
   process.env.NEXT_PUBLIC_RPC_URL ??
   (globalCluster === 'mainnet-beta'
@@ -27,24 +28,26 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:3401',
     trace: 'on-first-retry',
   },
-  webServer: {
-    command: 'pnpm build && pnpm exec next start -p 3401',
-    port: 3401,
-    reuseExistingServer: false,
-    env: {
-      NEXT_PUBLIC_SOLANA_CLUSTER: globalCluster,
-      NEXT_PUBLIC_RPC_URL: globalRpcUrl,
-      NEXT_PUBLIC_STAKING_CLUSTER: process.env.NEXT_PUBLIC_STAKING_CLUSTER ?? 'mainnet-beta',
-      NEXT_PUBLIC_STAKING_RPC_URL: stakingRpcUrl,
-      NEXT_PUBLIC_STAKING_PROGRAM_NXS_STAKING:
-        process.env.NEXT_PUBLIC_STAKING_PROGRAM_NXS_STAKING ??
-        'GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z',
-      NEXT_PUBLIC_STAKING_STAKE_MINT:
-        process.env.NEXT_PUBLIC_STAKING_STAKE_MINT ??
-        'HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump',
-      SESSION_SECRET: process.env.SESSION_SECRET ?? 'playwright-local-session-secret',
-    },
-  },
+  webServer: walletSessionOnly
+    ? undefined
+    : {
+        command: 'pnpm build && pnpm exec next start -p 3401',
+        port: 3401,
+        reuseExistingServer: false,
+        env: {
+          NEXT_PUBLIC_SOLANA_CLUSTER: globalCluster,
+          NEXT_PUBLIC_RPC_URL: globalRpcUrl,
+          NEXT_PUBLIC_STAKING_CLUSTER: process.env.NEXT_PUBLIC_STAKING_CLUSTER ?? 'mainnet-beta',
+          NEXT_PUBLIC_STAKING_RPC_URL: stakingRpcUrl,
+          NEXT_PUBLIC_STAKING_PROGRAM_NXS_STAKING:
+            process.env.NEXT_PUBLIC_STAKING_PROGRAM_NXS_STAKING ??
+            'GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z',
+          NEXT_PUBLIC_STAKING_STAKE_MINT:
+            process.env.NEXT_PUBLIC_STAKING_STAKE_MINT ??
+            'HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump',
+          SESSION_SECRET: process.env.SESSION_SECRET ?? 'playwright-local-session-secret',
+        },
+      },
   projects: [
     {
       name: 'chromium',
