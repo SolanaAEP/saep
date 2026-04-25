@@ -194,7 +194,37 @@ Defaults:
 
 The smoke script restores the original dispute window afterward unless you pass `--keep-dispute-window`.
 
-## 5e. Smoke a hosted Render indexer
+## 5e. Smoke the Kamino treasury-yield devnet route
+
+The treasury-yield smoke prepares one Kamino deposit route and one withdraw route, builds the
+SAEP treasury instructions, and optionally submits them on devnet. It is intentionally guarded:
+without `--send`, it only checks prerequisites, calls the configured route builder, and builds
+transactions.
+
+```bash
+SAEP_KAMINO_ROUTE_BUILDER_URL=https://your-route-builder.example.com/kamino \
+SAEP_TREASURY_AGENT_DID_HEX=<32-byte-did-hex> \
+SAEP_TREASURY_STRATEGY_ID_HEX=<32-byte-strategy-id-hex> \
+SAEP_TREASURY_UNDERLYING_MINT=<usdc-mint> \
+SAEP_TREASURY_RECEIPT_MINT=<kamino-receipt-mint> \
+SAEP_TREASURY_KAMINO_PROGRAM=<approved-kamino-program> \
+SAEP_DISCOVERY_URL=https://your-discovery.example.com \
+pnpm smoke:devnet-treasury-yield
+```
+
+To actually submit the devnet deposit and withdraw transactions, add an operator wallet and the
+explicit send acknowledgement:
+
+```bash
+ANCHOR_WALLET=~/.config/solana/id.json \
+SAEP_TREASURY_YIELD_SEND_ACK=I_UNDERSTAND_DEVNET_TREASURY_YIELD \
+pnpm smoke:devnet-treasury-yield --send
+```
+
+The script never targets mainnet. Keep the first amount tiny, and verify the resulting
+`StrategyPosition` through Discovery before treating the lane as devnet-proven.
+
+## 5f. Smoke a hosted Render indexer
 
 When you move the indexer off localhost and onto Render, the supported smoke path is:
 

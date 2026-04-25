@@ -19,6 +19,7 @@
     "set:task-market-dispute-window": "tsx scripts/set_task_market_dispute_window.ts",
     "smoke:devnet-x402": "tsx scripts/smoke_devnet_x402.ts",
     "smoke:devnet-verify-claim": "tsx scripts/smoke_devnet_verify_claim.ts",
+    "smoke:devnet-treasury-yield": "tsx scripts/smoke_devnet_treasury_yield.ts",
     "smoke:compute-bonds": "tsx scripts/smoke_compute_bond_snapshots.ts",
     "smoke:compute-bonds:local": "tsx scripts/smoke_compute_bond_snapshots_local.ts",
     "smoke:indexer:render": "tsx scripts/smoke_render_indexer.ts",
