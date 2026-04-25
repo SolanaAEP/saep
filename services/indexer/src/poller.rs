@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use base64::{engine::general_purpose, Engine as _};
 use chrono::Utc;
 use diesel::prelude::*;
 use serde_json::{json, Value};
@@ -12,7 +13,7 @@ use crate::ingest::{self, NewBlock, NewEvent};
 use crate::metrics;
 use crate::programs::{self, SaepProgram};
 use crate::pubsub::Publisher;
-use crate::schema::{blocks, program_events, sync_cursor};
+use crate::schema::{program_events, sync_cursor};
 
 pub async fn run(cfg: Config, pool: PgPool, publisher: Publisher) -> Result<()> {
     let idl_dir = idl::default_idl_path();
@@ -25,12 +26,12 @@ pub async fn run(cfg: Config, pool: PgPool, publisher: Publisher) -> Result<()> 
         "idl registry loaded"
     );
 
-    if ingest_store_is_empty(&pool)? {
+    if event_store_is_empty(&pool)? {
         let cleared = clear_all_cursors(&pool)?;
         if cleared > 0 {
             tracing::warn!(
                 cleared,
-                "empty ingest tables found; reset sync cursors for bootstrap"
+                "empty event table found; reset sync cursors for bootstrap"
             );
         }
     }
@@ -162,6 +163,11 @@ fn ingest_tx(
         Some(m) if !m.is_null() => m,
         _ => return,
     };
+
+    ingest_log_events(
+        pool, registry, publisher, p, signature, slot, block_time, meta,
+    );
+
     let message = match tx.pointer("/transaction/message") {
         Some(m) => m,
         None => return,
@@ -220,30 +226,75 @@ fn ingest_tx(
             if bytes.len() < 8 {
                 continue;
             }
-            if let Some((event_name, data)) = ingest::decode_event(registry, p.id, &bytes) {
-                let ev = NewEvent {
-                    signature,
-                    slot,
-                    program_id: p.id,
-                    event_name: &event_name,
-                    data: data.clone(),
-                    ingested_at: Utc::now(),
-                };
-                if let Err(e) = ingest::record_event(pool, ev) {
-                    tracing::warn!(error = %e, signature, "record_event failed");
-                } else {
-                    metrics::EVENTS_INGESTED
-                        .with_label_values(&[p.name, &event_name])
-                        .inc();
-                    if let Some(bt) = block_time {
-                        let lag = (Utc::now().timestamp() - bt).max(0) as f64;
-                        metrics::INGEST_LAG
-                            .with_label_values(&[p.name])
-                            .observe(lag);
-                    }
-                    publisher.spawn_publish(p.name, p.id, &event_name, signature, slot, &data);
-                }
+            record_event_payload(
+                pool, registry, publisher, p, signature, slot, block_time, &bytes,
+            );
+        }
+    }
+}
+
+fn ingest_log_events(
+    pool: &PgPool,
+    registry: &Registry,
+    publisher: &Publisher,
+    p: &SaepProgram,
+    signature: &str,
+    slot: i64,
+    block_time: Option<i64>,
+    meta: &Value,
+) {
+    let logs = match meta.get("logMessages").and_then(|a| a.as_array()) {
+        Some(a) => a,
+        None => return,
+    };
+    for log in logs.iter().filter_map(|v| v.as_str()) {
+        let Some(payload) = log.strip_prefix("Program data: ") else {
+            continue;
+        };
+        let Ok(bytes) = general_purpose::STANDARD.decode(payload.trim()) else {
+            continue;
+        };
+        record_event_payload(
+            pool, registry, publisher, p, signature, slot, block_time, &bytes,
+        );
+    }
+}
+
+fn record_event_payload(
+    pool: &PgPool,
+    registry: &Registry,
+    publisher: &Publisher,
+    p: &SaepProgram,
+    signature: &str,
+    slot: i64,
+    block_time: Option<i64>,
+    bytes: &[u8],
+) {
+    if bytes.len() < 8 {
+        return;
+    }
+    if let Some((event_name, data)) = ingest::decode_event(registry, p.id, bytes) {
+        let ev = NewEvent {
+            signature,
+            slot,
+            program_id: p.id,
+            event_name: &event_name,
+            data: data.clone(),
+            ingested_at: Utc::now(),
+        };
+        if let Err(e) = ingest::record_event(pool, ev) {
+            tracing::warn!(error = %e, signature, "record_event failed");
+        } else {
+            metrics::EVENTS_INGESTED
+                .with_label_values(&[p.name, &event_name])
+                .inc();
+            if let Some(bt) = block_time {
+                let lag = (Utc::now().timestamp() - bt).max(0) as f64;
+                metrics::INGEST_LAG
+                    .with_label_values(&[p.name])
+                    .observe(lag);
             }
+            publisher.spawn_publish(p.name, p.id, &event_name, signature, slot, &data);
         }
     }
 }
@@ -388,12 +439,8 @@ fn read_cursor(pool: &PgPool, program_id: &str) -> Result<Option<String>> {
     Ok(row.flatten())
 }
 
-fn ingest_store_is_empty(pool: &PgPool) -> Result<bool> {
+fn event_store_is_empty(pool: &PgPool) -> Result<bool> {
     let mut conn = pool.get()?;
-    let block_count: i64 = blocks::table.count().get_result(&mut conn)?;
-    if block_count > 0 {
-        return Ok(false);
-    }
     let event_count: i64 = program_events::table.count().get_result(&mut conn)?;
     Ok(event_count == 0)
 }
