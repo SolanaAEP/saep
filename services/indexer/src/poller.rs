@@ -2,12 +2,13 @@ use anyhow::{anyhow, Context, Result};
 use chrono::Utc;
 use diesel::prelude::*;
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::time::Duration;
 
 use crate::config::Config;
 use crate::db::PgPool;
 use crate::idl::{self, Registry};
-use crate::ingest::{self, NewEvent};
+use crate::ingest::{self, NewBlock, NewEvent};
 use crate::metrics;
 use crate::programs::{self, SaepProgram};
 use crate::pubsub::Publisher;
@@ -64,6 +65,7 @@ async fn poll_program(
     }
 
     // Oldest first so the cursor advances monotonically.
+    let mut block_cache = HashMap::new();
     for entry in sigs.iter().rev() {
         let signature = entry
             .get("signature")
@@ -84,13 +86,56 @@ async fn poll_program(
             }
         };
 
+        ensure_block_recorded(cfg, http, pool, signature, slot, &tx, &mut block_cache).await?;
         ingest_tx(pool, registry, publisher, p, signature, slot, &tx);
         write_cursor(pool, p.id, signature, slot)?;
-        metrics::LAST_SLOT
-            .with_label_values(&[p.name])
-            .set(slot);
+        metrics::LAST_SLOT.with_label_values(&[p.name]).set(slot);
     }
     Ok(())
+}
+
+async fn ensure_block_recorded(
+    cfg: &Config,
+    http: &reqwest::Client,
+    pool: &PgPool,
+    signature: &str,
+    slot: i64,
+    tx: &Value,
+    cache: &mut HashMap<i64, bool>,
+) -> Result<()> {
+    if cache.contains_key(&slot) {
+        return Ok(());
+    }
+
+    let (hash, parent_slot) = match get_block_header(cfg, http, slot).await {
+        Ok(Some(header)) => header,
+        Ok(None) => fallback_block_header(signature, tx),
+        Err(err) => {
+            tracing::warn!(slot, error = %err, "getBlock failed; recording fallback block header");
+            fallback_block_header(signature, tx)
+        }
+    };
+
+    ingest::record_block(
+        pool,
+        NewBlock {
+            slot,
+            hash: &hash,
+            parent_slot,
+            processed_at: Utc::now(),
+        },
+    )?;
+    cache.insert(slot, true);
+    Ok(())
+}
+
+fn fallback_block_header(signature: &str, tx: &Value) -> (String, Option<i64>) {
+    let hash = tx
+        .pointer("/transaction/message/recentBlockhash")
+        .and_then(|v| v.as_str())
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("tx:{signature}"));
+    (hash, None)
 }
 
 fn ingest_tx(
@@ -165,9 +210,7 @@ fn ingest_tx(
             if bytes.len() < 8 {
                 continue;
             }
-            if let Some((event_name, data)) =
-                ingest::decode_event(registry, p.id, &bytes)
-            {
+            if let Some((event_name, data)) = ingest::decode_event(registry, p.id, &bytes) {
                 let ev = NewEvent {
                     signature,
                     slot,
@@ -188,9 +231,7 @@ fn ingest_tx(
                             .with_label_values(&[p.name])
                             .observe(lag);
                     }
-                    publisher.spawn_publish(
-                        p.name, p.id, &event_name, signature, slot, &data,
-                    );
+                    publisher.spawn_publish(p.name, p.id, &event_name, signature, slot, &data);
                 }
             }
         }
@@ -235,11 +276,50 @@ async fn get_signatures(
         .unwrap_or_default())
 }
 
-async fn get_transaction(
+async fn get_block_header(
     cfg: &Config,
     http: &reqwest::Client,
-    sig: &str,
-) -> Result<Option<Value>> {
+    slot: i64,
+) -> Result<Option<(String, Option<i64>)>> {
+    let body = json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "getBlock",
+        "params": [
+            slot,
+            {
+                "commitment": "confirmed",
+                "encoding": "json",
+                "transactionDetails": "none",
+                "rewards": false,
+                "maxSupportedTransactionVersion": 0
+            }
+        ],
+    });
+    let v: Value = http
+        .post(cfg.rpc_url_required())
+        .json(&body)
+        .send()
+        .await?
+        .json()
+        .await?;
+    if let Some(err) = v.get("error") {
+        metrics::RPC_ERRORS.with_label_values(&["getBlock"]).inc();
+        return Err(anyhow!("rpc error: {err}"));
+    }
+    let Some(result) = v.get("result").filter(|r| !r.is_null()) else {
+        return Ok(None);
+    };
+    let hash = result
+        .get("blockhash")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow!("blockhash missing for slot {slot}"))?
+        .to_string();
+    let parent_slot = result.get("parentSlot").and_then(|v| v.as_i64());
+    Ok(Some((hash, parent_slot)))
+}
+
+async fn get_transaction(cfg: &Config, http: &reqwest::Client, sig: &str) -> Result<Option<Value>> {
     let body = json!({
         "jsonrpc": "2.0",
         "id": 1,
