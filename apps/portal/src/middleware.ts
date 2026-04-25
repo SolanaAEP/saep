@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 function defaultRpcUrl(cluster: string | undefined): string {
   if (cluster === 'mainnet-beta') {
-    return 'https://mainnet.helius-rpc.com/?api-key=b457adfa-182d-449a-bf65-74e809efcd77';
+    return 'https://solana-rpc.publicnode.com';
   }
   if (cluster === 'localnet') return 'http://127.0.0.1:8899';
   return 'https://api.devnet.solana.com';
@@ -10,7 +10,7 @@ function defaultRpcUrl(cluster: string | undefined): string {
 
 function cspHeader(nonce: string): string {
   const globalCluster = process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? 'devnet';
-  const stakingCluster = process.env.NEXT_PUBLIC_STAKING_CLUSTER ?? globalCluster;
+  const stakingCluster = process.env.NEXT_PUBLIC_STAKING_CLUSTER ?? 'mainnet-beta';
   const rpcUrls = Array.from(
     new Set(
       [

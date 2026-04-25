@@ -10,7 +10,7 @@ import {
   getAssociatedTokenAddressSync,
   getMint,
 } from '@solana/spl-token';
-import { PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { PublicKey, TransactionInstruction, type Connection } from '@solana/web3.js';
 import {
   buildBeginUnstakeIx,
   buildStakeIx,
@@ -37,6 +37,8 @@ const MAX_MULTIPLIER = 4;
 const CONFIG_SEED = Buffer.from('staking_config');
 const LOCK_PRESETS = [7, 30, 90, 180, 365] as const;
 const MAINNET_SAEP_MINT = 'HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump';
+const STAKING_CONFIG_DISCRIMINATOR = Buffer.from([45, 134, 252, 82, 37, 57, 84, 25]);
+const STAKING_POOL_DISCRIMINATOR = Buffer.from([203, 19, 214, 220, 220, 154, 24, 102]);
 
 interface ConfigView {
   authority: PublicKey;
@@ -130,20 +132,14 @@ export function StakingShell() {
     queryKey: ['nxs-staking-config', cluster.cluster, configPda.toBase58()],
     enabled: Boolean(programInfo.data?.executable),
     staleTime: 30_000,
-    queryFn: async (): Promise<ConfigView | null> => {
-      const raw = await fetchNullableAccount(program, 'stakingConfig', configPda);
-      return raw ? mapConfig(raw) : null;
-    },
+    queryFn: () => fetchStakingConfigAccount(connection, program.programId, configPda),
   });
 
   const poolQuery = useQuery({
     queryKey: ['nxs-staking-pool', cluster.cluster, poolPda.toBase58()],
     enabled: Boolean(programInfo.data?.executable),
     staleTime: 15_000,
-    queryFn: async (): Promise<PoolView | null> => {
-      const raw = await fetchNullableAccount(program, 'stakingPool', poolPda);
-      return raw ? mapPool(raw) : null;
-    },
+    queryFn: () => fetchStakingPoolAccount(connection, program.programId, poolPda),
   });
 
   const mintQuery = useQuery({
@@ -908,29 +904,6 @@ async function fetchNullableAccount(
   return (await accessor.fetchNullable(address)) as Record<string, unknown> | null;
 }
 
-function mapConfig(raw: Record<string, unknown>): ConfigView {
-  return {
-    authority: raw.authority as PublicKey,
-    bump: Number(raw.bump),
-  };
-}
-
-function mapPool(raw: Record<string, unknown>): PoolView {
-  return {
-    authority: raw.authority as PublicKey,
-    pendingAuthority: (raw.pendingAuthority as PublicKey | null) ?? null,
-    stakeMint: raw.stakeMint as PublicKey,
-    totalStaked: toBigInt(raw.totalStaked),
-    totalStakers: toNumber(raw.totalStakers),
-    currentEpoch: toBigInt(raw.currentEpoch),
-    epochDurationSecs: toNumber(raw.epochDurationSecs),
-    epochStartTime: toNumber(raw.epochStartTime),
-    rewardRatePerEpoch: toBigInt(raw.rewardRatePerEpoch),
-    paused: Boolean(raw.paused),
-    bump: toNumber(raw.bump),
-  };
-}
-
 function mapStakePosition(raw: Record<string, unknown>): StakePositionView {
   return {
     owner: raw.owner as PublicKey,
@@ -947,6 +920,135 @@ function mapStakePosition(raw: Record<string, unknown>): StakePositionView {
     bump: toNumber(raw.bump),
     vaultBump: toNumber(raw.vaultBump),
   };
+}
+
+async function fetchStakingConfigAccount(
+  connection: Connection,
+  programId: PublicKey,
+  address: PublicKey,
+): Promise<ConfigView | null> {
+  const info = await connection.getAccountInfo(address, 'confirmed');
+  if (!info) return null;
+  assertProgramOwnedAccount(info.owner, programId, 'staking config');
+  const data = Buffer.from(info.data);
+  assertDiscriminator(data, STAKING_CONFIG_DISCRIMINATOR, 'staking config');
+  requireBytes(data, 8, 33, 'staking config');
+  return {
+    authority: new PublicKey(data.subarray(8, 40)),
+    bump: data.readUInt8(40),
+  };
+}
+
+async function fetchStakingPoolAccount(
+  connection: Connection,
+  programId: PublicKey,
+  address: PublicKey,
+): Promise<PoolView | null> {
+  const info = await connection.getAccountInfo(address, 'confirmed');
+  if (!info) return null;
+  assertProgramOwnedAccount(info.owner, programId, 'staking pool');
+  return decodeStakingPool(Buffer.from(info.data));
+}
+
+function decodeStakingPool(data: Buffer): PoolView {
+  assertDiscriminator(data, STAKING_POOL_DISCRIMINATOR, 'staking pool');
+  let offset = 8;
+  const readPublicKey = () => {
+    requireBytes(data, offset, 32, 'staking pool pubkey');
+    const key = new PublicKey(data.subarray(offset, offset + 32));
+    offset += 32;
+    return key;
+  };
+  const readU8 = (label: string) => {
+    requireBytes(data, offset, 1, label);
+    const value = data.readUInt8(offset);
+    offset += 1;
+    return value;
+  };
+  const readBool = (label: string) => {
+    const value = readU8(label);
+    if (value !== 0 && value !== 1) throw new Error(`Invalid ${label}: ${value}`);
+    return value === 1;
+  };
+  const readU32 = (label: string) => {
+    requireBytes(data, offset, 4, label);
+    const value = data.readUInt32LE(offset);
+    offset += 4;
+    return value;
+  };
+  const readU64 = (label: string) => {
+    requireBytes(data, offset, 8, label);
+    const value = data.readBigUInt64LE(offset);
+    offset += 8;
+    return value;
+  };
+  const readI64 = (label: string) => {
+    requireBytes(data, offset, 8, label);
+    const value = Number(data.readBigInt64LE(offset));
+    offset += 8;
+    return value;
+  };
+
+  const authority = readPublicKey();
+  const pendingTag = readU8('pending authority tag');
+  let pendingAuthority: PublicKey | null = null;
+  if (pendingTag === 1) {
+    pendingAuthority = readPublicKey();
+  } else if (pendingTag !== 0) {
+    throw new Error(`Invalid pending authority tag: ${pendingTag}`);
+  }
+
+  const stakeMint = readPublicKey();
+  const totalStaked = readU64('total staked');
+  const totalStakers = readU32('total stakers');
+  const currentEpoch = readU64('current epoch');
+  const epochDurationSecs = readI64('epoch duration');
+  const epochStartTime = readI64('epoch start');
+  const rewardRatePerEpoch = readU64('reward rate');
+  const paused = readBool('paused');
+
+  // Mainnet currently has the pre-close/freeze pool layout. Newer local IDLs add
+  // pause/close fields before bump, so read those only when they are present.
+  let bump = readU8('pool bump');
+  if ((bump === 0 || bump === 1) && data.length - offset >= 18) {
+    offset += 8; // pause_new_stakes_at
+    readBool('closed');
+    offset += 8; // closed_at
+    bump = readU8('pool bump');
+  }
+
+  return {
+    authority,
+    pendingAuthority,
+    stakeMint,
+    totalStaked,
+    totalStakers,
+    currentEpoch,
+    epochDurationSecs,
+    epochStartTime,
+    rewardRatePerEpoch,
+    paused,
+    bump,
+  };
+}
+
+function assertProgramOwnedAccount(owner: PublicKey, programId: PublicKey, label: string) {
+  if (!owner.equals(programId)) {
+    throw new Error(`${label} is owned by ${owner.toBase58()}, expected ${programId.toBase58()}`);
+  }
+}
+
+function assertDiscriminator(data: Buffer, expected: Buffer, label: string) {
+  requireBytes(data, 0, expected.length, label);
+  if (!data.subarray(0, expected.length).equals(expected)) {
+    throw new Error(`${label} discriminator mismatch`);
+  }
+}
+
+function requireBytes(data: Buffer, offset: number, len: number, label: string) {
+  if (data.length < offset + len) {
+    throw new Error(`${label} account data is truncated`);
+  }
 }
 
 function decodeStatus(status: unknown): StakePositionView['status'] {

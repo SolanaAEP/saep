@@ -2,8 +2,7 @@ import { resolveCluster, type SaepCluster } from '@saep/sdk';
 
 const MAINNET_NXS_STAKING_PROGRAM_ID = 'GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z';
 const MAINNET_SAEP_STAKE_MINT = 'HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump';
-const MAINNET_STAKING_RPC_URL =
-  'https://mainnet.helius-rpc.com/?api-key=b457adfa-182d-449a-bf65-74e809efcd77';
+const MAINNET_STAKING_RPC_URL = 'https://solana-rpc.publicnode.com';
 
 function cleanProgramOverrides(overrides: Record<string, string | undefined>) {
   return Object.fromEntries(
@@ -33,7 +32,7 @@ export const clusterConfig = resolveCluster({
 });
 
 const globalStakeMint = process.env.NEXT_PUBLIC_STAKE_MINT;
-const stakingCluster = (process.env.NEXT_PUBLIC_STAKING_CLUSTER ?? rawCluster) as SaepCluster;
+const stakingCluster = (process.env.NEXT_PUBLIC_STAKING_CLUSTER ?? 'mainnet-beta') as SaepCluster;
 const stakingEndpoint =
   process.env.NEXT_PUBLIC_STAKING_RPC_URL ??
   (stakingCluster === rawCluster

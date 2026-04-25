@@ -11,7 +11,7 @@ const globalRpcUrl =
       : 'https://api.devnet.solana.com');
 const stakingRpcUrl =
   process.env.NEXT_PUBLIC_STAKING_RPC_URL ??
-  'https://mainnet.helius-rpc.com/?api-key=b457adfa-182d-449a-bf65-74e809efcd77';
+  'https://solana-rpc.publicnode.com';
 
 export default defineConfig({
   testDir: './e2e',
