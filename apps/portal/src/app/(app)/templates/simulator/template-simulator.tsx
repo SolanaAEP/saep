@@ -186,8 +186,10 @@ export function TemplateSimulator({ templates, registry, initialTemplateId }: Pr
               </div>
             ) : null}
 
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <MiniLink href={`/templates/${selectedTemplate.templateId}`}>Open detail</MiniLink>
+              <MiniLink href={`/templates/${selectedTemplate.templateId}/rent`}>Rent template</MiniLink>
+              <MiniLink href={`/templates/${selectedTemplate.templateId}/fork`}>Link fork</MiniLink>
               {marketplaceHref ? <MiniLink href={marketplaceHref}>Matching marketplace</MiniLink> : null}
               {leaderboardHref ? <MiniLink href={leaderboardHref}>Capability leaderboard</MiniLink> : null}
             </div>

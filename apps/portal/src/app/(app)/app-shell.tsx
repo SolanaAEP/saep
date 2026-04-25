@@ -22,7 +22,9 @@ function isPublicRoute(pathname: string | null): boolean {
     pathname === '/analytics' ||
     pathname?.startsWith('/analytics/') === true ||
     pathname === '/staking' ||
-    pathname?.startsWith('/staking/') === true
+    pathname?.startsWith('/staking/') === true ||
+    pathname === '/templates' ||
+    pathname?.startsWith('/templates/') === true
   );
 }
 

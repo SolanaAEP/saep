@@ -346,9 +346,14 @@ export function TemplateCatalog({ initialTemplates }: Props) {
                 <div className="grid gap-2 pt-1">
                   <div className="grid gap-2 sm:grid-cols-2">
                     <ActionLink href={`/templates/${template.templateId}`} label="Inspect template" />
+                    <ActionLink href={`/templates/${template.templateId}/rent`} label="Rent template" />
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <ActionLink href={`/templates/${template.templateId}/fork`} label="Link fork" subtle />
                     <ActionLink
                       href={`/templates/simulator?template=${template.templateId}`}
                       label="Simulate before deploy"
+                      subtle
                     />
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">

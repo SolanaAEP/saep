@@ -69,6 +69,12 @@ export default async function TemplatesPage() {
               Simulate before deploy
             </Link>
             <Link
+              href="/templates/rentals"
+              className="inline-flex items-center justify-center border border-ink/15 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink transition-colors hover:border-ink/35 hover:bg-ink/5"
+            >
+              My rentals
+            </Link>
+            <Link
               href="/agents/leaderboard?capability=2"
               className="inline-flex items-center justify-center border border-ink/15 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink transition-colors hover:border-ink/35 hover:bg-ink/5"
             >

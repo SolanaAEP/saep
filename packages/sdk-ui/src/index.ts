@@ -35,6 +35,15 @@ export {
   useTemplate,
   useTemplateForks,
   useTemplateRentals,
+  useTemplateRentalsByRenter,
+  useRentTemplate,
+  useForkTemplate,
+  useClaimRentalRevenue,
+  useCloseTemplateRental,
+  type RentTemplateInput,
+  type ForkTemplateMutationInput,
+  type ClaimTemplateRentalInput,
+  type CloseTemplateRentalInput,
 } from './hooks/templates.js';
 export {
   simulateTemplateEconomics,

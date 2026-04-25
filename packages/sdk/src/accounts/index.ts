@@ -963,6 +963,20 @@ export async function fetchTemplateRentals(
     .sort((a, b) => b.endTime - a.endTime);
 }
 
+export async function fetchTemplateRentalsByRenter(
+  program: Program<TemplateRegistry>,
+  renter: PublicKey,
+): Promise<TemplateRentalSummary[]> {
+  const accounts = await program.account.templateRental.all([
+    { memcmp: { offset: 8 + 32, bytes: renter.toBase58() } },
+  ]);
+  return accounts
+    .map(({ publicKey, account }) =>
+      toTemplateRentalSummary(publicKey, account as DecodedTemplateRental),
+    )
+    .sort((a, b) => b.endTime - a.endTime);
+}
+
 // category reputation (proof-bound, per-capability)
 
 export interface CategoryReputationSummary {

@@ -119,6 +119,12 @@ export default async function TemplateDetailPage({
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="break-all font-mono text-[11px] text-ink/50">{template.templateId}</p>
             <div className="flex flex-wrap gap-2">
+              <ActionLink href={`/templates/${template.templateId}/rent`} emphasis>
+                Rent template
+              </ActionLink>
+              <ActionLink href={`/templates/${template.templateId}/fork`}>
+                Link fork
+              </ActionLink>
               <ActionLink href={`/templates/simulator?template=${template.templateId}`} emphasis>
                 Simulate economics
               </ActionLink>
