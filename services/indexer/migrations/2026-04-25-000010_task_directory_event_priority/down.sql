@@ -4,7 +4,7 @@ CREATE MATERIALIZED VIEW task_directory AS
 WITH created AS (
     SELECT DISTINCT ON (data->'task_id')
         jsonb_u8_array_to_bytea(data->'task_id')  AS task_id,
-        data->>'creator'                          AS creator,
+        data->>'client'                           AS creator,
         jsonb_u8_array_to_bytea(data->'agent_did') AS agent_did,
         (data->>'payment_amount')::numeric         AS reward_lamports,
         (data->>'deadline')::bigint                AS deadline_unix,
