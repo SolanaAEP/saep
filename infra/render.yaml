@@ -119,7 +119,7 @@ services:
       - key: NEXT_PUBLIC_STAKING_CLUSTER
         value: mainnet-beta
       - key: NEXT_PUBLIC_STAKING_RPC_URL
-        sync: false
+        value: https://solana-rpc.publicnode.com
       - key: NEXT_PUBLIC_STAKING_PROGRAM_NXS_STAKING
         value: GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z
       - key: NEXT_PUBLIC_STAKING_STAKE_MINT

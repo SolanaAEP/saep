@@ -9,9 +9,12 @@ const globalRpcUrl =
     : globalCluster === 'localnet'
       ? 'http://127.0.0.1:8899'
       : 'https://api.devnet.solana.com');
+const deprecatedStakingRpcUrl =
+  'https://mainnet.helius-rpc.com/?api-key=b457adfa-182d-449a-bf65-74e809efcd77';
 const stakingRpcUrl =
-  process.env.NEXT_PUBLIC_STAKING_RPC_URL ??
-  'https://solana-rpc.publicnode.com';
+  process.env.NEXT_PUBLIC_STAKING_RPC_URL === deprecatedStakingRpcUrl
+    ? 'https://solana-rpc.publicnode.com'
+    : (process.env.NEXT_PUBLIC_STAKING_RPC_URL ?? 'https://solana-rpc.publicnode.com');
 
 export default defineConfig({
   testDir: './e2e',

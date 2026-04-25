@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const MAINNET_STAKING_RPC_URL = 'https://solana-rpc.publicnode.com';
+const DEPRECATED_STAKING_RPC_URL =
+  'https://mainnet.helius-rpc.com/?api-key=b457adfa-182d-449a-bf65-74e809efcd77';
+
 function defaultRpcUrl(cluster: string | undefined): string {
   if (cluster === 'mainnet-beta') {
-    return 'https://solana-rpc.publicnode.com';
+    return MAINNET_STAKING_RPC_URL;
   }
   if (cluster === 'localnet') return 'http://127.0.0.1:8899';
   return 'https://api.devnet.solana.com';
+}
+
+function cleanRpcUrl(url: string | undefined) {
+  if (!url) return undefined;
+  return url === DEPRECATED_STAKING_RPC_URL ? MAINNET_STAKING_RPC_URL : url;
 }
 
 function cspHeader(nonce: string): string {
@@ -14,8 +23,8 @@ function cspHeader(nonce: string): string {
   const rpcUrls = Array.from(
     new Set(
       [
-        process.env.NEXT_PUBLIC_RPC_URL ?? defaultRpcUrl(globalCluster),
-        process.env.NEXT_PUBLIC_STAKING_RPC_URL ?? defaultRpcUrl(stakingCluster),
+        cleanRpcUrl(process.env.NEXT_PUBLIC_RPC_URL) ?? defaultRpcUrl(globalCluster),
+        cleanRpcUrl(process.env.NEXT_PUBLIC_STAKING_RPC_URL) ?? defaultRpcUrl(stakingCluster),
       ].filter(Boolean),
     ),
   );
