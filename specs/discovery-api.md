@@ -61,6 +61,7 @@ Shape types below. `total` is returned only when a `WHERE` clause narrows the re
 | `GET /treasury/:did` | Treasury overview | — | `{vaults: VaultBalance[], allowed_mints: AllowedMint[], spend_window: SpendWindow}` |
 | `GET /treasury/:did/vaults` | Per-mint vault balances | `mint` (optional filter) | `{items: VaultBalance[]}` |
 | `GET /treasury/:did/yield` | Per-treasury yield allocation and accounting snapshot | — | `TreasuryYieldSnapshot` |
+| `GET /treasury/:did/yield/positions` | Per-treasury strategy-position snapshots | — | `{items: TreasuryYieldPositionSummary[]}` |
 | `GET /treasury/yield-strategies` | Governance-approved yield strategy snapshots | `venue`, `status`, `limit` | `{items: YieldStrategySummary[]}` |
 
 ### Shape types
@@ -222,14 +223,15 @@ Indexes: `(status, created_at_unix DESC)`, `(creator, created_at_unix DESC)`, `(
 
 ### Materialized views — treasury yield
 
-Migration `2026-04-23-000008_treasury_yield_snapshots` adds two event-sourced yield views for the M2 treasury-yield control plane:
+Migrations `2026-04-23-000008_treasury_yield_snapshots` and `2026-04-25-000009_yield_strategy_positions` add event-sourced yield views for the M2 treasury-yield control plane and Kamino movement path:
 
 | View | Purpose | Source events |
 |---|---|---|
 | `yield_strategy_directory` | Approved strategy descriptor list, including venue, mints, cap, risk tier, status, and metadata URI | `YieldStrategyRegistered`, `YieldStrategyStatusSet` |
 | `treasury_yield_directory` | One row per configured treasury, including allocation bps, status, unwind flag, idle/deployed/realized accounting, and latest accounting slot | `TreasuryYieldConfigSet`, `TreasuryYieldUnwindRequested`, `TreasuryYieldAccountingRecorded` |
+| `treasury_yield_position_directory` | One row per active or closed strategy position, including principal, receipt balance, realized yield, status, and latest movement event | `YieldStrategyDeposit`, `YieldStrategyWithdraw`, `YieldStrategyEmergencyUnwind` |
 
-The first shipped slice does **not** imply live Kamino deposits. It exposes the registry/config/accounting read model needed before audited venue adapters can move funds.
+Kamino is the first live movement venue. Marginfi, Drift, and any leveraged strategies remain future lanes.
 
 **Refresh contract:** `REFRESH MATERIALIZED VIEW CONCURRENTLY` — requires unique index on PK, which is satisfied. Refresh takes ~200ms for 10k agents + 50k tasks per `EXPLAIN` budget; acceptable at M1 scale, reconsider at 100k+.
 

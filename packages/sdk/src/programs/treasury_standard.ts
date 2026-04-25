@@ -1,5 +1,5 @@
 import { BN, Program } from '../anchor.js';
-import { PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
+import { PublicKey, SystemProgram, TransactionInstruction, type AccountMeta } from '@solana/web3.js';
 import type { TreasuryStandard } from '../generated/treasury_standard.js';
 import type { ClusterConfig } from '../cluster/index.js';
 import {
@@ -7,6 +7,8 @@ import {
   treasuryAllowedMintsPda,
   treasuryPda,
   treasuryYieldConfigPda,
+  treasuryYieldPositionPda,
+  treasuryYieldReceiptVaultPda,
   treasuryYieldStrategyPda,
   vaultPda,
   agentRegistryGlobalPda,
@@ -18,6 +20,7 @@ import {
 
 const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
 const SYSVAR_RENT = new PublicKey('SysvarRent111111111111111111111111111111111');
+const MAX_YIELD_ROUTE_DATA_LEN = 512;
 
 export type TreasuryYieldVenue = 'kamino' | 'marginfi' | 'drift';
 export type TreasuryYieldRiskTier = 'conservative' | 'moderate' | 'aggressive';
@@ -416,5 +419,147 @@ export async function buildRecordTreasuryYieldAccountingIx(
       yieldConfig,
       authority: input.authority,
     } as never)
+    .instruction();
+}
+
+interface YieldMovementBaseInput {
+  agentDid: Uint8Array;
+  strategyId: Uint8Array;
+  mint: PublicKey;
+  receiptMint: PublicKey;
+  kaminoProgram: PublicKey;
+  routeData: Uint8Array;
+  routeAccounts?: AccountMeta[];
+  allowedTargets?: PublicKey | null;
+  tokenProgramId?: PublicKey;
+}
+
+function assertYieldMovementInput(input: YieldMovementBaseInput) {
+  if (input.agentDid.length !== 32) throw new Error('agentDid must be 32 bytes');
+  if (input.strategyId.length !== 32) throw new Error('strategyId must be 32 bytes');
+  if (input.routeData.length === 0) throw new Error('routeData is required');
+  if (input.routeData.length > MAX_YIELD_ROUTE_DATA_LEN) {
+    throw new Error(`routeData exceeds ${MAX_YIELD_ROUTE_DATA_LEN} bytes`);
+  }
+}
+
+function yieldMovementPdas(programId: PublicKey, input: YieldMovementBaseInput) {
+  const [global] = treasuryGlobalPda(programId);
+  const [allowedMints] = treasuryAllowedMintsPda(programId);
+  const [treasury] = treasuryPda(programId, input.agentDid);
+  const [strategy] = treasuryYieldStrategyPda(programId, input.strategyId);
+  const [yieldConfig] = treasuryYieldConfigPda(programId, input.agentDid);
+  const [position] = treasuryYieldPositionPda(programId, input.agentDid, input.strategyId, input.mint);
+  const [vault] = vaultPda(programId, input.agentDid, input.mint);
+  const [receiptVault] = treasuryYieldReceiptVaultPda(programId, position);
+  const [guard] = reentrancyGuardPda(programId);
+  return { global, allowedMints, treasury, strategy, yieldConfig, position, vault, receiptVault, guard };
+}
+
+export interface DepositToYieldStrategyInput extends YieldMovementBaseInput {
+  operator: PublicKey;
+  amount: bigint;
+  priceFeed?: PublicKey | null;
+}
+
+export async function buildDepositToYieldStrategyIx(
+  program: Program<TreasuryStandard>,
+  input: DepositToYieldStrategyInput,
+): Promise<TransactionInstruction> {
+  assertYieldMovementInput(input);
+  if (input.amount <= 0n) throw new Error('amount must be greater than zero');
+  const pdas = yieldMovementPdas(program.programId, input);
+
+  return program.methods
+    .depositToYieldStrategy(new BN(input.amount.toString()), Buffer.from(input.routeData))
+    .accounts({
+      global: pdas.global,
+      treasury: pdas.treasury,
+      allowedMints: pdas.allowedMints,
+      allowedTargets: input.allowedTargets ?? null,
+      strategy: pdas.strategy,
+      yieldConfig: pdas.yieldConfig,
+      position: pdas.position,
+      mint: input.mint,
+      receiptMint: input.receiptMint,
+      vault: pdas.vault,
+      receiptVault: pdas.receiptVault,
+      kaminoProgram: input.kaminoProgram,
+      priceFeed: input.priceFeed ?? null,
+      guard: pdas.guard,
+      operator: input.operator,
+      tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+      rent: SYSVAR_RENT,
+    } as never)
+    .remainingAccounts(input.routeAccounts ?? [])
+    .instruction();
+}
+
+export interface WithdrawFromYieldStrategyInput extends YieldMovementBaseInput {
+  operator: PublicKey;
+  receiptAmount: bigint;
+}
+
+export async function buildWithdrawFromYieldStrategyIx(
+  program: Program<TreasuryStandard>,
+  input: WithdrawFromYieldStrategyInput,
+): Promise<TransactionInstruction> {
+  assertYieldMovementInput(input);
+  if (input.receiptAmount <= 0n) throw new Error('receiptAmount must be greater than zero');
+  const pdas = yieldMovementPdas(program.programId, input);
+
+  return program.methods
+    .withdrawFromYieldStrategy(new BN(input.receiptAmount.toString()), Buffer.from(input.routeData))
+    .accounts({
+      global: pdas.global,
+      treasury: pdas.treasury,
+      allowedTargets: input.allowedTargets ?? null,
+      strategy: pdas.strategy,
+      yieldConfig: pdas.yieldConfig,
+      position: pdas.position,
+      mint: input.mint,
+      receiptMint: input.receiptMint,
+      vault: pdas.vault,
+      receiptVault: pdas.receiptVault,
+      kaminoProgram: input.kaminoProgram,
+      guard: pdas.guard,
+      operator: input.operator,
+      tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
+    } as never)
+    .remainingAccounts(input.routeAccounts ?? [])
+    .instruction();
+}
+
+export interface EmergencyUnwindYieldStrategyInput extends YieldMovementBaseInput {
+  authority: PublicKey;
+}
+
+export async function buildEmergencyUnwindYieldStrategyIx(
+  program: Program<TreasuryStandard>,
+  input: EmergencyUnwindYieldStrategyInput,
+): Promise<TransactionInstruction> {
+  assertYieldMovementInput(input);
+  const pdas = yieldMovementPdas(program.programId, input);
+
+  return program.methods
+    .emergencyUnwindYieldStrategy(Buffer.from(input.routeData))
+    .accounts({
+      global: pdas.global,
+      treasury: pdas.treasury,
+      allowedTargets: input.allowedTargets ?? null,
+      strategy: pdas.strategy,
+      yieldConfig: pdas.yieldConfig,
+      position: pdas.position,
+      mint: input.mint,
+      receiptMint: input.receiptMint,
+      vault: pdas.vault,
+      receiptVault: pdas.receiptVault,
+      kaminoProgram: input.kaminoProgram,
+      guard: pdas.guard,
+      authority: input.authority,
+      tokenProgram: input.tokenProgramId ?? TOKEN_2022_PROGRAM_ID,
+    } as never)
+    .remainingAccounts(input.routeAccounts ?? [])
     .instruction();
 }

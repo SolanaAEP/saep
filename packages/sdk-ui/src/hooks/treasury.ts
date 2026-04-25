@@ -8,12 +8,25 @@ import {
   DEFAULT_YIELD_STRATEGIES,
   computeDeployableUsdMicro,
   fetchAllowedMints,
+  fetchStrategyPosition,
+  fetchStrategyPositionsByAgent,
   fetchStreamsByAgent,
   fetchVaultBalances,
+  buildDepositToYieldStrategyIx,
+  buildEmergencyUnwindYieldStrategyIx,
+  buildRequestTreasuryYieldUnwindIx,
+  buildSetTreasuryYieldConfigIx,
+  buildWithdrawFromYieldStrategyIx,
   buildSetLimitsIx,
+  type DepositToYieldStrategyInput,
+  type EmergencyUnwindYieldStrategyInput,
+  type RequestTreasuryYieldUnwindInput,
   type SetLimitsInput,
+  type SetTreasuryYieldConfigInput,
+  type StrategyPositionSummary,
   type TreasuryYieldPolicy,
   type TreasuryYieldSnapshot,
+  type WithdrawFromYieldStrategyInput,
   type YieldStrategyDescriptor,
 } from '@saep/sdk';
 import { useTreasuryProgram } from './program.js';
@@ -51,6 +64,34 @@ export function useVaultBalances(agentDid: Uint8Array | null, mints: PublicKey[]
   });
 }
 
+export function useStrategyPosition(
+  agentDid: Uint8Array | null,
+  strategyId: Uint8Array | null,
+  mint: PublicKey | null,
+) {
+  const program = useTreasuryProgram();
+  const didKey = agentDid ? Buffer.from(agentDid).toString('hex') : null;
+  const strategyKey = strategyId ? Buffer.from(strategyId).toString('hex') : null;
+  return useQuery<StrategyPositionSummary | null>({
+    queryKey: ['treasury', 'yield-position', didKey, strategyKey, mint?.toBase58() ?? null],
+    enabled: Boolean(program && agentDid && strategyId && mint),
+    queryFn: () => fetchStrategyPosition(program!, agentDid!, strategyId!, mint!),
+    staleTime: 15_000,
+  });
+}
+
+export function useStrategyPositionsByAgent(agentDid: Uint8Array | null) {
+  const program = useTreasuryProgram();
+  const didKey = agentDid ? Buffer.from(agentDid).toString('hex') : null;
+  return useQuery<StrategyPositionSummary[]>({
+    queryKey: ['treasury', 'yield-positions', didKey],
+    enabled: Boolean(program && agentDid),
+    queryFn: () => fetchStrategyPositionsByAgent(program!, agentDid!),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+}
+
 export function useSetLimits() {
   const program = useTreasuryProgram();
   const { connection } = useConnection();
@@ -72,6 +113,141 @@ export function useSetLimits() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['treasury'] });
+    },
+  });
+}
+
+export function useSetTreasuryYieldConfig() {
+  const program = useTreasuryProgram();
+  const { connection } = useConnection();
+  const { sendTransaction, publicKey } = useWallet();
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: Omit<SetTreasuryYieldConfigInput, 'operator'>) => {
+      if (!program) throw new Error('Wallet not connected');
+      if (!publicKey) throw new Error('Missing wallet publicKey');
+      const ix = await buildSetTreasuryYieldConfigIx(program, { ...input, operator: publicKey });
+      const tx = new Transaction().add(ix);
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = publicKey;
+      const sig = await sendTransaction(tx, connection);
+      await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
+      return sig;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['treasury'] });
+      qc.invalidateQueries({ queryKey: ['indexed-treasury-yield'] });
+      qc.invalidateQueries({ queryKey: ['indexed-treasury-yield-positions'] });
+    },
+  });
+}
+
+export function useRequestTreasuryYieldUnwind() {
+  const program = useTreasuryProgram();
+  const { connection } = useConnection();
+  const { sendTransaction, publicKey } = useWallet();
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: Omit<RequestTreasuryYieldUnwindInput, 'operator'>) => {
+      if (!program) throw new Error('Wallet not connected');
+      if (!publicKey) throw new Error('Missing wallet publicKey');
+      const ix = await buildRequestTreasuryYieldUnwindIx(program, { ...input, operator: publicKey });
+      const tx = new Transaction().add(ix);
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = publicKey;
+      const sig = await sendTransaction(tx, connection);
+      await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
+      return sig;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['treasury'] });
+      qc.invalidateQueries({ queryKey: ['indexed-treasury-yield'] });
+      qc.invalidateQueries({ queryKey: ['indexed-treasury-yield-positions'] });
+    },
+  });
+}
+
+export function useDepositToYieldStrategy() {
+  const program = useTreasuryProgram();
+  const { connection } = useConnection();
+  const { sendTransaction, publicKey } = useWallet();
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: Omit<DepositToYieldStrategyInput, 'operator'>) => {
+      if (!program) throw new Error('Wallet not connected');
+      if (!publicKey) throw new Error('Missing wallet publicKey');
+      const ix = await buildDepositToYieldStrategyIx(program, { ...input, operator: publicKey });
+      const tx = new Transaction().add(ix);
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = publicKey;
+      const sig = await sendTransaction(tx, connection);
+      await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
+      return sig;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['treasury'] });
+      qc.invalidateQueries({ queryKey: ['indexed-treasury-yield'] });
+      qc.invalidateQueries({ queryKey: ['indexed-treasury-yield-positions'] });
+    },
+  });
+}
+
+export function useWithdrawFromYieldStrategy() {
+  const program = useTreasuryProgram();
+  const { connection } = useConnection();
+  const { sendTransaction, publicKey } = useWallet();
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: Omit<WithdrawFromYieldStrategyInput, 'operator'>) => {
+      if (!program) throw new Error('Wallet not connected');
+      if (!publicKey) throw new Error('Missing wallet publicKey');
+      const ix = await buildWithdrawFromYieldStrategyIx(program, { ...input, operator: publicKey });
+      const tx = new Transaction().add(ix);
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = publicKey;
+      const sig = await sendTransaction(tx, connection);
+      await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
+      return sig;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['treasury'] });
+      qc.invalidateQueries({ queryKey: ['indexed-treasury-yield'] });
+      qc.invalidateQueries({ queryKey: ['indexed-treasury-yield-positions'] });
+    },
+  });
+}
+
+export function useEmergencyUnwindYieldStrategy() {
+  const program = useTreasuryProgram();
+  const { connection } = useConnection();
+  const { sendTransaction, publicKey } = useWallet();
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: Omit<EmergencyUnwindYieldStrategyInput, 'authority'>) => {
+      if (!program) throw new Error('Wallet not connected');
+      if (!publicKey) throw new Error('Missing wallet publicKey');
+      const ix = await buildEmergencyUnwindYieldStrategyIx(program, { ...input, authority: publicKey });
+      const tx = new Transaction().add(ix);
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = publicKey;
+      const sig = await sendTransaction(tx, connection);
+      await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
+      return sig;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['treasury'] });
+      qc.invalidateQueries({ queryKey: ['indexed-treasury-yield'] });
+      qc.invalidateQueries({ queryKey: ['indexed-treasury-yield-positions'] });
     },
   });
 }
@@ -145,6 +321,23 @@ export interface IndexedTreasuryYieldSnapshot {
   accountingUpdatedUnix: number | null;
 }
 
+export interface IndexedTreasuryYieldPosition {
+  didHex: string;
+  strategyIdHex: string;
+  vaultMint: string;
+  receiptMint: string;
+  principalAmount: string;
+  receiptAmount: string;
+  realizedYieldAmount: string;
+  deployedAmount: string;
+  idleAmount: string;
+  accountingSlot: number | null;
+  status: string;
+  unwindRequested: boolean;
+  lastEventName: string;
+  updatedUnix: number;
+}
+
 interface RawIndexedYieldStrategySummary {
   strategy_id_hex: string;
   venue: string;
@@ -175,8 +368,29 @@ interface RawIndexedTreasuryYieldSnapshot {
   accounting_updated_unix: number | null;
 }
 
+interface RawIndexedTreasuryYieldPosition {
+  did_hex: string;
+  strategy_id_hex: string;
+  vault_mint: string;
+  receipt_mint: string;
+  principal_amount: string;
+  receipt_amount: string;
+  realized_yield_amount: string;
+  deployed_amount: string;
+  idle_amount: string;
+  accounting_slot: number | null;
+  status: string;
+  unwind_requested: boolean;
+  last_event_name: string;
+  updated_unix: number;
+}
+
 interface RawIndexedYieldStrategiesPage {
   items: RawIndexedYieldStrategySummary[];
+}
+
+interface RawIndexedTreasuryYieldPositionsPage {
+  items: RawIndexedTreasuryYieldPosition[];
 }
 
 async function fetchDiscoveryJson<T>(url: string, signal?: AbortSignal): Promise<T> {
@@ -221,6 +435,27 @@ function mapTreasuryYieldSnapshot(
     configuredUnix: raw.configured_unix,
     unwindRequestedUnix: raw.unwind_requested_unix,
     accountingUpdatedUnix: raw.accounting_updated_unix,
+  };
+}
+
+function mapTreasuryYieldPosition(
+  raw: RawIndexedTreasuryYieldPosition,
+): IndexedTreasuryYieldPosition {
+  return {
+    didHex: raw.did_hex,
+    strategyIdHex: raw.strategy_id_hex,
+    vaultMint: raw.vault_mint,
+    receiptMint: raw.receipt_mint,
+    principalAmount: raw.principal_amount,
+    receiptAmount: raw.receipt_amount,
+    realizedYieldAmount: raw.realized_yield_amount,
+    deployedAmount: raw.deployed_amount,
+    idleAmount: raw.idle_amount,
+    accountingSlot: raw.accounting_slot,
+    status: raw.status,
+    unwindRequested: raw.unwind_requested,
+    lastEventName: raw.last_event_name,
+    updatedUnix: raw.updated_unix,
   };
 }
 
@@ -291,6 +526,25 @@ export function useIndexedTreasuryYield({
         if (err instanceof Error && err.message.startsWith('indexer 404:')) return null;
         throw err;
       }
+    },
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useIndexedTreasuryYieldPositions({
+  indexerUrl,
+  agentDidHex,
+  enabled = true,
+}: UseIndexedTreasuryYieldArgs) {
+  return useQuery<IndexedTreasuryYieldPosition[]>({
+    queryKey: ['indexed-treasury-yield-positions', indexerUrl, agentDidHex],
+    enabled: enabled && Boolean(agentDidHex && agentDidHex.length === 64),
+    queryFn: ({ signal }) => {
+      const url = `${indexerUrl.replace(/\/$/, '')}/v1/discovery/treasury/${agentDidHex}/yield/positions`;
+      return fetchDiscoveryJson<RawIndexedTreasuryYieldPositionsPage>(url, signal).then((raw) =>
+        raw.items.map(mapTreasuryYieldPosition),
+      );
     },
     staleTime: 15_000,
     refetchInterval: 30_000,

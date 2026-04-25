@@ -1,7 +1,7 @@
 # Treasury Yield Strategies
 
-**Status:** SPEC — control plane landed first; venue CPIs remain M2 adapter work  
-**Program:** treasury_standard (extension)  
+**Status:** Kamino movement path live on devnet; mainnet activation audit-gated
+**Program:** treasury_standard (extension)
 **Dependencies:** GovernanceProgram (strategy approval), FeeCollector (yield fee split)
 
 ## Problem
@@ -20,19 +20,26 @@ Control-plane instruction surface on `treasury_standard`:
 - `request_treasury_yield_unwind()` — treasury operator emergency unwind signal.
 - `record_treasury_yield_accounting(idle_amount, deployed_amount, realized_yield_amount, accounting_slot)` — authority-recorded accounting event for indexer snapshots.
 
-Venue adapter instruction surface, still ahead:
+Kamino adapter instruction surface:
 
-- `deposit_to_strategy(strategy_id, amount, vault_mint)` — agent operator. Deposits from treasury vault into an approved strategy. Respects existing spend limits and strategy allocation caps.
-- `withdraw_from_strategy(strategy_id, amount)` — agent operator. Withdraws back to treasury vault.
-- `emergency_withdraw_all(strategy_id)` — governance emergency council. Force-withdraws all funds from a strategy if compromised.
+- `deposit_to_yield_strategy(amount, route_data)` — agent operator. Deposits from treasury vault through the approved Kamino program. Respects existing spend limits and strategy allocation caps.
+- `withdraw_from_yield_strategy(receipt_amount, route_data)` — agent operator. Withdraws receipt-backed capital back to the treasury vault.
+- `emergency_unwind_yield_strategy(route_data)` — governance emergency path. Force-unwinds the full receipt vault for a strategy position if compromised.
 
-### Approved Strategy Targets (M2 candidates)
+Portal route preparation surface:
+
+- `POST /api/treasury/kamino-route` proxies to the configured Kamino route builder and returns
+  `routeDataHex` plus account metas for the wallet flow.
+- `SAEP_KAMINO_ROUTE_BUILDER_URL` is the portal-side opt-in for one-click route preparation.
+  If it is absent, operators can still paste route data manually for devnet verification.
+
+### Approved Strategy Targets
 
 | Protocol | Type | Risk Tier | CPI Surface |
 |---|---|---|---|
-| Kamino Finance | Lending/LP | 1 (low) | `deposit` / `withdraw` via kamino-lending CPI |
-| Marginfi | Lending | 1 (low) | `lending_account_deposit` / `withdraw` |
-| Drift | Perps/Lending | 2 (medium) | `deposit` / `withdraw` via drift CPI |
+| Kamino Finance | Lending/LP | 1 (low) | Live constrained route through governance-approved Kamino program |
+| Marginfi | Lending | 1 (low) | Future adapter |
+| Drift | Perps/Lending | 2 (medium) | Deferred risk tier |
 | Jupiter DCA | DCA vaults | 1 (low) | Already integrated in treasury_standard |
 
 ### Security Constraints
@@ -49,7 +56,7 @@ Venue adapter instruction surface, still ahead:
 
 - `YieldStrategyDescriptor` — per strategy PDA, stores governance-approved descriptor and status.
 - `TreasuryYieldConfig` — per treasury PDA, stores selected strategy, allocation bps, unwind state, and latest accounting fields.
-- `StrategyPosition` — future per `(agent_did, strategy_id, vault_mint)` adapter PDA, tracks deposited amount + entry timestamp once external CPIs land.
+- `StrategyPosition` — per `(agent_did, strategy_id, vault_mint)` adapter PDA, tracks principal, receipt balance, realized yield, accounting slot, status, and unwind state.
 
 ### Open Questions
 

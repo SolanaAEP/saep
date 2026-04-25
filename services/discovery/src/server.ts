@@ -22,6 +22,7 @@ import {
   WebhookSubscriptionParamsSchema,
   WebhookSubscriptionRotateSecretSchema,
   WsMessageSchema,
+  YieldStrategyQuerySchema,
   type WsMessage,
 } from './schema.js';
 import { JsonFileWebhookStore } from './webhook-store.js';
@@ -488,6 +489,166 @@ export async function buildServer(opts: BuildServerOptions = {}) {
     return {
       task_id: params.data.task_id,
       items,
+    };
+  });
+
+  app.get('/treasury/yield-strategies', async (req, reply) => {
+    const parsed = YieldStrategyQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_query', issues: parsed.error.issues });
+    }
+    const q = parsed.data;
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+    if (q.venue) {
+      conditions.push(`venue = $${idx++}`);
+      values.push(q.venue);
+    }
+    if (q.status) {
+      conditions.push(`status = $${idx++}`);
+      values.push(q.status);
+    }
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    values.push(q.limit);
+    const rows = await db.query<{
+      strategy_id: Buffer;
+      venue: string;
+      strategy_program: string;
+      underlying_mint: string;
+      receipt_mint: string;
+      max_allocation_bps: number;
+      risk_tier: string;
+      status: string;
+      name: string;
+      metadata_uri: string;
+      registered_unix: string;
+      status_unix: string | null;
+    }>(
+      `SELECT strategy_id, venue, strategy_program, underlying_mint, receipt_mint,
+              max_allocation_bps, risk_tier, status, name, metadata_uri,
+              registered_unix, status_unix
+       FROM yield_strategy_directory ${where}
+       ORDER BY status ASC, venue ASC, registered_unix DESC
+       LIMIT $${idx}`,
+      values,
+    );
+    return {
+      items: rows.map((row) => ({
+        strategy_id_hex: bytesToHex(row.strategy_id),
+        venue: row.venue,
+        strategy_program: row.strategy_program,
+        underlying_mint: row.underlying_mint,
+        receipt_mint: row.receipt_mint,
+        max_allocation_bps: row.max_allocation_bps,
+        risk_tier: row.risk_tier,
+        status: row.status,
+        name: row.name,
+        metadata_uri: row.metadata_uri,
+        registered_unix: Number(row.registered_unix),
+        status_updated_unix: row.status_unix == null ? null : Number(row.status_unix),
+      })),
+    };
+  });
+
+  app.get('/treasury/:did/yield', async (req, reply) => {
+    const parsed = AgentDidParamsSchema.safeParse(req.params);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_params', issues: parsed.error.issues });
+    }
+    const row = await db.queryOne<{
+      agent_did: Buffer;
+      strategy_id: Buffer;
+      allocation_bps: number;
+      status: string;
+      unwind_requested: boolean;
+      idle_amount: string;
+      deployed_amount: string;
+      realized_yield_amount: string;
+      accounting_slot: string | null;
+      config_unix: string;
+      unwind_unix: string | null;
+      accounting_unix: string | null;
+    }>(
+      `SELECT agent_did, strategy_id, allocation_bps, status, unwind_requested,
+              idle_amount::text AS idle_amount,
+              deployed_amount::text AS deployed_amount,
+              realized_yield_amount::text AS realized_yield_amount,
+              accounting_slot, config_unix, unwind_unix, accounting_unix
+       FROM treasury_yield_directory
+       WHERE agent_did = $1`,
+      [hexToBytes(parsed.data.did)],
+    );
+    if (!row) {
+      return reply.code(404).send({ error: 'not_found', message: 'treasury yield config not found' });
+    }
+    return {
+      did_hex: bytesToHex(row.agent_did),
+      strategy_id_hex: bytesToHex(row.strategy_id),
+      allocation_bps: row.allocation_bps,
+      status: row.status,
+      unwind_requested: row.unwind_requested,
+      idle_amount: row.idle_amount,
+      deployed_amount: row.deployed_amount,
+      realized_yield_amount: row.realized_yield_amount,
+      accounting_slot: row.accounting_slot == null ? null : Number(row.accounting_slot),
+      configured_unix: Number(row.config_unix),
+      unwind_requested_unix: row.unwind_unix == null ? null : Number(row.unwind_unix),
+      accounting_updated_unix: row.accounting_unix == null ? null : Number(row.accounting_unix),
+    };
+  });
+
+  app.get('/treasury/:did/yield/positions', async (req, reply) => {
+    const parsed = AgentDidParamsSchema.safeParse(req.params);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_params', issues: parsed.error.issues });
+    }
+    const rows = await db.query<{
+      agent_did: Buffer;
+      strategy_id: Buffer;
+      vault_mint: string;
+      receipt_mint: string;
+      principal_amount: string;
+      receipt_amount: string;
+      realized_yield_amount: string;
+      deployed_amount: string;
+      idle_amount: string;
+      accounting_slot: string | null;
+      status: string;
+      unwind_requested: boolean;
+      last_event_name: string;
+      updated_unix: string;
+    }>(
+      `SELECT agent_did, strategy_id, vault_mint, receipt_mint,
+              principal_amount::text AS principal_amount,
+              receipt_amount::text AS receipt_amount,
+              realized_yield_amount::text AS realized_yield_amount,
+              deployed_amount::text AS deployed_amount,
+              idle_amount::text AS idle_amount,
+              accounting_slot, status, unwind_requested, last_event_name, updated_unix
+       FROM treasury_yield_position_directory
+       WHERE agent_did = $1
+       ORDER BY status ASC, updated_unix DESC, strategy_id ASC`,
+      [hexToBytes(parsed.data.did)],
+    );
+    return {
+      did_hex: parsed.data.did.toLowerCase(),
+      items: rows.map((row) => ({
+        did_hex: bytesToHex(row.agent_did),
+        strategy_id_hex: bytesToHex(row.strategy_id),
+        vault_mint: row.vault_mint,
+        receipt_mint: row.receipt_mint,
+        principal_amount: row.principal_amount,
+        receipt_amount: row.receipt_amount,
+        realized_yield_amount: row.realized_yield_amount,
+        deployed_amount: row.deployed_amount,
+        idle_amount: row.idle_amount,
+        accounting_slot: row.accounting_slot == null ? null : Number(row.accounting_slot),
+        status: row.status,
+        unwind_requested: row.unwind_requested,
+        last_event_name: row.last_event_name,
+        updated_unix: Number(row.updated_unix),
+      })),
     };
   });
 

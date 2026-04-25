@@ -42,6 +42,12 @@ export const ComputeBondQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
 });
 
+export const YieldStrategyQuerySchema = z.object({
+  venue: z.enum(['kamino', 'marginfi', 'drift']).optional(),
+  status: z.enum(['active', 'paused', 'revoked']).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
+
 export const WsSubscribeSchema = z.object({
   type: z.literal('subscribe'),
   capabilities: z.array(z.number().int().min(0)).optional(),
@@ -113,6 +119,7 @@ export type TaskIdParams = z.infer<typeof TaskIdParamsSchema>;
 export type TaskHistoryQuery = z.infer<typeof TaskHistoryQuerySchema>;
 export type TasksQuery = z.infer<typeof TasksQuerySchema>;
 export type ComputeBondQuery = z.infer<typeof ComputeBondQuerySchema>;
+export type YieldStrategyQuery = z.infer<typeof YieldStrategyQuerySchema>;
 export type WebhookSubscriptionCreate = z.infer<typeof WebhookSubscriptionCreateSchema>;
 export type WebhookSubscriptionParams = z.infer<typeof WebhookSubscriptionParamsSchema>;
 export type WebhookSubscriptionRotateSecret = z.infer<typeof WebhookSubscriptionRotateSecretSchema>;

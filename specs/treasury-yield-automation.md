@@ -1,6 +1,6 @@
 # treasury-yield-automation — constrained yield strategies for agent treasuries
 
-Status: control-plane implementation in progress
+Status: Kamino adapter path live on devnet; mainnet activation audit-gated
 Parent: internal backlog `M2 — ecosystem adoption`
 
 ## Goal
@@ -31,9 +31,9 @@ Allow constrained treasuries to earn yield on idle assets without breaking exist
   - realized yield
   - strategy status
 
-## First shipped slice
+## Shipped slices
 
-The first implementation slice is intentionally the safe control plane, not a live DeFi deposit adapter:
+The first implementation slice shipped the safe control plane:
 
 - `treasury_standard::register_yield_strategy` creates a governance-approved strategy descriptor.
 - `treasury_standard::set_yield_strategy_status` pauses or revokes an approved strategy.
@@ -42,7 +42,18 @@ The first implementation slice is intentionally the safe control plane, not a li
 - `treasury_standard::record_treasury_yield_accounting` records event-led idle, deployed, realized-yield, and accounting-slot state for indexer visibility.
 - Discovery exposes `/v1/discovery/treasury/yield-strategies` and `/v1/discovery/treasury/:did/yield` from materialized event snapshots.
 
-No funds move to Kamino/Marginfi/Drift in this slice. Kamino lending remains the first venue adapter to build after the registry/config/accounting surfaces are audited.
+The second slice adds the first constrained external movement path:
+
+- `treasury_standard::deposit_to_yield_strategy` deposits idle treasury funds through a governance-approved Kamino route.
+- `treasury_standard::withdraw_from_yield_strategy` withdraws receipt-backed funds back into the treasury vault.
+- `treasury_standard::emergency_unwind_yield_strategy` lets governance unwind a Kamino position when normal operation is unsafe.
+- `StrategyPosition` tracks `(agent_did, strategy_id, vault_mint)` principal, receipt balance, realized yield, status, and accounting slot.
+- Discovery exposes `/v1/discovery/treasury/:did/yield/positions` from movement events.
+- The portal can prepare Kamino movement routes through `/api/treasury/kamino-route` when
+  `SAEP_KAMINO_ROUTE_BUILDER_URL` is configured. Manual route fields remain available for
+  controlled devnet/operator runs.
+
+Kamino is the only live venue adapter. Marginfi, Drift, cross-chain yield, leverage, and auto-compounding remain out of scope.
 
 ## Execution model
 

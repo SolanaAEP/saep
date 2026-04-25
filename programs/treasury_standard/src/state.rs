@@ -130,6 +130,13 @@ pub enum TreasuryYieldStatus {
     Unwinding,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
+pub enum StrategyPositionStatus {
+    Active,
+    Unwinding,
+    Closed,
+}
+
 #[account]
 #[derive(InitSpace)]
 pub struct YieldStrategyDescriptor {
@@ -165,6 +172,51 @@ pub struct TreasuryYieldConfig {
     pub created_at: i64,
     pub updated_at: i64,
     pub bump: u8,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct StrategyPosition {
+    pub agent_did: [u8; 32],
+    pub strategy_id: [u8; 32],
+    pub vault_mint: Pubkey,
+    pub receipt_mint: Pubkey,
+    pub principal_amount: u64,
+    pub receipt_amount: u64,
+    pub realized_yield_amount: i64,
+    pub last_accounting_slot: u64,
+    pub status: StrategyPositionStatus,
+    pub unwind_requested: bool,
+    pub created_at: i64,
+    pub updated_at: i64,
+    pub bump: u8,
+}
+
+pub fn max_yield_deployable_amount(
+    idle_amount: u64,
+    deployed_amount: u64,
+    allocation_bps: u16,
+) -> Result<u64> {
+    let total = (idle_amount as u128)
+        .checked_add(deployed_amount as u128)
+        .ok_or(TreasuryError::ArithmeticOverflow)?;
+    let max = total
+        .checked_mul(allocation_bps as u128)
+        .ok_or(TreasuryError::ArithmeticOverflow)?
+        / BPS_DENOM as u128;
+    u64::try_from(max).map_err(|_| error!(TreasuryError::ArithmeticOverflow))
+}
+
+pub fn checked_i64_add(lhs: i64, rhs: i64) -> Result<i64> {
+    lhs.checked_add(rhs)
+        .ok_or_else(|| error!(TreasuryError::ArithmeticOverflow))
+}
+
+pub fn checked_i64_delta(received: u64, principal_reduced: u64) -> Result<i64> {
+    let delta = (received as i128)
+        .checked_sub(principal_reduced as i128)
+        .ok_or(TreasuryError::ArithmeticOverflow)?;
+    i64::try_from(delta).map_err(|_| error!(TreasuryError::ArithmeticOverflow))
 }
 
 // Helper: resolve + bind the hook allowlist account passed into a transfer-CPI
@@ -751,5 +803,24 @@ mod proptests {
             bump: 0,
         };
         assert!(assert_call_target_allowed(&g, Some(&at), &pk(1)).is_err());
+    }
+}
+
+#[cfg(test)]
+mod yield_position_tests {
+    use super::*;
+
+    #[test]
+    fn max_yield_deployable_amount_respects_allocation_bps() {
+        assert_eq!(
+            max_yield_deployable_amount(9_000_000, 1_000_000, 2_500).unwrap(),
+            2_500_000
+        );
+    }
+
+    #[test]
+    fn checked_i64_delta_can_record_realized_losses() {
+        assert_eq!(checked_i64_delta(900_000, 1_000_000).unwrap(), -100_000);
+        assert_eq!(checked_i64_delta(1_100_000, 1_000_000).unwrap(), 100_000);
     }
 }

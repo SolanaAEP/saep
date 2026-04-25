@@ -57,6 +57,7 @@ export const PUBLIC_SERVICES: Record<PublicServiceKey, PublicServiceDefinition> 
       { method: 'GET', path: '/v1/discovery/capabilities', description: 'Capability catalog.' },
       { method: 'GET', path: '/v1/discovery/treasury/yield-strategies', description: 'Governance-approved treasury yield strategy snapshots.' },
       { method: 'GET', path: '/v1/discovery/treasury/:did/yield', description: 'Per-treasury yield allocation and accounting snapshot.' },
+      { method: 'GET', path: '/v1/discovery/treasury/:did/yield/positions', description: 'Per-treasury Kamino strategy-position snapshots.' },
       { method: 'POST', path: '/webhooks/subscriptions', description: 'Create a signed outbound webhook subscription.' },
       { method: 'POST', path: '/webhooks/subscriptions/:id/rotate-secret', description: 'Rotate one subscription signing secret.' },
       { method: 'GET', path: '/webhooks/deliveries?state=<state>&limit=<n>', description: 'Filterable delivery, retry, and dead-letter logs.' },

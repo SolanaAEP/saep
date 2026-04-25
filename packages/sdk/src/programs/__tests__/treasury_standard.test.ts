@@ -7,8 +7,11 @@ import {
   treasuryPda,
   treasuryAllowedMintsPda,
   treasuryYieldConfigPda,
+  treasuryYieldPositionPda,
+  treasuryYieldReceiptVaultPda,
   treasuryYieldStrategyPda,
   vaultPda,
+  reentrancyGuardPda,
   agentRegistryGlobalPda,
   agentAccountPda,
   streamPda,
@@ -22,10 +25,13 @@ import {
   buildCloseStreamIx,
   buildWithdrawEarnedIx,
   buildRecordTreasuryYieldAccountingIx,
+  buildDepositToYieldStrategyIx,
+  buildEmergencyUnwindYieldStrategyIx,
   buildRegisterYieldStrategyIx,
   buildRequestTreasuryYieldUnwindIx,
   buildSetTreasuryYieldConfigIx,
   buildSetYieldStrategyStatusIx,
+  buildWithdrawFromYieldStrategyIx,
 } from '../treasury_standard.js';
 import { makeTestProgram, makeRecordingProgram, decodeIx, expectedDiscriminator, accountKeys } from './helpers.js';
 
@@ -507,5 +513,79 @@ describe('yield automation builders', () => {
     expect(decodeIx(idl as Record<string, unknown>, statusIx).name).toBe('set_yield_strategy_status');
     expect(decodeIx(idl as Record<string, unknown>, unwindIx).name).toBe('request_treasury_yield_unwind');
     expect(decodeIx(idl as Record<string, unknown>, accountingIx).name).toBe('record_treasury_yield_accounting');
+  });
+
+  it('builds Kamino movement instructions with position and receipt-vault PDAs', async () => {
+    const receiptMint = PublicKey.unique();
+    const kaminoProgram = PublicKey.unique();
+    const routeAccount = PublicKey.unique();
+    const routeAccounts = [{ pubkey: routeAccount, isWritable: true, isSigner: false }];
+    const routeData = Uint8Array.from([1, 2, 3, 4]);
+
+    const depositIx = await buildDepositToYieldStrategyIx(program, {
+      operator,
+      agentDid,
+      strategyId,
+      mint,
+      receiptMint,
+      kaminoProgram,
+      amount: 1_000_000n,
+      routeData,
+      routeAccounts,
+    });
+    const withdrawIx = await buildWithdrawFromYieldStrategyIx(program, {
+      operator,
+      agentDid,
+      strategyId,
+      mint,
+      receiptMint,
+      kaminoProgram,
+      receiptAmount: 500_000n,
+      routeData,
+      routeAccounts,
+    });
+    const unwindIx = await buildEmergencyUnwindYieldStrategyIx(program, {
+      authority: operator,
+      agentDid,
+      strategyId,
+      mint,
+      receiptMint,
+      kaminoProgram,
+      routeData,
+      routeAccounts,
+    });
+
+    const [position] = treasuryYieldPositionPda(PROG, agentDid, strategyId, mint);
+    const [receiptVault] = treasuryYieldReceiptVaultPda(PROG, position);
+    const [vault] = vaultPda(PROG, agentDid, mint);
+    const [guard] = reentrancyGuardPda(PROG);
+
+    for (const ix of [depositIx, withdrawIx, unwindIx]) {
+      const keys = accountKeys(ix);
+      expect(keys).toContain(position.toBase58());
+      expect(keys).toContain(receiptVault.toBase58());
+      expect(keys).toContain(vault.toBase58());
+      expect(keys).toContain(guard.toBase58());
+      expect(keys).toContain(kaminoProgram.toBase58());
+      expect(keys.at(-1)).toBe(routeAccount.toBase58());
+    }
+    expect(decodeIx(idl as Record<string, unknown>, depositIx).name).toBe('deposit_to_yield_strategy');
+    expect(decodeIx(idl as Record<string, unknown>, withdrawIx).name).toBe('withdraw_from_yield_strategy');
+    expect(decodeIx(idl as Record<string, unknown>, unwindIx).name).toBe('emergency_unwind_yield_strategy');
+  });
+
+  it('rejects empty Kamino route data before building movement instructions', async () => {
+    await expect(
+      buildDepositToYieldStrategyIx(program, {
+        operator,
+        agentDid,
+        strategyId,
+        mint,
+        receiptMint: PublicKey.unique(),
+        kaminoProgram: PublicKey.unique(),
+        amount: 1n,
+        routeData: new Uint8Array(),
+      }),
+    ).rejects.toThrow('routeData is required');
   });
 });

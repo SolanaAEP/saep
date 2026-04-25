@@ -1,6 +1,6 @@
 export type YieldVenue = 'kamino' | 'marginfi' | 'drift';
 
-export type YieldLifecycle = 'research' | 'next' | 'deferred';
+export type YieldLifecycle = 'live' | 'research' | 'next' | 'deferred';
 
 export type YieldRiskTier = 'conservative' | 'moderate' | 'aggressive';
 
@@ -36,10 +36,10 @@ export const DEFAULT_YIELD_STRATEGIES: readonly YieldStrategyDescriptor[] = [
     id: 'kamino-lend-usdc',
     venue: 'kamino',
     label: 'Kamino Lending',
-    lifecycle: 'next',
+    lifecycle: 'live',
     riskTier: 'conservative',
     summary:
-      'First rollout target for idle treasury capital. Conservative lending only, with pause and unwind controls.',
+      'Live first venue for idle treasury capital. Conservative lending only, with pause and unwind controls.',
     allowedMints: ['USDC'],
   },
   {

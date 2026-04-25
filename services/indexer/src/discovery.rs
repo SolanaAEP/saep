@@ -8,7 +8,7 @@
 //!   - `/v1/discovery/tasks` + `/:task_id_hex` + `/:task_id_hex/matches` + `/:task_id_hex/timeline`
 //!   - `/v1/discovery/tasks/:task_id_hex/compute-bonds`
 //!   - `/v1/discovery/capabilities` + `/:bit`
-//!   - `/v1/discovery/treasury/:did` + `/:did/vaults` + `/:did/yield`
+//!   - `/v1/discovery/treasury/:did` + `/:did/vaults` + `/:did/yield` + `/:did/yield/positions`
 //!   - `/v1/discovery/treasury/yield-strategies`
 //!   - `/v1/discovery/stats`
 //!
@@ -95,6 +95,10 @@ pub fn router(state: ApiState) -> Router {
         .route("/v1/discovery/treasury/:did", get(treasury_detail))
         .route("/v1/discovery/treasury/:did/vaults", get(treasury_vaults))
         .route("/v1/discovery/treasury/:did/yield", get(treasury_yield))
+        .route(
+            "/v1/discovery/treasury/:did/yield/positions",
+            get(treasury_yield_positions),
+        )
         .route("/v1/discovery/stats", get(protocol_stats))
         .layer(middleware::from_fn(request_id_mw))
         .layer(middleware::from_fn(rate_limit_mw))
@@ -2217,6 +2221,116 @@ pub async fn treasury_yield(
         configured_unix: row.config_unix,
         unwind_requested_unix: row.unwind_unix,
         accounting_updated_unix: row.accounting_unix,
+    }))
+}
+
+#[derive(Debug, Serialize)]
+pub struct TreasuryYieldPositionSummary {
+    pub did_hex: String,
+    pub strategy_id_hex: String,
+    pub vault_mint: String,
+    pub receipt_mint: String,
+    pub principal_amount: String,
+    pub receipt_amount: String,
+    pub realized_yield_amount: String,
+    pub deployed_amount: String,
+    pub idle_amount: String,
+    pub accounting_slot: Option<i64>,
+    pub status: String,
+    pub unwind_requested: bool,
+    pub last_event_name: String,
+    pub updated_unix: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TreasuryYieldPositions {
+    pub did_hex: String,
+    pub items: Vec<TreasuryYieldPositionSummary>,
+}
+
+#[derive(QueryableByName)]
+struct RawTreasuryYieldPositionRow {
+    #[diesel(sql_type = Bytea)]
+    agent_did: Vec<u8>,
+    #[diesel(sql_type = Bytea)]
+    strategy_id: Vec<u8>,
+    #[diesel(sql_type = Text)]
+    vault_mint: String,
+    #[diesel(sql_type = Text)]
+    receipt_mint: String,
+    #[diesel(sql_type = Text)]
+    principal_amount: String,
+    #[diesel(sql_type = Text)]
+    receipt_amount: String,
+    #[diesel(sql_type = Text)]
+    realized_yield_amount: String,
+    #[diesel(sql_type = Text)]
+    deployed_amount: String,
+    #[diesel(sql_type = Text)]
+    idle_amount: String,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    accounting_slot: Option<i64>,
+    #[diesel(sql_type = Text)]
+    status: String,
+    #[diesel(sql_type = Bool)]
+    unwind_requested: bool,
+    #[diesel(sql_type = Text)]
+    last_event_name: String,
+    #[diesel(sql_type = BigInt)]
+    updated_unix: i64,
+}
+
+pub async fn treasury_yield_positions(
+    State(state): State<ApiState>,
+    Path(did_hex): Path<String>,
+) -> Result<Json<TreasuryYieldPositions>, ApiError> {
+    let did_bytes = parse_hex_32(&did_hex).map_err(ApiError::bad_request)?;
+
+    let qtimer = metrics::time_discovery_query("discovery.treasury_yield_positions");
+    let rows =
+        tokio::task::spawn_blocking(move || -> Result<Vec<RawTreasuryYieldPositionRow>, ApiError> {
+            let mut conn = state.pool.get().map_err(ApiError::internal)?;
+            sql_query(
+                "SELECT agent_did, strategy_id, vault_mint, receipt_mint, \
+                        principal_amount::text AS principal_amount, \
+                        receipt_amount::text AS receipt_amount, \
+                        realized_yield_amount::text AS realized_yield_amount, \
+                        deployed_amount::text AS deployed_amount, \
+                        idle_amount::text AS idle_amount, \
+                        accounting_slot, status, unwind_requested, last_event_name, updated_unix \
+                 FROM treasury_yield_position_directory \
+                 WHERE agent_did = $1 \
+                 ORDER BY status ASC, updated_unix DESC, strategy_id ASC",
+            )
+            .bind::<Bytea, _>(did_bytes)
+            .load::<RawTreasuryYieldPositionRow>(&mut conn)
+            .map_err(ApiError::internal)
+        })
+        .await
+        .map_err(ApiError::internal)??;
+    qtimer.observe_duration();
+
+    Ok(Json(TreasuryYieldPositions {
+        did_hex,
+        items: rows
+            .into_iter()
+            .map(|row| TreasuryYieldPositionSummary {
+                did_hex: hex::encode(row.agent_did),
+                strategy_id_hex: hex::encode(row.strategy_id),
+                vault_mint: row.vault_mint,
+                receipt_mint: row.receipt_mint,
+                principal_amount: row.principal_amount,
+                receipt_amount: row.receipt_amount,
+                realized_yield_amount: row.realized_yield_amount,
+                deployed_amount: row.deployed_amount,
+                idle_amount: row.idle_amount,
+                accounting_slot: row.accounting_slot,
+                status: row.status,
+                unwind_requested: row.unwind_requested,
+                last_event_name: row.last_event_name,
+                updated_unix: row.updated_unix,
+            })
+            .collect(),
     }))
 }
 

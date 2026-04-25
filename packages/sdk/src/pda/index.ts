@@ -82,6 +82,27 @@ export function treasuryYieldConfigPda(
   return PublicKey.findProgramAddressSync([enc('yield_config'), agentDid], programId);
 }
 
+export function treasuryYieldPositionPda(
+  programId: PublicKey,
+  agentDid: Uint8Array,
+  strategyId: Uint8Array,
+  mint: PublicKey,
+): [PublicKey, number] {
+  if (agentDid.length !== 32) throw new Error('agentDid must be 32 bytes');
+  if (strategyId.length !== 32) throw new Error('strategyId must be 32 bytes');
+  return PublicKey.findProgramAddressSync(
+    [enc('yield_position'), agentDid, strategyId, mint.toBuffer()],
+    programId,
+  );
+}
+
+export function treasuryYieldReceiptVaultPda(
+  programId: PublicKey,
+  position: PublicKey,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([enc('yield_receipt_vault'), position.toBuffer()], programId);
+}
+
 export function vaultPda(
   programId: PublicKey,
   agentDid: Uint8Array,

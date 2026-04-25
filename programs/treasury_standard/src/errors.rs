@@ -102,4 +102,24 @@ pub enum TreasuryError {
     TreasuryYieldNotActive,
     #[msg("treasury yield accounting slot moved backwards")]
     YieldAccountingStale,
+    #[msg("yield movement route data is required")]
+    YieldRouteRequired,
+    #[msg("yield venue is not supported by this instruction")]
+    UnsupportedYieldVenue,
+    #[msg("yield strategy program does not match the Kamino program account")]
+    InvalidYieldProgram,
+    #[msg("yield strategy mint does not match the provided vault mint")]
+    YieldMintMismatch,
+    #[msg("yield strategy receipt mint does not match the provided receipt mint")]
+    YieldReceiptMintMismatch,
+    #[msg("yield deposit exceeded the requested amount")]
+    YieldDepositAmountExceeded,
+    #[msg("yield withdrawal exceeded the requested receipt amount")]
+    YieldWithdrawAmountExceeded,
+    #[msg("yield movement did not change balances")]
+    YieldNoBalanceDelta,
+    #[msg("yield position is closed")]
+    YieldPositionClosed,
+    #[msg("emergency unwind did not fully drain the receipt vault")]
+    YieldUnwindIncomplete,
 }

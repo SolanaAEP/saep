@@ -508,6 +508,666 @@ export type TreasuryStandard = {
       "args": []
     },
     {
+      "name": "depositToYieldStrategy",
+      "discriminator": [
+        123,
+        218,
+        167,
+        59,
+        133,
+        108,
+        103,
+        215
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedMints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedTargets",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "strategy",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  115,
+                  116,
+                  114,
+                  97,
+                  116,
+                  101,
+                  103,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strategy.strategy_id",
+                "account": "yieldStrategyDescriptor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "yieldConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              },
+              {
+                "kind": "account",
+                "path": "strategy.strategy_id",
+                "account": "yieldStrategyDescriptor"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "receiptMint"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "receiptVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  114,
+                  101,
+                  99,
+                  101,
+                  105,
+                  112,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "kaminoProgram"
+        },
+        {
+          "name": "priceFeed",
+          "optional": true
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "routeData",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "emergencyUnwindYieldStrategy",
+      "discriminator": [
+        194,
+        107,
+        61,
+        130,
+        159,
+        126,
+        115,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedTargets",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "strategy",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  115,
+                  116,
+                  114,
+                  97,
+                  116,
+                  101,
+                  103,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strategy.strategy_id",
+                "account": "yieldStrategyDescriptor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "yieldConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              },
+              {
+                "kind": "account",
+                "path": "strategy.strategy_id",
+                "account": "yieldStrategyDescriptor"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "receiptMint"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "receiptVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  114,
+                  101,
+                  99,
+                  101,
+                  105,
+                  112,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "kaminoProgram"
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": [
+        {
+          "name": "routeData",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
       "name": "fundTreasury",
       "discriminator": [
         71,
@@ -3356,6 +4016,319 @@ export type TreasuryStandard = {
           "type": "bytes"
         }
       ]
+    },
+    {
+      "name": "withdrawFromYieldStrategy",
+      "discriminator": [
+        86,
+        199,
+        213,
+        140,
+        192,
+        214,
+        80,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "allowedTargets",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  108,
+                  108,
+                  111,
+                  119,
+                  101,
+                  100,
+                  95,
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "strategy",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  115,
+                  116,
+                  114,
+                  97,
+                  116,
+                  101,
+                  103,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strategy.strategy_id",
+                "account": "yieldStrategyDescriptor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "yieldConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              },
+              {
+                "kind": "account",
+                "path": "strategy.strategy_id",
+                "account": "yieldStrategyDescriptor"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "receiptMint"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.agent_did",
+                "account": "agentTreasury"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "receiptVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  105,
+                  101,
+                  108,
+                  100,
+                  95,
+                  114,
+                  101,
+                  99,
+                  101,
+                  105,
+                  112,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "kaminoProgram"
+        },
+        {
+          "name": "guard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  117,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": [
+        {
+          "name": "receiptAmount",
+          "type": "u64"
+        },
+        {
+          "name": "routeData",
+          "type": "bytes"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -3435,6 +4408,19 @@ export type TreasuryStandard = {
         21,
         193,
         32
+      ]
+    },
+    {
+      "name": "strategyPosition",
+      "discriminator": [
+        39,
+        177,
+        202,
+        35,
+        88,
+        177,
+        104,
+        129
       ]
     },
     {
@@ -3713,6 +4699,32 @@ export type TreasuryStandard = {
       ]
     },
     {
+      "name": "yieldStrategyDeposit",
+      "discriminator": [
+        46,
+        167,
+        194,
+        174,
+        93,
+        244,
+        204,
+        233
+      ]
+    },
+    {
+      "name": "yieldStrategyEmergencyUnwind",
+      "discriminator": [
+        144,
+        58,
+        181,
+        141,
+        60,
+        188,
+        214,
+        238
+      ]
+    },
+    {
       "name": "yieldStrategyRegistered",
       "discriminator": [
         129,
@@ -3736,6 +4748,19 @@ export type TreasuryStandard = {
         187,
         99,
         198
+      ]
+    },
+    {
+      "name": "yieldStrategyWithdraw",
+      "discriminator": [
+        254,
+        25,
+        233,
+        134,
+        158,
+        23,
+        99,
+        149
       ]
     }
   ],
@@ -3989,6 +5014,56 @@ export type TreasuryStandard = {
       "code": 6049,
       "name": "yieldAccountingStale",
       "msg": "treasury yield accounting slot moved backwards"
+    },
+    {
+      "code": 6050,
+      "name": "yieldRouteRequired",
+      "msg": "yield movement route data is required"
+    },
+    {
+      "code": 6051,
+      "name": "unsupportedYieldVenue",
+      "msg": "yield venue is not supported by this instruction"
+    },
+    {
+      "code": 6052,
+      "name": "invalidYieldProgram",
+      "msg": "yield strategy program does not match the Kamino program account"
+    },
+    {
+      "code": 6053,
+      "name": "yieldMintMismatch",
+      "msg": "yield strategy mint does not match the provided vault mint"
+    },
+    {
+      "code": 6054,
+      "name": "yieldReceiptMintMismatch",
+      "msg": "yield strategy receipt mint does not match the provided receipt mint"
+    },
+    {
+      "code": 6055,
+      "name": "yieldDepositAmountExceeded",
+      "msg": "yield deposit exceeded the requested amount"
+    },
+    {
+      "code": 6056,
+      "name": "yieldWithdrawAmountExceeded",
+      "msg": "yield withdrawal exceeded the requested receipt amount"
+    },
+    {
+      "code": 6057,
+      "name": "yieldNoBalanceDelta",
+      "msg": "yield movement did not change balances"
+    },
+    {
+      "code": 6058,
+      "name": "yieldPositionClosed",
+      "msg": "yield position is closed"
+    },
+    {
+      "code": 6059,
+      "name": "yieldUnwindIncomplete",
+      "msg": "emergency unwind did not fully drain the receipt vault"
     }
   ],
   "types": [
@@ -4813,6 +5888,97 @@ export type TreasuryStandard = {
       }
     },
     {
+      "name": "strategyPosition",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "strategyId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "vaultMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "receiptMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "principalAmount",
+            "type": "u64"
+          },
+          {
+            "name": "receiptAmount",
+            "type": "u64"
+          },
+          {
+            "name": "realizedYieldAmount",
+            "type": "i64"
+          },
+          {
+            "name": "lastAccountingSlot",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "strategyPositionStatus"
+              }
+            }
+          },
+          {
+            "name": "unwindRequested",
+            "type": "bool"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          },
+          {
+            "name": "updatedAt",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "strategyPositionStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "active"
+          },
+          {
+            "name": "unwinding"
+          },
+          {
+            "name": "closed"
+          }
+        ]
+      }
+    },
+    {
       "name": "streamClosed",
       "type": {
         "kind": "struct",
@@ -5383,6 +6549,80 @@ export type TreasuryStandard = {
       }
     },
     {
+      "name": "yieldStrategyDeposit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "strategyId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "vaultMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "receiptMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "principalDelta",
+            "type": "u64"
+          },
+          {
+            "name": "receiptDelta",
+            "type": "u64"
+          },
+          {
+            "name": "principalAmount",
+            "type": "u64"
+          },
+          {
+            "name": "receiptAmount",
+            "type": "u64"
+          },
+          {
+            "name": "realizedYieldAmount",
+            "type": "i64"
+          },
+          {
+            "name": "deployedAmount",
+            "type": "u64"
+          },
+          {
+            "name": "idleAmount",
+            "type": "u64"
+          },
+          {
+            "name": "accountingSlot",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "yieldStrategyDescriptor",
       "type": {
         "kind": "struct",
@@ -5455,6 +6695,88 @@ export type TreasuryStandard = {
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "yieldStrategyEmergencyUnwind",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "strategyId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "vaultMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "receiptMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "principalReduced",
+            "type": "u64"
+          },
+          {
+            "name": "receiptDelta",
+            "type": "u64"
+          },
+          {
+            "name": "amountReceived",
+            "type": "u64"
+          },
+          {
+            "name": "realizedYieldDelta",
+            "type": "i64"
+          },
+          {
+            "name": "principalAmount",
+            "type": "u64"
+          },
+          {
+            "name": "receiptAmount",
+            "type": "u64"
+          },
+          {
+            "name": "realizedYieldAmount",
+            "type": "i64"
+          },
+          {
+            "name": "deployedAmount",
+            "type": "u64"
+          },
+          {
+            "name": "idleAmount",
+            "type": "u64"
+          },
+          {
+            "name": "accountingSlot",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -5546,6 +6868,88 @@ export type TreasuryStandard = {
                 32
               ]
             }
+          },
+          {
+            "name": "status",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "yieldStrategyWithdraw",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agentDid",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "strategyId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "vaultMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "receiptMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "principalReduced",
+            "type": "u64"
+          },
+          {
+            "name": "receiptDelta",
+            "type": "u64"
+          },
+          {
+            "name": "amountReceived",
+            "type": "u64"
+          },
+          {
+            "name": "realizedYieldDelta",
+            "type": "i64"
+          },
+          {
+            "name": "principalAmount",
+            "type": "u64"
+          },
+          {
+            "name": "receiptAmount",
+            "type": "u64"
+          },
+          {
+            "name": "realizedYieldAmount",
+            "type": "i64"
+          },
+          {
+            "name": "deployedAmount",
+            "type": "u64"
+          },
+          {
+            "name": "idleAmount",
+            "type": "u64"
+          },
+          {
+            "name": "accountingSlot",
+            "type": "u64"
           },
           {
             "name": "status",

@@ -140,10 +140,10 @@ Full contributor guide: [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 | Track | Status | Scope |
 |---|---|---|
-| Core protocol + builder surfaces | Live now | AgentRegistry, TreasuryStandard, TaskMarket, ProofVerifier, portal, docs, analytics, SDK, MCP bridge |
-| Operator controls + programmable settlement | Shipping now | Governance, staking, discovery-backed search, x402 settlement flows, template registry surfaces |
-| Reputation, rewards, and coordination | Next | Reputation graph, fee routing, retro distribution plumbing, dispute flows, IACP orchestration |
-| Token, privacy, and cross-chain rails | Later | SAEP token rollout, private payments, cross-chain treasury rails, streaming payments |
+| Operator loop + builder surfaces | Live now | Agent registration, marketplace matching, template rentals/forks, managed x402, MCP, SAK, Python SDK, Hermes, webhooks |
+| Productive treasuries + hosted visibility | Shipping now | Kamino-only yield movement path, StrategyPosition accounting, treasury operator UI, Discovery/indexer yield snapshots, hosted ingest repair |
+| Trust, operator UX, and richer markets | Next | Reputation graph depth, anti-gaming rollups, webhook admin UX, richer template marketplace, A2A flow, fee/reward/dispute polish |
+| Expansion rails | Later | Token-2022 readiness, privacy-preserving payments, LayerZero-plus-intents, compute-bond enforcement, reusable ZK/ZK-ML |
 
 Vulnerability disclosure: [SECURITY.md](./SECURITY.md).
 

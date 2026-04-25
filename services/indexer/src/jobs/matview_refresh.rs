@@ -9,9 +9,11 @@
 //!      — backs Discovery API `GET /v1/discovery/agents`. Joins
 //!      `reputation_rollup`, so must refresh after it.
 //!   3. `task_directory` (same migration) — backs `GET /v1/discovery/tasks`.
-//!   4. `yield_strategy_directory` + `treasury_yield_directory`
-//!      (migration `2026-04-23-000008_treasury_yield_snapshots`) — back the
-//!      treasury yield control-plane read APIs.
+//!   4. `yield_strategy_directory` + `treasury_yield_directory` +
+//!      `treasury_yield_position_directory`
+//!      (migrations `2026-04-23-000008_treasury_yield_snapshots` and
+//!      `2026-04-25-000009_yield_strategy_positions`) — back the treasury yield
+//!      control-plane and position read APIs.
 //!
 //! Also folds `reputation_samples` → `category_reputation` each tick via
 //! `jobs::reputation_rollup::run` so fresh samples land before the matview
@@ -41,6 +43,7 @@ const MATVIEWS: &[&str] = &[
     "task_directory",
     "yield_strategy_directory",
     "treasury_yield_directory",
+    "treasury_yield_position_directory",
 ];
 
 pub async fn run(pool: PgPool, interval: Duration) -> Result<()> {
@@ -118,11 +121,12 @@ mod tests {
 
     #[test]
     fn all_matviews_listed() {
-        assert_eq!(MATVIEWS.len(), 5);
+        assert_eq!(MATVIEWS.len(), 6);
         assert!(MATVIEWS.contains(&"reputation_rollup"));
         assert!(MATVIEWS.contains(&"agent_directory"));
         assert!(MATVIEWS.contains(&"task_directory"));
         assert!(MATVIEWS.contains(&"yield_strategy_directory"));
         assert!(MATVIEWS.contains(&"treasury_yield_directory"));
+        assert!(MATVIEWS.contains(&"treasury_yield_position_directory"));
     }
 }

@@ -6,6 +6,9 @@ import {
   fetchStreamsByAgent,
   fetchVaultBalances,
   buildSetLimitsIx,
+  buildSetTreasuryYieldConfigIx,
+  buildDepositToYieldStrategyIx,
+  fetchStrategyPosition,
   treasuryStandardProgram,
 } from '@saep/sdk';
 import {
@@ -13,7 +16,11 @@ import {
   useAgentStreams,
   useVaultBalances,
   useSetLimits,
+  useSetTreasuryYieldConfig,
+  useDepositToYieldStrategy,
+  useStrategyPosition,
   useIndexedTreasuryYield,
+  useIndexedTreasuryYieldPositions,
   useIndexedYieldStrategies,
   useTreasuryYieldResearch,
   rawToUsdMicro,
@@ -187,6 +194,73 @@ describe('useSetLimits', () => {
       }),
     ).rejects.toThrow('Missing wallet publicKey');
     expect(buildSetLimitsIx).not.toHaveBeenCalled();
+  });
+});
+
+describe('yield movement hooks', () => {
+  const agentDid = new Uint8Array(32).fill(0xaa);
+  const strategyId = new Uint8Array(32).fill(0xbb);
+  const mockIx = new TransactionInstruction({
+    keys: [],
+    programId: MOCK_PUBKEY,
+    data: Buffer.alloc(8),
+  });
+
+  it('fetches a strategy position by PDA inputs', async () => {
+    const position = { principalAmount: 1_000_000n, status: 'active' };
+    vi.mocked(fetchStrategyPosition).mockResolvedValue(position as any);
+
+    const { result } = renderHook(() => useStrategyPosition(agentDid, strategyId, MOCK_PUBKEY), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(fetchStrategyPosition).toHaveBeenCalledWith(mockProgramInstance, agentDid, strategyId, MOCK_PUBKEY);
+    expect(result.current.data).toEqual(position);
+  });
+
+  it('configures treasury yield through the connected wallet', async () => {
+    vi.mocked(buildSetTreasuryYieldConfigIx).mockResolvedValue(mockIx);
+
+    const { result } = renderHook(() => useSetTreasuryYieldConfig(), {
+      wrapper: createWrapper(),
+    });
+
+    await result.current.mutateAsync({
+      agentDid,
+      strategyId,
+      allocationBps: 2500,
+    });
+
+    expect(buildSetTreasuryYieldConfigIx).toHaveBeenCalledWith(
+      mockProgramInstance,
+      expect.objectContaining({ operator: MOCK_PUBKEY, allocationBps: 2500 }),
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  });
+
+  it('builds and sends Kamino deposit transactions', async () => {
+    vi.mocked(buildDepositToYieldStrategyIx).mockResolvedValue(mockIx);
+
+    const { result } = renderHook(() => useDepositToYieldStrategy(), {
+      wrapper: createWrapper(),
+    });
+
+    await result.current.mutateAsync({
+      agentDid,
+      strategyId,
+      mint: MOCK_PUBKEY,
+      receiptMint: MOCK_PUBKEY_2,
+      kaminoProgram: PublicKey.unique(),
+      amount: 1_000_000n,
+      routeData: Uint8Array.from([1, 2, 3]),
+    });
+
+    expect(buildDepositToYieldStrategyIx).toHaveBeenCalledWith(
+      mockProgramInstance,
+      expect.objectContaining({ operator: MOCK_PUBKEY, amount: 1_000_000n }),
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
 });
 
@@ -435,6 +509,48 @@ describe('indexed treasury yield hooks', () => {
     await waitFor(() => expect(failing.result.current.isError).toBe(true));
     expect(fetchMock.mock.calls[0]?.[0]).toBe(`${INDEXER}/v1/discovery/treasury/${didHex}/yield`);
     expect(failing.result.current.error).toEqual(new Error('indexer 500: boom'));
+  });
+
+  it('maps indexed strategy position snapshots', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [
+            {
+              did_hex: didHex,
+              strategy_id_hex: strategyHex,
+              vault_mint: 'USDC11111111111111111111111111111111111',
+              receipt_mint: 'kUSDC1111111111111111111111111111111111',
+              principal_amount: '1000000',
+              receipt_amount: '999000',
+              realized_yield_amount: '2500',
+              deployed_amount: '1000000',
+              idle_amount: '9000000',
+              accounting_slot: 123,
+              status: 'active',
+              unwind_requested: false,
+              last_event_name: 'YieldStrategyDeposit',
+              updated_unix: 1700000300,
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(
+      () => useIndexedTreasuryYieldPositions({ indexerUrl: INDEXER, agentDidHex: didHex }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`${INDEXER}/v1/discovery/treasury/${didHex}/yield/positions`);
+    expect(result.current.data?.[0]).toMatchObject({
+      principalAmount: '1000000',
+      receiptAmount: '999000',
+      status: 'active',
+    });
   });
 });
 

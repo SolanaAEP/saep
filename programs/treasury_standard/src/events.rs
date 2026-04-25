@@ -174,3 +174,61 @@ pub struct TreasuryYieldAccountingRecorded {
     pub status: String,
     pub timestamp: i64,
 }
+
+#[event]
+pub struct YieldStrategyDeposit {
+    pub agent_did: [u8; 32],
+    pub strategy_id: [u8; 32],
+    pub vault_mint: Pubkey,
+    pub receipt_mint: Pubkey,
+    pub principal_delta: u64,
+    pub receipt_delta: u64,
+    pub principal_amount: u64,
+    pub receipt_amount: u64,
+    pub realized_yield_amount: i64,
+    pub deployed_amount: u64,
+    pub idle_amount: u64,
+    pub accounting_slot: u64,
+    pub status: String,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct YieldStrategyWithdraw {
+    pub agent_did: [u8; 32],
+    pub strategy_id: [u8; 32],
+    pub vault_mint: Pubkey,
+    pub receipt_mint: Pubkey,
+    pub principal_reduced: u64,
+    pub receipt_delta: u64,
+    pub amount_received: u64,
+    pub realized_yield_delta: i64,
+    pub principal_amount: u64,
+    pub receipt_amount: u64,
+    pub realized_yield_amount: i64,
+    pub deployed_amount: u64,
+    pub idle_amount: u64,
+    pub accounting_slot: u64,
+    pub status: String,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct YieldStrategyEmergencyUnwind {
+    pub agent_did: [u8; 32],
+    pub strategy_id: [u8; 32],
+    pub vault_mint: Pubkey,
+    pub receipt_mint: Pubkey,
+    pub principal_reduced: u64,
+    pub receipt_delta: u64,
+    pub amount_received: u64,
+    pub realized_yield_delta: i64,
+    pub principal_amount: u64,
+    pub receipt_amount: u64,
+    pub realized_yield_amount: i64,
+    pub deployed_amount: u64,
+    pub idle_amount: u64,
+    pub accounting_slot: u64,
+    pub status: String,
+    pub timestamp: i64,
+}

@@ -11,6 +11,7 @@ pub mod guard;
 pub mod instructions;
 pub mod jupiter;
 pub mod state;
+pub mod yield_cpi;
 
 #[cfg(test)]
 mod fuzz;
@@ -248,5 +249,32 @@ pub mod treasury_standard {
             realized_yield_amount,
             accounting_slot,
         )
+    }
+
+    pub fn deposit_to_yield_strategy<'a>(
+        ctx: Context<'a, DepositToYieldStrategy<'a>>,
+        amount: u64,
+        route_data: Vec<u8>,
+    ) -> Result<()> {
+        instructions::yield_automation::deposit_to_strategy_handler(ctx, amount, route_data)
+    }
+
+    pub fn withdraw_from_yield_strategy<'a>(
+        ctx: Context<'a, WithdrawFromYieldStrategy<'a>>,
+        receipt_amount: u64,
+        route_data: Vec<u8>,
+    ) -> Result<()> {
+        instructions::yield_automation::withdraw_from_strategy_handler(
+            ctx,
+            receipt_amount,
+            route_data,
+        )
+    }
+
+    pub fn emergency_unwind_yield_strategy<'a>(
+        ctx: Context<'a, EmergencyUnwindYieldStrategy<'a>>,
+        route_data: Vec<u8>,
+    ) -> Result<()> {
+        instructions::yield_automation::emergency_unwind_strategy_handler(ctx, route_data)
     }
 }

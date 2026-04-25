@@ -6,7 +6,7 @@ import type { TaskMarket } from '../generated/task_market.js';
 import type { ProofVerifier } from '../generated/proof_verifier.js';
 import type { CapabilityRegistry } from '../generated/capability_registry.js';
 import type { TemplateRegistry } from '../generated/template_registry.js';
-import { agentAccountPda, treasuryPda, taskPda, verifierConfigPda, verifierKeyPda, capabilityConfigPda, treasuryAllowedMintsPda, vaultPda, bidBookPda, bidPda, categoryReputationPda, marketGlobalPda, templateGlobalPda, templatePda } from '../pda/index.js';
+import { agentAccountPda, treasuryPda, taskPda, verifierConfigPda, verifierKeyPda, capabilityConfigPda, treasuryAllowedMintsPda, vaultPda, bidBookPda, bidPda, categoryReputationPda, marketGlobalPda, templateGlobalPda, templatePda, treasuryYieldPositionPda } from '../pda/index.js';
 import type {
   AnchorEnum,
   AgentStatusEnum,
@@ -229,6 +229,90 @@ export async function fetchVaultBalances(
     const amount = info.data.readBigUInt64LE(64);
     return { mint, vault, amount, exists: true };
   });
+}
+
+const strategyPositionStatusFromEnum = (s: AnchorEnum): StrategyPositionSummary['status'] => {
+  if ('active' in s) return 'active';
+  if ('unwinding' in s) return 'unwinding';
+  return 'closed';
+};
+
+export interface StrategyPositionSummary {
+  address: PublicKey;
+  agentDid: Uint8Array;
+  strategyId: Uint8Array;
+  vaultMint: PublicKey;
+  receiptMint: PublicKey;
+  principalAmount: bigint;
+  receiptAmount: bigint;
+  realizedYieldAmount: bigint;
+  lastAccountingSlot: bigint;
+  status: 'active' | 'unwinding' | 'closed';
+  unwindRequested: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+type DecodedStrategyPosition = {
+  agentDid: number[];
+  strategyId: number[];
+  vaultMint: PublicKey;
+  receiptMint: PublicKey;
+  principalAmount: BN;
+  receiptAmount: BN;
+  realizedYieldAmount: BN;
+  lastAccountingSlot: BN;
+  status: AnchorEnum;
+  unwindRequested: boolean;
+  createdAt: BN;
+  updatedAt: BN;
+};
+
+function toStrategyPositionSummary(
+  address: PublicKey,
+  p: DecodedStrategyPosition,
+): StrategyPositionSummary {
+  return {
+    address,
+    agentDid: Uint8Array.from(p.agentDid),
+    strategyId: Uint8Array.from(p.strategyId),
+    vaultMint: p.vaultMint,
+    receiptMint: p.receiptMint,
+    principalAmount: BigInt(p.principalAmount.toString()),
+    receiptAmount: BigInt(p.receiptAmount.toString()),
+    realizedYieldAmount: BigInt(p.realizedYieldAmount.toString()),
+    lastAccountingSlot: BigInt(p.lastAccountingSlot.toString()),
+    status: strategyPositionStatusFromEnum(p.status),
+    unwindRequested: p.unwindRequested,
+    createdAt: p.createdAt.toNumber(),
+    updatedAt: p.updatedAt.toNumber(),
+  };
+}
+
+export async function fetchStrategyPosition(
+  program: Program<TreasuryStandard>,
+  agentDid: Uint8Array,
+  strategyId: Uint8Array,
+  mint: PublicKey,
+): Promise<StrategyPositionSummary | null> {
+  const [addr] = treasuryYieldPositionPda(program.programId, agentDid, strategyId, mint);
+  const raw = (await program.account.strategyPosition.fetchNullable(addr)) as DecodedStrategyPosition | null;
+  if (!raw) return null;
+  return toStrategyPositionSummary(addr, raw);
+}
+
+export async function fetchStrategyPositionsByAgent(
+  program: Program<TreasuryStandard>,
+  agentDid: Uint8Array,
+): Promise<StrategyPositionSummary[]> {
+  if (agentDid.length !== 32) throw new Error('agentDid must be 32 bytes');
+  const didKey = new PublicKey(agentDid);
+  const accounts = await program.account.strategyPosition.all([
+    { memcmp: { offset: 8, bytes: didKey.toBase58() } },
+  ]);
+  return accounts.map(({ publicKey, account }) =>
+    toStrategyPositionSummary(publicKey, account as DecodedStrategyPosition),
+  );
 }
 
 // task_market fetchers
