@@ -12,7 +12,7 @@ use crate::ingest::{self, NewBlock, NewEvent};
 use crate::metrics;
 use crate::programs::{self, SaepProgram};
 use crate::pubsub::Publisher;
-use crate::schema::sync_cursor;
+use crate::schema::{blocks, program_events, sync_cursor};
 
 pub async fn run(cfg: Config, pool: PgPool, publisher: Publisher) -> Result<()> {
     let idl_dir = idl::default_idl_path();
@@ -24,6 +24,16 @@ pub async fn run(cfg: Config, pool: PgPool, publisher: Publisher) -> Result<()> 
         events = registry.event_count(),
         "idl registry loaded"
     );
+
+    if ingest_store_is_empty(&pool)? {
+        let cleared = clear_all_cursors(&pool)?;
+        if cleared > 0 {
+            tracing::warn!(
+                cleared,
+                "empty ingest tables found; reset sync cursors for bootstrap"
+            );
+        }
+    }
 
     let http = reqwest::Client::builder()
         .timeout(Duration::from_secs(20))
@@ -376,6 +386,28 @@ fn read_cursor(pool: &PgPool, program_id: &str) -> Result<Option<String>> {
         .first(&mut conn)
         .optional()?;
     Ok(row.flatten())
+}
+
+fn ingest_store_is_empty(pool: &PgPool) -> Result<bool> {
+    let mut conn = pool.get()?;
+    let block_count: i64 = blocks::table.count().get_result(&mut conn)?;
+    if block_count > 0 {
+        return Ok(false);
+    }
+    let event_count: i64 = program_events::table.count().get_result(&mut conn)?;
+    Ok(event_count == 0)
+}
+
+fn clear_all_cursors(pool: &PgPool) -> Result<usize> {
+    let mut conn = pool.get()?;
+    let rows = diesel::update(sync_cursor::table)
+        .set((
+            sync_cursor::last_sig.eq::<Option<String>>(None),
+            sync_cursor::last_slot.eq::<Option<i64>>(None),
+            sync_cursor::updated_at.eq(Utc::now()),
+        ))
+        .execute(&mut conn)?;
+    Ok(rows)
 }
 
 fn write_cursor(pool: &PgPool, program_id: &str, sig: &str, slot: i64) -> Result<()> {
