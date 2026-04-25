@@ -201,16 +201,41 @@ SAEP treasury instructions, and optionally submits them on devnet. It is intenti
 without `--send`, it only checks prerequisites, calls the configured route builder, and builds
 transactions.
 
+The smoke auto-loads `.env.local` and `.env`, defaults to devnet RPC plus the hosted SAEP
+Discovery endpoint, and discovers the first active on-chain Kamino strategy when one exists. If
+devnet does not have an active strategy descriptor yet, bootstrap it first:
+
+```bash
+SAEP_TREASURY_UNDERLYING_MINT=<usdc-mint> \
+SAEP_TREASURY_RECEIPT_MINT=<kamino-receipt-mint> \
+pnpm bootstrap:devnet-treasury-yield
+```
+
+That command is a dry run by default. To register the descriptor on devnet, use the treasury
+global authority wallet and add the explicit acknowledgement:
+
+```bash
+ANCHOR_WALLET=~/.config/solana/id.json \
+SAEP_TREASURY_UNDERLYING_MINT=<usdc-mint> \
+SAEP_TREASURY_RECEIPT_MINT=<kamino-receipt-mint> \
+SAEP_TREASURY_YIELD_BOOTSTRAP_ACK=I_UNDERSTAND_DEVNET_TREASURY_YIELD_BOOTSTRAP \
+pnpm bootstrap:devnet-treasury-yield --send
+```
+
+Set `SAEP_TREASURY_AGENT_DID_HEX` on the bootstrap command when you also want it to configure
+that agent treasury's yield allocation. Otherwise it only registers or validates the active
+strategy descriptor.
+
 ```bash
 SAEP_KAMINO_ROUTE_BUILDER_URL=https://your-route-builder.example.com/kamino \
 SAEP_TREASURY_AGENT_DID_HEX=<32-byte-did-hex> \
-SAEP_TREASURY_STRATEGY_ID_HEX=<32-byte-strategy-id-hex> \
-SAEP_TREASURY_UNDERLYING_MINT=<usdc-mint> \
-SAEP_TREASURY_RECEIPT_MINT=<kamino-receipt-mint> \
-SAEP_TREASURY_KAMINO_PROGRAM=<approved-kamino-program> \
-SAEP_DISCOVERY_URL=https://your-discovery.example.com \
 pnpm smoke:devnet-treasury-yield
 ```
+
+If you are testing before a route-builder service is deployed, replace `SAEP_KAMINO_ROUTE_BUILDER_URL`
+with paired manual route payloads: `SAEP_TREASURY_DEPOSIT_ROUTE_DATA_HEX` plus
+`SAEP_TREASURY_DEPOSIT_ROUTE_ACCOUNTS_JSON`, and the matching `WITHDRAW` variables. The route
+account JSON is an array of `{ "pubkey": "...", "isSigner": false, "isWritable": true }` entries.
 
 To actually submit the devnet deposit and withdraw transactions, add an operator wallet and the
 explicit send acknowledgement:
