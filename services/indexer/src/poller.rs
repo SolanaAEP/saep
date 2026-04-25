@@ -346,9 +346,26 @@ async fn get_transaction(cfg: &Config, http: &reqwest::Client, sig: &str) -> Res
         metrics::RPC_ERRORS
             .with_label_values(&["getTransaction"])
             .inc();
+        if is_transaction_not_found(err) {
+            tracing::warn!(signature = sig, error = %err, "getTransaction returned not found");
+            return Ok(None);
+        }
         return Err(anyhow!("rpc error: {err}"));
     }
     Ok(v.get("result").filter(|r| !r.is_null()).cloned())
+}
+
+fn is_transaction_not_found(err: &Value) -> bool {
+    let code_matches = err.get("code").and_then(|v| v.as_i64()) == Some(-32020);
+    let message_matches = err
+        .get("message")
+        .and_then(|v| v.as_str())
+        .map(|message| {
+            message.to_ascii_lowercase().contains("transaction")
+                && message.to_ascii_lowercase().contains("not found")
+        })
+        .unwrap_or(false);
+    code_matches && message_matches
 }
 
 fn read_cursor(pool: &PgPool, program_id: &str) -> Result<Option<String>> {
