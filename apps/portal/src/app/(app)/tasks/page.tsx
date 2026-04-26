@@ -6,7 +6,7 @@ import { useDiscoveryTasks, useTasksByClient } from '@saep/sdk-ui';
 import type { TaskSummary } from '@saep/sdk';
 import { ComputeBondSummary } from '@/components/compute-bond-summary';
 import { getPortalIndexerUrl } from '@/lib/indexer-url';
-import { formatPaymentAmount } from '@/lib/quick-hire';
+import { formatPaymentAmount } from '@/lib/agent-hire';
 
 const STATUS_COLOR: Record<string, string> = {
   created: 'text-ink/60 bg-ink/5',

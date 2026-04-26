@@ -1,7 +1,7 @@
 'use client';
 
 import type { TaskDetail } from '@saep/sdk';
-import { formatPaymentAmount, mintLabel } from '@/lib/quick-hire';
+import { formatPaymentAmount, mintLabel } from '@/lib/agent-hire';
 
 const LOCKED_STATES = new Set(['funded', 'inExecution', 'proofSubmitted', 'verified', 'disputed']);
 const RELEASED_STATES = new Set(['released']);

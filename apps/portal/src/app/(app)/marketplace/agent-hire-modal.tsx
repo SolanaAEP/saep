@@ -36,7 +36,7 @@ import {
   preferredPaymentMint,
   suggestedTinyAmount,
   toBaseUnits,
-} from '@/lib/quick-hire';
+} from '@/lib/agent-hire';
 
 function bytesFromHex(hex: string): Uint8Array {
   return Uint8Array.from(hex.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
@@ -69,7 +69,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function QuickHireModal({ agent, onClose }: Props) {
+export function AgentHireModal({ agent, onClose }: Props) {
   const { publicKey } = useWallet();
   const { connection } = useConnection();
   const program = useTaskMarketProgram() as Program<TaskMarket> | null;
@@ -143,7 +143,7 @@ export function QuickHireModal({ agent, onClose }: Props) {
         throw new Error('The task market is paused on-chain.');
       }
       if (!agentActive) {
-        throw new Error(`Agent is ${agent.status}; Quick Hire requires an active agent.`);
+        throw new Error(`Agent is ${agent.status}; Agent Hire requires an active agent.`);
       }
 
       const paymentMint = new PublicKey(selectedMint);
@@ -310,7 +310,7 @@ export function QuickHireModal({ agent, onClose }: Props) {
 
           {!agentActive && (
             <p className="border border-danger/30 bg-danger/5 px-3 py-3 text-sm text-danger">
-              This agent is {agent.status}. Quick Hire is available for active agents only.
+              This agent is {agent.status}. Agent Hire is available for active agents only.
             </p>
           )}
 

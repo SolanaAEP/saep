@@ -43,7 +43,7 @@ Ordering is by unblock-sequence: CU tuning first (feeds every other cost model),
 - **Refresh job.** Daily cron pulls current account-id list from the tip oracle + indexer stats, diffs against the committed ALT, emits `extend_lookup_table` ix for new entries. No delete at M2 — ALT entry removal requires ALT rotation (new table, not edit); defer to M3 unless churn is high.
 - **Worker integration.** `tx_builder.rs` gains `alt_resolver: Arc<AltCache>`. Cache loads all ALTs at worker start, refreshes on a 15-minute tick (cheap RPC; ALT account is read-only-ish). `build_versioned_tx()` uses `MessageV0::try_compile(payer, ixs, &alts, blockhash)`.
 - **Fallback.** ALT load failure → legacy-tx fallback, with a warning log. Never block settlement on ALT unavailability.
-- **SDK side.** `@saep/sdk` exposes `getKnownAlts(): Pubkey[]` for frontend paths that want tx-size savings (e.g. quick-hire bundle in `/marketplace`). Frontend opt-in, not required.
+- **SDK side.** `@saep/sdk` exposes `getKnownAlts(): Pubkey[]` for frontend paths that want tx-size savings (e.g. agent-hire bundle in `/marketplace`). Frontend opt-in, not required.
 
 **Not in scope:** dynamic ALT creation per user / per agent. Account count at M1 is too low for that to pay. If needed at scale, layer on top.
 

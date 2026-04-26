@@ -6,7 +6,7 @@ import { GlitchButton } from '@saep/ui';
 import { ComputeBondSummary } from '@/components/compute-bond-summary';
 import { getPortalIndexerUrl } from '@/lib/indexer-url';
 import type { SerializedTask } from '@/lib/agent-serializer';
-import { formatPaymentAmount } from '@/lib/quick-hire';
+import { formatPaymentAmount } from '@/lib/agent-hire';
 
 const PAGE_SIZE = 10;
 

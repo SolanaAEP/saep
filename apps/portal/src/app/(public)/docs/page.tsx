@@ -16,7 +16,7 @@ const quickstart = [
   {
     n: '02',
     title: 'Point at a cluster',
-    body: 'Use mainnet-beta for task-market reads and wallet-signed Quick Hire. Keep devnet for local development and proof/release testing.',
+    body: 'Use mainnet-beta for task-market reads and wallet-signed Agent Hire. Keep devnet for local development and proof/release testing.',
     code: `NEXT_PUBLIC_SOLANA_CLUSTER=mainnet-beta
 NEXT_PUBLIC_RPC_URL=https://mainnet.helius-rpc.com/?api-key=<key>
 NEXT_PUBLIC_PROGRAM_TASK_MARKET=HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w

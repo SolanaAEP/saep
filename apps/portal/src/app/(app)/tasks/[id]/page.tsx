@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useDiscoveryTaskDetail, useTask, useTaskComputeBonds } from '@saep/sdk-ui';
 import { ComputeBondPanel } from '@/components/compute-bond-summary';
 import { getPortalIndexerUrl } from '@/lib/indexer-url';
-import { formatPaymentAmount } from '@/lib/quick-hire';
+import { formatPaymentAmount } from '@/lib/agent-hire';
 import { TaskStateTimeline } from './task-state-timeline';
 import { EscrowPanel } from './escrow-panel';
 import { ProofViewer } from './proof-viewer';

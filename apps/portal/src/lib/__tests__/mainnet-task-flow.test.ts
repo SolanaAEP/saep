@@ -10,7 +10,7 @@ import {
   preferredPaymentMint,
   suggestedTinyAmount,
   toBaseUnits,
-} from '@/lib/quick-hire';
+} from '@/lib/agent-hire';
 import { resolvePublicServiceUpstreamPath } from '@/lib/service-proxy';
 
 describe('mainnet task flow helpers', () => {
@@ -31,7 +31,7 @@ describe('mainnet task flow helpers', () => {
     expect(suggestedTinyAmount(MAINNET_SAEP_MINT)).toBe('100');
   });
 
-  it('formats USDC and SAEP decimal units for Quick Hire funding', () => {
+  it('formats USDC and SAEP decimal units for Agent Hire funding', () => {
     expect(toBaseUnits('1', 6)).toBe(1_000_000n);
     expect(toBaseUnits('100', 6)).toBe(100_000_000n);
     expect(() => toBaseUnits('1.0000001', 6)).toThrow('at most 6 decimals');

@@ -51,7 +51,7 @@ pnpm --filter @saep/portal dev    # http://localhost:3000
 Production portal deployments now target the mainnet task market. Set `NEXT_PUBLIC_SOLANA_CLUSTER`
 to `mainnet-beta`, provide a Helius-backed `NEXT_PUBLIC_RPC_URL`, and pin the mainnet program IDs
 from the release environment. The legacy `/api/actions/create-task` route remains devnet-only
-because mainnet public tasks must create and fund escrow atomically through wallet-signed Quick Hire.
+because mainnet public tasks must create and fund escrow atomically through wallet-signed Agent Hire.
 
 Production env baseline:
 

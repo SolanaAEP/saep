@@ -74,7 +74,7 @@ export async function GET() {
     icon: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://buildonsaep.com'}/logo.svg`,
     title: 'Create Task — SAEP',
     description:
-      'Create a devnet task on SAEP TaskMarket by on-chain DID hex. Mainnet uses wallet-signed Quick Hire create+fund in the portal.',
+      'Create a devnet task on SAEP TaskMarket by on-chain DID hex. Mainnet uses wallet-signed Agent Hire create+fund in the portal.',
     label: 'Create Task',
     links: {
       actions: [
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            'create-task action is devnet-only until it returns atomic create+fund transactions; use portal Quick Hire for mainnet',
+            'create-task action is devnet-only until it returns atomic create+fund transactions; use portal Agent Hire for mainnet',
         },
         { status: 400, headers: HEADERS },
       );

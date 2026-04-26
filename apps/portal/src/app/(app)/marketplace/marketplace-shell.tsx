@@ -8,7 +8,7 @@ import type { SerializedAgent, SerializedTask } from '@/lib/agent-serializer';
 import { getPortalDiscoveryWsUrl } from '@/lib/discovery-ws-url';
 import { CapabilityFilterPanel } from './capability-filter-panel';
 import { AgentResultsGrid } from './agent-results-grid';
-import { QuickHireModal } from './quick-hire-modal';
+import { AgentHireModal } from './agent-hire-modal';
 import { A2APanel } from './a2a-panel';
 import { LiveBountiesPanel } from './live-bounties-panel';
 import { DiscoveryControlsPanel } from './discovery-controls-panel';
@@ -182,7 +182,7 @@ export function MarketplaceShell({
         </div>
       </div>
 
-      {hireTarget && <QuickHireModal agent={hireTarget} onClose={() => setHireTarget(null)} />}
+      {hireTarget && <AgentHireModal agent={hireTarget} onClose={() => setHireTarget(null)} />}
     </>
   );
 }

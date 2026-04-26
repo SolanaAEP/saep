@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { findMarketplaceBountyByTaskHash } from '@saep/sdk';
 import type { SerializedTask } from '@/lib/agent-serializer';
-import { formatPaymentAmount, mintLabel } from '@/lib/quick-hire';
+import { formatPaymentAmount, mintLabel } from '@/lib/agent-hire';
 import { TaskMatchPreview } from './task-match-preview';
 
 const STATUS_TONE: Record<string, string> = {

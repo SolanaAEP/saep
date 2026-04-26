@@ -7,10 +7,10 @@ export const mainnetTaskFlowStatus = {
   cluster: 'mainnet-beta' as const,
   headline: 'Task market and public-agent settlement are live on Solana mainnet.',
   summary:
-    'Public Quick Hire creates and funds escrow in one wallet-signed transaction, and public agents now run the full submit → prove → verify → release path on mainnet through the production verifier key.',
+    'Public Agent Hire creates and funds escrow in one wallet-signed transaction, and public agents now run the full submit → prove → verify → release path on mainnet through the production verifier key.',
   facts: [
     ['Task market', 'Live'],
-    ['Public write path', 'Quick Hire'],
+    ['Public write path', 'Agent Hire'],
     ['Public-agent settlement', 'Live'],
     ['Payment mints', 'USDC + SAEP'],
   ],

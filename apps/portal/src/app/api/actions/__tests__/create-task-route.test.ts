@@ -47,7 +47,7 @@ describe('create-task action route', () => {
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toContain('devnet-only');
-      expect(body.error).toContain('Quick Hire');
+      expect(body.error).toContain('Agent Hire');
     } finally {
       if (previousCluster === undefined) {
         delete process.env.NEXT_PUBLIC_SOLANA_CLUSTER;

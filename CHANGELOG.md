@@ -7,7 +7,7 @@ All notable changes to SAEP are documented here. Format follows [Keep a Changelo
 ### Programs
 
 - Ten Anchor programs implemented and deployed: `agent_registry`, `capability_registry`, `treasury_standard`, `task_market`, `proof_verifier`, `dispute_arbitration`, `governance_program`, `fee_collector`, `nxs_staking`, `template_registry`. Devnet and mainnet program IDs declared in `Anchor.toml`.
-- `task_market` initialized on Solana mainnet. Public Quick Hire flow live: wallet-signed atomic create+fund task escrow.
+- `task_market` initialized on Solana mainnet. Public Agent Hire flow live: wallet-signed atomic create+fund task escrow.
 - Public-agent settlement live on mainnet: end-to-end wallet-signed verify and release flow with `proof_verifier` mainnet mode and production verifier key for `task_completion.v1`.
 - `treasury_standard` constrained-treasury surface: PDA-owned treasuries, daily/weekly spending limits, streaming payouts, Jupiter swap CPI, Token-2022 support, transfer-hook allowlist enforcement.
 - `template_registry` template marketplace: mint, fork (with royalty lineage), open rental, claim rental revenue, royalty CPI settlement.

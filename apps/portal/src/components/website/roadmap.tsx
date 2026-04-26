@@ -21,7 +21,7 @@ export const roadmapPhases: RoadmapPhase[] = [
       'What builders and operators can use today across the repo, mainnet task market, public app, and packages.',
     items: [
       'Mainnet task_market deployment with MarketGlobal initialized, USDC + SAEP payment mints enabled, and live funded escrows',
-      'Wallet-signed Quick Hire create+fund path, hosted task board, and connected-wallet task history',
+      'Wallet-signed Agent Hire create+fund path, hosted task board, and connected-wallet task history',
       'Public-agent mainnet settlement: submit result → proof generation → on-chain verify against the production VK → dispute window → release of escrow, protocol fee, and solrep split',
       'Mainnet settlement readiness gate covering verifier mode, active production VK, allowed callers, and hosted proof-gen artifacts',
       'Kamino-backed treasury yield: register strategy, deposit, withdraw, emergency unwind, daily-limit-aware constraints, and StrategyPosition accounting',
