@@ -1,6 +1,6 @@
 ---
 id: P1_agent_template_registry
-status: open
+status: done
 blockers: []
 priority: P1
 ---
@@ -35,3 +35,5 @@ pnpm --filter @saep/portal test:e2e -- --grep rent
 ```
 
 ## Log
+
+- 2026-04-27: shipped. `programs/template_registry/` carries `mint_template`, `fork_template`, `open_rental`, `claim_rental_revenue`, `settle_royalty_cpi`. Portal surfaces `/templates/[id]/fork` + `/templates/[id]/rent` and a marketplace simulator. Royalty splits flow through `treasury_standard`. Deferred: per-duration subscription UX (current rentals are open→claim, not monthly lease) — re-open if the rental product needs a real subscription rail.

@@ -1,6 +1,6 @@
 ---
 id: P1_sdk_typescript_generation
-status: open
+status: done
 blockers: []
 priority: P1
 ---
@@ -34,3 +34,5 @@ pnpm -w typecheck
 ```
 
 ## Log
+
+- 2026-04-27: shipped. `packages/sdk/scripts/gen.ts` regenerates `src/generated/<program>.ts` for all ten programs from `target/idl/*.json`. PDA helpers live under `src/pda/`. `pnpm --filter @saep/sdk build` runs `generate` first via the package script chain. Generated files carry a `do not edit by hand` banner.

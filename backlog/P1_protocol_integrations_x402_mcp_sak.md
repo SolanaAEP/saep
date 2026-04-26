@@ -1,6 +1,6 @@
 ---
 id: P1_protocol_integrations_x402_mcp_sak
-status: open
+status: done
 blockers: []
 priority: P1
 ---
@@ -40,3 +40,5 @@ pnpm --filter @saep/mcp-bridge test
 ```
 
 ## Log
+
+- 2026-04-27: shipped. Specs at `specs/integration-x402.md`, `specs/integration-mcp.md`, `specs/integration-sak.md`. `services/x402-gateway/` (server, settlement, CCTP, auth, allowlist, ratelimit, metrics, tests). `services/mcp-bridge/` (server, tools covering register/bid/release/submit/withdraw/list/get + reputation, smithery.yaml, server.json). `packages/sak-plugin/` with actions + tests. Demos at `examples/sak-demo/` and `examples/agents/x402-content-agent/`. MCP install docs live in `services/mcp-bridge/README.md` (canonical Smithery path) rather than the originally-specified `docs/mcp-setup.md`.

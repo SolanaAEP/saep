@@ -1,6 +1,6 @@
 ---
 id: P0_pre_audit_hardening
-status: open
+status: done
 blockers: []
 priority: P0
 ---
@@ -57,3 +57,5 @@ cargo test -p task_market -p treasury_standard -p agent_registry -p fee_collecto
 ```
 
 ## Log
+
+- 2026-04-27: code complete on all seven items. (1) `TaskPayload` + `TaskKind` + `derive_task_hash` in `programs/task_market/src/state.rs`, `treasury_standard::AllowedTargets` PDA + `assert_call_target_allowed` enforced on every CPI. (2) `commit_bid`/`reveal_bid`/`claim_bond` instructions with `BidBook` + `BidPhase` state. (3) `CategoryReputation` PDA + `update_reputation` reachable only via `proof_verifier` CPI with verified Groth16 proof + on-chain Poseidon sample-hash check + replay reject via `last_task_id`. (4) `PersonhoodAttestation` PDA + Civic decoder + gatekeeper allowlist; `commit_bid` and `register_agent` enforce `CapabilityTag.min_personhood_tier`. (5) `fee_collector::HookAllowlist` + `assert_hook_allowed` wrapped on every token transfer CPI. (6) `specs/mev-settlement.md` + Jito bundle submitter in SDK + settlement worker in indexer. (7) `ReentrancyGuard` PDA across all state-changing programs + `get_stack_height` cap + allowed-callers gate. Closing items tracked in `reports/pre-audit-checklist.md`: walk specs against code for missing invariants, internal audit pass on each item to promote 🟢→✅, then OtterSec engagement (out-of-band).

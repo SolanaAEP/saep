@@ -1,6 +1,6 @@
 ---
 id: P2_retro_airdrop_design
-status: open
+status: done
 blockers: []
 priority: P2
 ---
@@ -38,3 +38,4 @@ pnpm --filter @saep/portal test:e2e -- --grep allocation
 - 2026-04-16: Indexer migration `2026-04-16-000004_retro_eligibility` landed — creates `retro_eligibility` (operator PK) table with net_fees/wash_excluded/personhood_tier+multiplier/cold_start/estimated_allocation/epoch_first_seen columns, and `retro_fee_samples` append-only log (UNIQUE signature+task_id) with wash_flag enum (self_task/circular/burst/below_min). Indexer cargo check clean. Rollup job `services/indexer/jobs/retro-rollup.rs` still pending.
 - 2026-04-16: Rollup job scaffold landed at `services/indexer/src/jobs/retro_rollup.rs` — pure-Rust classify/aggregate/estimate pipeline with `OperatorGraph` transitive ownership (depth 3), `WashFlag` enum matching migration CHECK, personhood multiplier table (50/75/100), burst detection via per-operator median×10 threshold, circular down-weight when wash/gross > 40%. `run(pool, snapshot_epoch)` orchestrator returns `RollupStatus::NotYetWired` pending fee_collector event decode + retro_eligibility upsert wiring. 12 unit tests green (below-min, self-task, circular depth limit, burst spike, aggregation sums, 40% wash zeroing, cold-start, allocation caps).
 - 2026-04-16: Portal `/retro/check` page landed at `apps/portal/src/app/(app)/retro/check/page.tsx` — SIWS-gated via `useSession`, converts session.address base58 → 32-byte hex via PublicKey.toBytes, drives `useRetroEligibility` hook against indexer REST. Surfaces estimated SAEP allocation, trailing net fees, wash-excluded amount, personhood tier + multiplier, cold-start multiplier, first-seen epoch, updated relative. Nav link added between Register and Cluster line. 404 → empty-state. typecheck clean. Commit e63718c.
+- 2026-04-27: closing per acceptance scope (spec-only pre-M3). Spec, indexer migration, rollup scaffold, portal SIWS-gated check page all landed. Rollup `RollupStatus::NotYetWired` finish + live token distribution are M3-gated and tracked separately under the token launch lane.
