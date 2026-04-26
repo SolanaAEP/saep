@@ -51,7 +51,9 @@ export const YieldStrategyQuerySchema = z.object({
 export const WsSubscribeSchema = z.object({
   type: z.literal('subscribe'),
   capabilities: z.array(z.number().int().min(0)).optional(),
-  events: z.array(z.enum(['status_change', 'new_task'])).optional(),
+  events: z
+    .array(z.enum(['status_change', 'new_task', 'task_released', 'task_disputed']))
+    .optional(),
 });
 
 export const WsUnsubscribeSchema = z.object({

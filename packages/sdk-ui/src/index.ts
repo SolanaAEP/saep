@@ -24,6 +24,7 @@ export {
   type DiscoveryStreamMessage,
   type StatusChangeMessage,
   type NewTaskMessage,
+  type TaskTransitionMessage,
   type UseDiscoveryStreamOptions,
 } from './hooks/discovery-stream.js';
 export {

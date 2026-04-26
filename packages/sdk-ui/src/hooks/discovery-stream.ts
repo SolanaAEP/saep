@@ -25,9 +25,28 @@ export interface NewTaskMessage {
   };
 }
 
-export type DiscoveryStreamMessage = StatusChangeMessage | NewTaskMessage;
+export interface TaskTransitionMessage {
+  type: 'task_released' | 'task_disputed';
+  task: {
+    task_id: string;
+    creator: string | null;
+    agent_did: string | null;
+    status: string;
+    reward_lamports: string | null;
+    updated_at_unix: number;
+  };
+}
 
-export type DiscoveryEventType = 'status_change' | 'new_task';
+export type DiscoveryStreamMessage =
+  | StatusChangeMessage
+  | NewTaskMessage
+  | TaskTransitionMessage;
+
+export type DiscoveryEventType =
+  | 'status_change'
+  | 'new_task'
+  | 'task_released'
+  | 'task_disputed';
 
 export interface UseDiscoveryStreamOptions {
   url: string | null;
@@ -86,7 +105,13 @@ export function useDiscoveryStream(opts: UseDiscoveryStreamOptions) {
       let msg: DiscoveryStreamMessage;
       try {
         const parsed = JSON.parse(event.data as string);
-        if (parsed.type !== 'status_change' && parsed.type !== 'new_task') return;
+        if (
+          parsed.type !== 'status_change' &&
+          parsed.type !== 'new_task' &&
+          parsed.type !== 'task_released' &&
+          parsed.type !== 'task_disputed'
+        )
+          return;
         msg = parsed as DiscoveryStreamMessage;
       } catch {
         return;
@@ -98,7 +123,12 @@ export function useDiscoveryStream(opts: UseDiscoveryStreamOptions) {
           qc.invalidateQueries({ queryKey: ['agent-reputation', msg.agent.did] });
         }
       }
-      if (msg.type === 'new_task' && invalidateTaskLists) {
+      if (
+        (msg.type === 'new_task' ||
+          msg.type === 'task_released' ||
+          msg.type === 'task_disputed') &&
+        invalidateTaskLists
+      ) {
         qc.invalidateQueries({ queryKey: ['discovery-tasks'] });
         qc.invalidateQueries({ queryKey: ['task-list'] });
       }

@@ -191,6 +191,81 @@ describe('useDiscoveryStream', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['task-list'] });
   });
 
+  it('forwards task_released frames and invalidates task lists when opted in', async () => {
+    const { wrapper, qc } = makeWrapper();
+    const invalidate = vi.spyOn(qc, 'invalidateQueries');
+    const onMessage = vi.fn();
+
+    renderHook(
+      () => useDiscoveryStream({
+        url: 'http://x.local',
+        events: ['task_released'],
+        invalidateTaskLists: true,
+        invalidateLeaderboard: false,
+        onMessage,
+      }),
+      { wrapper },
+    );
+
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const ws = MockWebSocket.instances[0];
+
+    act(() => {
+      ws.simulateMessage({
+        type: 'task_released',
+        task: {
+          task_id: 't1',
+          creator: 'creator-pk',
+          agent_did: 'a'.repeat(64),
+          status: 'released',
+          reward_lamports: '1000000',
+          updated_at_unix: 1_700_000_500,
+        },
+      });
+    });
+
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage.mock.calls[0][0].type).toBe('task_released');
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['discovery-tasks'] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['task-list'] });
+  });
+
+  it('forwards task_disputed frames without invalidating task lists by default', async () => {
+    const { wrapper, qc } = makeWrapper();
+    const invalidate = vi.spyOn(qc, 'invalidateQueries');
+    const onMessage = vi.fn();
+
+    renderHook(
+      () => useDiscoveryStream({
+        url: 'http://x.local',
+        events: ['task_disputed'],
+        onMessage,
+      }),
+      { wrapper },
+    );
+
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const ws = MockWebSocket.instances[0];
+
+    act(() => {
+      ws.simulateMessage({
+        type: 'task_disputed',
+        task: {
+          task_id: 't2',
+          creator: null,
+          agent_did: null,
+          status: 'disputed',
+          reward_lamports: null,
+          updated_at_unix: 1_700_000_900,
+        },
+      });
+    });
+
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage.mock.calls[0][0].type).toBe('task_disputed');
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+
   it('forwards parsed messages to onMessage', async () => {
     const { wrapper } = makeWrapper();
     const onMessage = vi.fn();

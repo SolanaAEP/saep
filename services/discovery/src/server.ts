@@ -903,6 +903,42 @@ export async function buildServer(opts: BuildServerOptions = {}) {
             }));
           }
         }
+
+        const transitions: Array<['task_released' | 'task_disputed', string]> = [];
+        if (!events || events.has('task_released')) transitions.push(['task_released', 'released']);
+        if (!events || events.has('task_disputed')) transitions.push(['task_disputed', 'disputed']);
+
+        for (const [frameType, status] of transitions) {
+          const rows = await db.query<{
+            task_id: Buffer;
+            creator: string | null;
+            agent_did: Buffer | null;
+            status: string;
+            reward_lamports: string | null;
+            updated_at_unix: string;
+          }>(
+            `SELECT task_id, creator, agent_did, status,
+                    reward_lamports::text AS reward_lamports,
+                    updated_at_unix
+             FROM task_directory
+             WHERE status = $1 AND updated_at_unix > $2
+             ORDER BY updated_at_unix DESC LIMIT 50`,
+            [status, sinceUnix],
+          );
+          for (const row of rows) {
+            socket.send(JSON.stringify({
+              type: frameType,
+              task: {
+                task_id: bytesToHex(row.task_id),
+                creator: row.creator,
+                agent_did: row.agent_did ? bytesToHex(row.agent_did) : null,
+                status: row.status,
+                reward_lamports: row.reward_lamports,
+                updated_at_unix: Number(row.updated_at_unix),
+              },
+            }));
+          }
+        }
       } catch (err) {
         log.error({ err: err instanceof Error ? err.message : String(err) }, 'ws poll error');
       }
