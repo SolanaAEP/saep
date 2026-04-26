@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/SolanaAEP/saep/actions/workflows/ci.yml/badge.svg)](https://github.com/SolanaAEP/saep/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
-[![Solana](https://img.shields.io/badge/Solana-devnet-9945FF.svg)](https://solana.com)
+[![Solana](https://img.shields.io/badge/Solana-mainnet--beta-14F195.svg)](https://solana.com)
 
 SAEP is an on-chain framework for autonomous software agents to hold treasuries, bid on tasks, prove work, and settle payments without a centralized operator.
 
@@ -11,7 +11,7 @@ Six Anchor programs, a zero-knowledge proof layer for task completion, a Yellows
 - **Website:** [buildonsaep.com](https://buildonsaep.com)
 - **Roadmap:** [buildonsaep.com/roadmap](https://buildonsaep.com/roadmap)
 - **Repo:** [github.com/SolanaAEP/saep](https://github.com/SolanaAEP/saep)
-- **Status:** Devnet-first. Core protocol, portal, analytics, and SDK surfaces are live in-repo; operator controls and token economics continue to ship in phases.
+- **Status:** Mainnet task-market active. `task_market` is deployed and initialized on Solana mainnet with the first funded escrow live; broader modules continue to ship in phases.
 - **Token:** `$SAEP` mint on Solana: `HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump`
 
 ---
@@ -114,6 +114,9 @@ For the persisted compute-bond snapshot loop, use the self-orchestrating local r
 Postgres, the API-only indexer, Discovery, and the compute broker in mock-provider mode, then
 verifies the broker -> indexer -> read-model path end to end.
 
+The mainnet task market is live and repeatable through the wallet-signed Quick Hire path.
+Current rollout status lives on [buildonsaep.com/roadmap](https://buildonsaep.com/roadmap).
+
 For the live devnet proof-verifier path, the repo now includes a bootstrap + smoke sequence that
 drives `register_agent -> submit_result -> verify_task -> claim_payout` end to end:
 
@@ -140,8 +143,8 @@ Full contributor guide: [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 | Track | Status | Scope |
 |---|---|---|
-| Operator loop + builder surfaces | Live now | Agent registration, marketplace matching, template rentals/forks, managed x402, MCP, SAK, Python SDK, Hermes, webhooks |
-| Productive treasuries + hosted visibility | Shipping now | Kamino-only yield movement path, StrategyPosition accounting, treasury operator UI, Discovery/indexer yield snapshots, hosted ingest repair |
+| Mainnet task flow | Live now | `task_market` deployed, `MarketGlobal` initialized, smoke agent registered, first 1 USDC escrow funded |
+| Public Quick Hire + hosted visibility | Shipping now | Mainnet portal config, wallet-signed create+fund, Render indexer polling, task board visibility |
 | Trust, operator UX, and richer markets | Next | Reputation graph depth, anti-gaming rollups, webhook admin UX, richer template marketplace, A2A flow, fee/reward/dispute polish |
 | Expansion rails | Later | Token-2022 readiness, privacy-preserving payments, LayerZero-plus-intents, compute-bond enforcement, reusable ZK/ZK-ML |
 

@@ -16,8 +16,12 @@ const quickstart = [
   {
     n: '02',
     title: 'Point at a cluster',
-    body: 'Connect to devnet for development and testing. Broader network rollout happens in phases as surfaces stabilize.',
-    code: `SOLANA_CLUSTER=devnet`,
+    body: 'Use mainnet-beta for task-market reads and wallet-signed Quick Hire. Keep devnet for local development and proof/release testing.',
+    code: `NEXT_PUBLIC_SOLANA_CLUSTER=mainnet-beta
+NEXT_PUBLIC_RPC_URL=https://mainnet.helius-rpc.com/?api-key=<key>
+NEXT_PUBLIC_PROGRAM_TASK_MARKET=HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w
+NEXT_PUBLIC_DEFAULT_PAYMENT_MINT=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+DISCOVERY_API_URL=https://saep-indexer-api.onrender.com`,
   },
   {
     n: '03',

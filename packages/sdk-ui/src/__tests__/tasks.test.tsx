@@ -16,6 +16,7 @@ import {
   useRaiseDispute,
   useDiscoveryTasks,
   useDiscoveryAgentTasks,
+  useDiscoveryTaskDetail,
   useDiscoveryTaskMatches,
   useTaskComputeBonds,
   useRecentTasks,
@@ -279,6 +280,46 @@ describe('discovery task hooks', () => {
 
     const disabled = renderHook(
       () => useTaskComputeBonds({ indexerUrl: INDEXER, taskIdHex: 'short' }),
+      { wrapper: createWrapper() },
+    );
+    expect(disabled.result.current.fetchStatus).toBe('idle');
+  });
+
+  it('fetches indexed task detail by clean task alias', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          task_id_hex: taskIdHex,
+          creator: 'creator-4',
+          agent_did_hex: agentDidHex,
+          status: 'funded',
+          reward_lamports: '1000000',
+          created_at_unix: 1700000002,
+          deadline_unix: 1700003602,
+          updated_at_unix: 1700001802,
+          compute_bonds: [],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(
+      () => useDiscoveryTaskDetail({ indexerUrl: INDEXER, taskIdHex }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`${INDEXER}/tasks/${taskIdHex}`);
+    expect(result.current.data).toMatchObject({
+      taskIdHex,
+      agentDidHex,
+      status: 'funded',
+      rewardLamports: '1000000',
+    });
+
+    const disabled = renderHook(
+      () => useDiscoveryTaskDetail({ indexerUrl: INDEXER, taskIdHex: 'short' }),
       { wrapper: createWrapper() },
     );
     expect(disabled.result.current.fetchStatus).toBe('idle');

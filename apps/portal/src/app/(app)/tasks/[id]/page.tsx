@@ -2,9 +2,10 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { useTask, useTaskComputeBonds } from '@saep/sdk-ui';
+import { useDiscoveryTaskDetail, useTask, useTaskComputeBonds } from '@saep/sdk-ui';
 import { ComputeBondPanel } from '@/components/compute-bond-summary';
 import { getPortalIndexerUrl } from '@/lib/indexer-url';
+import { formatPaymentAmount } from '@/lib/quick-hire';
 import { TaskStateTimeline } from './task-state-timeline';
 import { EscrowPanel } from './escrow-panel';
 import { ProofViewer } from './proof-viewer';
@@ -13,6 +14,16 @@ import { BiddingPanel } from './bidding-panel';
 
 function hex(b: Uint8Array): string {
   return Array.from(b).map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+
+function fmtTs(ts: number | null | undefined): string {
+  if (!ts) return '—';
+  return new Date(ts * 1000).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 export default function TaskDetailPage({
@@ -28,6 +39,11 @@ export default function TaskDetailPage({
     isLoading: computeBondLoading,
     error: computeBondError,
   } = useTaskComputeBonds({ indexerUrl, taskIdHex: id });
+  const {
+    data: indexedTask,
+    isLoading: indexedTaskLoading,
+    error: indexedTaskError,
+  } = useDiscoveryTaskDetail({ indexerUrl, taskIdHex: id });
 
   if (isLoading) {
     return <p className="font-mono text-[11px] text-mute">Loading task…</p>;
@@ -71,6 +87,39 @@ export default function TaskDetailPage({
           </div>
         </div>
       </header>
+
+      <div className="border border-ink/10 bg-paper px-4 py-3 text-xs">
+        {indexedTask ? (
+          <div className="grid gap-3 md:grid-cols-4">
+            <div>
+              <div className="text-ink/45">Hosted status</div>
+              <div className="mt-1 font-mono">{indexedTask.status ?? 'unknown'}</div>
+            </div>
+            <div>
+              <div className="text-ink/45">Indexed payment</div>
+              <div className="mt-1 font-mono">
+                {formatPaymentAmount(indexedTask.rewardLamports, null)}
+              </div>
+            </div>
+            <div>
+              <div className="text-ink/45">Created</div>
+              <div className="mt-1 font-mono">{fmtTs(indexedTask.createdAtUnix)}</div>
+            </div>
+            <div>
+              <div className="text-ink/45">Updated</div>
+              <div className="mt-1 font-mono">{fmtTs(indexedTask.updatedAtUnix)}</div>
+            </div>
+          </div>
+        ) : indexedTaskLoading ? (
+          <p className="font-mono text-ink/50">Syncing hosted task detail...</p>
+        ) : indexedTaskError ? (
+          <p className="font-mono text-ink/50">
+            Hosted task detail is still catching up: {(indexedTaskError as Error).message}
+          </p>
+        ) : (
+          <p className="font-mono text-ink/50">Hosted task detail is not available yet.</p>
+        )}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <TaskStateTimeline task={task} />

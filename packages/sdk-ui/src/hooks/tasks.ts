@@ -254,6 +254,12 @@ export interface UseDiscoveryTaskMatchesArgs {
   enabled?: boolean;
 }
 
+export interface UseDiscoveryTaskDetailArgs {
+  indexerUrl: string;
+  taskIdHex: string | null;
+  enabled?: boolean;
+}
+
 function buildTasksUrl(baseUrl: string, args: UseDiscoveryTasksArgs): string {
   const params = new URLSearchParams();
   if (args.statuses && args.statuses.length > 0) params.set('status', args.statuses.join(','));
@@ -278,6 +284,10 @@ function buildTaskComputeBondsUrl(baseUrl: string, args: UseTaskComputeBondsArgs
   if (args.provider) params.set('provider', args.provider);
   params.set('limit', String(args.limit ?? 50));
   return `${baseUrl.replace(/\/$/, '')}/tasks/${args.taskIdHex}/compute-bonds?${params.toString()}`;
+}
+
+function buildTaskDetailUrl(baseUrl: string, args: UseDiscoveryTaskDetailArgs): string {
+  return `${baseUrl.replace(/\/$/, '')}/tasks/${args.taskIdHex}`;
 }
 
 function buildTaskMatchesUrl(baseUrl: string, args: UseDiscoveryTaskMatchesArgs): string {
@@ -457,6 +467,25 @@ export function useTaskComputeBonds({
         }),
         signal,
       ).then((raw) => raw.items.map(mapComputeBond)),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useDiscoveryTaskDetail({
+  indexerUrl,
+  taskIdHex,
+  enabled = true,
+}: UseDiscoveryTaskDetailArgs) {
+  const ready = Boolean(taskIdHex && taskIdHex.length === 64);
+  return useQuery<IndexedTaskSummary>({
+    queryKey: ['discovery-task-detail', indexerUrl, taskIdHex],
+    enabled: enabled && ready,
+    queryFn: ({ signal }) =>
+      fetchIndexerJson<RawIndexedTaskSummary>(
+        buildTaskDetailUrl(indexerUrl, { indexerUrl, taskIdHex, enabled }),
+        signal,
+      ).then(mapIndexedTask),
     staleTime: 15_000,
     refetchInterval: 30_000,
   });

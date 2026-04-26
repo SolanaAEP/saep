@@ -3,8 +3,7 @@ import { resolveCluster, type SaepCluster } from '@saep/sdk';
 const MAINNET_NXS_STAKING_PROGRAM_ID = 'GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z';
 const MAINNET_SAEP_STAKE_MINT = 'HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump';
 const MAINNET_STAKING_RPC_URL = 'https://solana-rpc.publicnode.com';
-const DEPRECATED_STAKING_RPC_URL =
-  'https://mainnet.helius-rpc.com/?api-key=b457adfa-182d-449a-bf65-74e809efcd77';
+const DEPRECATED_STAKING_RPC_PREFIX = 'https://mainnet.helius-rpc.com/?api-key=';
 
 function cleanProgramOverrides(overrides: Record<string, string | undefined>) {
   return Object.fromEntries(
@@ -14,7 +13,7 @@ function cleanProgramOverrides(overrides: Record<string, string | undefined>) {
 
 function cleanStakingEndpoint(endpoint: string | undefined) {
   if (!endpoint) return undefined;
-  return endpoint === DEPRECATED_STAKING_RPC_URL ? MAINNET_STAKING_RPC_URL : endpoint;
+  return endpoint.startsWith(DEPRECATED_STAKING_RPC_PREFIX) ? MAINNET_STAKING_RPC_URL : endpoint;
 }
 
 const rawCluster = (process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? 'devnet') as SaepCluster;
@@ -30,6 +29,7 @@ const programOverrides = cleanProgramOverrides({
   feeCollector: process.env.NEXT_PUBLIC_PROGRAM_FEE_COLLECTOR,
   proofVerifier: process.env.NEXT_PUBLIC_PROGRAM_PROOF_VERIFIER,
   nxsStaking: process.env.NEXT_PUBLIC_PROGRAM_NXS_STAKING,
+  templateRegistry: process.env.NEXT_PUBLIC_PROGRAM_TEMPLATE_REGISTRY,
 });
 
 export const clusterConfig = resolveCluster({

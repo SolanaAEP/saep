@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import type { Program } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
 import {
+  getAccount,
   getAssociatedTokenAddressSync,
   getMint,
   TOKEN_2022_PROGRAM_ID,
@@ -25,6 +27,16 @@ import {
   useTaskMarketConfig,
 } from '@saep/sdk-ui';
 import type { SerializedAgent } from '@/lib/agent-serializer';
+import { solanaExplorerTxUrl } from '@/lib/mainnet-status';
+import {
+  formatBaseUnits,
+  guessDecimals,
+  mintLabel,
+  mintSymbol,
+  preferredPaymentMint,
+  suggestedTinyAmount,
+  toBaseUnits,
+} from '@/lib/quick-hire';
 
 function bytesFromHex(hex: string): Uint8Array {
   return Uint8Array.from(hex.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
@@ -44,33 +56,13 @@ type HireTaskInput = CreateTaskInput & {
   paymentDecimals: number;
 };
 
-const KNOWN_MINTS: Record<string, { symbol: string; decimals: number }> = {
-  So11111111111111111111111111111111111111112: { symbol: 'SOL', decimals: 9 },
-  EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: { symbol: 'USDC', decimals: 6 },
-  HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump: { symbol: 'SAEP', decimals: 6 },
+type CreatedTaskReceipt = {
+  signature: string;
+  task: string;
+  paymentAmount: string;
+  paymentMint: string;
+  paymentDecimals: number;
 };
-
-function mintLabel(address: string): string {
-  const known = KNOWN_MINTS[address];
-  if (known) return `${known.symbol} (${address.slice(0, 4)}...${address.slice(-4)})`;
-  return `${address.slice(0, 4)}...${address.slice(-4)}`;
-}
-
-function guessDecimals(address: string): number {
-  return KNOWN_MINTS[address]?.decimals ?? 6;
-}
-
-function toBaseUnits(amount: string, decimals: number): bigint {
-  const trimmed = amount.trim();
-  if (!trimmed) return 0n;
-  const normalized = trimmed.replace(/_/g, '');
-  if (!/^\d+(\.\d+)?$/.test(normalized)) {
-    throw new Error('Payment amount must be a positive number');
-  }
-  const [whole, fraction = ''] = normalized.split('.');
-  const paddedFraction = `${fraction}${'0'.repeat(decimals)}`.slice(0, decimals);
-  return BigInt(`${whole}${paddedFraction}`);
-}
 
 interface Props {
   agent: SerializedAgent;
@@ -87,20 +79,29 @@ export function QuickHireModal({ agent, onClose }: Props) {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [deadlineHours, setDeadlineHours] = useState('24');
   const [selectedMint, setSelectedMint] = useState('');
-  const [txSignature, setTxSignature] = useState<string | null>(null);
+  const [createdTask, setCreatedTask] = useState<CreatedTaskReceipt | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!selectedMint && marketConfig?.allowedPaymentMints[0]) {
-      setSelectedMint(marketConfig.allowedPaymentMints[0].toBase58());
+    const preferred = preferredPaymentMint(marketConfig?.allowedPaymentMints ?? []);
+    if (!selectedMint && preferred) {
+      setSelectedMint(preferred);
+      setPaymentAmount((current) => current || suggestedTinyAmount(preferred));
     }
   }, [marketConfig, selectedMint]);
 
   const selectedMintDecimals = guessDecimals(selectedMint);
+  const selectedMintSuggestion = selectedMint ? suggestedTinyAmount(selectedMint) : '1';
+  const deadlineHoursValue = Number(deadlineHours);
+  const deadlineValid = Number.isInteger(deadlineHoursValue) && deadlineHoursValue > 0;
+  const agentActive = agent.status === 'active';
   const valid = taskDescription.trim().length > 0
     && paymentAmount.trim().length > 0
-    && parseInt(deadlineHours, 10) > 0
-    && selectedMint.length > 0;
+    && deadlineValid
+    && selectedMint.length > 0
+    && Boolean(marketConfig)
+    && !marketConfig?.paused
+    && agentActive;
 
   const { mutate, isPending, error } = useSendTransaction<HireTaskInput>({
     buildInstruction: async (input) => [
@@ -116,9 +117,15 @@ export function QuickHireModal({ agent, onClose }: Props) {
     invalidateKeys: [['tasks'], ['task-market', 'recent']],
     priorityFee: 'auto',
   }, {
-    onSuccess: (result) => {
+    onSuccess: (result, input) => {
       setLocalError(null);
-      setTxSignature(result.signature);
+      setCreatedTask({
+        signature: result.signature,
+        task: input.task.toBase58(),
+        paymentAmount: input.paymentAmount.toString(),
+        paymentMint: input.paymentMint.toBase58(),
+        paymentDecimals: input.paymentDecimals,
+      });
     },
   });
 
@@ -127,8 +134,26 @@ export function QuickHireModal({ agent, onClose }: Props) {
 
     try {
       setLocalError(null);
+      setCreatedTask(null);
+
+      if (!marketConfig) {
+        throw new Error('Task market config is still loading. Try again in a moment.');
+      }
+      if (marketConfig.paused) {
+        throw new Error('The task market is paused on-chain.');
+      }
+      if (!agentActive) {
+        throw new Error(`Agent is ${agent.status}; Quick Hire requires an active agent.`);
+      }
 
       const paymentMint = new PublicKey(selectedMint);
+      const allowedPaymentMint = marketConfig.allowedPaymentMints.some((mint) =>
+        mint.equals(paymentMint),
+      );
+      if (!allowedPaymentMint) {
+        throw new Error(`${mintSymbol(selectedMint)} is not currently allowed by MarketGlobal.`);
+      }
+
       const mintAccount = await connection.getAccountInfo(paymentMint, 'confirmed');
       if (!mintAccount) {
         throw new Error(`Payment mint ${selectedMint} was not found on the current cluster`);
@@ -149,23 +174,45 @@ export function QuickHireModal({ agent, onClose }: Props) {
         throw new Error('Payment amount must be greater than zero');
       }
 
-      const descBytes = new TextEncoder().encode(taskDescription);
-      const argsHash = new Uint8Array(await crypto.subtle.digest('SHA-256', descBytes));
-      const criteriaRoot = new Uint8Array(32);
-      const nonce = crypto.getRandomValues(new Uint8Array(8));
-      const deadlineSec = BigInt(Math.floor(Date.now() / 1000) + parseInt(deadlineHours, 10) * 3600);
-      const [task] = taskPda(program.programId, publicKey, nonce);
+      const deadlineOffsetSec = BigInt(deadlineHoursValue) * 3600n;
+      if (marketConfig.maxDeadlineSecs > 0n && deadlineOffsetSec > marketConfig.maxDeadlineSecs) {
+        const maxHours = Number(marketConfig.maxDeadlineSecs / 3600n);
+        throw new Error(`Deadline must be within ${maxHours} hours for this market.`);
+      }
 
-      const didBytes = bytesFromHex(agent.did);
-      const agentIdBytes = bytesFromHex(agent.agentId);
-      const operatorKey = new PublicKey(agent.operator);
-      const capabilityBit = firstCapabilityBit(BigInt(agent.capabilityMask));
       const clientTokenAccount = getAssociatedTokenAddressSync(
         paymentMint,
         publicKey,
         false,
         tokenProgramId,
       );
+      const tokenAccount = await getAccount(
+        connection,
+        clientTokenAccount,
+        'confirmed',
+        tokenProgramId,
+      ).catch(() => null);
+      const symbol = mintSymbol(selectedMint);
+      if (!tokenAccount) {
+        throw new Error(`Wallet needs an associated ${symbol} token account before funding.`);
+      }
+      if (tokenAccount.amount < paymentBaseUnits) {
+        const needed = formatBaseUnits(paymentBaseUnits, mint.decimals, symbol);
+        const available = formatBaseUnits(tokenAccount.amount, mint.decimals, symbol);
+        throw new Error(`Insufficient ${symbol} balance: need ${needed}, available ${available}.`);
+      }
+
+      const descBytes = new TextEncoder().encode(taskDescription);
+      const argsHash = new Uint8Array(await crypto.subtle.digest('SHA-256', descBytes));
+      const criteriaRoot = new Uint8Array(32);
+      const nonce = crypto.getRandomValues(new Uint8Array(8));
+      const deadlineSec = BigInt(Math.floor(Date.now() / 1000)) + deadlineOffsetSec;
+      const [task] = taskPda(program.programId, publicKey, nonce);
+
+      const didBytes = bytesFromHex(agent.did);
+      const agentIdBytes = bytesFromHex(agent.agentId);
+      const operatorKey = new PublicKey(agent.operator);
+      const capabilityBit = firstCapabilityBit(BigInt(agent.capabilityMask));
 
       mutate({
         client: publicKey,
@@ -196,7 +243,31 @@ export function QuickHireModal({ agent, onClose }: Props) {
     } catch (submitError) {
       setLocalError((submitError as Error).message);
     }
-  }, [valid, publicKey, program, selectedMint, connection, taskDescription, deadlineHours, agent, mutate, paymentAmount]);
+  }, [
+    agent,
+    agentActive,
+    connection,
+    deadlineHoursValue,
+    marketConfig,
+    mutate,
+    paymentAmount,
+    program,
+    publicKey,
+    selectedMint,
+    taskDescription,
+    valid,
+  ]);
+
+  const handleMintChange = useCallback((nextMint: string) => {
+    const previousSuggestedAmount = selectedMint ? suggestedTinyAmount(selectedMint) : '';
+    setSelectedMint(nextMint);
+    setPaymentAmount((current) => {
+      if (!current.trim() || current === previousSuggestedAmount) {
+        return suggestedTinyAmount(nextMint);
+      }
+      return current;
+    });
+  }, [selectedMint]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/35 px-4" onClick={onClose}>
@@ -237,6 +308,12 @@ export function QuickHireModal({ agent, onClose }: Props) {
             </p>
           )}
 
+          {!agentActive && (
+            <p className="border border-danger/30 bg-danger/5 px-3 py-3 text-sm text-danger">
+              This agent is {agent.status}. Quick Hire is available for active agents only.
+            </p>
+          )}
+
           <label className="flex flex-col gap-2">
             <span className="font-mono text-[10px] uppercase tracking-widest text-mute">
               Task description
@@ -272,7 +349,7 @@ export function QuickHireModal({ agent, onClose }: Props) {
               </span>
               <select
                 value={selectedMint}
-                onChange={(e) => setSelectedMint(e.target.value)}
+                onChange={(e) => handleMintChange(e.target.value)}
                 className="border border-ink/15 bg-paper-2 px-3 py-3 font-mono text-sm text-ink focus:border-ink/35 focus:outline-none"
                 disabled={!marketConfig || marketConfig.allowedPaymentMints.length === 0}
               >
@@ -306,7 +383,8 @@ export function QuickHireModal({ agent, onClose }: Props) {
           </div>
 
           <p className="text-[11px] leading-5 text-ink/45">
-            Escrow is created and funded in one signature using the selected mint. Amount is
+            Escrow is created and funded in one wallet signature using the selected mint. Public
+            defaults stay tiny: {selectedMintSuggestion} {mintSymbol(selectedMint)}. Amount is
             interpreted with {selectedMintDecimals} decimals for UI preview until the chain mint
             metadata is fetched.
           </p>
@@ -323,18 +401,38 @@ export function QuickHireModal({ agent, onClose }: Props) {
             </p>
           )}
 
-          {txSignature && (
-            <p className="border border-lime/30 bg-lime/5 px-3 py-3 text-sm text-ink">
-              Task created:{' '}
-              <a
-                href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono underline decoration-ink/25 underline-offset-4"
+          {createdTask && (
+            <div className="flex flex-col gap-2 border border-lime/30 bg-lime/5 px-3 py-3 text-sm text-ink">
+              <p>Task submitted. The hosted board can take a moment to index the new escrow.</p>
+              <p className="font-mono text-[11px] text-ink/70">
+                Tx:{' '}
+                <a
+                  href={solanaExplorerTxUrl(createdTask.signature, cluster.cluster)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline decoration-ink/25 underline-offset-4"
+                >
+                  {createdTask.signature.slice(0, 12)}...
+                </a>
+              </p>
+              <p className="font-mono text-[11px] text-ink/70">
+                Task account: {createdTask.task.slice(0, 12)}...{createdTask.task.slice(-4)}
+              </p>
+              <p className="font-mono text-[11px] text-ink/70">
+                Escrow:{' '}
+                {formatBaseUnits(
+                  createdTask.paymentAmount,
+                  createdTask.paymentDecimals,
+                  mintSymbol(createdTask.paymentMint),
+                )}
+              </p>
+              <Link
+                href="/tasks"
+                className="text-xs font-medium text-ink underline decoration-ink/25 underline-offset-4"
               >
-                {txSignature.slice(0, 12)}...
-              </a>
-            </p>
+                Open task board
+              </Link>
+            </div>
           )}
 
           <div className="flex flex-col gap-2 border-t border-ink/10 pt-5 sm:flex-row sm:justify-end">
@@ -342,12 +440,12 @@ export function QuickHireModal({ agent, onClose }: Props) {
               onClick={onClose}
               className="inline-flex h-11 items-center justify-center border border-ink/15 px-4 font-mono text-[11px] uppercase tracking-[0.08em] text-ink/70 transition-colors hover:border-ink/35 hover:text-ink"
             >
-              {txSignature ? 'Close' : 'Cancel'}
+              {createdTask ? 'Close' : 'Cancel'}
             </button>
-            {!txSignature && (
+            {!createdTask && (
               <button
                 onClick={handleSubmit}
-                disabled={!valid || isPending || !publicKey || marketConfig?.paused}
+                disabled={!valid || isPending || !publicKey}
                 className="inline-flex h-11 items-center justify-center bg-ink px-4 font-mono text-[11px] uppercase tracking-[0.08em] text-paper transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {isPending ? 'Signing...' : !publicKey ? 'Connect wallet' : 'Create + fund task'}

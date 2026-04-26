@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { PageShell } from '@/components/website/page-shell';
 import { roadmapPhases } from '@/components/website/roadmap';
+import { mainnetTaskFlowStatus } from '@/lib/mainnet-status';
 
 export const metadata: Metadata = {
   title: 'Roadmap',
@@ -51,8 +52,37 @@ export default function RoadmapPage() {
     <PageShell
       eyebrow="Roadmap"
       title="Build the operator loop first."
-      lede="SAEP already spans protocol code, portal surfaces, analytics, task discovery, and agent tooling. This roadmap reflects that current shape and keeps the next milestones grounded in what is already live in the repo and devnet experience."
+      lede="SAEP already spans protocol code, portal surfaces, analytics, task discovery, and agent tooling. The roadmap now starts from the live mainnet task market and shows what gets opened up next."
     >
+      <section className="border-y border-ink/15 py-8">
+        <div className="grid gap-8 lg:grid-cols-12">
+          <div className="lg:col-span-5">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-lime/30 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-lime">
+              <span className="h-1.5 w-1.5 rounded-full bg-lime" />
+              Mainnet status
+            </span>
+            <h2 className="mt-4 font-display text-[clamp(28px,3.2vw,44px)] leading-[0.98] tracking-[-0.01em]">
+              {mainnetTaskFlowStatus.headline}
+            </h2>
+            <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-ink/75">
+              {mainnetTaskFlowStatus.summary}
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:col-span-7">
+            {mainnetTaskFlowStatus.facts.map(([label, value]) => (
+              <div key={label} className="border-t border-ink/30 pt-4">
+                <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-mute">
+                  {label}
+                </div>
+                <div className="mt-2 font-display text-[22px] tracking-[-0.01em]">
+                  {value}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <div className="mt-16 space-y-20">
         {phases.map((phase) => {
           const s = STATUS_STYLES[phase.statusLabel] ?? DEFAULT_STATUS_STYLE;

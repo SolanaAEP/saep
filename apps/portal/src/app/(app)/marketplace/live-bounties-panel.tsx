@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { findMarketplaceBountyByTaskHash } from '@saep/sdk';
 import type { SerializedTask } from '@/lib/agent-serializer';
+import { formatPaymentAmount, mintLabel } from '@/lib/quick-hire';
 import { TaskMatchPreview } from './task-match-preview';
 
 const STATUS_TONE: Record<string, string> = {
@@ -13,19 +14,6 @@ const STATUS_TONE: Record<string, string> = {
   verified: 'border-lime/30 text-lime',
   disputed: 'border-danger/30 text-danger',
 };
-
-function fmtAmount(baseUnits: string, mint: string, symbolOverride?: string): string {
-  const amount = BigInt(baseUnits);
-  const symbol =
-    symbolOverride ??
-    (mint === 'So11111111111111111111111111111111111111112'
-      ? 'SOL'
-      : mint === 'HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump'
-        ? 'SAEP'
-        : mint.slice(0, 4));
-  const decimals = mint === 'So11111111111111111111111111111111111111112' ? 9 : 6;
-  return `${(Number(amount) / 10 ** decimals).toFixed(2)} ${symbol}`;
-}
 
 function fmtTs(ts: number): string {
   if (!ts) return 'TBD';
@@ -57,7 +45,7 @@ export function LiveBountiesPanel({ tasks, selectedTaskId, onSelectTask }: Props
           <div className="font-mono text-[10px] uppercase tracking-widest text-mute">Task feed</div>
           <h2 className="mt-1 font-display text-[22px] tracking-[-0.01em]">Live bounties</h2>
           <p className="mt-1 text-sm text-ink/60">
-            Fresh on-chain tasks waiting for bids, execution, or proof settlement.
+            Fresh on-chain tasks waiting for bids, execution, or settlement.
           </p>
         </div>
         <Link
@@ -124,13 +112,13 @@ export function LiveBountiesPanel({ tasks, selectedTaskId, onSelectTask }: Props
                   <dl className="mt-4 grid gap-3 sm:grid-cols-2">
                     <DetailCell
                       label="Bounty"
-                      value={fmtAmount(task.paymentAmount, task.paymentMint, bounty?.suggestedMint)}
+                      value={formatPaymentAmount(task.paymentAmount, task.paymentMint)}
                     />
                     <DetailCell label="Deadline" value={fmtTs(task.deadline)} />
                     <DetailCell label="Created" value={fmtTs(task.createdAt)} />
                     <DetailCell
                       label="Mint"
-                      value={`${task.paymentMint.slice(0, 8)}…${task.paymentMint.slice(-4)}`}
+                      value={mintLabel(task.paymentMint)}
                     />
                   </dl>
 

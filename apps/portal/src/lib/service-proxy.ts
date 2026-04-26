@@ -27,6 +27,28 @@ function joinPath(basePath: string, extraPath: string): string {
   return extra ? `${base}/${extra}` : (base || '/');
 }
 
+export function resolvePublicServiceUpstreamPath(
+  service: PublicServiceKey,
+  path: string[],
+): string[] {
+  if (service !== 'discovery') return path;
+
+  if (path[0] === 'tasks') {
+    const taskSubresource = path[2];
+    if (taskSubresource === 'bidding' || taskSubresource === 'bids') return path;
+    return ['v1', 'discovery', ...path];
+  }
+
+  if (path[0] === 'agents') {
+    const agentSubresource = path[2];
+    if (agentSubresource === 'tasks' || agentSubresource === 'compute-bonds') {
+      return ['v1', 'discovery', ...path];
+    }
+  }
+
+  return path;
+}
+
 function copyRequestHeaders(req: NextRequest): Headers {
   const headers = new Headers();
   req.headers.forEach((value, key) => {
@@ -69,7 +91,10 @@ export async function proxyPublicServiceRequest(
 
   const upstreamBase = getPublicServiceUpstreamUrl(service);
   const upstreamUrl = new URL(upstreamBase);
-  upstreamUrl.pathname = joinPath(upstreamUrl.pathname, path.join('/'));
+  upstreamUrl.pathname = joinPath(
+    upstreamUrl.pathname,
+    resolvePublicServiceUpstreamPath(service, path).join('/'),
+  );
   upstreamUrl.search = req.nextUrl.search;
 
   try {

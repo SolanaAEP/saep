@@ -1,10 +1,7 @@
 'use client';
 
 import type { TaskDetail } from '@saep/sdk';
-
-function fmtAmount(v: bigint, decimals = 9): string {
-  return (Number(v) / 10 ** decimals).toFixed(decimals === 9 ? 4 : 2);
-}
+import { formatPaymentAmount, mintLabel } from '@/lib/quick-hire';
 
 const LOCKED_STATES = new Set(['funded', 'inExecution', 'proofSubmitted', 'verified', 'disputed']);
 const RELEASED_STATES = new Set(['released']);
@@ -12,6 +9,7 @@ const REFUNDED_STATES = new Set(['expired']);
 
 export function EscrowPanel({ task }: { task: TaskDetail }) {
   const agentShare = task.paymentAmount - task.protocolFee - task.solrepFee;
+  const paymentMint = task.paymentMint.toBase58();
   const locked = LOCKED_STATES.has(task.status);
   const released = RELEASED_STATES.has(task.status);
   const refunded = REFUNDED_STATES.has(task.status);
@@ -37,25 +35,25 @@ export function EscrowPanel({ task }: { task: TaskDetail }) {
       <dl className="grid grid-cols-2 gap-3 text-xs">
         <div>
           <dt className="text-ink/50">Payment mint</dt>
-          <dd className="font-mono truncate" title={task.paymentMint.toBase58()}>
-            {task.paymentMint.toBase58().slice(0, 8)}...{task.paymentMint.toBase58().slice(-4)}
+          <dd className="font-mono truncate" title={paymentMint}>
+            {mintLabel(paymentMint)}
           </dd>
         </div>
         <div>
           <dt className="text-ink/50">Total</dt>
-          <dd className="font-mono">{fmtAmount(task.paymentAmount)}</dd>
+          <dd className="font-mono">{formatPaymentAmount(task.paymentAmount, paymentMint)}</dd>
         </div>
         <div>
           <dt className="text-ink/50">Agent share</dt>
-          <dd className="font-mono text-lime">{fmtAmount(agentShare)}</dd>
+          <dd className="font-mono text-lime">{formatPaymentAmount(agentShare, paymentMint)}</dd>
         </div>
         <div>
           <dt className="text-ink/50">Protocol fee</dt>
-          <dd className="font-mono">{fmtAmount(task.protocolFee)}</dd>
+          <dd className="font-mono">{formatPaymentAmount(task.protocolFee, paymentMint)}</dd>
         </div>
         <div>
           <dt className="text-ink/50">Solrep fee</dt>
-          <dd className="font-mono">{fmtAmount(task.solrepFee)}</dd>
+          <dd className="font-mono">{formatPaymentAmount(task.solrepFee, paymentMint)}</dd>
         </div>
         <div>
           <dt className="text-ink/50">Milestones</dt>

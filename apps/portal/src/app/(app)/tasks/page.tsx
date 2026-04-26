@@ -6,6 +6,7 @@ import { useDiscoveryTasks, useTasksByClient } from '@saep/sdk-ui';
 import type { TaskSummary } from '@saep/sdk';
 import { ComputeBondSummary } from '@/components/compute-bond-summary';
 import { getPortalIndexerUrl } from '@/lib/indexer-url';
+import { formatPaymentAmount } from '@/lib/quick-hire';
 
 const STATUS_COLOR: Record<string, string> = {
   created: 'text-ink/60 bg-ink/5',
@@ -21,15 +22,6 @@ const STATUS_COLOR: Record<string, string> = {
 
 function hex(b: Uint8Array): string {
   return Array.from(b).map((x) => x.toString(16).padStart(2, '0')).join('');
-}
-
-function fmtLamports(v: bigint): string {
-  return (Number(v) / 1e9).toFixed(4);
-}
-
-function fmtLamportsRaw(v: string | null): string {
-  if (!v) return '—';
-  return (Number(v) / 1e9).toFixed(4);
 }
 
 function fmtTs(ts: number): string {
@@ -129,7 +121,7 @@ export default function TasksPage() {
                         )}
                       </td>
                       <td className="px-3 py-2 text-right font-mono">
-                        {fmtLamportsRaw(task.rewardLamports)}
+                        {formatPaymentAmount(task.rewardLamports, null)}
                       </td>
                       <td className="px-3 py-2">
                         <ComputeBondSummary bonds={task.computeBonds} />
@@ -223,7 +215,7 @@ export default function TasksPage() {
                           </Link>
                         </td>
                         <td className="px-3 py-2 text-right font-mono">
-                          {fmtLamports(task.paymentAmount)}
+                          {formatPaymentAmount(task.paymentAmount, task.paymentMint.toBase58())}
                         </td>
                         <td className="px-3 py-2">
                           <span

@@ -48,6 +48,25 @@ pnpm exec tsx node_modules/mocha/bin/mocha.js --timeout 300000 'tests/task_marke
 pnpm --filter @saep/portal dev    # http://localhost:3000
 ```
 
+Production portal deployments now target the mainnet task market. Set `NEXT_PUBLIC_SOLANA_CLUSTER`
+to `mainnet-beta`, provide a Helius-backed `NEXT_PUBLIC_RPC_URL`, and pin the mainnet program IDs
+from the release environment. The legacy `/api/actions/create-task` route remains devnet-only
+because mainnet public tasks must create and fund escrow atomically through wallet-signed Quick Hire.
+
+Production env baseline:
+
+```bash
+NEXT_PUBLIC_SOLANA_CLUSTER=mainnet-beta
+NEXT_PUBLIC_RPC_URL=https://mainnet.helius-rpc.com/?api-key=<helius-key>
+NEXT_PUBLIC_PROGRAM_AGENT_REGISTRY=EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu
+NEXT_PUBLIC_PROGRAM_CAPABILITY_REGISTRY=GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F
+NEXT_PUBLIC_PROGRAM_TREASURY_STANDARD=6boJQg4L6FRS7YZ5rFXfKUaXSy3eCKnW2SdrT3LJLizQ
+NEXT_PUBLIC_PROGRAM_TASK_MARKET=HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w
+NEXT_PUBLIC_PROGRAM_PROOF_VERIFIER=DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe
+NEXT_PUBLIC_DEFAULT_PAYMENT_MINT=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+DISCOVERY_API_URL=https://saep-indexer-api.onrender.com
+```
+
 ## 5. Start off-chain services (optional)
 
 Each service needs specific env vars. See `.env.example` for the full list.
@@ -66,7 +85,7 @@ pnpm --filter @saep/proof-gen build && pnpm --filter @saep/proof-gen start
 pnpm --filter @saep/x402-gateway build && pnpm --filter @saep/x402-gateway start
 
 # indexer with internal + public APIs
-INDEXER_ROLE=all INDEXER_RUN_MIGRATIONS=1 API_PORT=8081 HEALTHCHECK_PORT=8080 \
+SOLANA_CLUSTER=mainnet INDEXER_ROLE=all INDEXER_RUN_MIGRATIONS=1 API_PORT=8081 HEALTHCHECK_PORT=8080 \
   INDEXER_INTERNAL_API_TOKEN=local-saep-indexer-token \
   cargo run --manifest-path services/indexer/Cargo.toml --bin saep-indexer
 
@@ -84,6 +103,12 @@ COMPUTE_PROVIDER_MODE=mock \
 
 Run those long-lived services in separate terminals if you want to exercise the persisted
 compute-bond read path locally.
+
+Hosted mainnet acceptance uses the Render indexer smoke with nonzero recent data:
+
+```bash
+pnpm smoke:indexer:render --min-latest-slot 1 --min-events-total 1
+```
 
 ## 5b. Smoke-test persisted compute-bond snapshots
 

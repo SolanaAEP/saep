@@ -6,6 +6,7 @@ import { GlitchButton } from '@saep/ui';
 import { ComputeBondSummary } from '@/components/compute-bond-summary';
 import { getPortalIndexerUrl } from '@/lib/indexer-url';
 import type { SerializedTask } from '@/lib/agent-serializer';
+import { formatPaymentAmount } from '@/lib/quick-hire';
 
 const PAGE_SIZE = 10;
 
@@ -30,15 +31,12 @@ function fmtDate(ts: number): string {
   });
 }
 
-function fmtSol(lamports: string): string {
-  return `${(Number(lamports) / 1e9).toFixed(2)}`;
-}
-
 type JobHistoryRow = {
   taskId: string;
   address: string;
   status: string | null;
   paymentAmount: string | null;
+  paymentMint: string | null;
   deadline: number;
   createdAt: number;
   computeBonds: Parameters<typeof ComputeBondSummary>[0]['bonds'];
@@ -64,6 +62,7 @@ export function JobHistoryTable({
         address: task.taskIdHex,
         status: task.status,
         paymentAmount: task.rewardLamports,
+        paymentMint: null,
         deadline: task.deadlineUnix ?? 0,
         createdAt: task.createdAtUnix,
         computeBonds: task.computeBonds,
@@ -73,6 +72,7 @@ export function JobHistoryTable({
         address: task.address,
         status: task.status,
         paymentAmount: task.paymentAmount,
+        paymentMint: task.paymentMint,
         deadline: task.deadline,
         createdAt: task.createdAt,
         computeBonds: [],
@@ -118,7 +118,9 @@ export function JobHistoryTable({
                     <td className={`py-2 pr-3 ${STATUS_COLOR[task.status ?? ''] ?? ''}`}>
                       {task.status ?? 'unknown'}
                     </td>
-                    <td className="py-2 pr-3 font-mono">{fmtSol(task.paymentAmount ?? '0')} SOL</td>
+                    <td className="py-2 pr-3 font-mono">
+                      {formatPaymentAmount(task.paymentAmount, task.paymentMint)}
+                    </td>
                     <td className="py-2 pr-3">
                       <ComputeBondSummary bonds={task.computeBonds} />
                     </td>

@@ -16,6 +16,7 @@ import {
   marketGlobalPda,
   type CreateTaskInput,
   type ClusterConfig,
+  type SaepCluster,
 } from '@saep/sdk';
 import { createHash, randomBytes } from 'crypto';
 
@@ -28,9 +29,13 @@ const HEADERS = {
 
 function clusterConfig(): ClusterConfig {
   return resolveCluster({
-    cluster: (process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? 'devnet') as 'devnet',
+    cluster: (process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? 'devnet') as SaepCluster,
     endpoint: process.env.NEXT_PUBLIC_RPC_URL,
   });
+}
+
+function isMainnetCluster(config: ClusterConfig): boolean {
+  return config.cluster === 'mainnet-beta';
 }
 
 function readOnlyProvider(config: ClusterConfig) {
@@ -68,7 +73,8 @@ export async function GET() {
   const payload = {
     icon: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://buildonsaep.com'}/logo.svg`,
     title: 'Create Task — SAEP',
-    description: 'Create a new task on the SAEP TaskMarket and assign it to an AI agent by on-chain DID hex.',
+    description:
+      'Create a devnet task on SAEP TaskMarket by on-chain DID hex. Mainnet uses wallet-signed Quick Hire create+fund in the portal.',
     label: 'Create Task',
     links: {
       actions: [
@@ -94,6 +100,17 @@ export async function POST(req: NextRequest) {
     const account: string | undefined = body.account;
     if (!account) {
       return NextResponse.json({ error: 'missing account' }, { status: 400, headers: HEADERS });
+    }
+
+    const config = clusterConfig();
+    if (isMainnetCluster(config)) {
+      return NextResponse.json(
+        {
+          error:
+            'create-task action is devnet-only until it returns atomic create+fund transactions; use portal Quick Hire for mainnet',
+        },
+        { status: 400, headers: HEADERS },
+      );
     }
 
     const { searchParams } = req.nextUrl;
@@ -130,7 +147,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const config = clusterConfig();
     const provider = readOnlyProvider(config);
     const registry = agentRegistryProgram(provider, config);
     const program = taskMarketProgram(provider, config);

@@ -49,6 +49,7 @@ export const PUBLIC_SERVICES: Record<PublicServiceKey, PublicServiceDefinition> 
       { method: 'GET', path: '/tasks/:taskIdHex/bidding', description: 'Current bid-book phase for one task.' },
       { method: 'GET', path: '/tasks/:taskIdHex/bids', description: 'Indexed bid rows for one task.' },
       { method: 'GET', path: '/tasks?status=<csv>&limit=<n>', description: 'Indexed task feed with compute bond summaries.' },
+      { method: 'GET', path: '/tasks/:taskIdHex', description: 'Indexed task detail from the hosted discovery read model.' },
       { method: 'GET', path: '/tasks/:taskIdHex/compute-bonds', description: 'Tracked compute bond lifecycle rows for one task.' },
       { method: 'GET', path: '/agents/:did/tasks?status=<csv>&limit=<n>', description: 'Indexed agent task history with compute bond summaries.' },
       { method: 'GET', path: '/v1/discovery/agents', description: 'Agent search, ranking, and explainable capability matching.' },

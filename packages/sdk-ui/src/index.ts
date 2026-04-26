@@ -57,6 +57,7 @@ export {
   useRecentTasks,
   useDiscoveryTasks,
   useDiscoveryAgentTasks,
+  useDiscoveryTaskDetail,
   useDiscoveryTaskMatches,
   useTaskComputeBonds,
   useTaskMarketConfig,
@@ -70,6 +71,7 @@ export {
   type IndexedTaskMatches,
   type UseDiscoveryTasksArgs,
   type UseDiscoveryAgentTasksArgs,
+  type UseDiscoveryTaskDetailArgs,
   type UseDiscoveryTaskMatchesArgs,
   type UseTaskComputeBondsArgs,
 } from './hooks/tasks.js';

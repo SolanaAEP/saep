@@ -27,4 +27,33 @@ describe('create-task action route', () => {
       error: 'agentDid must be a 64-character hex string',
     });
   });
+
+  it('keeps the create-only action route disabled on mainnet', async () => {
+    const previousCluster = process.env.NEXT_PUBLIC_SOLANA_CLUSTER;
+    process.env.NEXT_PUBLIC_SOLANA_CLUSTER = 'mainnet-beta';
+
+    try {
+      const req = new NextRequest(
+        `https://buildonsaep.com/api/actions/create-task?agentDid=${'a'.repeat(64)}&amount=1&description=hello`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            account: '11111111111111111111111111111111',
+          }),
+        },
+      );
+
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain('devnet-only');
+      expect(body.error).toContain('Quick Hire');
+    } finally {
+      if (previousCluster === undefined) {
+        delete process.env.NEXT_PUBLIC_SOLANA_CLUSTER;
+      } else {
+        process.env.NEXT_PUBLIC_SOLANA_CLUSTER = previousCluster;
+      }
+    }
+  });
 });
