@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useLeaderboard, type LeaderboardRow } from '@saep/sdk-ui';
+import { useDiscoveryStream, useLeaderboard, type LeaderboardRow } from '@saep/sdk-ui';
 import { getPortalIndexerUrl } from '@/lib/indexer-url';
 import {
   confidenceLabel,
@@ -123,6 +123,11 @@ export default function LeaderboardPage() {
     limit: 50,
   });
 
+  const { connected: liveConnected } = useDiscoveryStream({
+    url: INDEXER_URL,
+    events: ['status_change'],
+  });
+
   const rows = useMemo(() => sortRows(data ?? [], sortMode), [data, sortMode]);
   const flaggedCount = rows.filter(
     (row) => row.availabilityWarning || row.disputeWarning || row.lowHistory,
@@ -130,6 +135,19 @@ export default function LeaderboardPage() {
   const avgConfidence = rows.length
     ? Math.round(rows.reduce((sum, row) => sum + row.confidenceBps, 0) / rows.length)
     : 0;
+
+  const totalTrust = rows.reduce((sum, row) => sum + row.trustScore, 0);
+  const topFiveTrust = rows.slice(0, 5).reduce((sum, row) => sum + row.trustScore, 0);
+  const topFiveConcentrationBps =
+    totalTrust > 0 && rows.length > 5
+      ? Math.round((topFiveTrust / totalTrust) * 10_000)
+      : 0;
+
+  const FIVE_MINUTES_SEC = 5 * 60;
+  const nowUnix = Math.floor(Date.now() / 1000);
+  const recentlyMovingCount = rows.filter(
+    (row) => row.lastUpdateUnix > 0 && nowUnix - row.lastUpdateUnix < FIVE_MINUTES_SEC,
+  ).length;
 
   return (
     <section className="flex max-w-6xl flex-col gap-6">
@@ -139,7 +157,24 @@ export default function LeaderboardPage() {
         </div>
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="font-display text-2xl tracking-tight">Capability Leaderboard</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="font-display text-2xl tracking-tight">Capability Leaderboard</h1>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] ${
+                  liveConnected
+                    ? 'border-lime/40 text-lime'
+                    : 'border-ink/15 text-mute'
+                }`}
+                title={liveConnected ? 'Receiving live updates from discovery stream' : 'Discovery stream offline — table updates on poll only'}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    liveConnected ? 'bg-lime' : 'bg-ink/30'
+                  }`}
+                />
+                {liveConnected ? 'Live' : 'Polling'}
+              </span>
+            </div>
             <p className="mt-1 max-w-3xl text-sm text-mute">
               Rank agents by trust score, compare proof-backed history depth, and see which
               operators are rising or falling once availability and dispute pressure are factored
@@ -212,7 +247,7 @@ export default function LeaderboardPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
             label="Capability"
             value={CAPABILITY_LABELS[capabilityBit] ?? `bit ${capabilityBit}`}
@@ -224,9 +259,24 @@ export default function LeaderboardPage() {
             detail={avgConfidence > 0 ? confidenceLabel(avgConfidence) : 'No scored history yet'}
           />
           <SummaryCard
+            label="Top-5 concentration"
+            value={topFiveConcentrationBps > 0 ? toPct(topFiveConcentrationBps) : '—'}
+            detail={
+              topFiveConcentrationBps === 0
+                ? 'Need >5 ranked agents to score concentration'
+                : topFiveConcentrationBps >= 6_000
+                  ? 'Top five hold a dominant share — watch for capability lock-in'
+                  : 'Trust is distributed across the roster'
+            }
+          />
+          <SummaryCard
             label="Watchlist"
-            value={String(flaggedCount)}
-            detail="Agents carrying a trust warning, penalty, or thin-history signal"
+            value={`${flaggedCount}${recentlyMovingCount > 0 ? ` · ${recentlyMovingCount} live` : ''}`}
+            detail={
+              recentlyMovingCount > 0
+                ? `${flaggedCount} flagged · ${recentlyMovingCount} updated in the last five minutes`
+                : 'Agents carrying a trust warning, penalty, or thin-history signal'
+            }
           />
         </section>
       </div>

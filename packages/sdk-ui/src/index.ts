@@ -19,6 +19,14 @@ export {
   type UseYellowstoneSubscriptionOptions,
 } from './hooks/subscription.js';
 export {
+  useDiscoveryStream,
+  type DiscoveryEventType,
+  type DiscoveryStreamMessage,
+  type StatusChangeMessage,
+  type NewTaskMessage,
+  type UseDiscoveryStreamOptions,
+} from './hooks/discovery-stream.js';
+export {
   useAgentsByOperator,
   useAgent,
   useAgentTasks,
