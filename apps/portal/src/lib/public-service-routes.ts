@@ -29,6 +29,9 @@ const DEFAULT_UPSTREAMS: Record<PublicServiceKey, string> = {
 const DIRECT_DISCOVERY = process.env.DISCOVERY_API_URL
   ?? process.env.NEXT_PUBLIC_INDEXER_URL
   ?? DEFAULT_UPSTREAMS.discovery;
+const DIRECT_DISCOVERY_WS = process.env.NEXT_PUBLIC_DISCOVERY_WS_URL
+  ?? process.env.DISCOVERY_WS_URL
+  ?? null;
 const DIRECT_X402 = process.env.X402_GATEWAY_URL ?? DEFAULT_UPSTREAMS.x402;
 const DIRECT_IACP = process.env.IACP_API_URL ?? DEFAULT_UPSTREAMS.iacp;
 const DIRECT_IACP_WS = process.env.NEXT_PUBLIC_IACP_WS_URL ?? process.env.IACP_WS_URL ?? null;
@@ -43,6 +46,8 @@ export const PUBLIC_SERVICES: Record<PublicServiceKey, PublicServiceDefinition> 
     publicBasePath: '/api/discovery',
     upstreamEnvVar: 'DISCOVERY_API_URL',
     upstreamFallback: DIRECT_DISCOVERY,
+    websocketUrl: DIRECT_DISCOVERY_WS,
+    websocketDescription: 'Direct WebSocket origin for live status_change + new_task pushes. Bypasses the /api/discovery proxy because Next.js route handlers do not pipe WebSocket upgrades.',
     endpoints: [
       { method: 'GET', path: '/healthz', description: 'Liveness check for the indexer API.' },
       { method: 'GET', path: '/leaderboard?capability=<bit>', description: 'Leaderboard surface used by the portal.' },

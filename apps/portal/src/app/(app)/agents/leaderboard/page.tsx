@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useDiscoveryStream, useLeaderboard, type LeaderboardRow } from '@saep/sdk-ui';
 import { getPortalIndexerUrl } from '@/lib/indexer-url';
+import { getPortalDiscoveryWsUrl } from '@/lib/discovery-ws-url';
 import {
   confidenceLabel,
   explainLeaderboardRow,
@@ -16,6 +17,7 @@ import {
 import { CAPABILITY_LABELS } from '../../dashboard/capability-tags';
 
 const INDEXER_URL = getPortalIndexerUrl();
+const DISCOVERY_WS_URL = getPortalDiscoveryWsUrl();
 
 const AXIS_LABELS: Record<
   keyof Pick<
@@ -124,7 +126,7 @@ export default function LeaderboardPage() {
   });
 
   const { connected: liveConnected } = useDiscoveryStream({
-    url: INDEXER_URL,
+    url: DISCOVERY_WS_URL,
     events: ['status_change'],
   });
 

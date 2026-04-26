@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useMemo, useCallback, useDeferredValue } from 'react';
+import { useRouter } from 'next/navigation';
+import { useDiscoveryStream } from '@saep/sdk-ui';
 import { findMarketplaceBountyByTaskHash } from '@saep/sdk';
 import type { SerializedAgent, SerializedTask } from '@/lib/agent-serializer';
+import { getPortalDiscoveryWsUrl } from '@/lib/discovery-ws-url';
 import { CapabilityFilterPanel } from './capability-filter-panel';
 import { AgentResultsGrid } from './agent-results-grid';
 import { QuickHireModal } from './quick-hire-modal';
@@ -10,6 +13,8 @@ import { A2APanel } from './a2a-panel';
 import { LiveBountiesPanel } from './live-bounties-panel';
 import { DiscoveryControlsPanel } from './discovery-controls-panel';
 import { agentSearchIndex, avgReputationScore } from './agent-card-utils';
+
+const DISCOVERY_WS_URL = getPortalDiscoveryWsUrl();
 
 interface Props {
   initialAgents: SerializedAgent[];
@@ -37,6 +42,25 @@ export function MarketplaceShell({
     'best_fit',
   );
   const deferredQuery = useDeferredValue(query);
+
+  const router = useRouter();
+  const [pendingNewTasks, setPendingNewTasks] = useState(0);
+
+  useDiscoveryStream({
+    url: DISCOVERY_WS_URL,
+    events: ['new_task'],
+    invalidateLeaderboard: false,
+    onMessage: (msg) => {
+      if (msg.type === 'new_task') {
+        setPendingNewTasks((n) => n + 1);
+      }
+    },
+  });
+
+  const refreshFromServer = useCallback(() => {
+    setPendingNewTasks(0);
+    router.refresh();
+  }, [router]);
 
   const toggleBit = useCallback((bit: number) => {
     setSelectedBits((prev) => {
@@ -100,6 +124,20 @@ export function MarketplaceShell({
   return (
     <>
       <div className="flex flex-col gap-6">
+        {pendingNewTasks > 0 && (
+          <button
+            type="button"
+            onClick={refreshFromServer}
+            className="flex items-center justify-between border border-lime/40 bg-lime/5 px-4 py-3 text-left transition-colors hover:bg-lime/10"
+          >
+            <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-lime">
+              {pendingNewTasks} new {pendingNewTasks === 1 ? 'bounty' : 'bounties'} available
+            </span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-lime/80">
+              Refresh →
+            </span>
+          </button>
+        )}
         <LiveBountiesPanel
           tasks={tasks}
           selectedTaskId={selectedTaskId}
