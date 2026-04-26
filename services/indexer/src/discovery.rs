@@ -603,6 +603,7 @@ struct RawTaskRow {
 const TASK_STATUSES: &[&str] = &[
     "created",
     "funded",
+    "proofSubmitted",
     "submitted",
     "verified",
     "released",
@@ -610,6 +611,23 @@ const TASK_STATUSES: &[&str] = &[
     "cancelled",
     "expired",
 ];
+
+fn task_status_to_db(status: &str) -> &str {
+    match status {
+        "proofSubmitted" => "submitted",
+        other => other,
+    }
+}
+
+fn task_status_to_public(status: Option<String>) -> Option<String> {
+    status.map(|s| {
+        if s == "submitted" {
+            "proofSubmitted".to_string()
+        } else {
+            s
+        }
+    })
+}
 
 pub async fn list_tasks(
     State(state): State<ApiState>,
@@ -630,7 +648,7 @@ pub async fn list_tasks(
                     return Err(ApiError::bad_request("status contains unknown value"));
                 }
             }
-            Some(parts)
+            Some(parts.into_iter().map(|p| task_status_to_db(&p).to_string()).collect())
         }
         None => None,
     };
@@ -765,7 +783,7 @@ pub async fn list_tasks(
             task_id_hex: hex::encode(&r.task_id),
             creator: r.creator,
             agent_did_hex: r.agent_did.as_ref().map(hex::encode),
-            status: r.status,
+            status: task_status_to_public(r.status),
             reward_lamports: r.reward_lamports_text,
             created_at_unix: r.created_at_unix,
             deadline_unix: r.deadline_unix,
@@ -1350,7 +1368,7 @@ pub async fn task_detail(
         task_id_hex: hex::encode(&row.task_id),
         creator: row.creator,
         agent_did_hex: row.agent_did.as_ref().map(hex::encode),
-        status: row.status,
+        status: task_status_to_public(row.status),
         reward_lamports: row.reward_lamports_text,
         created_at_unix: row.created_at_unix,
         deadline_unix: row.deadline_unix,
@@ -1499,7 +1517,7 @@ pub async fn task_matches(
 
     Ok(Json(TaskMatches {
         task_id_hex,
-        task_status: context.status,
+        task_status: task_status_to_public(context.status),
         capability_bit: context.capability_bit,
         items,
     }))
@@ -2538,6 +2556,7 @@ mod tests {
         let status_to_event = |s: &str| match s {
             "created" => "TaskCreated",
             "funded" => "TaskFunded",
+            "proofSubmitted" => "ResultSubmitted",
             "submitted" => "ResultSubmitted",
             "verified" => "TaskVerified",
             "released" => "TaskReleased",

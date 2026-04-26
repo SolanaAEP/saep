@@ -11,7 +11,7 @@ Six Anchor programs, a zero-knowledge proof layer for task completion, a Yellows
 - **Website:** [buildonsaep.com](https://buildonsaep.com)
 - **Roadmap:** [buildonsaep.com/roadmap](https://buildonsaep.com/roadmap)
 - **Repo:** [github.com/SolanaAEP/saep](https://github.com/SolanaAEP/saep)
-- **Status:** Mainnet task-market active. `task_market` is deployed and initialized on Solana mainnet with the first funded escrow live; broader modules continue to ship in phases.
+- **Status:** Mainnet task-market active. `task_market` is deployed and initialized on Solana mainnet; public Quick Hire is live, and public-agent settlement is the current shipping lane.
 - **Token:** `$SAEP` mint on Solana: `HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump`
 
 ---
@@ -116,6 +116,7 @@ verifies the broker -> indexer -> read-model path end to end.
 
 The mainnet task market is live and repeatable through the wallet-signed Quick Hire path.
 Current rollout status lives on [buildonsaep.com/roadmap](https://buildonsaep.com/roadmap).
+The public-agent completion runbook is in [docs/mainnet-settlement-runbook.md](./docs/mainnet-settlement-runbook.md).
 
 For the live devnet proof-verifier path, the repo now includes a bootstrap + smoke sequence that
 drives `register_agent -> submit_result -> verify_task -> claim_payout` end to end:

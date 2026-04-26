@@ -291,6 +291,7 @@ export async function buildSubmitResultIx(
   input: SubmitResultInput,
 ): Promise<TransactionInstruction> {
   const [global] = marketGlobalPda(program.programId);
+  const [guard] = guardPda(program.programId);
 
   return program.methods
     .submitResult(
@@ -303,6 +304,7 @@ export async function buildSubmitResultIx(
       operator: input.operator,
       agentRegistryProgram: config.programIds.agentRegistry,
       agentAccount: input.agentAccount,
+      guard,
     } as never)
     .instruction();
 }

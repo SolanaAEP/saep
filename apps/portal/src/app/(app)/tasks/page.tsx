@@ -45,7 +45,7 @@ export default function TasksPage() {
   } = useDiscoveryTasks({
     indexerUrl,
     limit: 20,
-    statuses: ['created', 'funded', 'inExecution', 'proofSubmitted', 'verified', 'disputed'],
+    statuses: ['created', 'funded', 'inExecution', 'proofSubmitted', 'verified', 'released', 'disputed'],
   });
 
   return (

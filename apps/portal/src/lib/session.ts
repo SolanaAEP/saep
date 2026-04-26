@@ -19,16 +19,31 @@ export async function signSession(address: string, ttlSeconds: number): Promise<
   token: string;
   issuedAt: number;
   expiresAt: number;
+}>;
+export async function signSession(address: string, ttlSeconds: number, opts: { audience?: string }): Promise<{
+  token: string;
+  issuedAt: number;
+  expiresAt: number;
+}>;
+export async function signSession(
+  address: string,
+  ttlSeconds: number,
+  opts: { audience?: string } = {},
+): Promise<{
+  token: string;
+  issuedAt: number;
+  expiresAt: number;
 }> {
   const now = Math.floor(Date.now() / 1000);
   const exp = now + ttlSeconds;
-  const token = await new SignJWT({ address })
+  let jwt = new SignJWT({ address })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuer(SESSION_ISSUER)
     .setSubject(address)
     .setIssuedAt(now)
-    .setExpirationTime(exp)
-    .sign(secret());
+    .setExpirationTime(exp);
+  if (opts.audience) jwt = jwt.setAudience(opts.audience);
+  const token = await jwt.sign(secret());
   return { token, issuedAt: now, expiresAt: exp };
 }
 

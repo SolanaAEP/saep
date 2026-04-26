@@ -42,7 +42,7 @@ export default async function MarketplacePage({
     const program = getTaskMarketProgram();
     const raw = await fetchRecentTasks(program, {
       limit: 8,
-      statuses: ['created', 'funded', 'inExecution', 'proofSubmitted', 'verified', 'disputed'],
+      statuses: ['created', 'funded', 'inExecution', 'proofSubmitted', 'verified', 'released', 'disputed'],
     });
     tasks = raw.map(serializeTask);
   } catch (e) {

@@ -1,16 +1,41 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PublicKey, Transaction } from '@solana/web3.js';
+import { PublicKey, Transaction, type Connection } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import {
+  TOKEN_2022_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountIdempotentInstruction,
+  getAssociatedTokenAddressSync,
+} from '@solana/spl-token';
+import {
+  buildReleaseIx,
+  buildSubmitResultIx,
+  buildVerifyTaskIx,
   fetchMarketGlobal,
+  fetchProofVerifierAllowedCallers,
+  fetchVerifierConfig,
+  fetchVerifierKey,
+  fetchVerifierMode,
   fetchRecentTasks,
   fetchTaskById,
   fetchTasksByClient,
   buildRaiseDisputeIx,
+  verifierKeyPda,
+  type TaskDetail,
 } from '@saep/sdk';
-import { useTaskMarketProgram } from './program.js';
+import { useCluster } from './cluster.js';
+import { useProofVerifierProgram, useTaskMarketProgram } from './program.js';
+import { useSendTransaction } from './mutation.js';
+import {
+  TASK_COMPLETION_CIRCUIT_ID,
+  computeTaskCompletionVkId,
+  evaluateSettlementReadiness,
+  type Groth16ProofLike,
+  type SettlementReadiness,
+  type TaskCompletionProofGenRequest,
+} from '../settlement.js';
 
 export type DiscoveryComputeBondStatus =
   | 'reserved'
@@ -94,6 +119,22 @@ export interface IndexedTaskMatches {
   taskStatus: string | null;
   capabilityBit: number;
   items: DiscoveryTaskMatchCandidate[];
+}
+
+export interface ProofGenProveResponse {
+  status: string;
+  job_id?: string;
+  cached?: boolean;
+  proof?: Groth16ProofLike;
+  public_signals?: string[];
+  error?: string;
+}
+
+export type ProofGenJobResponse = ProofGenProveResponse;
+
+export interface UseSettlementReadinessArgs {
+  proofGenUrl?: string;
+  enabled?: boolean;
 }
 
 interface RawDiscoveryComputeBondSummary {
@@ -182,6 +223,31 @@ async function fetchIndexerJson<T>(url: string, signal?: AbortSignal): Promise<T
     throw new Error(`indexer ${res.status}: ${body || res.statusText}`);
   }
   return (await res.json()) as T;
+}
+
+async function fetchServiceJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, { credentials: 'include', ...init });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`service ${res.status}: ${body || res.statusText}`);
+  }
+  return (await res.json()) as T;
+}
+
+async function fetchServiceJsonOrNull<T>(url: string, signal?: AbortSignal): Promise<T | null> {
+  try {
+    return await fetchServiceJson<T>(url, { signal });
+  } catch {
+    return null;
+  }
+}
+
+async function resolveTokenProgram(connection: Connection, mint: PublicKey): Promise<PublicKey> {
+  const info = await connection.getAccountInfo(mint, 'confirmed');
+  if (!info) throw new Error(`payment mint ${mint.toBase58()} was not found`);
+  if (info.owner.equals(TOKEN_2022_PROGRAM_ID)) return TOKEN_2022_PROGRAM_ID;
+  if (info.owner.equals(TOKEN_PROGRAM_ID)) return TOKEN_PROGRAM_ID;
+  throw new Error(`payment mint ${mint.toBase58()} is not an SPL token mint`);
 }
 
 function mapComputeBond(raw: RawDiscoveryComputeBondSummary): DiscoveryComputeBondSummary {
@@ -523,6 +589,250 @@ export function useTaskMarketConfig() {
     enabled: Boolean(program),
     queryFn: () => fetchMarketGlobal(program!),
     staleTime: 60_000,
+  });
+}
+
+export function useSettlementReadiness({
+  proofGenUrl = '/api/proofgen',
+  enabled = true,
+}: UseSettlementReadinessArgs = {}) {
+  const taskMarketProgram = useTaskMarketProgram();
+  const proofVerifierProgram = useProofVerifierProgram();
+  const cluster = useCluster();
+
+  return useQuery<SettlementReadiness>({
+    queryKey: ['settlement-readiness', proofGenUrl, cluster.cluster, cluster.programIds.taskMarket.toBase58()],
+    enabled: enabled && Boolean(taskMarketProgram && proofVerifierProgram),
+    queryFn: async ({ signal }) => {
+      if (!taskMarketProgram || !proofVerifierProgram) throw new Error('Programs unavailable');
+      const vkId = await computeTaskCompletionVkId();
+      const [expectedVerifierKey] = verifierKeyPda(cluster.programIds.proofVerifier, vkId);
+      const proofGenBase = proofGenUrl.replace(/\/$/, '');
+
+      const [
+        market,
+        verifierMode,
+        verifierConfig,
+        allowedCallers,
+        activeVerifierKey,
+        proofGenHealth,
+        proofGenCircuits,
+      ] = await Promise.all([
+        fetchMarketGlobal(taskMarketProgram),
+        fetchVerifierMode(proofVerifierProgram),
+        fetchVerifierConfig(proofVerifierProgram),
+        fetchProofVerifierAllowedCallers(proofVerifierProgram),
+        fetchVerifierKey(proofVerifierProgram, vkId),
+        fetchServiceJsonOrNull<{ ok?: boolean; artifacts?: string; verification_key?: string; circuits?: string[] }>(
+          `${proofGenBase}/healthz`,
+          signal,
+        ),
+        fetchServiceJsonOrNull<{ circuits?: Array<{
+          circuit_id: string;
+          slug?: string;
+          lifecycle?: string;
+          verifier?: string;
+          verification_key_version?: number;
+          public_inputs?: string[];
+          artifacts?: string;
+          verification_key?: string;
+        }> }>(`${proofGenBase}/circuits`, signal),
+      ]);
+
+      return evaluateSettlementReadiness({
+        taskMarketProgramId: cluster.programIds.taskMarket.toBase58(),
+        expectedVerifierKeyAddress: expectedVerifierKey.toBase58(),
+        market: market
+          ? { paused: market.paused, proofVerifier: market.proofVerifier.toBase58() }
+          : null,
+        verifierMode,
+        verifierConfig: verifierConfig
+          ? { paused: verifierConfig.paused, activeVk: verifierConfig.activeVk.toBase58() }
+          : null,
+        activeVerifierKey: activeVerifierKey
+          ? {
+              address: activeVerifierKey.address.toBase58(),
+              isProduction: activeVerifierKey.isProduction,
+              circuitLabel: activeVerifierKey.circuitLabel,
+              numPublicInputs: activeVerifierKey.numPublicInputs,
+            }
+          : null,
+        allowedCallers: allowedCallers
+          ? { programs: allowedCallers.programs.map((program) => program.toBase58()) }
+          : null,
+        proofGenHealth,
+        proofGenCircuits,
+      });
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
+export interface SubmitTaskResultInput {
+  task: PublicKey;
+  agentAccount: PublicKey;
+  resultHash: Uint8Array;
+  proofKey: Uint8Array;
+}
+
+export function useSubmitTaskResult() {
+  const program = useTaskMarketProgram();
+  const cluster = useCluster();
+  const { publicKey } = useWallet();
+
+  return useSendTransaction<SubmitTaskResultInput>({
+    buildInstruction: async (input) => {
+      if (!program) throw new Error('Task market program unavailable');
+      if (!publicKey) throw new Error('Wallet not connected');
+      return buildSubmitResultIx(program, cluster, {
+        operator: publicKey,
+        task: input.task,
+        agentAccount: input.agentAccount,
+        resultHash: input.resultHash,
+        proofKey: input.proofKey,
+      });
+    },
+    invalidateKeys: [['task'], ['discovery-tasks'], ['discovery-task-detail']],
+    commitment: 'confirmed',
+  });
+}
+
+export interface VerifyTaskResultInput {
+  task: PublicKey;
+  proofA: Uint8Array;
+  proofB: Uint8Array;
+  proofC: Uint8Array;
+}
+
+export function useVerifyTaskResult() {
+  const program = useTaskMarketProgram();
+  const cluster = useCluster();
+  const { publicKey } = useWallet();
+
+  return useSendTransaction<VerifyTaskResultInput>({
+    buildInstruction: async (input) => {
+      if (!program) throw new Error('Task market program unavailable');
+      if (!publicKey) throw new Error('Wallet not connected');
+      const vkId = await computeTaskCompletionVkId();
+      const [verifierKey] = verifierKeyPda(cluster.programIds.proofVerifier, vkId);
+      return buildVerifyTaskIx(program, cluster, {
+        cranker: publicKey,
+        task: input.task,
+        verifierKey,
+        vkId,
+        proofA: input.proofA,
+        proofB: input.proofB,
+        proofC: input.proofC,
+      });
+    },
+    invalidateKeys: [['task'], ['discovery-tasks'], ['discovery-task-detail']],
+    commitment: 'confirmed',
+  });
+}
+
+export interface ReleaseTaskEscrowInput {
+  task: TaskDetail;
+  agentAccount: PublicKey;
+  agentOperator: PublicKey;
+}
+
+export function useReleaseTaskEscrow() {
+  const program = useTaskMarketProgram();
+  const cluster = useCluster();
+  const { connection } = useConnection();
+  const { publicKey } = useWallet();
+
+  return useSendTransaction<ReleaseTaskEscrowInput>({
+    buildInstruction: async (input) => {
+      if (!program) throw new Error('Task market program unavailable');
+      if (!publicKey) throw new Error('Wallet not connected');
+      const market = await fetchMarketGlobal(program);
+      if (!market) throw new Error('MarketGlobal is missing');
+      const tokenProgramId = await resolveTokenProgram(connection, input.task.paymentMint);
+      const agentTokenAccount = getAssociatedTokenAddressSync(
+        input.task.paymentMint,
+        input.agentOperator,
+        true,
+        tokenProgramId,
+      );
+      const feeCollectorTokenAccount = getAssociatedTokenAddressSync(
+        input.task.paymentMint,
+        market.feeCollector,
+        true,
+        tokenProgramId,
+      );
+      const solrepPoolTokenAccount = getAssociatedTokenAddressSync(
+        input.task.paymentMint,
+        market.solrepPool,
+        true,
+        tokenProgramId,
+      );
+      const createAtas = [
+        createAssociatedTokenAccountIdempotentInstruction(
+          publicKey,
+          agentTokenAccount,
+          input.agentOperator,
+          input.task.paymentMint,
+          tokenProgramId,
+        ),
+        createAssociatedTokenAccountIdempotentInstruction(
+          publicKey,
+          feeCollectorTokenAccount,
+          market.feeCollector,
+          input.task.paymentMint,
+          tokenProgramId,
+        ),
+        createAssociatedTokenAccountIdempotentInstruction(
+          publicKey,
+          solrepPoolTokenAccount,
+          market.solrepPool,
+          input.task.paymentMint,
+          tokenProgramId,
+        ),
+      ];
+      const release = await buildReleaseIx(program, cluster, {
+        cranker: publicKey,
+        task: input.task.address,
+        paymentMint: input.task.paymentMint,
+        agentTokenAccount,
+        feeCollectorTokenAccount,
+        solrepPoolTokenAccount,
+        agentAccount: input.agentAccount,
+        client: input.task.client,
+        tokenProgramId,
+      });
+      return [...createAtas, release];
+    },
+    invalidateKeys: [['task'], ['discovery-tasks'], ['discovery-task-detail']],
+    commitment: 'confirmed',
+  });
+}
+
+export function useCreateProofGenJob(proofGenUrl = '/api/proofgen') {
+  return useMutation<ProofGenProveResponse, Error, TaskCompletionProofGenRequest>({
+    mutationFn: (request) =>
+      fetchServiceJson<ProofGenProveResponse>(`${proofGenUrl.replace(/\/$/, '')}/prove`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(request),
+      }),
+  });
+}
+
+export function useProofGenJob(jobId: string | null, proofGenUrl = '/api/proofgen') {
+  return useQuery<ProofGenJobResponse>({
+    queryKey: ['proof-gen-job', proofGenUrl, jobId],
+    enabled: Boolean(jobId),
+    queryFn: ({ signal }) =>
+      fetchServiceJson<ProofGenJobResponse>(
+        `${proofGenUrl.replace(/\/$/, '')}/jobs/${jobId}`,
+        { signal },
+      ),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status && status !== 'completed' && status !== 'failed' ? 2_500 : false;
+    },
   });
 }
 

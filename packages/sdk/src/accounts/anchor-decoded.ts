@@ -182,6 +182,16 @@ export interface DecodedVerifierConfig {
   paused: boolean;
 }
 
+export interface DecodedGlobalMode {
+  isMainnet: boolean;
+  bump: number;
+}
+
+export interface DecodedAllowedCallers {
+  programs: PublicKey[];
+  bump: number;
+}
+
 export interface DecodedVerifierKey {
   vkId: number[];
   circuitLabel: number[];

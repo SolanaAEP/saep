@@ -12,6 +12,7 @@ const STATUS_TONE: Record<string, string> = {
   inExecution: 'border-amber-500/30 text-amber-600',
   proofSubmitted: 'border-fuchsia-500/30 text-fuchsia-600',
   verified: 'border-lime/30 text-lime',
+  released: 'border-lime/30 text-lime',
   disputed: 'border-danger/30 text-danger',
 };
 

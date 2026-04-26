@@ -6,7 +6,7 @@ import type { TaskMarket } from '../generated/task_market.js';
 import type { ProofVerifier } from '../generated/proof_verifier.js';
 import type { CapabilityRegistry } from '../generated/capability_registry.js';
 import type { TemplateRegistry } from '../generated/template_registry.js';
-import { agentAccountPda, treasuryPda, taskPda, verifierConfigPda, verifierKeyPda, capabilityConfigPda, treasuryAllowedMintsPda, vaultPda, bidBookPda, bidPda, categoryReputationPda, marketGlobalPda, templateGlobalPda, templatePda, treasuryYieldPositionPda } from '../pda/index.js';
+import { agentAccountPda, treasuryPda, taskPda, verifierConfigPda, verifierKeyPda, verifierModePda, proofVerifierAllowedCallersPda, capabilityConfigPda, treasuryAllowedMintsPda, vaultPda, bidBookPda, bidPda, categoryReputationPda, marketGlobalPda, templateGlobalPda, templatePda, treasuryYieldPositionPda } from '../pda/index.js';
 import type {
   AnchorEnum,
   AgentStatusEnum,
@@ -20,6 +20,8 @@ import type {
   DecodedBidBook,
   DecodedBid,
   DecodedVerifierConfig,
+  DecodedGlobalMode,
+  DecodedAllowedCallers,
   DecodedVerifierKey,
   DecodedCategoryReputation,
   DecodedRegistryConfig,
@@ -719,6 +721,42 @@ export async function fetchVerifierConfig(
     pendingVk: vc.pendingVk ?? null,
     pendingActivatesAt: vc.pendingActivatesAt.toNumber(),
     paused: vc.paused,
+  };
+}
+
+export interface VerifierModeSummary {
+  address: PublicKey;
+  isMainnet: boolean;
+}
+
+export async function fetchVerifierMode(
+  program: Program<ProofVerifier>,
+): Promise<VerifierModeSummary | null> {
+  const [addr] = verifierModePda(program.programId);
+  const raw = await program.account.globalMode.fetchNullable(addr);
+  if (!raw) return null;
+  const mode = raw as DecodedGlobalMode;
+  return {
+    address: addr,
+    isMainnet: mode.isMainnet,
+  };
+}
+
+export interface ProofVerifierAllowedCallersSummary {
+  address: PublicKey;
+  programs: PublicKey[];
+}
+
+export async function fetchProofVerifierAllowedCallers(
+  program: Program<ProofVerifier>,
+): Promise<ProofVerifierAllowedCallersSummary | null> {
+  const [addr] = proofVerifierAllowedCallersPda(program.programId);
+  const raw = await program.account.allowedCallers.fetchNullable(addr);
+  if (!raw) return null;
+  const allowed = raw as DecodedAllowedCallers;
+  return {
+    address: addr,
+    programs: allowed.programs,
   };
 }
 

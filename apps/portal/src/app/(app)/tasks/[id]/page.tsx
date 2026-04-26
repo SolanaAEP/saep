@@ -11,6 +11,7 @@ import { EscrowPanel } from './escrow-panel';
 import { ProofViewer } from './proof-viewer';
 import { DisputePanel } from './dispute-panel';
 import { BiddingPanel } from './bidding-panel';
+import { SettlementPanel } from './settlement-panel';
 
 function hex(b: Uint8Array): string {
   return Array.from(b).map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -135,6 +136,8 @@ export default function TaskDetailPage({
       <BiddingPanel taskIdHex={id} />
 
       <ProofViewer task={task} />
+
+      <SettlementPanel task={task} />
 
       <DisputePanel task={task} />
     </section>

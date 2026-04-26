@@ -65,6 +65,7 @@ NEXT_PUBLIC_PROGRAM_TASK_MARKET=HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w
 NEXT_PUBLIC_PROGRAM_PROOF_VERIFIER=DcJx1p6bcNuFm4i5WMgK4uGZitc1bf4Ubc5d4sctZKVe
 NEXT_PUBLIC_DEFAULT_PAYMENT_MINT=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
 DISCOVERY_API_URL=https://saep-indexer-api.onrender.com
+PROOFGEN_API_URL=https://<proof-gen-render-service>.onrender.com
 ```
 
 ## 5. Start off-chain services (optional)
