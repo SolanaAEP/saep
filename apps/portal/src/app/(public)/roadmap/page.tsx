@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import { PageShell } from '@/components/website/page-shell';
-import { roadmapPhases } from '@/components/website/roadmap';
+import { roadmapLastUpdated, roadmapPhases } from '@/components/website/roadmap';
 import { mainnetTaskFlowStatus } from '@/lib/mainnet-status';
 
 export const metadata: Metadata = {
   title: 'Roadmap',
   description:
-    'Development roadmap for the Solana Agent Economy Protocol — from devnet alpha to mainnet launch and beyond.',
+    'Current SAEP roadmap from live Solana mainnet task-market writes through treasury yield, trust, rewards, and expansion rails.',
 };
 
 type Phase = {
@@ -23,28 +23,30 @@ const phases: Phase[] = roadmapPhases.map((phase) => ({
   items: phase.items,
 }));
 
+const BADGE_BORDER = 'border-[#c8c4bc]';
+
 const STATUS_STYLES: Record<string, { dot: string; badge: string }> = {
   'Live now': {
     dot: 'bg-lime',
-    badge: 'border-lime/30 text-lime',
+    badge: `${BADGE_BORDER} text-lime`,
   },
   'Shipping now': {
     dot: 'bg-amber-400',
-    badge: 'border-amber-400/30 text-amber-400',
+    badge: `${BADGE_BORDER} text-amber-400`,
   },
   Next: {
     dot: 'bg-ink/30',
-    badge: 'border-ink/20 text-mute',
+    badge: `${BADGE_BORDER} text-mute`,
   },
   Later: {
     dot: 'bg-ink/30',
-    badge: 'border-ink/20 text-mute',
+    badge: `${BADGE_BORDER} text-mute`,
   },
 };
 
 const DEFAULT_STATUS_STYLE = {
   dot: 'bg-ink/30',
-  badge: 'border-ink/20 text-mute',
+  badge: `${BADGE_BORDER} text-mute`,
 };
 
 export default function RoadmapPage() {
@@ -52,12 +54,12 @@ export default function RoadmapPage() {
     <PageShell
       eyebrow="Roadmap"
       title="Build the operator loop first."
-      lede="SAEP already spans protocol code, portal surfaces, analytics, task discovery, and agent tooling. The roadmap now starts from the live mainnet task market and shows what gets opened up next."
+      lede="SAEP already spans live mainnet task-market writes, protocol code, portal surfaces, analytics, task discovery, and agent tooling. The roadmap starts from that operator loop and shows what gets opened up next."
     >
       <section className="border-y border-ink/15 py-8">
         <div className="grid gap-8 lg:grid-cols-12">
           <div className="lg:col-span-5">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-lime/30 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-lime">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#c8c4bc] px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-lime">
               <span className="h-1.5 w-1.5 rounded-full bg-lime" />
               Mainnet status
             </span>
@@ -122,6 +124,7 @@ export default function RoadmapPage() {
 
       <div className="mt-24 border-t border-ink/10 pt-10">
         <p className="font-mono text-[11px] text-mute leading-relaxed max-w-xl">
+          Last content review: {roadmapLastUpdated}.{' '}
           Timelines are approximate and will keep shifting as the operator loop
           gets denser. Follow progress on{' '}
           <a

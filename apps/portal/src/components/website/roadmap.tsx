@@ -8,40 +8,51 @@ export type RoadmapPhase = {
   items: string[];
 };
 
+export const roadmapLastUpdated = 'April 26, 2026';
+
+const BADGE_BORDER = 'border-[#c8c4bc]';
+
 export const roadmapPhases: RoadmapPhase[] = [
   {
     status: 'live',
     statusLabel: 'Live now',
-    title: 'Operator loop + builder surfaces',
-    summary: 'What builders and operators can use across the repo, devnet app, and public packages.',
+    title: 'Mainnet operator loop + builder surfaces',
+    summary:
+      'What builders and operators can use across the repo, mainnet task market, public app, and packages.',
     items: [
-      'Landing site, docs, specs, and the devnet app shell',
-      'Agent registration, detail pages, capability leaderboards, and task-led marketplace matching',
+      'Mainnet task_market deployment with MarketGlobal initialized, USDC + SAEP payment mints enabled, and the first funded escrow complete',
+      'Wallet-signed Quick Hire create+fund path, live task board, and connected-wallet task history',
+      'Landing site, docs, specs, public app shell, tokenomics, staking, brand, security, and governance pages',
+      'Agent registration, detail pages, capability leaderboards, bounty discovery, and task-led marketplace matching',
       'Template catalog, wallet-backed rentals, fork-lineage linking, rentals view, and simulator',
-      'Managed x402 settlement path plus MCP, Solana Agent Kit, Python SDK, and Hermes Agent plugin',
+      'Managed x402 settlement path plus MCP, Solana Agent Kit, TypeScript/Python SDKs, and Hermes Agent plugin',
       'Webhook delivery with signed headers, replay metadata, secret rotation, delivery IDs, and filterable logs',
     ],
   },
   {
     status: 'shipping',
     statusLabel: 'Shipping now',
-    title: 'Productive treasuries + hosted visibility',
-    summary: 'The current lane turns constrained treasury capital into an auditable operator flow.',
+    title: 'Mainnet task settlement',
+    summary:
+      'The current lane turns funded mainnet tasks into a full public-agent completion loop.',
     items: [
-      'Kamino-only treasury yield adapter with deposit, withdraw, emergency unwind, and StrategyPosition accounting',
-      'Treasury operator UI for allocation caps, route preparation, wallet submission, and deployed/realized-yield state',
-      'Discovery/indexer snapshots for strategy descriptors, treasury yield config, and per-position accounting',
-      'Hosted indexer ingest repair so yield, marketplace, and treasury state stay visible off-chain',
-      'Devnet smoke path and audit-gated activation before any mainnet yield claims',
+      'Settlement readiness gate for mainnet verifier mode, active production VK, allowed callers, and hosted proof-gen artifacts',
+      'Task detail flow for active agent operators: submit result, generate proof, verify task, wait the dispute window, and release escrow',
+      'Hosted task board, task detail, and agent job history carrying funded → proofSubmitted → verified → released',
+      'Release builder with safe associated-token-account creation for agent, protocol fee, and solrep pool recipients',
+      'Operator runbook for creating, monitoring, settling, and recovering tiny mainnet canary tasks',
     ],
   },
   {
     status: 'next',
     statusLabel: 'Next',
-    title: 'Trust, operator UX, and richer markets',
-    summary: 'After the treasury lane, the focus returns to user-facing confidence and repeatable operator workflows.',
+    title: 'Treasuries, trust, and richer markets',
+    summary: 'After the settlement lane, the focus returns to productive treasuries and repeatable operator workflows.',
     items: [
+      'Kamino-only treasury yield adapter with deposit, withdraw, emergency unwind, and StrategyPosition accounting',
+      'Treasury operator UI for allocation caps, route preparation, wallet submission, and deployed/realized-yield state',
       'Deeper reputation graph mechanics: proof-bound writes, decay, slashing rollups, anti-gaming, and production leaderboards',
+      'Governance proposal creation, voting, staking reward flows, and operator position management polish',
       'Webhook admin UX for subscriptions, delivery logs, replay/backfill, and operator notifications',
       'Richer template marketplace discovery with author reputation, template-to-task flows, and multi-agent simulations',
       'A2A marketplace flow beyond the current panel: orchestrator tasks, sub-agent bidding, and proof-gated settlement',
@@ -54,7 +65,7 @@ export const roadmapPhases: RoadmapPhase[] = [
     title: 'Expansion rails',
     summary: 'Longer-horizon work once the Solana operator loop is reliable, observable, and boring.',
     items: [
-      'Token-2022 canonical mint readiness, authority verification, and staking/tokenomics maturation',
+      'Token-2022 fee mechanics, buyback/burn cadence, and staking/tokenomics maturation',
       'Confidential and privacy-preserving payment flows',
       'LayerZero-plus-intents cross-chain settlement path',
       'Compute-bond protocol enforcement with release, slash, expiry, and dispute integration',
@@ -64,10 +75,10 @@ export const roadmapPhases: RoadmapPhase[] = [
 ];
 
 const STATUS_STYLES: Record<RoadmapPhase['status'], string> = {
-  live: 'border-lime/30 text-lime',
-  shipping: 'border-amber-400/30 text-amber-500',
-  next: 'border-ink/20 text-ink/60',
-  later: 'border-ink/20 text-ink/60',
+  live: `${BADGE_BORDER} text-lime`,
+  shipping: `${BADGE_BORDER} text-amber-500`,
+  next: `${BADGE_BORDER} text-ink/60`,
+  later: `${BADGE_BORDER} text-ink/60`,
 };
 
 function PhaseCard({ phase }: { phase: RoadmapPhase }) {
@@ -117,8 +128,9 @@ export function RoadmapSnapshot() {
           Shipping the agent economy in layers.
         </h2>
         <p className="md:col-span-4 text-[16px] text-ink/75">
-          The roadmap now mirrors the current repo and devnet portal surface: what is live today,
-          what is actively being wired, and what comes after the operator loop is fully in place.
+          The roadmap now mirrors the current repo, mainnet task-market rollout, and public portal
+          surface: what is live today, what is actively being wired, and what comes after the
+          operator loop is fully in place.
         </p>
       </div>
 
