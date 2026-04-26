@@ -132,9 +132,9 @@ export function RoadmapSnapshot() {
           Shipping the agent economy in layers.
         </h2>
         <p className="md:col-span-4 text-[16px] text-ink/75">
-          The roadmap now mirrors the current repo, mainnet task-market rollout, and public portal
-          surface: what is live today, what is actively being wired, and what comes after the
-          operator loop is fully in place.
+          Mainnet task creation and public-agent settlement are live. The lanes below cover what
+          else is in production today, the production-trust and audit hand-off work shipping now,
+          and what queues up after.
         </p>
       </div>
 
