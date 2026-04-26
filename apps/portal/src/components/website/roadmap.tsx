@@ -8,7 +8,7 @@ export type RoadmapPhase = {
   items: string[];
 };
 
-export const roadmapLastUpdated = 'April 26, 2026';
+export const roadmapLastUpdated = 'April 27, 2026';
 
 const BADGE_BORDER = 'border-[#c8c4bc]';
 
@@ -18,45 +18,49 @@ export const roadmapPhases: RoadmapPhase[] = [
     statusLabel: 'Live now',
     title: 'Mainnet operator loop + builder surfaces',
     summary:
-      'What builders and operators can use across the repo, mainnet task market, public app, and packages.',
+      'What builders and operators can use today across the repo, mainnet task market, public app, and packages.',
     items: [
-      'Mainnet task_market deployment with MarketGlobal initialized, USDC + SAEP payment mints enabled, and the first funded escrow complete',
-      'Wallet-signed Quick Hire create+fund path, live task board, and connected-wallet task history',
+      'Mainnet task_market deployment with MarketGlobal initialized, USDC + SAEP payment mints enabled, and live funded escrows',
+      'Wallet-signed Quick Hire create+fund path, hosted task board, and connected-wallet task history',
+      'Public-agent mainnet settlement: submit result → proof generation → on-chain verify against the production VK → dispute window → release of escrow, protocol fee, and solrep split',
+      'Mainnet settlement readiness gate covering verifier mode, active production VK, allowed callers, and hosted proof-gen artifacts',
+      'Kamino-backed treasury yield: register strategy, deposit, withdraw, emergency unwind, daily-limit-aware constraints, and StrategyPosition accounting',
+      'Treasury operator UI surfacing allocation caps, route preparation, wallet-signed submission, and deployed-vs-realized-yield state',
       'Landing site, docs, specs, public app shell, tokenomics, staking, brand, security, and governance pages',
       'Agent registration, detail pages, capability leaderboards, bounty discovery, and task-led marketplace matching',
-      'Template catalog, wallet-backed rentals, fork-lineage linking, rentals view, and simulator',
-      'Managed x402 settlement path plus MCP, Solana Agent Kit, TypeScript/Python SDKs, and Hermes Agent plugin',
-      'Webhook delivery with signed headers, replay metadata, secret rotation, delivery IDs, and filterable logs',
+      'Template catalog, wallet-backed rentals, fork-lineage linking, rentals view, royalty-CPI settlement, and economics simulator',
+      'Managed x402 settlement path plus MCP bridge (Smithery + server.json), Solana Agent Kit plugin, TypeScript and Python SDKs, and Hermes Agent plugin',
+      'Webhook delivery with signed headers, replay metadata, secret rotation, delivery IDs, dead-letter queue, and filterable logs',
+      'Pre-audit hardening across all ten programs: typed task schema, outbound CPI whitelist, commit-reveal bidding, circom-bound reputation, personhood gate, transfer-hook whitelist, and reentrancy guards',
     ],
   },
   {
     status: 'shipping',
     statusLabel: 'Shipping now',
-    title: 'Mainnet task settlement',
+    title: 'Production trust, operator polish, and audit hand-off',
     summary:
-      'The current lane turns funded mainnet tasks into a full public-agent completion loop.',
+      'The current lane closes the loop on what mainnet settlement opened: trust-graph depth, operator visibility, and the OtterSec submission package.',
     items: [
-      'Settlement readiness gate for mainnet verifier mode, active production VK, allowed callers, and hosted proof-gen artifacts',
-      'Task detail flow for active agent operators: submit result, generate proof, verify task, wait the dispute window, and release escrow',
-      'Hosted task board, task detail, and agent job history carrying funded → proofSubmitted → verified → released',
-      'Release builder with safe associated-token-account creation for agent, protocol fee, and solrep pool recipients',
-      'Operator runbook for creating, monitoring, settling, and recovering tiny mainnet canary tasks',
+      'Reputation graph completion: real-time leaderboard updates, anti-gaming rollups, capability-concentration and rep-velocity signals',
+      'Webhook admin UX for subscriptions, delivery logs, replay/backfill, and operator notifications',
+      'Discovery webhook producer wiring so on-chain events actually reach subscribers in production',
+      'Hosted Render indexer reliability: worker RPC + Yellowstone path completion, thresholded hosted smoke, deploy-side projection backfill',
+      'Per-spec invariant test sweep across the seven pre-audit hardening items, then OtterSec submission for M1',
+      'Treasury yield operator polish: daily-limit visibility, route safety nets, mainnet activation behind the Halborn gate',
     ],
   },
   {
     status: 'next',
     statusLabel: 'Next',
-    title: 'Treasuries, trust, and richer markets',
-    summary: 'After the settlement lane, the focus returns to productive treasuries and repeatable operator workflows.',
+    title: 'Richer markets and governance maturity',
+    summary: 'After production polish lands, the focus turns to multi-agent flows and governance lifecycle.',
     items: [
-      'Kamino-only treasury yield adapter with deposit, withdraw, emergency unwind, and StrategyPosition accounting',
-      'Treasury operator UI for allocation caps, route preparation, wallet submission, and deployed/realized-yield state',
-      'Deeper reputation graph mechanics: proof-bound writes, decay, slashing rollups, anti-gaming, and production leaderboards',
       'Governance proposal creation, voting, staking reward flows, and operator position management polish',
-      'Webhook admin UX for subscriptions, delivery logs, replay/backfill, and operator notifications',
       'Richer template marketplace discovery with author reputation, template-to-task flows, and multi-agent simulations',
       'A2A marketplace flow beyond the current panel: orchestrator tasks, sub-agent bidding, and proof-gated settlement',
-      'Fee collector, rewards rollups, retro distribution plumbing, and broader dispute controls',
+      'Fee collector live distribution, rewards rollups, and retro distribution plumbing alongside the Token-2022 launch',
+      'Broader dispute controls: arbitrator selection at scale, bonded-juror lifecycle UX, and dispute-proof rail',
+      'IACP bus hardening: Ed25519 nonce-challenge auth, schema enforcement on every frame, and round-trip integration tests',
     ],
   },
   {
