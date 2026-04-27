@@ -1,176 +1,127 @@
 # Spec — Token-2022 SAEP Mint (Public Contract)
 
-**Owner:** anchor-engineer
-**Depends on:** FeeCollector deployed, NXSStaking deployed, GovernanceProgram deployed, public authority inventory published
-**Blocks:** M3 SAEP payment path, FeeCollector TransferHook activation, NXSStaking InterestBearing activation
-**References:** backend PDF §1.3, backend PDF §2.6, backend PDF §4.3, backend PDF §5.1, pre-audit-05
+**Status:** post-launch — describes the live mint, not an aspirational target.
+**Mint:** `HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump`
+**Cluster:** Solana mainnet-beta
+**Companion:** [`tokenomics-activation.md`](./tokenomics-activation.md) covers the protocol-side economy that wraps this mint.
 
-> This document describes the public configuration and verification contract for the canonical SAEP mint. Maintainer-only release choreography, signer logistics, and custody procedures are intentionally excluded from the public repo.
+> A prior version of this document specified an aspirational mint configuration (TransferHook, TransferFee, PermanentDelegate, InterestBearing, Pausable) intended for a future canonical activation. That activation never happened: SAEP launched via pump.fun's bonding-curve contract, which produces a renounced Token-2022 mint with a minimal extension set. The aspirational version is preserved in this file's git history; this revision documents the live mint and the verification contract that applies to it.
 
-## Goal
+## Why this differs from the original spec
 
-Define the canonical SAEP Token-2022 mint, its extension set, its post-handover authority layout, and the public evidence required to verify that activation was performed correctly.
+`SAEP` was created by pump.fun's `pump-fun` program at the time of public launch. Pump.fun mints are Token-2022 and renounce all mutable authorities (mint, freeze, metadata-update) once the bonding curve graduates, leaving a fixed-supply community-owned token. **Most Token-2022 extensions are immutable post-init**, so the aspirational extension set cannot be retrofitted onto this mint. The protocol economy was always going to be CPI-driven — `fee_collector::record_intake` accepts fees from registered programs, and `task_market::release` already carves the protocol fee out of payouts before they reach agents — so the absence of mint-level extensions is a posture choice, not a missing feature.
 
-## Mint configuration
+The reduction in mint surface is itself a security feature. Fewer extensions mean fewer ways to brick the mint, fewer paths for governance compromise to drain holders, and fewer audit-equivalent claims to validate.
+
+## Live mint configuration
 
 | Field | Value |
 |---|---|
+| Mint address | `HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump` |
+| Token program | `TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb` (Token-2022) |
 | Name | `SAEP` |
 | Symbol | `SAEP` |
-| Decimals | `9` |
-| Initial supply | `0` |
-| Metadata storage | `MetadataPointer` self-reference |
+| Decimals | `6` |
+| Supply (post-launch fixed) | `999,990,151.438427` SAEP (≈1B) |
+| Mint authority | `None` (revoked) |
+| Freeze authority | `None` (revoked) |
 
-Metadata updates are governance-controlled after handover. The initial metadata URI is fixed by the release configuration used for activation.
+## Extensions present on the mint
 
-## Extensions
-
-The canonical mint includes these Token-2022 extensions:
-
-### TransferHook
-
-- Program: `FeeCollector`
-- Purpose: protocol fee enforcement and hook-aware policy surface
-- Post-handover authority: governance-controlled authority surface
-
-### TransferFee
-
-- Default fee: `10` basis points
-- Maximum fee: `1_000_000 * 10^9`
-- Post-handover config authority: governance-controlled authority surface
-- Withdraw authority: FeeCollector PDA
-
-### PermanentDelegate
-
-- Delegate: FeeCollector PDA
-- Purpose: constrained fee and dust recovery path
-- Post-handover authority: governance-controlled authority surface
-
-### InterestBearing
-
-- Initial rate: `0`
-- Post-handover rate authority: NXSStaking PDA
-- Purpose: governance-controlled APY updates through NXSStaking
+The live mint has exactly two Token-2022 extensions. Anything not listed here is absent and cannot be added without re-minting.
 
 ### MetadataPointer
 
-- Metadata address: mint self-reference
-- Post-handover authority: governance-controlled authority surface
+- Metadata address: self-referential (the mint stores its own metadata in-account)
+- Authority: `None` (immutable)
 
-### Pausable
+### TokenMetadata
 
-- Default state: unpaused
-- Post-handover authority: emergency authority surface
+- Name: `SAEP`
+- Symbol: `SAEP`
+- URI: `https://ipfs.io/ipfs/bafkreihfjbhflg3fmm7nu6etnlvr7ctwyagboa2ll6h54ehb6b5xt77xwq`
+- Update authority: `None` (immutable)
+- Additional metadata: empty
 
-## Excluded extensions
+## Extensions absent from the mint (intentional)
 
-### ConfidentialTransfer
+The following extensions are **not** present and cannot be retrofitted. Each has an explicit substitute in `tokenomics-activation.md`:
 
-Excluded because it cannot coexist with TransferHook on the canonical SAEP mint.
+| Absent extension | What it would have done | Substitute |
+|---|---|---|
+| `TransferHook` → FeeCollector | Transfer-time policy checks + fee enforcement on every transfer | Fee collection at task-settlement time only — protocol fee + solrep fee carved out in `task_market::release` before payout. Secondary-market transfers do not contribute fee revenue. |
+| `TransferFeeConfig` (10 bps) | Automatic 10 bps cut on every transfer to a withholding account | Settlement-time fees only; no automatic secondary-market fee surface |
+| `PermanentDelegate` | Protocol-controlled claw-back of any holder's balance | Lost or stolen SAEP cannot be recovered by the protocol. Standard renounced-mint posture. |
+| `InterestBearingConfig` | Native rebase APY visible to all holders | Distribution model — fee revenue accumulates in a vault, `fee_collector::commit_distribution` allocates per-staker shares, `nxs_staking::claim_staker` drains them. APY is computed from realised distribution per epoch, not native rebase. |
+| `Pausable` | Emergency mint freeze halting all transfers | The mint cannot be paused. Program-level pause hooks exist on dependent programs (`fee_collector::set_paused`, `task_market::pause`, etc.) and halt the protocol-side flow, but secondary trading on the mint continues during any incident. Documented explicitly so holders are not surprised. |
+| `MintCloseAuthority` | Reclaim rent if mint is later destroyed | Not relevant — mint is fixed and decentralised |
+| `ConfidentialTransferMint` | Privacy-preserving transfers | Out of scope; would require re-mint |
 
-### CpiGuard
+## Renounced authorities — verification
 
-Excluded because SAEP depends on legitimate multi-program CPI paths.
+All mutable authorities on the mint are `None`. This means:
 
-### MemoTransfer
+1. No new SAEP can be minted. Supply is fixed at the value in the configuration table above.
+2. No account holding SAEP can be frozen by any authority — neither protocol nor pump.fun.
+3. The metadata URI cannot be changed.
+4. The token program itself (`TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb`) is immutable.
 
-Excluded because memo enforcement is not a mint-level requirement.
+## RPC verification
 
-### NonTransferable
+Anyone can confirm the live state of the mint:
 
-Excluded because SAEP is a transferable fungible token.
+```bash
+curl -s -X POST https://solana-rpc.publicnode.com \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"getAccountInfo","params":["HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump",{"encoding":"jsonParsed","commitment":"confirmed"}]}' \
+  | jq .result.value.data.parsed.info
+```
 
-## Activation invariants
-
-The mint activation is valid only if all of the following are true:
-
-1. The extension set is finalized before `initialize_mint`.
-2. Metadata is initialized through the self-referential metadata pointer.
-3. `MintTokens` authority is set to `None` after handover.
-4. `FreezeAccount` authority is set to `None` after handover.
-5. Every remaining mutable authority points to the intended governance, emergency, or program-derived authority.
-6. No unconstrained EOA remains as a long-term authority after handover.
-
-## Post-handover authority targets
-
-| Surface | Target |
-|---|---|
-| MintTokens | `None` |
-| FreezeAccount | `None` |
-| TransferFeeConfig | Governance authority |
-| WithheldWithdraw | FeeCollector PDA |
-| TransferHookProgramId | Governance-controlled authority |
-| PermanentDelegate authority | Governance authority |
-| InterestBearingRateAuthority | NXSStaking PDA |
-| MetadataPointerAuthority | Governance authority |
-| MetadataUpdateAuthority | Governance authority |
-| PausableAuthority | Emergency authority |
-
-## Public verification outputs
-
-Any activation record for the canonical mint must expose:
-
-- The mint address.
-- The configuration hash used for activation.
-- The initialization transaction signature.
-- The metadata initialization transaction signature, if separate.
-- The handover transaction signature.
-- A post-handover authority dump proving the targets above.
-
-The public record may live in release notes, docs, or another public artifact set, but it must be reproducible from public data.
-
-## `scripts/init-saep-mint.ts`
-
-The public script in this repo is a rehearsal and verification tool:
-
-- `--dry-run`: validates instruction ordering and account sizing without broadcasting.
-- `--devnet`: performs a rehearsal activation and writes a local state file.
-- `--mainnet`: intentionally refuses execution from the public repo path.
-
-Mainnet activation must be verifiable from public outputs, but the public repo does not carry maintainer-only execution procedures.
+The output should match the configuration table above: `decimals: 6`, `mintAuthority: null`, `freezeAuthority: null`, two extensions only.
 
 ## CPI contract
 
-- FeeCollector consumes TransferHook callbacks and TransferFee withdrawal authority.
-- FeeCollector uses the PermanentDelegate path subject to its own program checks.
-- NXSStaking updates the InterestBearing rate through its PDA.
-- Governance updates mutable non-emergency authorities.
-- Emergency authority controls pause and unpause.
+The mint does not require any program-side CPI to function as a Token-2022 token. Standard SPL Token-2022 ix (`transfer_checked`, `burn_checked`, etc.) work as expected. The protocol-side economy (`fee_collector`, `nxs_staking`, `governance_program`, `treasury_standard`, `task_market`) interacts with SAEP through normal token instructions — there are no mint-extension hooks to satisfy.
 
-## Security checks
+`fee_collector::execute_burn` calls Token-2022 `burn_checked` against a SAEP balance held by the FeeCollector PDA. This works without any special mint extension because anyone may burn tokens they hold.
 
-- TransferHook points at the expected FeeCollector program.
-- TransferFee maximum fee stays bounded.
-- PermanentDelegate scope is constrained by FeeCollector program logic.
-- InterestBearing rate changes are routed through NXSStaking.
-- MetadataPointer remains self-referential unless governance intentionally changes it.
-- Mint inflation is impossible after handover because mint authority is `None`.
-- Freeze authority is not retained as a selective backdoor once handover completes.
+## Security checks (for the post-launch posture)
+
+- Mint authority is permanently `None`. Inflation is impossible.
+- Freeze authority is permanently `None`. No selective backdoor.
+- Metadata is immutable. The URI cannot be replaced with a phishing destination.
+- No transfer-time policy hooks. Holders can transfer to any destination without protocol intermediation.
+- No claw-back. Wallet-loss / phishing / private-key compromise are unrecoverable for the holder.
+- No emergency pause. In a vulnerability scenario the protocol pauses program-side, but secondary trading continues — caps + bounty pool are the blast-radius bounds (see `SECURITY-REVIEW.md`).
+
+## Public verification artifacts
+
+Reproducible from public data — no maintainer-only inputs required:
+
+- Mint address (above)
+- Pump.fun launch transaction signature (locatable via Solana explorer or a Pump.fun history query)
+- Fixed supply value at launch — readable from any RPC
+- Two extension state accounts — readable from any RPC
+
+## `scripts/init-saep-mint.ts`
+
+Retained for reference and devnet rehearsal of a *hypothetical* canonical mint with the original extension set. The script is not used to manage the live mint and never will be — the live mint is renounced and external to anything in this repository. Local devnet rehearsal remains useful for prototyping any future re-mint scenario.
+
+- `--dry-run`: validates the original aspirational config offline.
+- `--devnet`: rehearses an activation against devnet.
+- `--mainnet`: intentionally refuses execution.
 
 ## Repository boundary
 
-This repository may contain:
-
-- Public configuration values.
-- Public authority mappings.
-- Public verification artifacts and hashes.
-- Public rehearsal tooling.
-
-This repository must not contain:
-
-- Maintainer-only ceremony notes.
-- Signer logistics.
-- Custody procedures.
-- Private release checklists.
-- Private storage locations for release artifacts.
+This file documents publicly verifiable facts about the live mint. Maintainer-only operational notes, custody procedures, and signer logistics are intentionally excluded.
 
 ## Done checklist
 
-- [ ] Canonical mint address published
-- [ ] Extension set published
-- [ ] Post-handover authority inventory published
-- [ ] Config hash published
-- [ ] Init and handover transaction signatures published
-- [ ] Public verification confirms `MintTokens == None`
-- [ ] Public verification confirms `FreezeAccount == None`
-- [ ] Public verification confirms every remaining authority matches the intended target
+- [x] Canonical mint address published
+- [x] Extension set published (live values)
+- [x] Renounced authorities documented
+- [x] RPC verification snippet provided
+- [x] Substitute architecture cross-referenced (`tokenomics-activation.md`)
+- [x] Public verification confirms `mintAuthority == None`
+- [x] Public verification confirms `freezeAuthority == None`
+- [x] Public verification confirms metadata is immutable

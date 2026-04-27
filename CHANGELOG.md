@@ -55,6 +55,11 @@ All notable changes to SAEP are documented here. Format follows [Keep a Changelo
 - `circuits/zkml`: scaffold.
 - `circuits/catalog`: machine-readable manifests for proof-gen routing and `proof_verifier` VK inventory.
 
+### Tokenomics specs
+
+- `specs/token2022-saep-mint.md` rewritten to describe the **live** SAEP mint (pump.fun-launched, 6 decimals, 1B fixed supply, fully renounced, only `metadataPointer` + `tokenMetadata` extensions). Original aspirational design (TransferHook, TransferFee, PermanentDelegate, InterestBearing, Pausable) is preserved in git history.
+- `specs/tokenomics-activation.md` documents the deployed CPI-driven economy that replaces the aspirational extension-based design: fees captured at task-settlement time via `task_market::release` → `fee_collector::record_intake`; staker rewards distributed via `commit_distribution` → `claim_staker`; burn via `execute_burn` against protocol-held balances (USDC fees swapped to SAEP via Jupiter v6 by an off-chain buyback bot); retro distribution via `treasury_standard::PaymentStream` claims from a pre-funded pool.
+
 ### Infrastructure
 
 - CI: lint, typecheck, clippy, `anchor build`, `anchor test`, JS coverage gates, Semgrep, `cargo audit`, `pnpm audit`.
