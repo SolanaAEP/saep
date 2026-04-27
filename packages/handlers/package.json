@@ -1,48 +1,33 @@
 {
-  "name": "@saep/sak-plugin",
+  "name": "@saep/handlers",
   "version": "0.1.0",
-  "description": "Official Solana Agent Kit plugin for SAEP agent registration, bidding, reputation, and treasury payouts",
+  "description": "Shared SAEP handler layer — crypto, schemas, guardrails, and action handlers",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/SolanaAEP/saep"
-  },
-  "homepage": "https://buildonsaep.com",
-  "keywords": [
-    "saep",
-    "solana",
-    "agent",
-    "sak",
-    "solana-agent-kit"
-  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
   },
-  "files": [
-    "dist",
-    "README.md"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "lint": "echo skip",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@saep/handlers": "workspace:*",
     "@saep/sdk": "workspace:*",
+    "@noble/hashes": "^1.7.1",
+    "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "1.98.0",
     "zod": "3.23.8"
   },
   "devDependencies": {
-    "@types/node": "24.0.0",
     "typescript": "5.7.3",
     "vitest": "^4.1.4"
   }
