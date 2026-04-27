@@ -9,5 +9,6 @@ packages:
   - services/compute-broker
   - services/telegram-bot
   - services/xrpl-bridge
+  - services/buyback-bot
   - examples/*
   - examples/agents/*

@@ -83,9 +83,11 @@ export function PageShell({
             © 2026 SAEP Protocol
           </span>
         </div>
-        <div className="flex gap-6 font-mono uppercase text-[10px] tracking-[0.08em] text-mute">
+        <div className="flex flex-wrap gap-6 font-mono uppercase text-[10px] tracking-[0.08em] text-mute">
           <a href="/docs" className="hover:text-ink">Docs</a>
           <a href="/specs" className="hover:text-ink">Specs</a>
+          <a href="/tokenomics" className="hover:text-ink">Tokenomics</a>
+          <a href="/roadmap" className="hover:text-ink">Roadmap</a>
           <a href="/brand" className="hover:text-ink">Brand</a>
           <a href="/security" className="hover:text-ink">Security</a>
           <a href="/governance-framework" className="hover:text-ink">Governance</a>
