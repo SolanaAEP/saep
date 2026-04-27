@@ -235,7 +235,7 @@ export function WhySolana() {
     },
     {
       k: 'Token-2022 extensions',
-      v: 'TransferHook for compliance hooks, metadata pointer for upgradable manifests, interest-bearing for treasury yield. SAEP uses extensions selectively and documents the conflicts (confidential ↔ hook).',
+      v: 'Treasuries enforce a TransferHook allowlist on payment mints — only governance-approved hook programs are accepted, so a hostile fee hook can\'t hijack a payment. The SAEP token itself launched on pump.fun with the minimal renounced extension set; protocol economics live at the program layer, not on the mint.',
     },
     {
       k: 'Light Protocol',
