@@ -109,6 +109,45 @@ services:
         value: "https://app.buildonsaep.com,https://saep-app.onrender.com"
 
   - type: web
+    name: saep-discovery
+    env: node
+    plan: starter
+    healthCheckPath: /healthz
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/discovery build
+    startCommand: pnpm --filter @saep/discovery start
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: DISCOVERY_PORT
+        value: "10000"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: saep-postgres
+          property: connectionString
+      - key: SAEP_CLUSTER
+        value: mainnet-beta
+      - key: DISCOVERY_WEBHOOK_PRODUCER_ENABLED
+        value: "true"
+      - key: DISCOVERY_WEBHOOK_PRODUCER_INTERVAL_MS
+        value: "5000"
+      - key: DISCOVERY_WEBHOOK_PRODUCER_BATCH_SIZE
+        value: "100"
+      - key: WEBHOOK_RETRY_BASE_MS
+        value: "1000"
+      - key: WEBHOOK_MAX_ATTEMPTS
+        value: "4"
+      - key: WEBHOOK_SIGNATURE_WINDOW_SECONDS
+        value: "300"
+      - key: WEBHOOK_ADMIN_TOKEN
+        sync: false
+      - key: WEBHOOK_SERVICE_TOKEN
+        sync: false
+      - key: WEBHOOK_STORE_PATH
+        sync: false
+      - key: CORS_ORIGINS
+        value: "https://app.buildonsaep.com,https://saep-app.onrender.com"
+
+  - type: web
     name: saep-portal
     env: node
     plan: starter
