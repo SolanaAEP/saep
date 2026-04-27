@@ -5,7 +5,7 @@ import { PageShell } from '@/components/website/page-shell';
 export const metadata: Metadata = {
   title: 'Tokenomics',
   description:
-    'SAEP token configuration, protocol revenue cycle, staking and distribution model, buyback and burn schedule.',
+    'SAEP token configuration, settlement-time fee capture, and the planned activation surface for distribution, staking, and buyback-and-burn.',
 };
 
 const SAEP_MINT = 'HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump';
@@ -36,7 +36,7 @@ const extensions = [
   {
     name: 'TransferHook',
     present: false,
-    role: 'Would invoke a designated program on every transfer to enforce fees or apply policy. Protocol fees on SAEP are captured at task settlement instead.',
+    role: 'Would invoke a designated program on every transfer to enforce fees or apply policy. Not present on this mint.',
   },
   {
     name: 'TransferFee',
@@ -51,12 +51,12 @@ const extensions = [
   {
     name: 'InterestBearing',
     present: false,
-    role: 'Would maintain a configurable interest rate and surface it as a rebased balance. Staking yield is realized at distribution instead.',
+    role: 'Would maintain a configurable interest rate and surface it as a rebased balance. Not present on this mint.',
   },
   {
     name: 'Pausable',
     present: false,
-    role: 'Would allow a designated authority to halt all transfers. Not present; secondary trading cannot be paused.',
+    role: 'Would allow a designated authority to halt all transfers. Not present on this mint.',
   },
 ];
 
@@ -91,53 +91,33 @@ const PATTERN_STYLE: Record<string, React.CSSProperties> = {
   },
 };
 
-const flow = [
-  {
-    step: 'Task settlement',
-    detail:
-      'task_market::release splits payment_amount into agent payout, protocol fee, and solrep fee before transfer. The protocol fee is forwarded to fee_collector::record_intake via cross-program invocation.',
-  },
-  {
-    step: 'Slash and forfeit accrual',
-    detail:
-      'agent_registry, dispute_arbitration, and nxs_staking forward slash and forfeit receipts to fee_collector through their respective handlers. Each amount accrues to the open epoch total.',
-  },
-  {
-    step: 'Epoch close',
-    detail:
-      'process_epoch transitions the open epoch to ReadyToCommit once the configured epoch length plus a grace window have elapsed.',
-  },
-  {
-    step: 'Distribution split',
-    detail:
-      'commit_distribution divides the epoch total per the FeeCollector configuration: a configurable share to the burn bucket, the remainder allocated as StakerClaim PDAs in proportion to stake at epoch close.',
-  },
-  {
-    step: 'Buyback and burn',
-    detail:
-      'An off-chain worker reads the FeeCollector USDC vault, swaps to SAEP through Jupiter v6 with a slippage cap, and invokes fee_collector::execute_burn. Transaction hashes are published.',
-  },
-  {
-    step: 'Staker claim',
-    detail:
-      'claim_staker drains each StakerClaim PDA into the staker\'s associated token account. Realized yield equals the per-epoch distribution divided by total stake at close.',
-  },
-];
-
 const constraints = [
   'Secondary trading on the SAEP mint cannot be paused. The mint has no Pausable extension and no authority capable of halting transfers.',
   'Lost or compromised SAEP cannot be reclaimed by the protocol. The mint has no PermanentDelegate authority.',
-  'Per-transfer fees do not apply. The mint has no TransferFee or TransferHook configuration; protocol revenue is captured at task settlement.',
+  'Per-transfer fees do not apply. The mint has no TransferFee or TransferHook configuration.',
   'Token accounts cannot be frozen by any authority. The mint freeze authority is None.',
   'Total supply is fixed. The mint authority is None; additional SAEP cannot be issued.',
 ];
+
+function StatusBadge({ status }: { status: 'active' | 'planned' }) {
+  const live = status === 'active';
+  return (
+    <span
+      className={`font-mono uppercase text-[10px] tracking-[0.08em] whitespace-nowrap ${
+        live ? 'text-lime' : 'text-mute'
+      }`}
+    >
+      {live ? '● Active on mainnet' : '○ Planned · pending activation'}
+    </span>
+  );
+}
 
 export default function TokenomicsPage() {
   return (
     <PageShell
       eyebrow="Tokenomics"
       title="Token economics"
-      lede="SAEP is a Token-2022 asset on Solana mainnet with a fixed supply of approximately one billion units. Protocol revenue is captured at task settlement, distributed to stakers, and applied to a buyback-and-burn cycle. The mint configuration is fully renounced — supply, transferability, and metadata are immutable."
+      lede="SAEP is a Token-2022 asset on Solana mainnet with a fixed supply of approximately one billion units. The mint is fully renounced; supply, transferability, and metadata are immutable. Protocol fees are captured at task settlement today; the staking, distribution, and buyback-and-burn surface is on the activation path described in the roadmap."
     >
       <div className="mt-16 space-y-20">
         <section>
@@ -179,8 +159,7 @@ export default function TokenomicsPage() {
           <p className="text-[14px] text-ink/75 leading-relaxed mb-6 max-w-3xl">
             Token-2022 extensions are fixed at mint initialization and cannot be added retroactively.
             The mint enables two extensions; the remaining items below describe capabilities the mint
-            does not have. Where applicable, the protocol provides equivalent functionality at the
-            program layer.
+            does not have.
           </p>
           <div className="space-y-2">
             {extensions.map((e) => (
@@ -201,48 +180,13 @@ export default function TokenomicsPage() {
 
         <section>
           <div className="flex items-baseline justify-between border-b border-ink/15 pb-3 mb-8">
-            <h2 className="font-display text-2xl">Protocol revenue cycle</h2>
-          </div>
-          <p className="text-[14px] text-ink/75 leading-relaxed mb-6 max-w-3xl">
-            Protocol fees accrue at task settlement rather than at transfer time. The cycle below
-            describes how revenue moves from the task market into the fee collector, through
-            distribution and burn, and finally into staker claims.
-          </p>
-          <ol className="space-y-4">
-            {flow.map((f, i) => (
-              <li
-                key={f.step}
-                className="grid grid-cols-[2.5rem_1fr] md:grid-cols-[2.5rem_12rem_1fr] gap-4 border-t border-ink/10 pt-4"
-              >
-                <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-mute">
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <span className="font-display text-[18px] tracking-[-0.01em]">{f.step}</span>
-                <span className="text-[14px] text-ink/75 leading-relaxed col-span-2 md:col-span-1">
-                  {f.detail}
-                </span>
-              </li>
-            ))}
-          </ol>
-          <p className="mt-6 text-[14px] text-ink/70 leading-relaxed max-w-3xl">
-            Per-epoch parameters — fee splits, burn and distribution ratios, epoch length — are
-            controlled by the governance multisig. Full architecture is documented in the{' '}
-            <Link href="/specs/tokenomics-activation" className="border-b border-ink/40 hover:text-lime hover:border-lime">
-              tokenomics activation specification
-            </Link>
-            .
-          </p>
-        </section>
-
-        <section>
-          <div className="flex items-baseline justify-between border-b border-ink/15 pb-3 mb-8">
             <h2 className="font-display text-2xl">Supply distribution</h2>
           </div>
           <ul className="space-y-3 text-[14px] text-ink/80 leading-relaxed">
             <li className="border-t border-ink/10 pt-3">
               <span className="font-display text-[18px] tracking-[-0.01em]">Total supply: ~1B SAEP, fixed.</span>{' '}
-              Supply was fixed when the mint authority was renounced at bonding-curve graduation. No
-              additional issuance is possible.
+              Supply was fixed when the mint authority was renounced at bonding-curve graduation.
+              No additional issuance is possible.
             </li>
             <li className="border-t border-ink/10 pt-3">
               <span className="font-display text-[18px] tracking-[-0.01em]">Team allocation: 10% of supply, locked through April 2027.</span>{' '}
@@ -259,16 +203,6 @@ export default function TokenomicsPage() {
               .
             </li>
             <li className="border-t border-ink/10 pt-3">
-              <span className="font-display text-[18px] tracking-[-0.01em]">Retro distribution: 10–15% of supply, planned.</span>{' '}
-              Reserved for early agent operators and template authors, allocated from a governance
-              treasury and ratified at the M3 fee_collector activation. Eligibility model and vesting
-              terms are defined in the{' '}
-              <a href="https://github.com/SolanaAEP/saep/blob/main/specs/retro-airdrop.md" target="_blank" rel="noreferrer" className="border-b border-ink/40 hover:text-lime hover:border-lime">
-                retro distribution specification
-              </a>
-              .
-            </li>
-            <li className="border-t border-ink/10 pt-3">
               <span className="font-display text-[18px] tracking-[-0.01em]">No private rounds, no investor allocations.</span>{' '}
               The remaining supply was made available through the public bonding-curve sale at issuance.
             </li>
@@ -277,28 +211,48 @@ export default function TokenomicsPage() {
 
         <section>
           <div className="flex items-baseline justify-between border-b border-ink/15 pb-3 mb-8">
-            <h2 className="font-display text-2xl">Staking</h2>
+            <h2 className="font-display text-2xl">Settlement-time fee capture</h2>
+            <StatusBadge status="active" />
           </div>
           <p className="text-[14px] text-ink/75 leading-relaxed mb-6 max-w-3xl">
-            SAEP holders may stake through the nxs_staking program. Each closed fee-collector epoch
-            produces a per-staker share of distributed revenue, redeemed via claim_staker. Realized
-            yield is the per-epoch distribution divided by total stake at close.
+            On every settled task, <code className="font-mono text-[12px]">task_market::release</code>{' '}
+            divides <code className="font-mono text-[12px]">payment_amount</code> into the agent
+            payout, a protocol fee, and a solrep fee, and transfers the protocol fee to a
+            fee-collector token account designated on the marketplace global. Fees accrue today; the
+            distribution and burn surface that consumes them is on the activation path described
+            below.
+          </p>
+        </section>
+
+        <section>
+          <div className="flex items-baseline justify-between border-b border-ink/15 pb-3 mb-8">
+            <h2 className="font-display text-2xl">Distribution and staking</h2>
+            <StatusBadge status="planned" />
+          </div>
+          <p className="text-[14px] text-ink/75 leading-relaxed mb-6 max-w-3xl">
+            The <code className="font-mono text-[12px]">nxs_staking</code> program and the
+            distribution surface of <code className="font-mono text-[12px]">fee_collector</code> are
+            deployed but not yet initialised on mainnet. When activated, each closed fee-collector
+            epoch will produce a per-staker share of distributed revenue, redeemed via{' '}
+            <code className="font-mono text-[12px]">claim_staker</code>; realized yield is the
+            per-epoch distribution divided by total stake at close.
           </p>
           <ul className="space-y-3 text-[14px] text-ink/80 leading-relaxed">
             <li className="border-t border-ink/10 pt-3">
-              <span className="font-mono text-[12px] text-lime mr-3">Lockup</span>
+              <span className="font-mono text-[12px] text-ink/85 mr-3">Lockup</span>
               Seven days at activation. Adjustable by governance proposal once a stable staker base
               is established.
             </li>
             <li className="border-t border-ink/10 pt-3">
-              <span className="font-mono text-[12px] text-lime mr-3">Slashing</span>
+              <span className="font-mono text-[12px] text-ink/85 mr-3">Slashing</span>
               Capped at ten percent per incident, subject to a thirty-day timelock and an operator
               appeal window. Slashes require governance ratification.
             </li>
             <li className="border-t border-ink/10 pt-3">
-              <span className="font-mono text-[12px] text-lime mr-3">Reward source</span>
-              fee_collector::commit_distribution allocates the staker share to StakerClaim PDAs at
-              each epoch close.
+              <span className="font-mono text-[12px] text-ink/85 mr-3">Reward source</span>
+              <code className="font-mono text-[12px]">fee_collector::commit_distribution</code>
+              {' '}allocates the staker share to{' '}
+              <code className="font-mono text-[12px]">StakerClaim</code> PDAs at each epoch close.
             </li>
           </ul>
         </section>
@@ -306,15 +260,12 @@ export default function TokenomicsPage() {
         <section>
           <div className="flex items-baseline justify-between border-b border-ink/15 pb-3 mb-8">
             <h2 className="font-display text-2xl">Fee revenue split</h2>
-            <span className="font-mono uppercase text-[11px] tracking-[0.08em] text-mute">
-              Proposed — governance-ratifiable
-            </span>
+            <StatusBadge status="planned" />
           </div>
           <p className="text-[14px] text-ink/75 leading-relaxed mb-6 max-w-3xl">
-            Protocol fee revenue accrues to the fee_collector vault in USDC and is divided per epoch
-            into two buckets. The burn-bucket USDC is swapped to SAEP via Jupiter v6 and forwarded to
-            execute_burn; the staker bucket is allocated to StakerClaim PDAs proportional to stake at
-            epoch close.
+            On activation, fee revenue accrued in the fee-collector vault will be divided per epoch
+            into two buckets. The split below is the proposed configuration; final values are
+            ratified at activation.
           </p>
           <div className="border border-ink/70 bg-paper">
             <div className="flex h-14">
@@ -325,7 +276,7 @@ export default function TokenomicsPage() {
                     i < feeSplit.length - 1 ? 'border-r border-ink/30' : ''
                   }`}
                   style={{ width: `${s.pct}%`, ...PATTERN_STYLE[s.pattern] }}
-                  aria-label={`${s.label}: ${s.pct}%`}
+                  aria-label={`${s.label}: ${s.pct}% (proposed)`}
                 >
                   <span className="bg-paper border border-ink/30 px-2 py-0.5 font-mono text-[11px] tracking-[0.04em] text-ink">
                     {s.label} · {s.pct}%
@@ -349,34 +300,31 @@ export default function TokenomicsPage() {
               </li>
             ))}
           </ul>
-          <p className="mt-6 text-[13px] text-ink/65 leading-relaxed max-w-3xl">
-            Initial proposal targets a fifty-fifty split. Final values and epoch length are ratified
-            at activation through the governance multisig and surfaced on this page once the cycle
-            runs.
-          </p>
         </section>
 
         <section>
           <div className="flex items-baseline justify-between border-b border-ink/15 pb-3 mb-8">
             <h2 className="font-display text-2xl">Buyback and burn</h2>
+            <StatusBadge status="planned" />
           </div>
           <p className="text-[14px] text-ink/75 leading-relaxed mb-6 max-w-3xl">
-            Protocol fees accrue primarily in USDC. An off-chain worker reads the fee_collector USDC
-            vault on a daily cadence, swaps the burn-bucket balance to SAEP via Jupiter v6 with a
-            slippage cap, and invokes fee_collector::execute_burn with the proceeds. Each burn
-            transaction hash and amount is published; cumulative burn and the resulting supply curve
-            are surfaced on this page once the cadence is live.
+            On activation, an off-chain worker will read the fee-collector USDC vault on a daily
+            cadence, swap the burn-bucket balance to SAEP through Jupiter v6 with a slippage cap, and
+            invoke <code className="font-mono text-[12px]">fee_collector::execute_burn</code> with
+            the proceeds. Each burn transaction will be published; cumulative burn and the resulting
+            supply curve will surface on this page once the cadence is running.
           </p>
         </section>
 
         <section>
           <div className="flex items-baseline justify-between border-b border-ink/15 pb-3 mb-8">
             <h2 className="font-display text-2xl">Authority and immutability summary</h2>
+            <StatusBadge status="active" />
           </div>
           <p className="text-[14px] text-ink/75 leading-relaxed mb-6 max-w-3xl">
-            The mint authority surface is fully renounced. The following constraints follow directly
-            from the mint configuration and apply to all SAEP balances regardless of the program-layer
-            economy described above.
+            The mint authority surface is fully renounced. The constraints below follow directly
+            from the mint configuration and apply to all SAEP balances regardless of program-layer
+            state.
           </p>
           <ul className="space-y-2">
             {constraints.map((c) => (
@@ -397,7 +345,16 @@ export default function TokenomicsPage() {
       </div>
 
       <div className="mt-24 border-t border-ink/10 pt-10">
-        <p className="text-[13px] text-mute leading-relaxed max-w-2xl">
+        <p className="text-[13px] text-mute leading-relaxed max-w-3xl">
+          Sections marked <span className="text-mute">○ Planned</span> describe deployed program
+          surface that has not yet been initialised on Solana mainnet. Activation order and
+          milestone timing are tracked on the{' '}
+          <Link href="/roadmap" className="text-ink/85 border-b border-ink/40 hover:text-lime hover:border-lime">
+            roadmap
+          </Link>
+          .
+        </p>
+        <p className="mt-4 text-[13px] text-mute leading-relaxed max-w-3xl">
           Specifications:{' '}
           <Link href="/specs/token2022-saep-mint" className="border-b border-ink/40 hover:text-lime hover:border-lime">
             Token-2022 SAEP mint

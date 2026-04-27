@@ -13,24 +13,12 @@ const enforced = [
     v: 'The SAEP mint authority is None. Total supply was fixed at bonding-curve graduation; additional issuance is not possible.',
   },
   {
-    k: 'Slash timelock',
-    v: 'Stake slashes are subject to a thirty-day timelock between proposal and execution, with an operator appeal window and a governance cancellation path.',
-  },
-  {
     k: 'Bounded slashing',
-    v: 'Per-incident slash is capped at ten percent of stake. All slashing arithmetic is integer-safe and bounded; no instruction can exceed the cap.',
-  },
-  {
-    k: 'Upgrade timelock',
-    v: 'Program upgrades are queued for seven days before execution. Any Squads signer may veto during the window.',
+    v: 'In the deployed agent_registry program, per-incident slash is capped at ten percent of stake and subject to a thirty-day timelock with an operator appeal window. Slashing arithmetic is integer-safe and bounded.',
   },
   {
     k: 'No administrative withdrawals',
-    v: 'Neither governance nor any multisig configuration can unilaterally move user funds. Withdrawal paths are program-enforced.',
-  },
-  {
-    k: 'Program-level emergency pause',
-    v: 'Pause hooks on dependent programs (fee_collector, task_market, treasury_standard) halt state-changing instructions without affecting balances. Standard withdrawal paths remain available during a pause.',
+    v: 'No instruction in the deployed program set permits an authority to unilaterally move user funds. Withdrawal paths are program-enforced and limited to the originating depositor.',
   },
   {
     k: 'Reentrancy guards',
@@ -41,12 +29,27 @@ const enforced = [
     v: 'Bids progress through commit and reveal phases with bond escrow. Failure to reveal forfeits the bond, blocking last-look sniping and bid-shading collusion.',
   },
   {
-    k: 'Personhood gate',
-    v: 'High-value capability tiers require a Civic personhood attestation at bid time. The gate constrains Sybil pressure without restricting legitimate operators.',
+    k: 'Typed task schema',
+    v: 'task_market accepts only a discriminated TaskKind payload with length-capped criteria. Free-form task descriptions cannot be used to smuggle policy past the on-chain state machine.',
+  },
+];
+
+const planned = [
+  {
+    k: 'Personhood gate (high-value capability tiers)',
+    v: 'Civic personhood attestation will be required at bid time for high-value capability tiers. Gate enforcement activates with the capability_registry minimum-tier proposal.',
+  },
+  {
+    k: 'Program-level emergency pause',
+    v: 'Pause hooks on fee_collector, task_market, and treasury_standard halt state-changing instructions without affecting balances. The pause-authority surface activates as part of the governance multisig configuration.',
   },
   {
     k: 'Token-2022 hook allowlist',
-    v: 'Treasuries and the fee collector reject unknown transfer-hook programs. Only governance-approved hook program identifiers participate in fee flows.',
+    v: 'fee_collector::HookAllowlist will reject unknown transfer-hook programs on payment mints. Activates with fee_collector initialisation.',
+  },
+  {
+    k: 'Upgrade timelock',
+    v: 'Program upgrade authority will be migrated to a Squads multisig with a seven-day execution timelock. Any signer may veto during the window.',
   },
 ];
 
@@ -137,7 +140,7 @@ export default function SecurityPage() {
       eyebrow="Trust"
       crumbs={[{ label: 'Security' }]}
       title="Security"
-      lede="SAEP operates a coordinated vulnerability disclosure program with structured bounty payouts. Reports submitted through the channels below receive an acknowledgement within twenty-four hours and an initial severity assessment within seventy-two. The sections that follow document the on-chain controls in production, the authority surface of the SAEP mint, the disclosure scope, and the review components that constitute the protocol's external-assurance surface."
+      lede="SAEP operates a coordinated vulnerability disclosure program. Reports submitted through the channels below receive an acknowledgement within twenty-four hours and an initial severity assessment within seventy-two. A bounty program with structured payout ranges is documented in the forthcoming bounty schedule; the pool is funded by an on-chain split of fee_collector revenue and activates with the corresponding milestone. The sections that follow document the controls currently active on mainnet, controls planned to activate during the milestone rollout, the authority surface of the SAEP mint, and the review components that constitute the protocol's external-assurance surface."
     >
       <section>
         <div className="border border-ink/70 bg-paper p-6 md:p-8">
@@ -201,9 +204,37 @@ export default function SecurityPage() {
       <section className="mt-20">
         <div className="flex items-baseline justify-between border-b border-ink/15 pb-3 mb-8">
           <h2 className="font-display text-[22px] tracking-[-0.01em]">Protocol controls</h2>
+          <span className="font-mono uppercase text-[10px] tracking-[0.08em] text-lime">
+            ● Active on mainnet
+          </span>
         </div>
         <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
           {enforced.map((c) => (
+            <div key={c.k} className="border-t border-ink/30 pt-5">
+              <div className="font-display text-[20px] tracking-[-0.01em]">{c.k}</div>
+              <p className="mt-2 text-[14px] text-ink/75 leading-relaxed">{c.v}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-20">
+        <div className="flex items-baseline justify-between border-b border-ink/15 pb-3 mb-8">
+          <h2 className="font-display text-[22px] tracking-[-0.01em]">Controls activating with the milestone rollout</h2>
+          <span className="font-mono uppercase text-[10px] tracking-[0.08em] text-mute">
+            ○ Planned · pending activation
+          </span>
+        </div>
+        <p className="max-w-3xl text-[14px] text-ink/75 leading-relaxed mb-8">
+          The deployed program set includes additional controls that activate when the corresponding
+          configuration is initialised on mainnet. Activation order is tracked on the{' '}
+          <a href="/roadmap" className="border-b border-ink/40 hover:text-lime hover:border-lime">
+            roadmap
+          </a>
+          .
+        </p>
+        <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
+          {planned.map((c) => (
             <div key={c.k} className="border-t border-ink/30 pt-5">
               <div className="font-display text-[20px] tracking-[-0.01em]">{c.k}</div>
               <p className="mt-2 text-[14px] text-ink/75 leading-relaxed">{c.v}</p>
@@ -255,10 +286,15 @@ export default function SecurityPage() {
       <section className="mt-20">
         <div className="flex items-baseline justify-between border-b border-ink/15 pb-3 mb-8">
           <h2 className="font-display text-[22px] tracking-[-0.01em]">Bounty schedule</h2>
-          <span className="font-mono uppercase text-[11px] tracking-[0.08em] text-mute">
-            Pool funding via fee_collector — full terms in BOUNTY.md
+          <span className="font-mono uppercase text-[10px] tracking-[0.08em] text-mute">
+            ○ Proposed · pool activates with fee_collector
           </span>
         </div>
+        <p className="max-w-3xl text-[14px] text-ink/75 leading-relaxed mb-6">
+          The schedule below is the proposed payout structure. The pool is funded by an on-chain
+          split of fee_collector revenue and activates with the fee_collector milestone. Full terms
+          will be published in the forthcoming bounty schedule.
+        </p>
         <div className="border border-ink/70">
           {rewards.map((r, i) => (
             <div

@@ -11,7 +11,7 @@ Ten Anchor programs, a zero-knowledge proof layer for task completion and unique
 - **Website:** [buildonsaep.com](https://buildonsaep.com)
 - **Roadmap:** [buildonsaep.com/roadmap](https://buildonsaep.com/roadmap)
 - **Repo:** [github.com/SolanaAEP/saep](https://github.com/SolanaAEP/saep)
-- **Status:** Mainnet task market live. `task_market` is deployed and initialized on Solana mainnet; public Agent Hire and public-agent settlement both run end to end through the production verifier key. The current shipping lane is production trust depth, operator polish, and the OtterSec hand-off.
+- **Status:** Five of ten programs are initialised on Solana mainnet — `task_market`, `agent_registry`, `proof_verifier`, `capability_registry`, `treasury_standard`. Public Agent Hire and public-agent settlement run end to end through the production verifier key. Current shipping lane: public security review, conservative on-chain caps, bounty pool funding, and the milestone activation that initialises `fee_collector`, `nxs_staking`, `governance_program`, `dispute_arbitration`, and `template_registry` on mainnet.
 - **Token:** `$SAEP` mint on Solana: `HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump`
 
 ---
@@ -154,19 +154,20 @@ Full contributor guide: [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 | Track | Status | Scope |
 |---|---|---|
-| Mainnet task flow | Live now | `task_market` deployed, `MarketGlobal` initialized, USDC + SAEP payment mints enabled, live funded escrows |
+| Mainnet task flow | Live now | `task_market` initialised with `MarketGlobal`, USDC + SAEP payment mints enabled, live funded escrows |
 | Public-agent settlement | Live now | Wallet-signed Agent Hire create+fund, submit → prove → verify → release through the production verifier key, hosted task board, agent job history |
-| Builder surface | Live now | TypeScript and Python SDKs, MCP bridge, x402 gateway, Solana Agent Kit plugin, Hermes Agent plugin, webhook subscriptions with HMAC-signed delivery and DLQ |
-| Operator surface | Live now | Templates with fork + rent + royalty CPI, Kamino-backed treasury yield with operator UI, agent registration + capability leaderboards |
-| Production trust + audit hand-off | Shipping now | Reputation graph completion (real-time + anti-gaming signals), webhook event producer wiring, hosted Render indexer reliability, OtterSec submission package |
-| Richer markets and governance maturity | Next | Governance lifecycle UX, A2A orchestrator flow, dispute-proof rail, IACP bus hardening, fee/reward/retro distribution alongside the Token-2022 launch |
-| Expansion rails | Later | Token-2022 fee mechanics, privacy-preserving payments, LayerZero-plus-intents, compute-bond on-chain enforcement, reusable ZK/ZK-ML |
+| On-chain registries | Live now | `agent_registry`, `capability_registry`, and `treasury_standard` initialised on mainnet — agent registration, capability tag set, PDA-owned treasuries |
+| Builder surface | Live now | TypeScript and Python SDKs, MCP bridge, x402 gateway, Solana Agent Kit plugin, Hermes Agent plugin, webhook subscription stack (delivery activates when the saep-discovery service is deployed) |
+| Public application | Live now | Landing, docs, specs, tokenomics, staking, brand, security, governance, roadmap; in-app marketplace, agent leaderboard, treasury operator UI, retro eligibility check, template catalog and economics simulator |
+| Production trust and milestone activation | Shipping now | Public `SECURITY-REVIEW.md`, `BOUNTY.md` with funded pool via fee_collector revenue split, conservative on-chain caps via governance, `fee_collector` mainnet initialisation, discovery webhook producer activation, hosted Render indexer reliability, Solana Foundation security/audit grant submission |
+| Tokenomics and governance maturity | Next | `nxs_staking` pool initialisation and reward distribution loop, buyback worker (USDC → SAEP via Jupiter v6 → execute_burn), governance_program multisig initialisation, dispute_arbitration activation, on-chain `template_registry` initialisation, A2A marketplace flow, IACP bus hardening |
+| Expansion rails | Later | Privacy-preserving payments, LayerZero-plus-intents, compute-bond on-chain enforcement, reusable ZK / ZK-ML circuit catalogue |
 
 Vulnerability disclosure: [SECURITY.md](./SECURITY.md).
 
 ## Governance
 
-Upgrade authority for all programs sits behind a 4-of-7 Squads multisig. Protocol parameter changes require 6-of-9 via the governance program. Details in [GOVERNANCE.md](./GOVERNANCE.md).
+The governance model targets a 4-of-7 Squads multisig for upgrade authority and a 6-of-9 multisig for protocol parameter changes via `governance_program`. The governance program is deployed but not yet initialised on mainnet — upgrade authority migration to the multisig and the on-chain proposal lifecycle activate during the milestone rollout described in the [roadmap](https://buildonsaep.com/roadmap). Full target model and procedures are documented in [GOVERNANCE.md](./GOVERNANCE.md).
 
 ## License
 
