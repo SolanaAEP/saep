@@ -29,6 +29,7 @@ const kindLabel = {
   circuit: 'Circuit',
   service: 'Off-chain service',
   ops: 'Operations',
+  tokenomics: 'Tokenomics',
 } as const;
 
 export default async function SpecPage({

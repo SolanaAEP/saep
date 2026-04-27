@@ -14,9 +14,17 @@ const kindLabel: Record<SpecEntry['kind'], string> = {
   circuit: 'Circuit',
   service: 'Off-chain service',
   ops: 'Operations',
+  tokenomics: 'Tokenomics',
 };
 
-const kindOrder: SpecEntry['kind'][] = ['overview', 'program', 'circuit', 'service', 'ops'];
+const kindOrder: SpecEntry['kind'][] = [
+  'overview',
+  'program',
+  'circuit',
+  'service',
+  'tokenomics',
+  'ops',
+];
 
 export default function SpecsIndexPage() {
   const grouped = kindOrder.map((k) => ({

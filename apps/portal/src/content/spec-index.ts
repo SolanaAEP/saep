@@ -1,7 +1,7 @@
 export type SpecEntry = {
   slug: string;
   title: string;
-  kind: 'program' | 'circuit' | 'service' | 'ops' | 'overview';
+  kind: 'program' | 'circuit' | 'service' | 'ops' | 'overview' | 'tokenomics';
   summary: string;
   file: string;
 };
@@ -102,6 +102,22 @@ export const specIndex: readonly SpecEntry[] = [
     summary:
       'Public acceptance criteria and artifact requirements for any production Groth16 setup used by SAEP.',
     file: 'ops-trusted-setup.md',
+  },
+  {
+    slug: 'token2022-saep-mint',
+    title: 'Token-2022 SAEP mint (post-launch)',
+    kind: 'tokenomics',
+    summary:
+      'Live mint contract: pump.fun-launched, 6 decimals, ~1B fixed supply, fully renounced authorities, only metadataPointer + tokenMetadata extensions. RPC verification snippet included.',
+    file: 'token2022-saep-mint.md',
+  },
+  {
+    slug: 'tokenomics-activation',
+    title: 'Tokenomics activation',
+    kind: 'tokenomics',
+    summary:
+      'CPI-driven protocol economy that wraps the renounced mint: settlement-time fees, distribution rewards, buyback-and-burn, retro vesting. The architecture that replaces the aspirational TransferHook design.',
+    file: 'tokenomics-activation.md',
   },
 ] as const;
 
