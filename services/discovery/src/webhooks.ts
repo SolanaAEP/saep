@@ -31,6 +31,10 @@ export interface WebhookEventInput {
     id: string;
   };
   payload: Record<string, unknown>;
+  // Optional caller-supplied event id. Used by the indexer-event producer so
+  // a deterministic id (e.g. `program_event:<row_id>`) survives discovery
+  // restarts — re-emission carries the same id and subscribers can dedup.
+  id?: string;
 }
 
 export interface WebhookEvent extends WebhookEventInput {
@@ -244,11 +248,21 @@ export class WebhookHub {
   async emit(input: WebhookEventInput): Promise<{
     event: WebhookEvent;
     deliveries: WebhookDeliveryRecord[];
+    duplicate: boolean;
   }> {
+    const id = input.id ?? this.idFactory();
+    const existing = this.events.get(id);
+    if (existing) {
+      return {
+        event: existing,
+        deliveries: [],
+        duplicate: true,
+      };
+    }
     const event: WebhookEvent = {
-      id: this.idFactory(),
-      emitted_at: this.isoNow(),
       ...input,
+      id,
+      emitted_at: this.isoNow(),
     };
     this.events.set(event.id, event);
 
@@ -261,6 +275,7 @@ export class WebhookHub {
     return {
       event,
       deliveries: initialDeliveries.map(sanitizeDelivery),
+      duplicate: false,
     };
   }
 

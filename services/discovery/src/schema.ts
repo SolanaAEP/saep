@@ -96,6 +96,7 @@ export const WebhookEventEmitSchema = z.object({
     id: z.string().trim().min(1),
   }),
   payload: z.record(z.unknown()).default({}),
+  id: z.string().trim().min(1).max(128).optional(),
 });
 
 export const WebhookReplayRequestSchema = z.object({

@@ -27,6 +27,7 @@ import {
 } from './schema.js';
 import { JsonFileWebhookStore } from './webhook-store.js';
 import { WebhookHub, authorizeToken } from './webhooks.js';
+import { WebhookEventProducer } from './event-producer.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info', name: 'discovery' });
 const PORT = Number(process.env.DISCOVERY_PORT ?? 8790);
@@ -54,6 +55,8 @@ export interface BuildServerOptions {
   webhookServiceToken?: string;
   webhookStorePath?: string;
   db?: DiscoveryDb;
+  webhookProducerEnabled?: boolean;
+  webhookProducerCluster?: string;
 }
 
 export interface DiscoveryDb {
@@ -100,6 +103,35 @@ export async function buildServer(opts: BuildServerOptions = {}) {
   });
   const webhookAdminToken = opts.webhookAdminToken ?? process.env.WEBHOOK_ADMIN_TOKEN;
   const webhookServiceToken = opts.webhookServiceToken ?? process.env.WEBHOOK_SERVICE_TOKEN;
+
+  const producerEnabled =
+    opts.webhookProducerEnabled
+      ?? (process.env.DISCOVERY_WEBHOOK_PRODUCER_ENABLED ?? 'false').toLowerCase() === 'true';
+  const producerCluster = opts.webhookProducerCluster
+    ?? process.env.SAEP_CLUSTER
+    ?? 'devnet';
+  const producer = producerEnabled
+    ? new WebhookEventProducer({
+        db,
+        hub: webhookHub,
+        log,
+        cluster: producerCluster,
+        intervalMs: Number(process.env.DISCOVERY_WEBHOOK_PRODUCER_INTERVAL_MS ?? 5_000),
+        batchSize: Number(process.env.DISCOVERY_WEBHOOK_PRODUCER_BATCH_SIZE ?? 100),
+      })
+    : null;
+  if (producer) {
+    try {
+      await producer.ensureSchema();
+      producer.start();
+      log.info({ cluster: producerCluster }, 'webhook event producer started');
+    } catch (err) {
+      log.error(
+        { err: err instanceof Error ? err.message : String(err) },
+        'webhook event producer failed to start — running without it',
+      );
+    }
+  }
   await app.register(websocket);
 
   app.get('/healthz', async () => {
@@ -951,6 +983,7 @@ export async function buildServer(opts: BuildServerOptions = {}) {
   if (opts.installSignalHandlers !== false) {
     const shutdown = async () => {
       log.info('shutting down');
+      producer?.stop();
       await app.close();
       await db.close();
       process.exit(0);
