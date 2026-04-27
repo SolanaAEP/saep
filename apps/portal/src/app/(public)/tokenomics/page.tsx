@@ -60,6 +60,37 @@ const extensions = [
   },
 ];
 
+const feeSplit = [
+  {
+    label: 'Stakers',
+    pct: 50,
+    pattern: 'dots',
+    note: 'fee_collector::commit_distribution → StakerClaim PDAs → claim_staker',
+  },
+  {
+    label: 'Burn',
+    pct: 50,
+    pattern: 'mesh',
+    note: 'Buyback bot: USDC vault → Jupiter v6 → fee_collector::execute_burn',
+  },
+];
+
+const PATTERN_STYLE: Record<string, React.CSSProperties> = {
+  dots: {
+    backgroundImage:
+      'radial-gradient(rgba(20, 20, 18, 0.55) 1.1px, transparent 1.1px)',
+    backgroundSize: '8px 8px',
+  },
+  mesh: {
+    backgroundImage:
+      'repeating-linear-gradient(45deg, rgba(20, 20, 18, 0.55) 0 1px, transparent 1px 7px), repeating-linear-gradient(-45deg, rgba(20, 20, 18, 0.55) 0 1px, transparent 1px 7px)',
+  },
+  stripes: {
+    backgroundImage:
+      'repeating-linear-gradient(45deg, rgba(20, 20, 18, 0.55) 0 1.5px, transparent 1.5px 8px)',
+  },
+};
+
 const flow = [
   {
     step: 'Task settlement',
@@ -259,17 +290,64 @@ export default function TokenomicsPage() {
 
         <section>
           <div className="flex items-baseline justify-between border-b border-ink/15 pb-3 mb-8">
+            <h2 className="font-display text-2xl">Fee revenue split</h2>
+            <span className="font-mono uppercase text-[11px] tracking-[0.08em] text-mute">
+              Proposed — governance-ratifiable
+            </span>
+          </div>
+          <p className="text-[14px] text-ink/75 leading-relaxed mb-6 max-w-3xl">
+            Protocol fee revenue (USDC accrued in the fee_collector vault from task settlement) is split per
+            epoch into two buckets. Off-chain buyback swaps the burn-bucket USDC to SAEP via Jupiter v6 and
+            burns it; the staker bucket is allocated as StakerClaim PDAs proportional to stake at epoch close.
+          </p>
+          <div className="border border-ink/70 bg-paper">
+            <div className="flex h-14">
+              {feeSplit.map((s, i) => (
+                <div
+                  key={s.label}
+                  className={`relative flex items-center justify-center ${
+                    i < feeSplit.length - 1 ? 'border-r border-ink/30' : ''
+                  }`}
+                  style={{ width: `${s.pct}%`, ...PATTERN_STYLE[s.pattern] }}
+                  aria-label={`${s.label}: ${s.pct}%`}
+                >
+                  <span className="bg-paper border border-ink/30 px-2 py-0.5 font-mono text-[11px] tracking-[0.04em] text-ink">
+                    {s.label} · {s.pct}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <ul className="mt-6 grid md:grid-cols-2 gap-x-12 gap-y-4">
+            {feeSplit.map((s) => (
+              <li key={s.label} className="flex items-start gap-3 text-[13px] text-ink/75 leading-relaxed">
+                <span
+                  className="mt-1 h-3 w-3 shrink-0 border border-ink/40"
+                  style={PATTERN_STYLE[s.pattern]}
+                  aria-hidden
+                />
+                <span>
+                  <span className="font-mono text-[12px] text-ink/90 mr-2">{s.label}</span>
+                  {s.note}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-6 text-[13px] text-ink/65 leading-relaxed max-w-3xl">
+            Initial proposal targets 50/50. Final values + epoch length ratified at activation via 6-of-9
+            governance and surfaced live on this page once the cadence runs.
+          </p>
+        </section>
+
+        <section>
+          <div className="flex items-baseline justify-between border-b border-ink/15 pb-3 mb-8">
             <h2 className="font-display text-2xl">Buyback and burn</h2>
           </div>
           <p className="text-[14px] text-ink/75 leading-relaxed mb-6 max-w-3xl">
             Most fees accrue in USDC. An off-chain buyback worker reads the fee_collector USDC vault on a daily
             cadence, swaps to SAEP via Jupiter v6 with a slippage cap, and calls fee_collector::execute_burn with
-            the proceeds. Each burn transaction hash and amount is published; the page below tracks the supply
-            curve once the cadence is live.
-          </p>
-          <p className="text-[14px] text-ink/65 leading-relaxed">
-            Cadence and burn share are governance parameters. Initial proposal targets 50% of fee revenue to the
-            burn bucket and 50% to staker distribution — final values ratified at activation.
+            the proceeds. Each burn transaction hash and amount is published; this page tracks the cumulative
+            burn and supply curve once the cadence is live.
           </p>
         </section>
 
