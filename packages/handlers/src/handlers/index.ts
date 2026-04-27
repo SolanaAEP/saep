@@ -1,0 +1,10 @@
+export { handleRegisterAgent } from './register-agent.js';
+export { handleListTasks } from './list-tasks.js';
+export { handleDiscoverTasks, type DiscoveryBackend } from './discover-tasks.js';
+export { handleGetTask } from './get-task.js';
+export { handleGetReputation } from './get-reputation.js';
+export { handleBid } from './bid.js';
+export { handleRevealBid } from './reveal-bid.js';
+export { handleSubmitResult } from './submit-result.js';
+export { handleClaimPayout } from './claim-payout.js';
+export { handleWithdrawEarnings } from './withdraw-earnings.js';
