@@ -343,6 +343,116 @@ External reviewers engaging on any milestone should treat the per-program audit 
 
 ---
 
+## Appendix A — Per-program detail folds
+
+Per-program detail mirroring the substrate's PDA + instruction + invariant + security-checks shape, public-sanitised. v0 of this document landed §0–§9 as a navigable index; the appendix below layers per-program content one program per revision. Programs not yet folded carry their full surface in the substrate above (§2.1 row + §4 fuzz row + §5.1 finding row); folding only consolidates that material into a per-program reading order.
+
+### A.1 capability_registry
+
+One-sentence summary: capability_registry is the single source-of-truth for the `u128` capability bitmask that every agent declares. It has no CPI out, no token surface, no oracle dependency, no settlement authority — it governs the *set* of bits other programs may read. Smallest of the 5 in-scope M1 programs and the cleanest review surface; zero `F-2026-NN` findings touched it.
+
+#### A.1.1 Program identity
+
+- **Program ID:** `GW161Wce7z4S2rdcSCPNGixn2YQajefNc4r3jUj9zZ5F` (`programs/capability_registry/src/lib.rs` `declare_id!`).
+- **Spec:** [`specs/02-program-capability-registry.md`](./specs/02-program-capability-registry.md).
+- **Upgrade authority on mainnet:** single deployer key today; rotation to a Squads vault with a 7-day timelock per [`specs/ops-squads-multisig.md`](./specs/ops-squads-multisig.md) is the canonical next step (operational, not yet performed — see §7.3).
+- **In-program `authority` (mutating-ix gate):** placeholder Pubkey supplied at `initialize`, migrating to the GovernanceProgram PDA once the M2 governance flow is initialised.
+
+#### A.1.2 PDAs
+
+Two PDAs. Both fixed-width — every variable-length surface is a `[u8; N]` with null-padding for rent determinism.
+
+**`RegistryConfig` — global singleton.** Seeds `[b"config"]`. Fields (`state.rs`):
+
+- `authority: Pubkey` — mutating-ix gate.
+- `approved_mask: u128` — bitmask of currently approved tags.
+- `tag_count: u8` — monotonic, max `MAX_TAGS = 128`.
+- `pending_authority: Option<Pubkey>` — two-step transfer buffer.
+- `paused: bool` — emergency pause.
+- `bump: u8`.
+
+**`CapabilityTag` — one per tag.** Seeds `[b"tag", &[bit_index]]` (single 1-byte index = up to 128 PDAs). Fields:
+
+- `bit_index: u8` — bounded to `< 128` at `propose_tag`.
+- `slug: [u8; 32]` — ASCII lowercase `[a-z0-9_]`, null-padded.
+- `manifest_uri: [u8; 96]` — IPFS or Arweave URI, null-padded.
+- `added_at: i64`, `added_by: Pubkey`, `retired: bool`.
+- `min_personhood_tier: u8` — 0 None / 1 Basic / 2 Verified (mirrors `agent_registry`'s tier as a raw u8 to avoid a cross-program type dependency).
+- `bump: u8`.
+
+#### A.1.3 Instructions
+
+Nine instructions, all live — no stubs, no `NotImplemented` paths.
+
+| # | Instruction | Signer | Mutates | CPI out |
+|---|---|---|---|---|
+| 1 | `initialize(authority)` | deployer (payer) | creates `RegistryConfig` | none |
+| 2 | `propose_tag(bit_index, slug, manifest_uri)` | `authority` | creates `CapabilityTag`; sets bit; increments `tag_count` | none |
+| 3 | `retire_tag(bit_index)` | `authority` | sets `tag.retired`; clears bit | none |
+| 4 | `update_manifest_uri(bit_index, manifest_uri)` | `authority` | rewrites `tag.manifest_uri` | none |
+| 5 | `transfer_authority(new_authority)` | `authority` | sets `pending_authority` | none |
+| 6 | `accept_authority()` | `pending_authority` | promotes pending → authority | none |
+| 7 | `set_paused(paused)` | `authority` | toggles `config.paused` | none |
+| 8 | `validate_mask(mask)` | any | readonly — `assert_mask_approved` | none |
+| 9 | `set_tag_personhood(bit_index, min_tier)` | `authority` | rewrites `tag.min_personhood_tier` | none |
+
+**No CPI out of capability_registry.** This is the smallest trust surface in M1: other programs CPI *into* it (or replicate its check inline — see A.1.5) but it never initiates a call. That alone eliminates reentrancy, callee-impersonation, and caller-attestation classes the other M1 programs must defend against.
+
+#### A.1.4 Events
+
+Seven events, all decoded by `services/indexer` against the committed IDL: `RegistryInitialized`, `TagApproved`, `TagRetired`, `TagManifestUpdated` (also emitted on `set_tag_personhood` since the tag's governance envelope changed), `AuthorityTransferProposed`, `AuthorityTransferAccepted`, `PausedSet`. All seven covered by the indexer's borsh round-trip harness.
+
+#### A.1.5 Cross-program consumption
+
+capability_registry is a **read target**, not a caller. Two consumers at M1:
+
+1. **agent_registry** (`register_agent`, `update_manifest`) — reads `RegistryConfig` PDA directly via Anchor `seeds = [b"config"], seeds::program = global.capability_registry` and enforces `mask & !approved_mask == 0` *inline* (no CPI). Rationale: a read-only CPI would cost ~1k CU for a single u128 comparison; inlining saves the call. The `validate_mask` handler still exists for off-chain simulation + tooling.
+2. **task_market** (`commit_bid` after F-2026-08, `create_task`) — does not read capability_registry directly. It reads the *agent's* `capability_mask` field and asserts `(mask >> task.payload.capability_bit) & 1 == 1`. Trust chain: capability_registry approves bit → agent_registry enforces bit-in-approved-mask at registration → task_market assumes the mask is already vetted (subject to A.1.6 invariant 5 on retirement).
+
+Third-party reads (indexer, portal, analytics) fetch `RegistryConfig` via RPC and decode against the IDL; no program-level surface.
+
+#### A.1.6 Invariants
+
+1. `popcount(approved_mask) + retired_count == tag_count` at all times. Enforced by: `propose_tag` sets the bit + increments `tag_count`; `retire_tag` clears the bit + sets `tag.retired = true` but never decrements `tag_count`.
+2. No `CapabilityTag.bit_index >= 128`. Enforced at `propose_tag` via `require!(bit_index < MAX_TAGS)`.
+3. Once retired, a bit is never re-approved. Enforced by the PDA seed `[b"tag", &[bit_index]]`: once the PDA exists, `propose_tag` cannot create it again (Anchor returns "account already in use"). Retirement is permanent.
+4. `authority` is never the zero pubkey post-`initialize`. **Note:** the handler accepts whatever `authority: Pubkey` the deployer passes — there is no `require!(authority != Pubkey::default())` guard. The invariant holds operationally (deployer passes a real pubkey), not statically.
+5. Agents registered against bit `b` remain queryable even after bit `b` is retired. `retire_tag` only flips `tag.retired` + clears the bit in `approved_mask`; it does not touch `AgentAccount.capability_mask` on any agent. Agents registered before retirement keep the bit and remain valid for already-accepted tasks; new `register_agent` / `update_manifest` calls reject the retired bit. Forward-only retirement.
+6. **Not in spec:** `validate_mask` runs on an unauthenticated `Accounts` context — deliberately permissionless so off-chain tools can query approval without a signer. No state mutation possible on this path.
+
+#### A.1.7 Security checks (§1.2 mapping)
+
+- **Account validation.** Every handler declares `seeds = [b"config"]` + `bump = config.bump` on `RegistryConfig`; every tag-touching handler declares `seeds = [b"tag".as_ref(), &[bit_index]]` + `bump = tag.bump`. Anchor discriminator enforced at `Account<'info, T>` deserialisation on every handler.
+- **Authorization.** All mutating instructions gate on `has_one = authority`. `initialize` is one-shot via PDA init (a second call returns Anchor "account already in use"). Two-step authority transfer prevents lockout-on-typo. `set_paused` is authority-gated. `accept_authority` gates on `pending_authority` key equality, not the current authority — correct for handoff.
+- **Re-entrancy.** No CPI out. `validate_mask` is readonly. N/A by construction; capability_registry does not carry a `ReentrancyGuard` PDA because the outbound surface that would need one does not exist.
+- **Integer safety.** `tag_count` uses `checked_add`. Bitmask set/clear via `1u128 << bit_index` after `require!(bit_index < 128)` — no `checked_shl` needed since the shift amount is bounded by the require. `assert_mask_approved` is a single bitwise `&` + `!` + `!= 0` check, no arithmetic.
+- **Upgrade.** Program upgrade authority rotates to a Squads vault before mainnet per ops spec. In-program `authority` migrates to the GovernanceProgram PDA in M2.
+- **Pause.** `config.paused` is checked at every mutating handler *except* the authority-handoff pair + `set_paused` itself, so a paused registry can still accept governance handoff and unpause (no lockout). `validate_mask` is not pause-gated — pause blocks writes, not reads.
+- **No Token-2022 surface.** capability_registry does not touch any mint, token account, transfer hook, or fee authority.
+- **Oracle.** None.
+- **PDA spoofing.** Every PDA-carrying ix uses Anchor's `seeds = [...]` + `bump = <stored>.bump` pattern; the stored `bump` is set at init and consumed on every subsequent read. No `find_program_address` at runtime.
+- **Discriminator enforcement.** Fuzz-tested across 17 cases (`src/fuzz.rs`): arbitrary-discriminator rejection on both `RegistryConfig` and `CapabilityTag`; truncated-buffer rejection; full-byte-tail no-panic; round-trips on both account types; total-function checks on `bit_mask` + `validate_slug` + `validate_manifest_uri`.
+
+#### A.1.8 Known stubs
+
+**None.** All 9 instructions have live handlers. No `NotImplemented` paths. No feature-flagged branches. capability_registry does not appear in §6.6 (inert / partial-implementation surfaces).
+
+For completeness (not stubs, but out-of-scope for this section): `scripts/seed_capabilities.ts` is an off-chain script that calls `propose_tag` for the M1 initial tag set at devnet bring-up. Governance wiring (in-program `authority` handover from multisig to `GovernanceProgram` PDA) lands in M2 with the GovernanceProgram scaffold; the existing `transfer_authority` / `accept_authority` pair is the mechanism, only the *destination* changes.
+
+#### A.1.9 Test coverage
+
+**Rust unit + proptest (`cargo test -p capability_registry`).** `src/state.rs` carries 11 unit tests (validators including embedded-null rejection, `bit_mask` bounds, set/clear round-trip, `assert_mask_approved` subset / unapproved / retired-bit cases). `src/fuzz.rs` carries 17 fuzz cases (per the §4 matrix).
+
+**Anchor TS integration (`tests/capability_registry.ts`).** 22 cases across 8 describe blocks: `initialize` (happy + duplicate-init rejection), `propose_tag` (happy + Unauthorized + BitIndexOutOfRange + InvalidSlug uppercase + empty-URI + duplicate-bit), `update_manifest_uri` (happy + unauthorized + empty-URI), `set_paused` (toggle behaviour + paused-ix-rejected + unauthorized), `validate_mask` (subset accept + unapproved reject), `retire_tag` (happy + already-retired reject + retired-bit validate-rejection), `transfer_authority` / `accept_authority` (NoPendingAuthority + wrong-signer + correct-rotation + reverse-rotation), batch (32 tags registered without overflow), invariants (program ID parity).
+
+**Coverage gap (known, not hidden).** `set_tag_personhood` is not exercised under Anchor integration tests; unit-level coverage via `src/fuzz.rs` round-trip on the `min_personhood_tier` field. No bankrun adapter — no timelock in capability_registry (authority handoff is two-step-but-instant, not delayed), so bankrun would add no coverage.
+
+#### A.1.10 Finding-ledger filter
+
+Zero `F-2026-NN` findings touched capability_registry. The §5.1 ledger has no row attributing to this program.
+
+---
+
 ## 9. References
 
 - [`SECURITY.md`](./SECURITY.md)
