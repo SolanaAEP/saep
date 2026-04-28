@@ -4,6 +4,15 @@ use anchor_lang::prelude::*;
 pub enum FeeCollectorError {
     #[msg("signer is not authorized for this instruction")]
     Unauthorized,
+    #[msg("mint is not on the allowlist")]
+    MintNotAllowed,
+    #[msg("mint allowlist is at capacity")]
+    MintAllowlistFull,
+    #[msg("per-agent mint allowlist is at capacity")]
+    AgentMintAllowlistFull,
+    #[msg("confidential transfers are not enabled")]
+    ConfidentialTransfersDisabled,
+    // Backward compat — downstream programs reference old names.
     #[msg("transfer-hook program is not on the allowlist")]
     HookNotAllowed,
     #[msg("hook allowlist is at capacity")]

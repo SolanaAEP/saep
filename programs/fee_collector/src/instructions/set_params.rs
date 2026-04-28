@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::errors::FeeCollectorError;
-use crate::events::{DistributionParamsUpdated, PausedSet};
+use crate::events::{ConfidentialTransfersToggled, DistributionParamsUpdated, PausedSet};
 use crate::state::*;
 
 #[derive(Accounts)]
@@ -81,6 +81,40 @@ pub fn set_paused_handler(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     emit!(PausedSet {
         paused,
+        authority: ctx.accounts.authority.key(),
+        timestamp: now,
+    });
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct SetConfidentialTransfers<'info> {
+    #[account(
+        mut,
+        seeds = [SEED_FEE_CONFIG],
+        bump = config.bump,
+    )]
+    pub config: Box<Account<'info, FeeCollectorConfig>>,
+
+    pub authority: Signer<'info>,
+}
+
+pub fn set_confidential_transfers_handler(
+    ctx: Context<SetConfidentialTransfers>,
+    enabled: bool,
+) -> Result<()> {
+    let c = &ctx.accounts.config;
+    require_keys_eq!(
+        ctx.accounts.authority.key(),
+        c.meta_authority,
+        FeeCollectorError::Unauthorized
+    );
+
+    ctx.accounts.config.confidential_transfers_enabled = enabled;
+
+    let now = Clock::get()?.unix_timestamp;
+    emit!(ConfidentialTransfersToggled {
+        enabled,
         authority: ctx.accounts.authority.key(),
         timestamp: now,
     });

@@ -17,16 +17,19 @@ mod fuzz;
 
 pub use errors::FeeCollectorError;
 pub use hook::{
-    assert_hook_allowed, assert_hook_allowed_at_site, get_transfer_hook_program_id,
-    inspect_mint_extensions, MintExtensionReport,
+    assert_hook_allowed, assert_hook_allowed_at_site, assert_mint_allowed,
+    assert_mint_allowed_at_site, inspect_mint_extensions, MintExtensionReport,
 };
 pub use state::{
-    AgentHookAllowlist, EpochAccount, EpochStatus, FeeCollectorConfig, HookAllowlist,
-    StakerClaim, MAX_AGENT_HOOK_PROGRAMS, MAX_HOOK_PROGRAMS, MINT_FLAG_ALL, MINT_FLAG_HOOK_OK,
-    MINT_FLAG_NO_FROZEN_DEFAULT, MINT_FLAG_NO_PERMANENT_DELEGATE, MINT_FLAG_NO_TRANSFER_FEE,
-    SEED_AGENT_HOOKS, SEED_HOOK_ALLOWLIST, SITE_CLAIM_BOND_REFUND, SITE_CLAIM_BOND_SLASH,
-    SITE_COMMIT_BID_BOND, SITE_EXPIRE, SITE_FUND_TASK, SITE_FUND_TREASURY, SITE_INIT_STREAM,
-    SITE_RELEASE, SITE_STREAM_CLOSE, SITE_STREAM_SWAP, SITE_STREAM_WITHDRAW, SITE_WITHDRAW,
+    AgentHookAllowlist, AgentMintAllowlist, EpochAccount, EpochStatus, FeeCollectorConfig,
+    HookAllowlist, MintAllowlist, StakerClaim, MAX_AGENT_HOOK_PROGRAMS, MAX_AGENT_MINT_PROGRAMS,
+    MAX_HOOK_PROGRAMS, MAX_MINT_ALLOWLIST_PROGRAMS, MINT_FLAG_ALL,
+    MINT_FLAG_CONFIDENTIAL_TRANSFER_OK, MINT_FLAG_HOOK_OK, MINT_FLAG_NO_FROZEN_DEFAULT,
+    MINT_FLAG_NO_PERMANENT_DELEGATE, MINT_FLAG_NO_TRANSFER_FEE, SEED_AGENT_HOOKS,
+    SEED_AGENT_MINTS, SEED_HOOK_ALLOWLIST, SEED_MINT_ALLOWLIST, SITE_CLAIM_BOND_REFUND,
+    SITE_CLAIM_BOND_SLASH, SITE_COMMIT_BID_BOND, SITE_EXPIRE, SITE_FUND_TASK,
+    SITE_FUND_TREASURY, SITE_INIT_STREAM, SITE_RELEASE, SITE_STREAM_CLOSE, SITE_STREAM_SWAP,
+    SITE_STREAM_WITHDRAW, SITE_WITHDRAW,
 };
 
 use instructions::*;
@@ -37,54 +40,54 @@ declare_id!("4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu");
 pub mod fee_collector {
     use super::*;
 
-    // ── hook allowlist ─────────────────────────────────────────
+    // ── mint allowlist ────────────────────────────────────────
 
-    pub fn init_hook_allowlist(
-        ctx: Context<InitHookAllowlist>,
+    pub fn init_mint_allowlist(
+        ctx: Context<InitMintAllowlist>,
         default_deny: bool,
     ) -> Result<()> {
-        instructions::hook_allowlist::init_handler(ctx, default_deny)
+        instructions::mint_allowlist::init_handler(ctx, default_deny)
     }
 
-    pub fn update_hook_allowlist(
-        ctx: Context<UpdateHookAllowlist>,
+    pub fn update_mint_allowlist(
+        ctx: Context<UpdateMintAllowlist>,
         add: Vec<Pubkey>,
         remove: Vec<Pubkey>,
     ) -> Result<()> {
-        instructions::hook_allowlist::update_handler(ctx, add, remove)
+        instructions::mint_allowlist::update_handler(ctx, add, remove)
     }
 
     pub fn set_default_deny(
-        ctx: Context<UpdateHookAllowlist>,
+        ctx: Context<UpdateMintAllowlist>,
         default_deny: bool,
     ) -> Result<()> {
-        instructions::hook_allowlist::set_default_deny_handler(ctx, default_deny)
+        instructions::mint_allowlist::set_default_deny_handler(ctx, default_deny)
     }
 
-    pub fn transfer_hook_authority(
-        ctx: Context<TransferHookAuthority>,
+    pub fn transfer_mint_allowlist_authority(
+        ctx: Context<TransferMintAllowlistAuthority>,
         new_authority: Pubkey,
     ) -> Result<()> {
-        instructions::hook_allowlist::transfer_authority_handler(ctx, new_authority)
+        instructions::mint_allowlist::transfer_authority_handler(ctx, new_authority)
     }
 
-    pub fn accept_hook_authority(ctx: Context<AcceptHookAuthority>) -> Result<()> {
-        instructions::hook_allowlist::accept_authority_handler(ctx)
+    pub fn accept_mint_allowlist_authority(ctx: Context<AcceptMintAllowlistAuthority>) -> Result<()> {
+        instructions::mint_allowlist::accept_authority_handler(ctx)
     }
 
-    pub fn init_agent_hook_allowlist(
-        ctx: Context<InitAgentHookAllowlist>,
+    pub fn init_agent_mint_allowlist(
+        ctx: Context<InitAgentMintAllowlist>,
         agent_did: [u8; 32],
     ) -> Result<()> {
-        instructions::agent_hook_allowlist::init_agent_handler(ctx, agent_did)
+        instructions::agent_mint_allowlist::init_agent_handler(ctx, agent_did)
     }
 
-    pub fn update_agent_hook_allowlist(
-        ctx: Context<UpdateAgentHookAllowlist>,
+    pub fn update_agent_mint_allowlist(
+        ctx: Context<UpdateAgentMintAllowlist>,
         add: Vec<Pubkey>,
         remove: Vec<Pubkey>,
     ) -> Result<()> {
-        instructions::agent_hook_allowlist::update_agent_handler(ctx, add, remove)
+        instructions::agent_mint_allowlist::update_agent_handler(ctx, add, remove)
     }
 
     // ── guard ──────────────────────────────────────────────────
@@ -180,5 +183,12 @@ pub mod fee_collector {
 
     pub fn set_paused(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
         instructions::set_params::set_paused_handler(ctx, paused)
+    }
+
+    pub fn set_confidential_transfers(
+        ctx: Context<SetConfidentialTransfers>,
+        enabled: bool,
+    ) -> Result<()> {
+        instructions::set_params::set_confidential_transfers_handler(ctx, enabled)
     }
 }

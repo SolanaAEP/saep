@@ -1,30 +1,30 @@
 use anchor_lang::prelude::*;
 
 use crate::errors::FeeCollectorError;
-use crate::events::AgentHookAllowlistUpdated;
+use crate::events::AgentMintAllowlistUpdated;
 use crate::state::{
-    AgentHookAllowlist, HookAllowlist, MAX_AGENT_HOOK_PROGRAMS, SEED_AGENT_HOOKS,
-    SEED_HOOK_ALLOWLIST,
+    AgentMintAllowlist, MintAllowlist, MAX_AGENT_MINT_PROGRAMS, SEED_AGENT_MINTS,
+    SEED_MINT_ALLOWLIST,
 };
 
 #[derive(Accounts)]
 #[instruction(agent_did: [u8; 32])]
-pub struct InitAgentHookAllowlist<'info> {
+pub struct InitAgentMintAllowlist<'info> {
     #[account(
-        seeds = [SEED_HOOK_ALLOWLIST],
+        seeds = [SEED_MINT_ALLOWLIST],
         bump = global.bump,
         has_one = authority @ FeeCollectorError::Unauthorized,
     )]
-    pub global: Account<'info, HookAllowlist>,
+    pub global: Account<'info, MintAllowlist>,
 
     #[account(
         init,
         payer = payer,
-        space = 8 + AgentHookAllowlist::INIT_SPACE,
-        seeds = [SEED_AGENT_HOOKS, agent_did.as_ref()],
+        space = 8 + AgentMintAllowlist::INIT_SPACE,
+        seeds = [SEED_AGENT_MINTS, agent_did.as_ref()],
         bump,
     )]
-    pub agent: Account<'info, AgentHookAllowlist>,
+    pub agent: Account<'info, AgentMintAllowlist>,
 
     pub authority: Signer<'info>,
 
@@ -35,15 +35,15 @@ pub struct InitAgentHookAllowlist<'info> {
 }
 
 pub fn init_agent_handler(
-    ctx: Context<InitAgentHookAllowlist>,
+    ctx: Context<InitAgentMintAllowlist>,
     agent_did: [u8; 32],
 ) -> Result<()> {
     let a = &mut ctx.accounts.agent;
     a.agent_did = agent_did;
-    a.extra_programs = Vec::with_capacity(MAX_AGENT_HOOK_PROGRAMS);
+    a.extra_programs = Vec::with_capacity(MAX_AGENT_MINT_PROGRAMS);
     a.bump = ctx.bumps.agent;
 
-    emit!(AgentHookAllowlistUpdated {
+    emit!(AgentMintAllowlistUpdated {
         agent_did,
         added: vec![],
         removed: vec![],
@@ -53,26 +53,26 @@ pub fn init_agent_handler(
 }
 
 #[derive(Accounts)]
-pub struct UpdateAgentHookAllowlist<'info> {
+pub struct UpdateAgentMintAllowlist<'info> {
     #[account(
-        seeds = [SEED_HOOK_ALLOWLIST],
+        seeds = [SEED_MINT_ALLOWLIST],
         bump = global.bump,
         has_one = authority @ FeeCollectorError::Unauthorized,
     )]
-    pub global: Account<'info, HookAllowlist>,
+    pub global: Account<'info, MintAllowlist>,
 
     #[account(
         mut,
-        seeds = [SEED_AGENT_HOOKS, agent.agent_did.as_ref()],
+        seeds = [SEED_AGENT_MINTS, agent.agent_did.as_ref()],
         bump = agent.bump,
     )]
-    pub agent: Account<'info, AgentHookAllowlist>,
+    pub agent: Account<'info, AgentMintAllowlist>,
 
     pub authority: Signer<'info>,
 }
 
 pub fn update_agent_handler(
-    ctx: Context<UpdateAgentHookAllowlist>,
+    ctx: Context<UpdateAgentMintAllowlist>,
     add: Vec<Pubkey>,
     remove: Vec<Pubkey>,
 ) -> Result<()> {
@@ -88,11 +88,11 @@ pub fn update_agent_handler(
         }
     }
     require!(
-        a.extra_programs.len() <= MAX_AGENT_HOOK_PROGRAMS,
-        FeeCollectorError::AgentHookAllowlistFull
+        a.extra_programs.len() <= MAX_AGENT_MINT_PROGRAMS,
+        FeeCollectorError::AgentMintAllowlistFull
     );
 
-    emit!(AgentHookAllowlistUpdated {
+    emit!(AgentMintAllowlistUpdated {
         agent_did: a.agent_did,
         added: add,
         removed: remove,

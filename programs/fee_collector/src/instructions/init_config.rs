@@ -84,6 +84,7 @@ pub fn handler(ctx: Context<InitConfig>, params: InitConfigParams) -> Result<()>
     c.claim_window_secs = params.claim_window_secs;
     c.min_epoch_total_for_burn = params.min_epoch_total_for_burn;
     c.paused = false;
+    c.confidential_transfers_enabled = false;
     c.bump = ctx.bumps.config;
 
     let e = &mut ctx.accounts.epoch_zero;

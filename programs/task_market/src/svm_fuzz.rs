@@ -114,7 +114,7 @@ fn make_mint_accept() -> MintAcceptRecord {
     MintAcceptRecord {
         mint: pk(40),
         mint_accept_flags: 0xF,
-        hook_program: None,
+        has_confidential_transfer: false,
         accepted_at_slot: 100,
         accepted_at_ts: 1_700_000_000,
         bump: 248,

@@ -1,42 +1,66 @@
 use anchor_lang::prelude::*;
 
 #[event]
-pub struct HookAllowlistInitialized {
+pub struct MintAllowlistInitialized {
     pub authority: Pubkey,
     pub default_deny: bool,
     pub timestamp: i64,
 }
 
+// Backward compat alias
+pub type HookAllowlistInitialized = MintAllowlistInitialized;
+
 #[event]
-pub struct HookAllowlistUpdated {
+pub struct MintAllowlistUpdated {
     pub added: Vec<Pubkey>,
     pub removed: Vec<Pubkey>,
     pub default_deny: bool,
     pub timestamp: i64,
 }
 
+pub type HookAllowlistUpdated = MintAllowlistUpdated;
+
 #[event]
-pub struct AgentHookAllowlistUpdated {
+pub struct AgentMintAllowlistUpdated {
     pub agent_did: [u8; 32],
     pub added: Vec<Pubkey>,
     pub removed: Vec<Pubkey>,
     pub timestamp: i64,
 }
 
+pub type AgentHookAllowlistUpdated = AgentMintAllowlistUpdated;
+
 #[event]
 pub struct MintAccepted {
     pub mint: Pubkey,
     pub accept_flags: u32,
-    pub hook_program: Option<Pubkey>,
+    pub has_confidential_transfer: bool,
     pub slot: u64,
     pub timestamp: i64,
 }
 
 #[event]
-pub struct HookRejected {
+pub struct MintRejected {
     pub mint: Pubkey,
-    pub hook_program: Pubkey,
+    pub reason: u8,
     pub site: u8,
+    pub timestamp: i64,
+}
+
+pub type HookRejected = MintRejected;
+
+#[event]
+pub struct ConfidentialFeesCollected {
+    pub epoch_id: u64,
+    pub amount: u64,
+    pub collector: Pubkey,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct ConfidentialTransfersToggled {
+    pub enabled: bool,
+    pub authority: Pubkey,
     pub timestamp: i64,
 }
 

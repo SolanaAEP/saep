@@ -1,112 +1,91 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_2022::spl_token_2022::extension::{
-    transfer_hook::TransferHook, BaseStateWithExtensions, StateWithExtensions,
-};
+use anchor_spl::token_2022::spl_token_2022::extension::{BaseStateWithExtensions, StateWithExtensions};
 use anchor_spl::token_2022::spl_token_2022::state::Mint as RawMint;
 
 use crate::errors::FeeCollectorError;
-use crate::events::HookRejected;
-use crate::state::{AgentHookAllowlist, HookAllowlist};
+use crate::events::MintRejected;
+use crate::state::{AgentMintAllowlist, MintAllowlist};
 
-pub fn get_transfer_hook_program_id(mint_info: &AccountInfo) -> Result<Option<Pubkey>> {
-    // SPL Token mints (legacy program) have no extension support — skip parsing.
-    if mint_info.owner != &anchor_spl::token_2022::ID {
-        return Ok(None);
-    }
-    let data = mint_info
-        .try_borrow_data()
-        .map_err(|_| error!(FeeCollectorError::MintParseFailed))?;
-    let parsed = StateWithExtensions::<RawMint>::unpack(&data)
-        .map_err(|_| error!(FeeCollectorError::MintParseFailed))?;
-    match parsed.get_extension::<TransferHook>() {
-        Ok(ext) => Ok(Option::<Pubkey>::from(ext.program_id)),
-        Err(_) => Ok(None),
-    }
-}
-
-pub fn assert_hook_allowed(
+pub fn assert_mint_allowed(
     mint_info: &AccountInfo,
-    global: &HookAllowlist,
-    per_agent: Option<&AgentHookAllowlist>,
+    global: &MintAllowlist,
+    per_agent: Option<&AgentMintAllowlist>,
 ) -> Result<()> {
-    let hook = get_transfer_hook_program_id(mint_info)?;
-    let Some(pid) = hook else {
-        return Ok(());
-    };
-    if global.programs.iter().any(|p| p == &pid) {
+    let mint_key = mint_info.key();
+    if global.programs.iter().any(|p| p == &mint_key) {
         return Ok(());
     }
     if let Some(a) = per_agent {
-        if a.extra_programs.iter().any(|p| p == &pid) {
+        if a.extra_programs.iter().any(|p| p == &mint_key) {
             return Ok(());
         }
     }
     if global.default_deny {
-        emit!(HookRejected {
-            mint: mint_info.key(),
-            hook_program: pid,
+        emit!(MintRejected {
+            mint: mint_key,
+            reason: 1,
             site: 0,
             timestamp: Clock::get().map(|c| c.unix_timestamp).unwrap_or(0),
         });
-        return err!(FeeCollectorError::HookNotAllowed);
+        return err!(FeeCollectorError::MintNotAllowed);
     }
-    msg!("WARN: unwhitelisted hook program {}", pid);
+    msg!("WARN: unwhitelisted mint {}", mint_key);
     Ok(())
 }
 
-pub fn assert_hook_allowed_at_site(
+pub fn assert_mint_allowed_at_site(
     mint_info: &AccountInfo,
-    global: &HookAllowlist,
-    per_agent: Option<&AgentHookAllowlist>,
+    global: &MintAllowlist,
+    per_agent: Option<&AgentMintAllowlist>,
     site: u8,
 ) -> Result<()> {
-    let hook = get_transfer_hook_program_id(mint_info)?;
-    let Some(pid) = hook else {
-        return Ok(());
-    };
-    if global.programs.iter().any(|p| p == &pid) {
+    let mint_key = mint_info.key();
+    if global.programs.iter().any(|p| p == &mint_key) {
         return Ok(());
     }
     if let Some(a) = per_agent {
-        if a.extra_programs.iter().any(|p| p == &pid) {
+        if a.extra_programs.iter().any(|p| p == &mint_key) {
             return Ok(());
         }
     }
     let now = Clock::get().map(|c| c.unix_timestamp).unwrap_or(0);
     if global.default_deny {
-        emit!(HookRejected {
-            mint: mint_info.key(),
-            hook_program: pid,
+        emit!(MintRejected {
+            mint: mint_key,
+            reason: 1,
             site,
             timestamp: now,
         });
-        return err!(FeeCollectorError::HookNotAllowed);
+        return err!(FeeCollectorError::MintNotAllowed);
     }
-    emit!(HookRejected {
-        mint: mint_info.key(),
-        hook_program: pid,
+    emit!(MintRejected {
+        mint: mint_key,
+        reason: 0,
         site,
         timestamp: now,
     });
-    msg!("WARN: unwhitelisted hook program {} at site {}", pid, site);
+    msg!("WARN: unwhitelisted mint {} at site {}", mint_key, site);
     Ok(())
 }
 
+// Backward compat — downstream programs import these names.
+pub use assert_mint_allowed as assert_hook_allowed;
+pub use assert_mint_allowed_at_site as assert_hook_allowed_at_site;
+
 pub fn inspect_mint_extensions(mint_info: &AccountInfo) -> Result<MintExtensionReport> {
-    // SPL Token mints have no extensions — return clean report.
     if mint_info.owner != &anchor_spl::token_2022::ID {
         return Ok(MintExtensionReport {
-            hook_program: None,
             has_transfer_fee_ext: false,
             transfer_fee_authority: None,
             default_state_frozen: false,
-            permanent_delegate: None,
+            has_confidential_transfer_ext: false,
+            confidential_transfer_authority: None,
         });
     }
 
     use anchor_spl::token_2022::spl_token_2022::extension::{
-        default_account_state::DefaultAccountState, permanent_delegate::PermanentDelegate,
-        transfer_fee::TransferFeeConfig,
+        confidential_transfer::ConfidentialTransferMint,
+        default_account_state::DefaultAccountState, transfer_fee::TransferFeeConfig,
     };
 
     let data = mint_info
@@ -114,11 +93,6 @@ pub fn inspect_mint_extensions(mint_info: &AccountInfo) -> Result<MintExtensionR
         .map_err(|_| error!(FeeCollectorError::MintParseFailed))?;
     let parsed = StateWithExtensions::<RawMint>::unpack(&data)
         .map_err(|_| error!(FeeCollectorError::MintParseFailed))?;
-
-    let hook_program = parsed
-        .get_extension::<TransferHook>()
-        .ok()
-        .and_then(|e| Option::<Pubkey>::from(e.program_id));
 
     let transfer_fee_authority = parsed
         .get_extension::<TransferFeeConfig>()
@@ -128,41 +102,46 @@ pub fn inspect_mint_extensions(mint_info: &AccountInfo) -> Result<MintExtensionR
 
     let default_state_frozen = parsed
         .get_extension::<DefaultAccountState>()
-        .map(|e| e.state == 2) // AccountState::Frozen == 2
+        .map(|e| e.state == 2)
         .unwrap_or(false);
 
-    let permanent_delegate = parsed
-        .get_extension::<PermanentDelegate>()
+    let has_confidential_transfer_ext = parsed
+        .get_extension::<ConfidentialTransferMint>()
+        .is_ok();
+
+    let confidential_transfer_authority = parsed
+        .get_extension::<ConfidentialTransferMint>()
         .ok()
-        .and_then(|e| Option::<Pubkey>::from(e.delegate));
+        .and_then(|e| Option::<Pubkey>::from(e.authority));
 
     Ok(MintExtensionReport {
-        hook_program,
         has_transfer_fee_ext,
         transfer_fee_authority,
         default_state_frozen,
-        permanent_delegate,
+        has_confidential_transfer_ext,
+        confidential_transfer_authority,
     })
 }
 
 pub struct MintExtensionReport {
-    pub hook_program: Option<Pubkey>,
     pub has_transfer_fee_ext: bool,
     pub transfer_fee_authority: Option<Pubkey>,
     pub default_state_frozen: bool,
-    pub permanent_delegate: Option<Pubkey>,
+    pub has_confidential_transfer_ext: bool,
+    pub confidential_transfer_authority: Option<Pubkey>,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state::MAX_MINT_ALLOWLIST_PROGRAMS;
 
     fn pk(n: u8) -> Pubkey {
         Pubkey::new_from_array([n; 32])
     }
 
-    fn global_with(programs: Vec<Pubkey>, default_deny: bool) -> HookAllowlist {
-        HookAllowlist {
+    fn global_with(programs: Vec<Pubkey>, default_deny: bool) -> MintAllowlist {
+        MintAllowlist {
             authority: Pubkey::default(),
             pending_authority: None,
             programs,
@@ -171,77 +150,66 @@ mod tests {
         }
     }
 
-    fn per_agent_with(extras: Vec<Pubkey>) -> AgentHookAllowlist {
-        AgentHookAllowlist {
+    fn per_agent_with(extras: Vec<Pubkey>) -> AgentMintAllowlist {
+        AgentMintAllowlist {
             agent_did: [0u8; 32],
             extra_programs: extras,
             bump: 0,
         }
     }
 
-    // Pure-logic unit — mirrors assert_hook_allowed's decision branches, exposed
-    // for unit tests that can't construct a full AccountInfo for extension parsing.
     fn check(
-        hook: Option<Pubkey>,
-        global: &HookAllowlist,
-        per_agent: Option<&AgentHookAllowlist>,
+        mint_key: Pubkey,
+        global: &MintAllowlist,
+        per_agent: Option<&AgentMintAllowlist>,
     ) -> Result<bool> {
-        let Some(pid) = hook else { return Ok(true); };
-        if global.programs.iter().any(|p| p == &pid) {
+        if global.programs.iter().any(|p| p == &mint_key) {
             return Ok(true);
         }
         if let Some(a) = per_agent {
-            if a.extra_programs.iter().any(|p| p == &pid) {
+            if a.extra_programs.iter().any(|p| p == &mint_key) {
                 return Ok(true);
             }
         }
         if global.default_deny {
-            return err!(FeeCollectorError::HookNotAllowed);
+            return err!(FeeCollectorError::MintNotAllowed);
         }
         Ok(false)
     }
 
     #[test]
-    fn no_hook_always_ok() {
-        let g = global_with(vec![], true);
-        assert!(check(None, &g, None).unwrap());
-    }
-
-    #[test]
-    fn hook_in_global_allowlist_accepted() {
-        let g = global_with(vec![pk(1), pk(2)], true);
-        assert!(check(Some(pk(2)), &g, None).unwrap());
-    }
-
-    #[test]
-    fn hook_missing_and_default_deny_rejected() {
-        let g = global_with(vec![pk(1)], true);
-        assert!(check(Some(pk(9)), &g, None).is_err());
-    }
-
-    #[test]
-    fn hook_missing_warn_only_accepted() {
-        let g = global_with(vec![pk(1)], false);
-        let ok = check(Some(pk(9)), &g, None).unwrap();
+    fn no_match_with_no_deny_warns() {
+        let g = global_with(vec![], false);
+        let ok = check(pk(9), &g, None).unwrap();
         assert!(!ok);
     }
 
     #[test]
-    fn per_agent_extra_unblocks_hook() {
+    fn mint_in_global_allowlist_accepted() {
+        let g = global_with(vec![pk(1), pk(2)], true);
+        assert!(check(pk(2), &g, None).unwrap());
+    }
+
+    #[test]
+    fn mint_missing_and_default_deny_rejected() {
+        let g = global_with(vec![pk(1)], true);
+        assert!(check(pk(9), &g, None).is_err());
+    }
+
+    #[test]
+    fn per_agent_extra_unblocks_mint() {
         let g = global_with(vec![pk(1)], true);
         let a = per_agent_with(vec![pk(9)]);
-        assert!(check(Some(pk(9)), &g, Some(&a)).unwrap());
+        assert!(check(pk(9), &g, Some(&a)).unwrap());
     }
 
     #[test]
     fn per_agent_without_match_defers_to_global() {
         let g = global_with(vec![pk(1)], true);
         let a = per_agent_with(vec![pk(5)]);
-        assert!(check(Some(pk(9)), &g, Some(&a)).is_err());
+        assert!(check(pk(9), &g, Some(&a)).is_err());
     }
 
-    // Mirrors the in-place mutation logic in `update_handler`. Kept here because
-    // the Accounts harness is unavailable in pure unit tests.
     fn apply_mutation(
         existing: &mut Vec<Pubkey>,
         add: &[Pubkey],
@@ -257,13 +225,11 @@ mod tests {
             }
         }
         require!(
-            existing.len() <= MAX_HOOK_PROGRAMS,
-            FeeCollectorError::HookAllowlistFull
+            existing.len() <= MAX_MINT_ALLOWLIST_PROGRAMS,
+            FeeCollectorError::MintAllowlistFull
         );
         Ok(())
     }
-
-    use crate::state::MAX_HOOK_PROGRAMS;
 
     #[test]
     fn allowlist_add_remove_applies_in_place() {
@@ -280,18 +246,18 @@ mod tests {
 
     #[test]
     fn allowlist_enforces_cap() {
-        let mut list: Vec<Pubkey> = (1..=MAX_HOOK_PROGRAMS as u8).map(pk).collect();
+        let mut list: Vec<Pubkey> = (1..=MAX_MINT_ALLOWLIST_PROGRAMS as u8).map(pk).collect();
         let overflow = vec![pk(255)];
         assert!(apply_mutation(&mut list, &overflow, &[]).is_err());
     }
 
     #[test]
-    fn allowlist_default_deny_flip_changes_resolution() {
-        let pid = pk(42);
+    fn default_deny_flip_changes_resolution() {
+        let mint = pk(42);
         let mut g = global_with(vec![], true);
-        assert!(check(Some(pid), &g, None).is_err());
+        assert!(check(mint, &g, None).is_err());
         g.default_deny = false;
-        let resolved = check(Some(pid), &g, None).unwrap();
+        let resolved = check(mint, &g, None).unwrap();
         assert!(!resolved);
     }
 }

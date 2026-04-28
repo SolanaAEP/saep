@@ -141,7 +141,7 @@ pub struct TaskPayloadStored {
 pub struct MintAccepted {
     pub mint: Pubkey,
     pub accept_flags: u32,
-    pub hook_program: Option<Pubkey>,
+    pub has_confidential_transfer: bool,
     pub slot: u64,
     pub timestamp: i64,
 }

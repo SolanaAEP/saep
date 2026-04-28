@@ -1,19 +1,19 @@
 use anchor_lang::prelude::*;
 
 use crate::errors::FeeCollectorError;
-use crate::events::{HookAllowlistInitialized, HookAllowlistUpdated};
-use crate::state::{HookAllowlist, MAX_HOOK_PROGRAMS, SEED_HOOK_ALLOWLIST};
+use crate::events::{MintAllowlistInitialized, MintAllowlistUpdated};
+use crate::state::{MintAllowlist, MAX_MINT_ALLOWLIST_PROGRAMS, SEED_MINT_ALLOWLIST};
 
 #[derive(Accounts)]
-pub struct InitHookAllowlist<'info> {
+pub struct InitMintAllowlist<'info> {
     #[account(
         init,
         payer = payer,
-        space = 8 + HookAllowlist::INIT_SPACE,
-        seeds = [SEED_HOOK_ALLOWLIST],
+        space = 8 + MintAllowlist::INIT_SPACE,
+        seeds = [SEED_MINT_ALLOWLIST],
         bump,
     )]
-    pub allowlist: Account<'info, HookAllowlist>,
+    pub allowlist: Account<'info, MintAllowlist>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -25,15 +25,15 @@ pub struct InitHookAllowlist<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn init_handler(ctx: Context<InitHookAllowlist>, default_deny: bool) -> Result<()> {
+pub fn init_handler(ctx: Context<InitMintAllowlist>, default_deny: bool) -> Result<()> {
     let a = &mut ctx.accounts.allowlist;
     a.authority = ctx.accounts.authority.key();
     a.pending_authority = None;
-    a.programs = Vec::with_capacity(MAX_HOOK_PROGRAMS);
+    a.programs = Vec::with_capacity(MAX_MINT_ALLOWLIST_PROGRAMS);
     a.default_deny = default_deny;
     a.bump = ctx.bumps.allowlist;
 
-    emit!(HookAllowlistInitialized {
+    emit!(MintAllowlistInitialized {
         authority: a.authority,
         default_deny,
         timestamp: Clock::get()?.unix_timestamp,
@@ -42,20 +42,20 @@ pub fn init_handler(ctx: Context<InitHookAllowlist>, default_deny: bool) -> Resu
 }
 
 #[derive(Accounts)]
-pub struct UpdateHookAllowlist<'info> {
+pub struct UpdateMintAllowlist<'info> {
     #[account(
         mut,
-        seeds = [SEED_HOOK_ALLOWLIST],
+        seeds = [SEED_MINT_ALLOWLIST],
         bump = allowlist.bump,
         has_one = authority @ FeeCollectorError::Unauthorized,
     )]
-    pub allowlist: Account<'info, HookAllowlist>,
+    pub allowlist: Account<'info, MintAllowlist>,
 
     pub authority: Signer<'info>,
 }
 
 pub fn update_handler(
-    ctx: Context<UpdateHookAllowlist>,
+    ctx: Context<UpdateMintAllowlist>,
     add: Vec<Pubkey>,
     remove: Vec<Pubkey>,
 ) -> Result<()> {
@@ -71,11 +71,11 @@ pub fn update_handler(
         }
     }
     require!(
-        a.programs.len() <= MAX_HOOK_PROGRAMS,
-        FeeCollectorError::HookAllowlistFull
+        a.programs.len() <= MAX_MINT_ALLOWLIST_PROGRAMS,
+        FeeCollectorError::MintAllowlistFull
     );
 
-    emit!(HookAllowlistUpdated {
+    emit!(MintAllowlistUpdated {
         added: add,
         removed: remove,
         default_deny: a.default_deny,
@@ -85,13 +85,13 @@ pub fn update_handler(
 }
 
 pub fn set_default_deny_handler(
-    ctx: Context<UpdateHookAllowlist>,
+    ctx: Context<UpdateMintAllowlist>,
     default_deny: bool,
 ) -> Result<()> {
     let a = &mut ctx.accounts.allowlist;
     a.default_deny = default_deny;
 
-    emit!(HookAllowlistUpdated {
+    emit!(MintAllowlistUpdated {
         added: vec![],
         removed: vec![],
         default_deny,
@@ -101,19 +101,19 @@ pub fn set_default_deny_handler(
 }
 
 #[derive(Accounts)]
-pub struct TransferHookAuthority<'info> {
+pub struct TransferMintAllowlistAuthority<'info> {
     #[account(
         mut,
-        seeds = [SEED_HOOK_ALLOWLIST],
+        seeds = [SEED_MINT_ALLOWLIST],
         bump = allowlist.bump,
         has_one = authority @ FeeCollectorError::Unauthorized,
     )]
-    pub allowlist: Account<'info, HookAllowlist>,
+    pub allowlist: Account<'info, MintAllowlist>,
     pub authority: Signer<'info>,
 }
 
 pub fn transfer_authority_handler(
-    ctx: Context<TransferHookAuthority>,
+    ctx: Context<TransferMintAllowlistAuthority>,
     new_authority: Pubkey,
 ) -> Result<()> {
     ctx.accounts.allowlist.pending_authority = Some(new_authority);
@@ -121,13 +121,13 @@ pub fn transfer_authority_handler(
 }
 
 #[derive(Accounts)]
-pub struct AcceptHookAuthority<'info> {
-    #[account(mut, seeds = [SEED_HOOK_ALLOWLIST], bump = allowlist.bump)]
-    pub allowlist: Account<'info, HookAllowlist>,
+pub struct AcceptMintAllowlistAuthority<'info> {
+    #[account(mut, seeds = [SEED_MINT_ALLOWLIST], bump = allowlist.bump)]
+    pub allowlist: Account<'info, MintAllowlist>,
     pub pending_authority: Signer<'info>,
 }
 
-pub fn accept_authority_handler(ctx: Context<AcceptHookAuthority>) -> Result<()> {
+pub fn accept_authority_handler(ctx: Context<AcceptMintAllowlistAuthority>) -> Result<()> {
     let a = &mut ctx.accounts.allowlist;
     let pending = a
         .pending_authority
