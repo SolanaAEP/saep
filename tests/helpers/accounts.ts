@@ -126,6 +126,38 @@ export const proofVerifierPdas = {
     ),
 };
 
+export const feeCollectorPdas = {
+  config: (): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync([Buffer.from('fee_config')], PROGRAM_IDS.fee_collector),
+  epoch: (epochId: number | bigint): [PublicKey, number] => {
+    const buf = Buffer.alloc(8);
+    buf.writeBigUInt64LE(BigInt(epochId));
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from('epoch'), buf],
+      PROGRAM_IDS.fee_collector,
+    );
+  },
+  intakeVault: (): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync([Buffer.from('intake_vault')], PROGRAM_IDS.fee_collector),
+  burnVault: (): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync([Buffer.from('burn_vault')], PROGRAM_IDS.fee_collector),
+  stakerVault: (): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync([Buffer.from('staker_vault')], PROGRAM_IDS.fee_collector),
+  transferFeeWithdrawAuthority: (): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync(
+      [Buffer.from('transfer_fee_withdraw_authority')],
+      PROGRAM_IDS.fee_collector,
+    ),
+  claim: (epochId: number | bigint, staker: PublicKey): [PublicKey, number] => {
+    const buf = Buffer.alloc(8);
+    buf.writeBigUInt64LE(BigInt(epochId));
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from('claim'), buf, staker.toBuffer()],
+      PROGRAM_IDS.fee_collector,
+    );
+  },
+};
+
 // Backwards-compat aliases for files that import the old names.
 export { capRegPdas as capReg };
 export { agentRegPdas as agentReg };
