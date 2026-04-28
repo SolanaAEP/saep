@@ -16,16 +16,16 @@ export type FeeCollector = {
   },
   "instructions": [
     {
-      "name": "acceptHookAuthority",
+      "name": "acceptMintAllowlistAuthority",
       "discriminator": [
-        95,
-        44,
-        71,
-        69,
-        253,
-        26,
-        215,
-        127
+        83,
+        119,
+        16,
+        94,
+        114,
+        8,
+        56,
+        246
       ],
       "accounts": [
         {
@@ -366,6 +366,136 @@ export type FeeCollector = {
       ]
     },
     {
+      "name": "depositSaep",
+      "discriminator": [
+        73,
+        76,
+        141,
+        21,
+        235,
+        215,
+        144,
+        133
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "externalMint",
+          "writable": true
+        },
+        {
+          "name": "internalMint",
+          "writable": true
+        },
+        {
+          "name": "depositorExternal",
+          "docs": [
+            "SPL $SAEP token account of the depositor."
+          ],
+          "writable": true
+        },
+        {
+          "name": "depositorInternal",
+          "docs": [
+            "Internal T22 token account of the depositor."
+          ],
+          "writable": true
+        },
+        {
+          "name": "depositVault",
+          "docs": [
+            "Protocol vault holding SPL $SAEP backing."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mintAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "depositor",
+          "signer": true
+        },
+        {
+          "name": "externalTokenProgram"
+        },
+        {
+          "name": "internalTokenProgram"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "executeBurn",
       "discriminator": [
         234,
@@ -465,16 +595,298 @@ export type FeeCollector = {
       ]
     },
     {
-      "name": "initAgentHookAllowlist",
+      "name": "harvestConfidentialFees",
       "discriminator": [
-        3,
-        3,
-        31,
-        107,
+        75,
+        72,
+        225,
+        51,
+        34,
+        119,
+        20,
+        50
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "currentEpoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.next_epoch_id.saturating_sub(1)",
+                "account": "feeCollectorConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "saepMint",
+          "writable": true
+        },
+        {
+          "name": "intakeVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  116,
+                  97,
+                  107,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "feeWithdrawAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  97,
+                  110,
+                  115,
+                  102,
+                  101,
+                  114,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  119,
+                  105,
+                  116,
+                  104,
+                  100,
+                  114,
+                  97,
+                  119,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "harvestTransferFees",
+      "discriminator": [
+        246,
         104,
-        128,
-        142,
-        35
+        231,
+        171,
+        131,
+        105,
+        50,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "currentEpoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.next_epoch_id.saturating_sub(1)",
+                "account": "feeCollectorConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "saepMint",
+          "writable": true
+        },
+        {
+          "name": "intakeVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  116,
+                  97,
+                  107,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "feeWithdrawAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  97,
+                  110,
+                  115,
+                  102,
+                  101,
+                  114,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  119,
+                  105,
+                  116,
+                  104,
+                  100,
+                  114,
+                  97,
+                  119,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initAgentMintAllowlist",
+      "discriminator": [
+        105,
+        58,
+        176,
+        50,
+        240,
+        1,
+        62,
+        58
       ],
       "accounts": [
         {
@@ -756,16 +1168,16 @@ export type FeeCollector = {
       ]
     },
     {
-      "name": "initHookAllowlist",
+      "name": "initMintAllowlist",
       "discriminator": [
-        203,
-        85,
-        11,
-        47,
-        15,
-        16,
-        166,
-        38
+        17,
+        183,
+        106,
+        209,
+        234,
+        14,
+        0,
+        253
       ],
       "accounts": [
         {
@@ -1314,6 +1726,54 @@ export type FeeCollector = {
       ]
     },
     {
+      "name": "setConfidentialTransfers",
+      "discriminator": [
+        89,
+        244,
+        199,
+        206,
+        160,
+        44,
+        207,
+        126
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "setDefaultDeny",
       "discriminator": [
         81,
@@ -1635,16 +2095,16 @@ export type FeeCollector = {
       ]
     },
     {
-      "name": "transferHookAuthority",
+      "name": "transferMintAllowlistAuthority",
       "discriminator": [
-        40,
-        141,
-        27,
-        143,
-        115,
-        132,
-        27,
-        111
+        185,
+        217,
+        70,
+        47,
+        192,
+        177,
+        67,
+        121
       ],
       "accounts": [
         {
@@ -1690,16 +2150,16 @@ export type FeeCollector = {
       ]
     },
     {
-      "name": "updateAgentHookAllowlist",
+      "name": "updateAgentMintAllowlist",
       "discriminator": [
-        4,
-        6,
-        95,
-        64,
-        132,
-        214,
-        121,
-        6
+        164,
+        164,
+        230,
+        227,
+        45,
+        92,
+        88,
+        206
       ],
       "accounts": [
         {
@@ -1752,7 +2212,7 @@ export type FeeCollector = {
               {
                 "kind": "account",
                 "path": "agent.agent_did",
-                "account": "agentHookAllowlist"
+                "account": "agentMintAllowlist"
               }
             ]
           }
@@ -1781,16 +2241,16 @@ export type FeeCollector = {
       ]
     },
     {
-      "name": "updateHookAllowlist",
+      "name": "updateMintAllowlist",
       "discriminator": [
-        221,
-        65,
-        122,
-        15,
-        71,
-        72,
-        185,
-        111
+        170,
+        125,
+        146,
+        149,
+        76,
+        152,
+        190,
+        24
       ],
       "accounts": [
         {
@@ -1842,20 +2302,150 @@ export type FeeCollector = {
           }
         }
       ]
+    },
+    {
+      "name": "withdrawSaep",
+      "discriminator": [
+        158,
+        242,
+        130,
+        67,
+        232,
+        20,
+        180,
+        172
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "externalMint",
+          "writable": true
+        },
+        {
+          "name": "internalMint",
+          "writable": true
+        },
+        {
+          "name": "withdrawerInternal",
+          "docs": [
+            "Internal T22 token account of the withdrawer (tokens get burned)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "withdrawerExternal",
+          "docs": [
+            "SPL $SAEP destination for the withdrawer."
+          ],
+          "writable": true
+        },
+        {
+          "name": "depositVault",
+          "docs": [
+            "Protocol vault holding SPL $SAEP backing."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mintAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "withdrawer",
+          "signer": true
+        },
+        {
+          "name": "externalTokenProgram"
+        },
+        {
+          "name": "internalTokenProgram"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
     {
-      "name": "agentHookAllowlist",
+      "name": "agentMintAllowlist",
       "discriminator": [
-        237,
-        186,
-        161,
-        34,
-        128,
-        43,
-        189,
-        86
+        201,
+        14,
+        187,
+        228,
+        23,
+        216,
+        80,
+        240
       ]
     },
     {
@@ -1898,16 +2488,16 @@ export type FeeCollector = {
       ]
     },
     {
-      "name": "hookAllowlist",
+      "name": "mintAllowlist",
       "discriminator": [
-        252,
+        155,
+        85,
+        58,
+        143,
+        107,
+        199,
         161,
-        123,
-        56,
-        148,
-        215,
-        101,
-        245
+        198
       ]
     },
     {
@@ -1939,16 +2529,16 @@ export type FeeCollector = {
   ],
   "events": [
     {
-      "name": "agentHookAllowlistUpdated",
+      "name": "agentMintAllowlistUpdated",
       "discriminator": [
-        124,
-        73,
-        172,
-        159,
-        112,
-        203,
-        20,
-        172
+        208,
+        27,
+        190,
+        237,
+        156,
+        250,
+        95,
+        249
       ]
     },
     {
@@ -1975,6 +2565,32 @@ export type FeeCollector = {
         198,
         7,
         231
+      ]
+    },
+    {
+      "name": "confidentialFeesCollected",
+      "discriminator": [
+        202,
+        77,
+        38,
+        6,
+        11,
+        203,
+        72,
+        214
+      ]
+    },
+    {
+      "name": "confidentialTransfersToggled",
+      "discriminator": [
+        65,
+        45,
+        132,
+        98,
+        13,
+        15,
+        116,
+        123
       ]
     },
     {
@@ -2069,45 +2685,6 @@ export type FeeCollector = {
       ]
     },
     {
-      "name": "hookAllowlistInitialized",
-      "discriminator": [
-        105,
-        19,
-        169,
-        167,
-        13,
-        48,
-        34,
-        167
-      ]
-    },
-    {
-      "name": "hookAllowlistUpdated",
-      "discriminator": [
-        122,
-        246,
-        214,
-        53,
-        41,
-        164,
-        241,
-        135
-      ]
-    },
-    {
-      "name": "hookRejected",
-      "discriminator": [
-        108,
-        207,
-        249,
-        27,
-        219,
-        185,
-        119,
-        73
-      ]
-    },
-    {
       "name": "mintAccepted",
       "discriminator": [
         64,
@@ -2118,6 +2695,45 @@ export type FeeCollector = {
         172,
         222,
         50
+      ]
+    },
+    {
+      "name": "mintAllowlistInitialized",
+      "discriminator": [
+        112,
+        25,
+        201,
+        145,
+        179,
+        112,
+        73,
+        28
+      ]
+    },
+    {
+      "name": "mintAllowlistUpdated",
+      "discriminator": [
+        116,
+        189,
+        207,
+        216,
+        216,
+        164,
+        15,
+        135
+      ]
+    },
+    {
+      "name": "mintRejected",
+      "discriminator": [
+        21,
+        112,
+        77,
+        100,
+        147,
+        142,
+        93,
+        92
       ]
     },
     {
@@ -2144,6 +2760,32 @@ export type FeeCollector = {
         49,
         86,
         89
+      ]
+    },
+    {
+      "name": "saepDeposited",
+      "discriminator": [
+        217,
+        159,
+        93,
+        214,
+        26,
+        149,
+        2,
+        249
+      ]
+    },
+    {
+      "name": "saepWithdrawn",
+      "discriminator": [
+        240,
+        28,
+        228,
+        10,
+        187,
+        144,
+        234,
+        230
       ]
     },
     {
@@ -2181,183 +2823,213 @@ export type FeeCollector = {
     },
     {
       "code": 6001,
+      "name": "mintNotAllowed",
+      "msg": "mint is not on the allowlist"
+    },
+    {
+      "code": 6002,
+      "name": "mintAllowlistFull",
+      "msg": "mint allowlist is at capacity"
+    },
+    {
+      "code": 6003,
+      "name": "agentMintAllowlistFull",
+      "msg": "per-agent mint allowlist is at capacity"
+    },
+    {
+      "code": 6004,
+      "name": "confidentialTransfersDisabled",
+      "msg": "confidential transfers are not enabled"
+    },
+    {
+      "code": 6005,
       "name": "hookNotAllowed",
       "msg": "transfer-hook program is not on the allowlist"
     },
     {
-      "code": 6002,
+      "code": 6006,
       "name": "hookAllowlistFull",
       "msg": "hook allowlist is at capacity"
     },
     {
-      "code": 6003,
+      "code": 6007,
       "name": "agentHookAllowlistFull",
       "msg": "per-agent hook allowlist is at capacity"
     },
     {
-      "code": 6004,
+      "code": 6008,
       "name": "invalidProgramId",
       "msg": "program id must be a non-default pubkey"
     },
     {
-      "code": 6005,
+      "code": 6009,
       "name": "mintExtensionRejected",
       "msg": "mint extension configuration is not acceptable"
     },
     {
-      "code": 6006,
+      "code": 6010,
       "name": "mintParseFailed",
       "msg": "failed to parse Token-2022 mint extensions"
     },
     {
-      "code": 6007,
+      "code": 6011,
       "name": "noPendingAuthority",
       "msg": "no pending authority to accept"
     },
     {
-      "code": 6008,
+      "code": 6012,
       "name": "reentrancyDetected",
       "msg": "reentrancy detected — guard is already active"
     },
     {
-      "code": 6009,
+      "code": 6013,
       "name": "unauthorizedCaller",
       "msg": "caller program is not on the allowed callers list"
     },
     {
-      "code": 6010,
+      "code": 6014,
       "name": "callerGuardNotActive",
       "msg": "caller program's reentrancy guard is not active"
     },
     {
-      "code": 6011,
+      "code": 6015,
       "name": "cpiDepthExceeded",
       "msg": "cpi stack height exceeds allowed bound"
     },
     {
-      "code": 6012,
+      "code": 6016,
       "name": "guardAlreadyActive",
       "msg": "reentrancy guard is already active"
     },
     {
-      "code": 6013,
+      "code": 6017,
       "name": "guardNotInitialized",
       "msg": "reentrancy guard has not been initialized"
     },
     {
-      "code": 6014,
+      "code": 6018,
       "name": "adminResetNotTimelocked",
       "msg": "admin reset has not met the 24h timelock"
     },
     {
-      "code": 6015,
+      "code": 6019,
       "name": "paused",
       "msg": "program is paused"
     },
     {
-      "code": 6016,
+      "code": 6020,
       "name": "invalidBpsSum",
       "msg": "bps quadruple must sum to 10000"
     },
     {
-      "code": 6017,
+      "code": 6021,
       "name": "bucketCapExceeded",
       "msg": "bucket bps exceeds its hard cap"
     },
     {
-      "code": 6018,
+      "code": 6022,
       "name": "epochNotOpen",
       "msg": "epoch is not in Open status"
     },
     {
-      "code": 6019,
+      "code": 6023,
       "name": "epochNotElapsed",
       "msg": "epoch duration has not elapsed"
     },
     {
-      "code": 6020,
+      "code": 6024,
       "name": "intakeAccountingDrift",
       "msg": "intake vault balance does not match total_collected"
     },
     {
-      "code": 6021,
+      "code": 6025,
       "name": "distributionAlreadyCommitted",
       "msg": "distribution root already committed for this epoch"
     },
     {
-      "code": 6022,
+      "code": 6026,
       "name": "distributionWindowElapsed",
       "msg": "distribution commit window has elapsed"
     },
     {
-      "code": 6023,
+      "code": 6027,
       "name": "merkleProofInvalid",
       "msg": "merkle proof is invalid"
     },
     {
-      "code": 6024,
+      "code": 6028,
       "name": "merkleProofTooDeep",
       "msg": "merkle proof exceeds max depth"
     },
     {
-      "code": 6025,
+      "code": 6029,
       "name": "claimOverflow",
       "msg": "claim would exceed staker_amount for this epoch"
     },
     {
-      "code": 6026,
+      "code": 6030,
       "name": "claimWindowElapsed",
       "msg": "claim window has elapsed"
     },
     {
-      "code": 6027,
+      "code": 6031,
       "name": "burnBelowThreshold",
       "msg": "burn amount below minimum threshold"
     },
     {
-      "code": 6028,
+      "code": 6032,
       "name": "burnAlreadyExecuted",
       "msg": "burn already executed for this epoch"
     },
     {
-      "code": 6029,
+      "code": 6033,
       "name": "sweepGraceNotElapsed",
       "msg": "sweep grace period has not elapsed"
     },
     {
-      "code": 6030,
+      "code": 6034,
       "name": "alreadySwept",
       "msg": "epoch has already been swept"
     },
     {
-      "code": 6031,
+      "code": 6035,
       "name": "invalidEpochStatus",
       "msg": "invalid epoch status for this operation"
     },
     {
-      "code": 6032,
+      "code": 6036,
       "name": "arithmeticOverflow",
       "msg": "arithmetic overflow"
     },
     {
-      "code": 6033,
+      "code": 6037,
       "name": "callerNotRegisteredSlasher",
       "msg": "caller is not a registered slash source"
     },
     {
-      "code": 6034,
+      "code": 6038,
       "name": "invalidEpochDuration",
       "msg": "epoch duration out of allowed range"
     },
     {
-      "code": 6035,
+      "code": 6039,
       "name": "invalidClaimWindow",
       "msg": "claim window out of allowed range"
+    },
+    {
+      "code": 6040,
+      "name": "zeroDeposit",
+      "msg": "deposit amount must be greater than zero"
+    },
+    {
+      "code": 6041,
+      "name": "insufficientBalance",
+      "msg": "withdraw amount exceeds available balance"
     }
   ],
   "types": [
     {
-      "name": "agentHookAllowlist",
+      "name": "agentMintAllowlist",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2384,7 +3056,7 @@ export type FeeCollector = {
       }
     },
     {
-      "name": "agentHookAllowlistUpdated",
+      "name": "agentMintAllowlistUpdated",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2474,6 +3146,50 @@ export type FeeCollector = {
           {
             "name": "amount",
             "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "confidentialFeesCollected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epochId",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "collector",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "confidentialTransfersToggled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
           },
           {
             "name": "timestamp",
@@ -2772,6 +3488,10 @@ export type FeeCollector = {
             "type": "pubkey"
           },
           {
+            "name": "externalSaepMint",
+            "type": "pubkey"
+          },
+          {
             "name": "grantRecipient",
             "type": "pubkey"
           },
@@ -2829,6 +3549,10 @@ export type FeeCollector = {
           },
           {
             "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "confidentialTransfersEnabled",
             "type": "bool"
           },
           {
@@ -2911,110 +3635,6 @@ export type FeeCollector = {
       }
     },
     {
-      "name": "hookAllowlist",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "authority",
-            "type": "pubkey"
-          },
-          {
-            "name": "pendingAuthority",
-            "type": {
-              "option": "pubkey"
-            }
-          },
-          {
-            "name": "programs",
-            "type": {
-              "vec": "pubkey"
-            }
-          },
-          {
-            "name": "defaultDeny",
-            "type": "bool"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "hookAllowlistInitialized",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "authority",
-            "type": "pubkey"
-          },
-          {
-            "name": "defaultDeny",
-            "type": "bool"
-          },
-          {
-            "name": "timestamp",
-            "type": "i64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "hookAllowlistUpdated",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "added",
-            "type": {
-              "vec": "pubkey"
-            }
-          },
-          {
-            "name": "removed",
-            "type": {
-              "vec": "pubkey"
-            }
-          },
-          {
-            "name": "defaultDeny",
-            "type": "bool"
-          },
-          {
-            "name": "timestamp",
-            "type": "i64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "hookRejected",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "mint",
-            "type": "pubkey"
-          },
-          {
-            "name": "hookProgram",
-            "type": "pubkey"
-          },
-          {
-            "name": "site",
-            "type": "u8"
-          },
-          {
-            "name": "timestamp",
-            "type": "i64"
-          }
-        ]
-      }
-    },
-    {
       "name": "initConfigParams",
       "type": {
         "kind": "struct",
@@ -3049,6 +3669,10 @@ export type FeeCollector = {
           },
           {
             "name": "saepMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "externalSaepMint",
             "type": "pubkey"
           },
           {
@@ -3104,14 +3728,116 @@ export type FeeCollector = {
             "type": "u32"
           },
           {
-            "name": "hookProgram",
+            "name": "hasConfidentialTransfer",
+            "type": "bool"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mintAllowlist",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pendingAuthority",
             "type": {
               "option": "pubkey"
             }
           },
           {
-            "name": "slot",
-            "type": "u64"
+            "name": "programs",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "defaultDeny",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mintAllowlistInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "defaultDeny",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mintAllowlistUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "added",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "removed",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "defaultDeny",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mintRejected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "reason",
+            "type": "u8"
+          },
+          {
+            "name": "site",
+            "type": "u8"
           },
           {
             "name": "timestamp",
@@ -3184,6 +3910,46 @@ export type FeeCollector = {
           {
             "name": "slot",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "saepDeposited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "depositor",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "saepWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "withdrawer",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }

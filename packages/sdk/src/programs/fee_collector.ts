@@ -8,6 +8,9 @@ import {
   intakeVaultPda,
   burnVaultPda,
   stakerVaultPda,
+  depositVaultPda,
+  mintAuthorityPda,
+  transferFeeWithdrawAuthorityPda,
 } from '../pda/index.js';
 
 export interface ClaimStakerInput {
@@ -114,6 +117,162 @@ export async function buildExecuteBurnIx(
       burnVault,
       cranker: input.cranker,
       tokenProgram: input.tokenProgram,
+    } as never)
+    .instruction();
+}
+
+export interface DepositSaepInput {
+  depositor: PublicKey;
+  externalMint: PublicKey;
+  internalMint: PublicKey;
+  depositorExternal: PublicKey;
+  depositorInternal: PublicKey;
+  externalTokenProgram: PublicKey;
+  internalTokenProgram: PublicKey;
+  amount: bigint;
+}
+
+export async function buildDepositSaepIx(
+  program: Program<FeeCollector>,
+  input: DepositSaepInput,
+): Promise<TransactionInstruction> {
+  const [config] = feeConfigPda(program.programId);
+  const [depositVault] = depositVaultPda(program.programId);
+  const [mintAuthority] = mintAuthorityPda(program.programId);
+
+  return program.methods
+    .depositSaep(new BN(input.amount.toString()))
+    .accounts({
+      config,
+      externalMint: input.externalMint,
+      internalMint: input.internalMint,
+      depositorExternal: input.depositorExternal,
+      depositorInternal: input.depositorInternal,
+      depositVault,
+      mintAuthority,
+      depositor: input.depositor,
+      externalTokenProgram: input.externalTokenProgram,
+      internalTokenProgram: input.internalTokenProgram,
+    } as never)
+    .instruction();
+}
+
+export interface WithdrawSaepInput {
+  withdrawer: PublicKey;
+  externalMint: PublicKey;
+  internalMint: PublicKey;
+  withdrawerExternal: PublicKey;
+  withdrawerInternal: PublicKey;
+  externalTokenProgram: PublicKey;
+  internalTokenProgram: PublicKey;
+  amount: bigint;
+}
+
+export async function buildWithdrawSaepIx(
+  program: Program<FeeCollector>,
+  input: WithdrawSaepInput,
+): Promise<TransactionInstruction> {
+  const [config] = feeConfigPda(program.programId);
+  const [depositVault] = depositVaultPda(program.programId);
+  const [mintAuthority] = mintAuthorityPda(program.programId);
+
+  return program.methods
+    .withdrawSaep(new BN(input.amount.toString()))
+    .accounts({
+      config,
+      externalMint: input.externalMint,
+      internalMint: input.internalMint,
+      withdrawerInternal: input.withdrawerInternal,
+      withdrawerExternal: input.withdrawerExternal,
+      depositVault,
+      mintAuthority,
+      withdrawer: input.withdrawer,
+      externalTokenProgram: input.externalTokenProgram,
+      internalTokenProgram: input.internalTokenProgram,
+    } as never)
+    .instruction();
+}
+
+export interface HarvestFeesInput {
+  cranker: PublicKey;
+  saepMint: PublicKey;
+  currentEpochId: bigint;
+  tokenProgram: PublicKey;
+  remainingAccounts?: { pubkey: PublicKey; isSigner: boolean; isWritable: boolean }[];
+}
+
+export async function buildHarvestTransferFeesIx(
+  program: Program<FeeCollector>,
+  input: HarvestFeesInput,
+): Promise<TransactionInstruction> {
+  const [config] = feeConfigPda(program.programId);
+  const [currentEpoch] = epochPda(program.programId, input.currentEpochId);
+  const [intakeVault] = intakeVaultPda(program.programId);
+  const [feeWithdrawAuthority] = transferFeeWithdrawAuthorityPda(program.programId);
+
+  let builder = program.methods
+    .harvestTransferFees()
+    .accounts({
+      config,
+      currentEpoch,
+      saepMint: input.saepMint,
+      intakeVault,
+      feeWithdrawAuthority,
+      cranker: input.cranker,
+      tokenProgram: input.tokenProgram,
+    } as never);
+
+  if (input.remainingAccounts?.length) {
+    builder = builder.remainingAccounts(input.remainingAccounts);
+  }
+
+  return builder.instruction();
+}
+
+export async function buildHarvestConfidentialFeesIx(
+  program: Program<FeeCollector>,
+  input: HarvestFeesInput,
+): Promise<TransactionInstruction> {
+  const [config] = feeConfigPda(program.programId);
+  const [currentEpoch] = epochPda(program.programId, input.currentEpochId);
+  const [intakeVault] = intakeVaultPda(program.programId);
+  const [feeWithdrawAuthority] = transferFeeWithdrawAuthorityPda(program.programId);
+
+  let builder = program.methods
+    .harvestConfidentialFees()
+    .accounts({
+      config,
+      currentEpoch,
+      saepMint: input.saepMint,
+      intakeVault,
+      feeWithdrawAuthority,
+      cranker: input.cranker,
+      tokenProgram: input.tokenProgram,
+    } as never);
+
+  if (input.remainingAccounts?.length) {
+    builder = builder.remainingAccounts(input.remainingAccounts);
+  }
+
+  return builder.instruction();
+}
+
+export interface SetConfidentialTransfersInput {
+  authority: PublicKey;
+  enabled: boolean;
+}
+
+export async function buildSetConfidentialTransfersIx(
+  program: Program<FeeCollector>,
+  input: SetConfidentialTransfersInput,
+): Promise<TransactionInstruction> {
+  const [config] = feeConfigPda(program.programId);
+
+  return program.methods
+    .setConfidentialTransfers(input.enabled)
+    .accounts({
+      config,
+      authority: input.authority,
     } as never)
     .instruction();
 }

@@ -5193,7 +5193,7 @@ export type TreasuryStandard = {
       }
     },
     {
-      "name": "agentHookAllowlist",
+      "name": "agentMintAllowlist",
       "type": {
         "kind": "struct",
         "fields": [
@@ -5459,38 +5459,6 @@ export type TreasuryStandard = {
       }
     },
     {
-      "name": "hookAllowlist",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "authority",
-            "type": "pubkey"
-          },
-          {
-            "name": "pendingAuthority",
-            "type": {
-              "option": "pubkey"
-            }
-          },
-          {
-            "name": "programs",
-            "type": {
-              "vec": "pubkey"
-            }
-          },
-          {
-            "name": "defaultDeny",
-            "type": "bool"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "limitsUpdated",
       "type": {
         "kind": "struct",
@@ -5519,6 +5487,38 @@ export type TreasuryStandard = {
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mintAllowlist",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pendingAuthority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "programs",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "defaultDeny",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }

@@ -157,6 +157,102 @@ export type NxsStaking = {
       "args": []
     },
     {
+      "name": "closePool",
+      "discriminator": [
+        140,
+        189,
+        209,
+        23,
+        239,
+        62,
+        239,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  105,
+                  110,
+                  103,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "pool"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "freezeDeposits",
+      "discriminator": [
+        247,
+        191,
+        178,
+        18,
+        206,
+        243,
+        133,
+        118
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  105,
+                  110,
+                  103,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "pool"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "initGuard",
       "discriminator": [
         80,
@@ -277,6 +373,32 @@ export type NxsStaking = {
       ],
       "accounts": [
         {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  105,
+                  110,
+                  103,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "pool",
           "writable": true,
           "pda": {
@@ -304,7 +426,10 @@ export type NxsStaking = {
         {
           "name": "authority",
           "writable": true,
-          "signer": true
+          "signer": true,
+          "relations": [
+            "config"
+          ]
         },
         {
           "name": "systemProgram",
@@ -379,6 +504,64 @@ export type NxsStaking = {
       "args": [
         {
           "name": "authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "migrateApyAuthority",
+      "discriminator": [
+        104,
+        167,
+        17,
+        46,
+        40,
+        86,
+        154,
+        16
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  105,
+                  110,
+                  103,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "oldMint",
+          "type": "pubkey"
+        },
+        {
+          "name": "newMint",
           "type": "pubkey"
         }
       ]
@@ -548,6 +731,32 @@ export type NxsStaking = {
       ],
       "accounts": [
         {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  105,
+                  110,
+                  103,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "pool",
           "writable": true,
           "pda": {
@@ -605,9 +814,12 @@ export type NxsStaking = {
           }
         },
         {
-          "name": "cranker",
+          "name": "authority",
           "writable": true,
-          "signer": true
+          "signer": true,
+          "relations": [
+            "config"
+          ]
         },
         {
           "name": "systemProgram",
@@ -747,6 +959,54 @@ export type NxsStaking = {
           "type": "i64"
         }
       ]
+    },
+    {
+      "name": "unfreezeDeposits",
+      "discriminator": [
+        49,
+        219,
+        228,
+        140,
+        125,
+        105,
+        54,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  105,
+                  110,
+                  103,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "pool"
+          ]
+        }
+      ],
+      "args": []
     },
     {
       "name": "withdraw",
@@ -956,6 +1216,45 @@ export type NxsStaking = {
       ]
     },
     {
+      "name": "apyAuthorityMigrated",
+      "discriminator": [
+        23,
+        249,
+        157,
+        195,
+        211,
+        14,
+        210,
+        165
+      ]
+    },
+    {
+      "name": "depositsFrozen",
+      "discriminator": [
+        99,
+        224,
+        136,
+        147,
+        198,
+        70,
+        82,
+        116
+      ]
+    },
+    {
+      "name": "depositsUnfrozen",
+      "discriminator": [
+        15,
+        148,
+        160,
+        231,
+        26,
+        25,
+        146,
+        100
+      ]
+    },
+    {
       "name": "epochSnapshotted",
       "discriminator": [
         111,
@@ -1005,6 +1304,19 @@ export type NxsStaking = {
         16,
         25,
         100
+      ]
+    },
+    {
+      "name": "poolClosed",
+      "discriminator": [
+        106,
+        46,
+        29,
+        231,
+        42,
+        44,
+        73,
+        119
       ]
     },
     {
@@ -1158,6 +1470,26 @@ export type NxsStaking = {
       "code": 6016,
       "name": "epochNotEnded",
       "msg": "epoch has not ended yet"
+    },
+    {
+      "code": 6017,
+      "name": "depositsFrozen",
+      "msg": "deposits are frozen for this pool (migration window)"
+    },
+    {
+      "code": 6018,
+      "name": "depositsNotFrozen",
+      "msg": "deposits are not frozen; nothing to unfreeze"
+    },
+    {
+      "code": 6019,
+      "name": "poolClosed",
+      "msg": "staking pool is closed; no new state transitions"
+    },
+    {
+      "code": 6020,
+      "name": "migrationWindowActive",
+      "msg": "migration window still active; pool has stake and grace period has not elapsed"
     }
   ],
   "types": [
@@ -1191,6 +1523,70 @@ export type NxsStaking = {
           {
             "name": "count",
             "type": "u16"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "apyAuthorityMigrated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "newMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "attestedAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "depositsFrozen",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pauseNewStakesAt",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "depositsUnfrozen",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
           },
           {
             "name": "timestamp",
@@ -1278,6 +1674,30 @@ export type NxsStaking = {
           },
           {
             "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "poolClosed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "totalStakedAtClose",
+            "type": "u64"
+          },
+          {
+            "name": "closedAt",
             "type": "i64"
           }
         ]
@@ -1530,6 +1950,22 @@ export type NxsStaking = {
           {
             "name": "paused",
             "type": "bool"
+          },
+          {
+            "name": "pauseNewStakes",
+            "type": "bool"
+          },
+          {
+            "name": "pauseNewStakesAt",
+            "type": "i64"
+          },
+          {
+            "name": "closed",
+            "type": "bool"
+          },
+          {
+            "name": "closedAt",
+            "type": "i64"
           },
           {
             "name": "bump",
