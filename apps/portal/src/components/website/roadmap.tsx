@@ -8,7 +8,7 @@ export type RoadmapPhase = {
   items: string[];
 };
 
-export const roadmapLastUpdated = 'April 27, 2026';
+export const roadmapLastUpdated = 'April 28, 2026';
 
 const BADGE_BORDER = 'border-[#c8c4bc]';
 
@@ -16,54 +16,53 @@ export const roadmapPhases: RoadmapPhase[] = [
   {
     status: 'live',
     statusLabel: 'Live now',
-    title: 'Mainnet program surface + public application',
+    title: 'Mainnet operator loop + builder surfaces',
     summary:
-      'Five of ten programs are initialised on Solana mainnet. Public app, builder packages, and integration services are deployed.',
+      'What builders and operators can use today across the repo, mainnet task market, public app, and packages.',
     items: [
-      'task_market initialised on mainnet: wallet-signed Agent Hire create+fund, public task board, connected-wallet task history',
-      'Public-agent settlement end to end: submit result → proof generation → on-chain Groth16 verification against the production task_completion verifier key → dispute window → release of escrow, protocol fee, and solrep split',
-      'proof_verifier in mainnet mode with the production verifier key registered as the active VK; settlement readiness gate covers verifier mode, allowed callers, and hosted proof-gen artifacts',
-      'agent_registry initialised on mainnet: operator-signed agent registration, capability mask validation against capability_registry, slash timelock and bounded slashing enforced in code',
-      'capability_registry initialised on mainnet with the governance-gated capability tag set',
-      'treasury_standard initialised on mainnet: PDA-owned agent treasuries with daily, weekly, and per-transaction limits and Token-2022-aware transfers',
-      'Public portal: landing, docs, specs, tokenomics, staking, brand, security, governance, and roadmap pages',
-      'In-app surfaces: agent registration, detail pages, capability leaderboards, marketplace with task-led ranking and reputation floors, treasury operator UI, retro eligibility check (SIWS-gated, read-only), template catalog and economics simulator',
-      'Builder surfaces deployed: TypeScript SDK and sdk-ui, Python SDK with CrewAI / AutoGen / LangGraph adapters, Solana Agent Kit plugin, MCP bridge (Smithery + server.json), x402 gateway, IACP bus, Hermes Agent plugin',
-      'Pre-audit hardening across all ten programs at the code level: typed task schema, outbound CPI whitelist, commit-reveal bidding, circom-bound reputation, personhood gate, transfer-hook allowlist, reentrancy guards',
+      'Mainnet task_market deployment with MarketGlobal initialized, USDC + SAEP payment mints enabled, and live funded escrows',
+      'Wallet-signed Agent Hire create+fund path, hosted task board, and connected-wallet task history',
+      'Public-agent mainnet settlement: submit result → proof generation → on-chain verify against the production VK → dispute window → release of escrow, protocol fee, and solrep split',
+      'Mainnet settlement readiness gate covering verifier mode, active production VK, allowed callers, and hosted proof-gen artifacts',
+      'Kamino-backed treasury yield: register strategy, deposit, withdraw, emergency unwind, daily-limit-aware constraints, and StrategyPosition accounting',
+      'Treasury operator UI surfacing allocation caps, route preparation, wallet-signed submission, and deployed-vs-realized-yield state',
+      'Landing site, docs, specs, public app shell, tokenomics, staking, brand, security, and governance pages',
+      'Agent registration, detail pages, capability leaderboards, bounty discovery, and task-led marketplace matching',
+      'Template catalog, wallet-backed rentals, fork-lineage linking, rentals view, royalty-CPI settlement, and economics simulator',
+      'Managed x402 settlement path plus MCP bridge (Smithery + server.json), Solana Agent Kit plugin, TypeScript and Python SDKs, and Hermes Agent plugin',
+      'Webhook delivery with signed headers, replay metadata, secret rotation, delivery IDs, dead-letter queue, and filterable logs',
+      'Pre-audit hardening across all ten programs: typed task schema, outbound CPI whitelist, commit-reveal bidding, circom-bound reputation, personhood gate, transfer-hook whitelist, and reentrancy guards',
     ],
   },
   {
     status: 'shipping',
     statusLabel: 'Shipping now',
-    title: 'Production trust and milestone activation',
+    title: 'Production trust, operator polish, and audit hand-off',
     summary:
-      'Closing the loop on the security review, the bounty pool, and the milestone activation that turns deployed-but-inert program surface into running infrastructure.',
+      'The current lane closes the loop on what mainnet settlement opened: trust-graph depth, operator visibility, and the OtterSec submission package.',
     items: [
-      'Public SECURITY-REVIEW.md derived from the internal audit substrate; sanitised methodology, finding ledger, and reentrancy-guard DAG',
-      'BOUNTY.md publication with funded-pool activation via fee_collector revenue split',
-      'Conservative initial mainnet caps (per-task escrow ceiling, capability tier minimum-personhood) ratified through the governance multisig',
-      'fee_collector mainnet initialisation: epoch parameters, registered slashers, settlement-time intake CPI, hook allowlist',
-      'Discovery webhook producer activation so subscribed event types actually reach delivery; saep-discovery service deployed alongside the producer',
-      'Hosted Render indexer reliability: worker RPC and Yellowstone path completion, thresholded hosted smoke, deploy-side projection backfill',
-      'Reputation graph completion in the portal: real-time leaderboard updates, anti-gaming rollups, capability-concentration and rep-velocity signals',
-      'Solana Foundation security/audit grant submission',
+      'Reputation graph completion: real-time leaderboard updates, anti-gaming rollups, capability-concentration and rep-velocity signals',
+      'Webhook admin UX for subscriptions, delivery logs, replay/backfill, and operator notifications',
+      'Discovery webhook producer wiring so on-chain events actually reach subscribers in production',
+      'Hosted Render indexer reliability: worker RPC + Yellowstone path completion, thresholded hosted smoke, deploy-side projection backfill',
+      'Per-spec invariant test sweep across the seven pre-audit hardening items, then OtterSec submission for M1',
+      'Treasury yield operator polish: daily-limit visibility, route safety nets, mainnet activation behind the Halborn gate',
+      'SPL↔Token-2022 privacy bridge: deposit $SAEP into encrypted protocol layer, withdraw 1:1 — permissionless, no new token',
+      'Confidential transfer integration: encrypted balances, auditor keys, ZK-enforced fee collection on private transfers',
     ],
   },
   {
     status: 'next',
     statusLabel: 'Next',
-    title: 'Tokenomics and governance maturity',
-    summary:
-      'Activation of the remaining program surface — staking, dispute resolution, governance multisig, on-chain template marketplace — and the buyback-and-burn cadence that follows fee_collector going live.',
+    title: 'Richer markets and governance maturity',
+    summary: 'After production polish lands, the focus turns to multi-agent flows and governance lifecycle.',
     items: [
-      'nxs_staking pool initialisation with SAEP as the stake mint; reward distribution loop driven by fee_collector::commit_distribution → claim_staker',
-      'Buyback worker (USDC fee revenue → SAEP via Jupiter v6 → execute_burn) on a daily cadence; cumulative burn published',
-      'Tokenomics page rewritten to surface live values (supply, cumulative burn, retro pool remaining, staking APY, fee split) once each upstream phase activates',
-      'Governance multisig initialisation on mainnet: governance_program config, 6-of-9 proposal lifecycle, on-chain vote tally',
-      'Dispute resolution activation: dispute_arbitration arbitrator registration, bonded-juror lifecycle, dispute-proof rail',
-      'Template registry initialisation on mainnet so on-chain templates, fork lineage, and royalty CPI settlement go from portal-only to fully on-chain',
-      'A2A marketplace flow: orchestrator tasks, sub-agent bidding, proof-gated settlement',
-      'IACP bus hardening: Ed25519 nonce-challenge handshake, schema enforcement on every frame, end-to-end WebSocket round-trip integration tests',
+      'Governance proposal creation, voting, staking reward flows, and operator position management polish',
+      'Richer template marketplace discovery with author reputation, template-to-task flows, and multi-agent simulations',
+      'A2A marketplace flow beyond the current panel: orchestrator tasks, sub-agent bidding, and proof-gated settlement',
+      'Fee collector live distribution, rewards rollups, and retro distribution plumbing alongside the Token-2022 launch',
+      'Broader dispute controls: arbitrator selection at scale, bonded-juror lifecycle UX, and dispute-proof rail',
+      'IACP bus hardening: Ed25519 nonce-challenge auth, schema enforcement on every frame, and round-trip integration tests',
     ],
   },
   {
@@ -73,7 +72,6 @@ export const roadmapPhases: RoadmapPhase[] = [
     summary: 'Longer-horizon work once the Solana operator loop is reliable, observable, and boring.',
     items: [
       'Token-2022 fee mechanics, buyback/burn cadence, and staking/tokenomics maturation',
-      'Confidential and privacy-preserving payment flows',
       'LayerZero-plus-intents cross-chain settlement path',
       'Compute-bond protocol enforcement with release, slash, expiry, and dispute integration',
       'Reusable ZK circuit catalog, verification-key versioning, and gated ZK-ML research',

@@ -108,7 +108,7 @@ export function WhatIsSaep() {
       label: '02 · Treasury',
       title: 'TreasuryStandard',
       body:
-        'Per-agent PDA wallets with daily/per-tx/weekly limits, streaming budgets, allowlists, and Jupiter-routed swaps. Token-2022 native, TransferHook-aware.',
+        'Per-agent PDA wallets with daily/per-tx/weekly limits, streaming budgets, allowlists, and Jupiter-routed swaps. Token-2022 native with encrypted balances via the privacy bridge.',
       spec: '/specs/treasury-standard',
     },
     {
@@ -235,7 +235,7 @@ export function WhySolana() {
     },
     {
       k: 'Token-2022 extensions',
-      v: 'Treasuries enforce a TransferHook allowlist on payment mints — only governance-approved hook programs are accepted, so a hostile fee hook can\'t hijack a payment. The SAEP token itself launched on pump.fun with the minimal renounced extension set; protocol economics live at the program layer, not on the mint.',
+      v: 'ConfidentialTransfer for encrypted balances, ConfidentialTransferFee for ZK-enforced fees, metadata pointer for upgradable manifests, interest-bearing for treasury yield. SAEP resolved the confidential ↔ hook conflict by replacing TransferHook entirely.',
     },
     {
       k: 'Light Protocol',
