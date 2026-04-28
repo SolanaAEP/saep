@@ -10,5 +10,6 @@ packages:
   - services/telegram-bot
   - services/xrpl-bridge
   - services/buyback-bot
+  - services/fee-crank
   - examples/*
   - examples/agents/*
