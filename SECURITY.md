@@ -87,6 +87,10 @@ We won't sit on a valid report. If triage takes longer than the window above for
 
 Full scope, severity matrix, payout ranges, safe-harbor terms, and submission process are in [`BOUNTY.md`](./BOUNTY.md). Pre-launch the program is self-hosted via the channels above; payouts are funding-gated until the on-chain bounty pool (an explicit split of `fee_collector` revenue) is ratified, but safe-harbor is active today and reports filed during the pre-bounty window are honored retroactively for any bug that would have qualified.
 
+## Public security review
+
+[`SECURITY-REVIEW.md`](./SECURITY-REVIEW.md) is the public-facing distillation of the internal pre-audit substrate (per-program review, finding manifest, fuzz-harness coverage, reentrancy-guard DAG, what an external auditor would re-check, what is *not* audited). It is **not** a third-party audit; no external auditor has signed off on any program. It is the navigable index for what has been reviewed internally, with what coverage, and where the honest gaps remain.
+
 ## Public disclosures
 
 Security advisories, remediation notes, and milestone reports will be linked here after release.
