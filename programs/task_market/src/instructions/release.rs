@@ -5,7 +5,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount};
 use agent_registry::program::AgentRegistry;
 use agent_registry::state::{AgentAccount, RegistryGlobal};
 
-use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_RELEASE};
+use fee_collector::{assert_mint_allowed_at_site, HookAllowlist, SITE_RELEASE};
 
 use crate::errors::TaskMarketError;
 use crate::events::{GuardEntered, TaskReleased};
@@ -154,7 +154,7 @@ pub fn handler(ctx: Context<Release>) -> Result<()> {
         &ctx.accounts.global,
         ctx.accounts.hook_allowlist.as_ref(),
     )? {
-        assert_hook_allowed_at_site(
+        assert_mint_allowed_at_site(
             &ctx.accounts.payment_mint.to_account_info(),
             g,
             None,

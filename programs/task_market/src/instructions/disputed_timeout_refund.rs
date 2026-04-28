@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{transfer_checked, TokenInterface, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
-use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_EXPIRE};
+use fee_collector::{assert_mint_allowed_at_site, HookAllowlist, SITE_EXPIRE};
 
 use crate::errors::TaskMarketError;
 use crate::events::{GuardEntered, TaskExpired};
@@ -95,7 +95,7 @@ pub fn handler(ctx: Context<DisputedTimeoutRefund>) -> Result<()> {
         &ctx.accounts.global,
         ctx.accounts.hook_allowlist.as_ref(),
     )? {
-        assert_hook_allowed_at_site(
+        assert_mint_allowed_at_site(
             &ctx.accounts.payment_mint.to_account_info(),
             g,
             None,

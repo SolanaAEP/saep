@@ -3,7 +3,7 @@ use anchor_spl::token_interface::{transfer_checked, TokenInterface, TransferChec
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use fee_collector::{
-    assert_hook_allowed_at_site, AgentHookAllowlist, HookAllowlist, SITE_STREAM_SWAP,
+    assert_mint_allowed_at_site, AgentHookAllowlist, HookAllowlist, SITE_STREAM_SWAP,
     SITE_STREAM_WITHDRAW,
 };
 
@@ -187,14 +187,14 @@ pub fn handler<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) ->
         )?;
 
         if let Some(g) = hook_global {
-            assert_hook_allowed_at_site(
+            assert_mint_allowed_at_site(
                 &ctx.accounts.payer_mint.to_account_info(),
                 g,
                 hook_per_agent,
                 SITE_STREAM_SWAP,
             )
             .map_err(|_| error!(TreasuryError::HookNotAllowed))?;
-            assert_hook_allowed_at_site(
+            assert_mint_allowed_at_site(
                 &ctx.accounts.payout_mint.to_account_info(),
                 g,
                 hook_per_agent,
@@ -250,7 +250,7 @@ pub fn handler<'a>(ctx: Context<'a, WithdrawEarned<'a>>, route_data: Vec<u8>) ->
             &token_program_key,
         )?;
         if let Some(g) = hook_global {
-            assert_hook_allowed_at_site(
+            assert_mint_allowed_at_site(
                 &ctx.accounts.payer_mint.to_account_info(),
                 g,
                 hook_per_agent,

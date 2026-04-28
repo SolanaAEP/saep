@@ -5,7 +5,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount};
 use agent_registry::program::AgentRegistry;
 use agent_registry::state::{AgentAccount, AgentStatus, PersonhoodAttestation, RegistryGlobal};
 use capability_registry::state::CapabilityTag;
-use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_COMMIT_BID_BOND};
+use fee_collector::{assert_mint_allowed_at_site, HookAllowlist, SITE_COMMIT_BID_BOND};
 
 use crate::errors::TaskMarketError;
 use crate::events::BidCommitted;
@@ -188,7 +188,7 @@ pub fn handler(
             &ctx.accounts.global,
             ctx.accounts.hook_allowlist.as_ref(),
         )? {
-            assert_hook_allowed_at_site(
+            assert_mint_allowed_at_site(
                 &ctx.accounts.payment_mint.to_account_info(),
                 g,
                 None,

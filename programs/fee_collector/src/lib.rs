@@ -19,14 +19,14 @@ mod fuzz;
 pub use confidential::{has_confidential_transfer_configured, transfer_maybe_confidential};
 pub use errors::FeeCollectorError;
 pub use hook::{
-    assert_hook_allowed, assert_hook_allowed_at_site, assert_mint_allowed,
-    assert_mint_allowed_at_site, inspect_mint_extensions, MintExtensionReport,
+    assert_mint_allowed, assert_mint_allowed_at_site, inspect_mint_extensions,
+    MintExtensionReport,
 };
 pub use state::{
     AgentHookAllowlist, AgentMintAllowlist, EpochAccount, EpochStatus, FeeCollectorConfig,
     HookAllowlist, MintAllowlist, StakerClaim, MAX_AGENT_HOOK_PROGRAMS, MAX_AGENT_MINT_PROGRAMS,
     MAX_HOOK_PROGRAMS, MAX_MINT_ALLOWLIST_PROGRAMS, MINT_FLAG_ALL,
-    MINT_FLAG_CONFIDENTIAL_TRANSFER_OK, MINT_FLAG_HOOK_OK, MINT_FLAG_NO_FROZEN_DEFAULT,
+    MINT_FLAG_CONFIDENTIAL_TRANSFER_OK, MINT_FLAG_NO_FROZEN_DEFAULT,
     MINT_FLAG_NO_PERMANENT_DELEGATE, MINT_FLAG_NO_TRANSFER_FEE, SEED_AGENT_HOOKS,
     SEED_AGENT_MINTS, SEED_HOOK_ALLOWLIST, SEED_MINT_ALLOWLIST, SITE_CLAIM_BOND_REFUND,
     SITE_CLAIM_BOND_SLASH, SITE_COMMIT_BID_BOND, SITE_EXPIRE, SITE_FUND_TASK,
