@@ -12,6 +12,7 @@ export * from './programs/dispute_arbitration.js';
 export * from './programs/governance_program.js';
 export * from './programs/fee_collector.js';
 export * from './programs/nxs_staking.js';
+export * from './confidential.js';
 export * from './programs/template_registry.js';
 export * from './accounts/index.js';
 export * from './bounties.js';
