@@ -10,6 +10,7 @@ export {
   useGovernanceProgram,
   useNxsStakingProgram,
   useTemplateRegistryProgram,
+  useFeeCollectorProgram,
 } from './hooks/program.js';
 export { useAccountInfo, useDecodedAccount, useAnchorAccount } from './hooks/account.js';
 export {
@@ -194,5 +195,6 @@ export {
   type UseSettlementBundleOptions,
 } from './hooks/settlement.js';
 export { useTokenBalance, type TokenBalance } from './hooks/token-balance.js';
+export { useConfidentialBalance, type ConfidentialBalance } from './hooks/confidential-balance.js';
 export { useTokenPrice, type TokenPrice } from './hooks/token-price.js';
 export { useSession, useSiwsSignIn, useSignOut, type Session } from './auth/session.js';
