@@ -39,6 +39,7 @@ pub struct InitConfigParams {
     pub dispute_arbitration: Pubkey,
     pub emergency_council: Pubkey,
     pub saep_mint: Pubkey,
+    pub external_saep_mint: Pubkey,
     pub grant_recipient: Pubkey,
     pub treasury_recipient: Pubkey,
     pub burn_bps: u16,
@@ -69,6 +70,7 @@ pub fn handler(ctx: Context<InitConfig>, params: InitConfigParams) -> Result<()>
     c.dispute_arbitration = params.dispute_arbitration;
     c.emergency_council = params.emergency_council;
     c.saep_mint = params.saep_mint;
+    c.external_saep_mint = params.external_saep_mint;
     c.grant_recipient = params.grant_recipient;
     c.treasury_recipient = params.treasury_recipient;
     c.burn_bps = params.burn_bps;

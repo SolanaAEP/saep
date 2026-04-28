@@ -173,3 +173,17 @@ pub struct PausedSet {
     pub authority: Pubkey,
     pub timestamp: i64,
 }
+
+#[event]
+pub struct SaepDeposited {
+    pub depositor: Pubkey,
+    pub amount: u64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct SaepWithdrawn {
+    pub withdrawer: Pubkey,
+    pub amount: u64,
+    pub timestamp: i64,
+}

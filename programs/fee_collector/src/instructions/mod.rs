@@ -1,6 +1,7 @@
 #![allow(ambiguous_glob_reexports)]
 
 pub mod agent_mint_allowlist;
+pub mod bridge;
 pub mod claim_staker;
 pub mod collect_fees;
 pub mod commit_distribution;
@@ -14,6 +15,7 @@ pub mod set_params;
 pub mod sweep_stale;
 
 pub use agent_mint_allowlist::*;
+pub use bridge::*;
 pub use claim_staker::*;
 pub use collect_fees::*;
 pub use commit_distribution::*;

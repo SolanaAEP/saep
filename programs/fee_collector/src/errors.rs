@@ -83,4 +83,8 @@ pub enum FeeCollectorError {
     InvalidEpochDuration,
     #[msg("claim window out of allowed range")]
     InvalidClaimWindow,
+    #[msg("deposit amount must be greater than zero")]
+    ZeroDeposit,
+    #[msg("withdraw amount exceeds available balance")]
+    InsufficientBalance,
 }
