@@ -337,6 +337,18 @@ export function stakerVaultPda(programId: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([enc('staker_vault')], programId);
 }
 
+export function depositVaultPda(programId: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([enc('deposit_vault')], programId);
+}
+
+export function mintAuthorityPda(programId: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([enc('mint_authority')], programId);
+}
+
+export function transferFeeWithdrawAuthorityPda(programId: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([enc('transfer_fee_withdraw_authority')], programId);
+}
+
 // nxs_staking PDAs
 
 export function stakingPoolPda(programId: PublicKey): [PublicKey, number] {

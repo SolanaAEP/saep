@@ -614,8 +614,11 @@ export type DisputeArbitration = {
           }
         },
         {
-          "name": "cranker",
-          "signer": true
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
         }
       ],
       "args": [
@@ -1910,9 +1913,12 @@ export type DisputeArbitration = {
           }
         },
         {
-          "name": "proposer",
+          "name": "authority",
           "writable": true,
-          "signer": true
+          "signer": true,
+          "relations": [
+            "config"
+          ]
         },
         {
           "name": "systemProgram",
@@ -1991,9 +1997,12 @@ export type DisputeArbitration = {
           }
         },
         {
-          "name": "cranker",
+          "name": "authority",
           "writable": true,
-          "signer": true
+          "signer": true,
+          "relations": [
+            "config"
+          ]
         },
         {
           "name": "systemProgram",

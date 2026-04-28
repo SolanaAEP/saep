@@ -2759,6 +2759,60 @@ export type TaskMarket = {
       ]
     },
     {
+      "name": "setDisputeWindowSecs",
+      "discriminator": [
+        216,
+        165,
+        79,
+        99,
+        37,
+        109,
+        193,
+        208
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "disputeWindowSecs",
+          "type": "i64"
+        }
+      ]
+    },
+    {
       "name": "setFees",
       "discriminator": [
         137,
@@ -4627,38 +4681,6 @@ export type TaskMarket = {
       }
     },
     {
-      "name": "hookAllowlist",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "authority",
-            "type": "pubkey"
-          },
-          {
-            "name": "pendingAuthority",
-            "type": {
-              "option": "pubkey"
-            }
-          },
-          {
-            "name": "programs",
-            "type": {
-              "vec": "pubkey"
-            }
-          },
-          {
-            "name": "defaultDeny",
-            "type": "bool"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "marketGlobal",
       "type": {
         "kind": "struct",
@@ -4747,10 +4769,8 @@ export type TaskMarket = {
             "type": "u32"
           },
           {
-            "name": "hookProgram",
-            "type": {
-              "option": "pubkey"
-            }
+            "name": "hasConfidentialTransfer",
+            "type": "bool"
           },
           {
             "name": "acceptedAtSlot",
@@ -4781,10 +4801,8 @@ export type TaskMarket = {
             "type": "u32"
           },
           {
-            "name": "hookProgram",
-            "type": {
-              "option": "pubkey"
-            }
+            "name": "hasConfidentialTransfer",
+            "type": "bool"
           },
           {
             "name": "slot",
@@ -4793,6 +4811,38 @@ export type TaskMarket = {
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mintAllowlist",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pendingAuthority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "programs",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "defaultDeny",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }

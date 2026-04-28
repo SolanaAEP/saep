@@ -149,6 +149,102 @@
       "args": []
     },
     {
+      "name": "close_pool",
+      "discriminator": [
+        140,
+        189,
+        209,
+        23,
+        239,
+        62,
+        239,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  105,
+                  110,
+                  103,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "pool"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "freeze_deposits",
+      "discriminator": [
+        247,
+        191,
+        178,
+        18,
+        206,
+        243,
+        133,
+        118
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  105,
+                  110,
+                  103,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "pool"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "init_guard",
       "discriminator": [
         80,
@@ -269,6 +365,32 @@
       ],
       "accounts": [
         {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  105,
+                  110,
+                  103,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "pool",
           "writable": true,
           "pda": {
@@ -296,7 +418,10 @@
         {
           "name": "authority",
           "writable": true,
-          "signer": true
+          "signer": true,
+          "relations": [
+            "config"
+          ]
         },
         {
           "name": "system_program",
@@ -371,6 +496,64 @@
       "args": [
         {
           "name": "authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "migrate_apy_authority",
+      "discriminator": [
+        104,
+        167,
+        17,
+        46,
+        40,
+        86,
+        154,
+        16
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  105,
+                  110,
+                  103,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "old_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "new_mint",
           "type": "pubkey"
         }
       ]
@@ -540,6 +723,32 @@
       ],
       "accounts": [
         {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  105,
+                  110,
+                  103,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "pool",
           "writable": true,
           "pda": {
@@ -597,9 +806,12 @@
           }
         },
         {
-          "name": "cranker",
+          "name": "authority",
           "writable": true,
-          "signer": true
+          "signer": true,
+          "relations": [
+            "config"
+          ]
         },
         {
           "name": "system_program",
@@ -739,6 +951,54 @@
           "type": "i64"
         }
       ]
+    },
+    {
+      "name": "unfreeze_deposits",
+      "discriminator": [
+        49,
+        219,
+        228,
+        140,
+        125,
+        105,
+        54,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  105,
+                  110,
+                  103,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "pool"
+          ]
+        }
+      ],
+      "args": []
     },
     {
       "name": "withdraw",
@@ -948,6 +1208,45 @@
       ]
     },
     {
+      "name": "ApyAuthorityMigrated",
+      "discriminator": [
+        23,
+        249,
+        157,
+        195,
+        211,
+        14,
+        210,
+        165
+      ]
+    },
+    {
+      "name": "DepositsFrozen",
+      "discriminator": [
+        99,
+        224,
+        136,
+        147,
+        198,
+        70,
+        82,
+        116
+      ]
+    },
+    {
+      "name": "DepositsUnfrozen",
+      "discriminator": [
+        15,
+        148,
+        160,
+        231,
+        26,
+        25,
+        146,
+        100
+      ]
+    },
+    {
       "name": "EpochSnapshotted",
       "discriminator": [
         111,
@@ -997,6 +1296,19 @@
         16,
         25,
         100
+      ]
+    },
+    {
+      "name": "PoolClosed",
+      "discriminator": [
+        106,
+        46,
+        29,
+        231,
+        42,
+        44,
+        73,
+        119
       ]
     },
     {
@@ -1150,6 +1462,26 @@
       "code": 6016,
       "name": "EpochNotEnded",
       "msg": "epoch has not ended yet"
+    },
+    {
+      "code": 6017,
+      "name": "DepositsFrozen",
+      "msg": "deposits are frozen for this pool (migration window)"
+    },
+    {
+      "code": 6018,
+      "name": "DepositsNotFrozen",
+      "msg": "deposits are not frozen; nothing to unfreeze"
+    },
+    {
+      "code": 6019,
+      "name": "PoolClosed",
+      "msg": "staking pool is closed; no new state transitions"
+    },
+    {
+      "code": 6020,
+      "name": "MigrationWindowActive",
+      "msg": "migration window still active; pool has stake and grace period has not elapsed"
     }
   ],
   "types": [
@@ -1183,6 +1515,70 @@
           {
             "name": "count",
             "type": "u16"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ApyAuthorityMigrated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "attested_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositsFrozen",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pause_new_stakes_at",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositsUnfrozen",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
           },
           {
             "name": "timestamp",
@@ -1270,6 +1666,30 @@
           },
           {
             "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolClosed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_staked_at_close",
+            "type": "u64"
+          },
+          {
+            "name": "closed_at",
             "type": "i64"
           }
         ]
@@ -1522,6 +1942,22 @@
           {
             "name": "paused",
             "type": "bool"
+          },
+          {
+            "name": "pause_new_stakes",
+            "type": "bool"
+          },
+          {
+            "name": "pause_new_stakes_at",
+            "type": "i64"
+          },
+          {
+            "name": "closed",
+            "type": "bool"
+          },
+          {
+            "name": "closed_at",
+            "type": "i64"
           },
           {
             "name": "bump",

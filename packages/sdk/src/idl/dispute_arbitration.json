@@ -606,8 +606,11 @@
           }
         },
         {
-          "name": "cranker",
-          "signer": true
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
         }
       ],
       "args": [
@@ -1902,9 +1905,12 @@
           }
         },
         {
-          "name": "proposer",
+          "name": "authority",
           "writable": true,
-          "signer": true
+          "signer": true,
+          "relations": [
+            "config"
+          ]
         },
         {
           "name": "system_program",
@@ -1983,9 +1989,12 @@
           }
         },
         {
-          "name": "cranker",
+          "name": "authority",
           "writable": true,
-          "signer": true
+          "signer": true,
+          "relations": [
+            "config"
+          ]
         },
         {
           "name": "system_program",

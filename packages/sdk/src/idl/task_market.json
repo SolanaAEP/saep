@@ -2751,6 +2751,60 @@
       ]
     },
     {
+      "name": "set_dispute_window_secs",
+      "discriminator": [
+        216,
+        165,
+        79,
+        99,
+        37,
+        109,
+        193,
+        208
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "dispute_window_secs",
+          "type": "i64"
+        }
+      ]
+    },
+    {
       "name": "set_fees",
       "discriminator": [
         137,
@@ -4619,38 +4673,6 @@
       }
     },
     {
-      "name": "HookAllowlist",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "authority",
-            "type": "pubkey"
-          },
-          {
-            "name": "pending_authority",
-            "type": {
-              "option": "pubkey"
-            }
-          },
-          {
-            "name": "programs",
-            "type": {
-              "vec": "pubkey"
-            }
-          },
-          {
-            "name": "default_deny",
-            "type": "bool"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "MarketGlobal",
       "type": {
         "kind": "struct",
@@ -4739,10 +4761,8 @@
             "type": "u32"
           },
           {
-            "name": "hook_program",
-            "type": {
-              "option": "pubkey"
-            }
+            "name": "has_confidential_transfer",
+            "type": "bool"
           },
           {
             "name": "accepted_at_slot",
@@ -4773,10 +4793,8 @@
             "type": "u32"
           },
           {
-            "name": "hook_program",
-            "type": {
-              "option": "pubkey"
-            }
+            "name": "has_confidential_transfer",
+            "type": "bool"
           },
           {
             "name": "slot",
@@ -4785,6 +4803,38 @@
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MintAllowlist",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "programs",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "default_deny",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
