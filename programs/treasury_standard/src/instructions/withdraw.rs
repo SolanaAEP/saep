@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{transfer_checked, TokenInterface, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
-use fee_collector::{assert_hook_allowed_at_site, HookAllowlist, SITE_WITHDRAW};
+use fee_collector::{assert_mint_allowed_at_site, HookAllowlist, SITE_WITHDRAW};
 
 use crate::errors::TreasuryError;
 use crate::events::{GuardEntered, TreasuryWithdraw};
@@ -126,7 +126,7 @@ pub fn handler(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
         &ctx.accounts.global,
         ctx.accounts.hook_allowlist.as_ref(),
     )? {
-        assert_hook_allowed_at_site(
+        assert_mint_allowed_at_site(
             &ctx.accounts.mint.to_account_info(),
             g,
             None,

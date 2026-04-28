@@ -3,7 +3,7 @@ use anchor_spl::token_interface::{transfer_checked, TokenInterface, TransferChec
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use fee_collector::{
-    assert_hook_allowed_at_site, AgentHookAllowlist, HookAllowlist, SITE_STREAM_CLOSE,
+    assert_mint_allowed_at_site, AgentHookAllowlist, HookAllowlist, SITE_STREAM_CLOSE,
 };
 
 use crate::errors::TreasuryError;
@@ -145,7 +145,7 @@ pub fn handler(ctx: Context<CloseStream>) -> Result<()> {
         ctx.accounts.hook_allowlist.as_ref(),
     )?;
     if let Some(g) = hook_global {
-        assert_hook_allowed_at_site(
+        assert_mint_allowed_at_site(
             &ctx.accounts.payer_mint.to_account_info(),
             g,
             ctx.accounts.agent_hooks.as_deref(),

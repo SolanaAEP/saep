@@ -3,7 +3,7 @@ use anchor_spl::token_interface::{transfer_checked, TokenInterface, TransferChec
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
 use fee_collector::{
-    assert_hook_allowed_at_site, HookAllowlist, SITE_CLAIM_BOND_REFUND, SITE_CLAIM_BOND_SLASH,
+    assert_mint_allowed_at_site, HookAllowlist, SITE_CLAIM_BOND_REFUND, SITE_CLAIM_BOND_SLASH,
 };
 
 use crate::errors::TaskMarketError;
@@ -121,7 +121,7 @@ pub fn handler(ctx: Context<ClaimBond>) -> Result<()> {
                 Outcome::Slash => SITE_CLAIM_BOND_SLASH,
                 Outcome::WinnerRetain => unreachable!(),
             };
-            assert_hook_allowed_at_site(
+            assert_mint_allowed_at_site(
                 &ctx.accounts.payment_mint.to_account_info(),
                 g,
                 None,

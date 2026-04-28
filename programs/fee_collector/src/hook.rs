@@ -68,9 +68,6 @@ pub fn assert_mint_allowed_at_site(
     Ok(())
 }
 
-// Backward compat — downstream programs import these names.
-pub use assert_mint_allowed as assert_hook_allowed;
-pub use assert_mint_allowed_at_site as assert_hook_allowed_at_site;
 
 pub fn inspect_mint_extensions(mint_info: &AccountInfo) -> Result<MintExtensionReport> {
     if mint_info.owner != &anchor_spl::token_2022::ID {
