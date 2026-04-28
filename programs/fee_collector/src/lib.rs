@@ -207,4 +207,14 @@ pub mod fee_collector {
     ) -> Result<()> {
         instructions::collect_fees::harvest_confidential_fees(ctx)
     }
+
+    // ── SPL ↔ T22 bridge ─────────────────────────────────────
+
+    pub fn deposit_saep(ctx: Context<DepositSaep>, amount: u64) -> Result<()> {
+        instructions::bridge::deposit_handler(ctx, amount)
+    }
+
+    pub fn withdraw_saep(ctx: Context<WithdrawSaep>, amount: u64) -> Result<()> {
+        instructions::bridge::withdraw_handler(ctx, amount)
+    }
 }

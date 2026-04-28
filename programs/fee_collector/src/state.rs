@@ -70,6 +70,8 @@ pub const SEED_CLAIM: &[u8] = b"claim";
 pub const SEED_INTAKE_VAULT: &[u8] = b"intake_vault";
 pub const SEED_BURN_VAULT: &[u8] = b"burn_vault";
 pub const SEED_STAKER_VAULT: &[u8] = b"staker_vault";
+pub const SEED_DEPOSIT_VAULT: &[u8] = b"deposit_vault";
+pub const SEED_MINT_AUTHORITY: &[u8] = b"mint_authority";
 
 pub const BPS_DENOMINATOR: u64 = 10_000;
 pub const MAX_HARVEST_HOLDERS: usize = 10;
@@ -106,6 +108,7 @@ pub struct FeeCollectorConfig {
     pub dispute_arbitration: Pubkey,
     pub emergency_council: Pubkey,
     pub saep_mint: Pubkey,
+    pub external_saep_mint: Pubkey,
     pub grant_recipient: Pubkey,
     pub treasury_recipient: Pubkey,
     pub burn_bps: u16,

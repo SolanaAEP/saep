@@ -193,6 +193,7 @@ describe('bankrun: fee_collector — harvest_transfer_fees + harvest_confidentia
         disputeArbitration: PublicKey.default,
         emergencyCouncil: authority.publicKey,
         saepMint: mint,
+        externalSaepMint: PublicKey.default,
         grantRecipient: PublicKey.default,
         treasuryRecipient: PublicKey.default,
         burnBps: 1000,

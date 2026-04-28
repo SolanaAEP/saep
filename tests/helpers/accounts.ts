@@ -148,6 +148,10 @@ export const feeCollectorPdas = {
       [Buffer.from('transfer_fee_withdraw_authority')],
       PROGRAM_IDS.fee_collector,
     ),
+  depositVault: (): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync([Buffer.from('deposit_vault')], PROGRAM_IDS.fee_collector),
+  mintAuthority: (): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync([Buffer.from('mint_authority')], PROGRAM_IDS.fee_collector),
   claim: (epochId: number | bigint, staker: PublicKey): [PublicKey, number] => {
     const buf = Buffer.alloc(8);
     buf.writeBigUInt64LE(BigInt(epochId));
