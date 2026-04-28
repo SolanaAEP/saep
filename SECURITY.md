@@ -85,7 +85,7 @@ We won't sit on a valid report. If triage takes longer than the window above for
 
 ## Bug bounty
 
-TBD. A program will be announced before mainnet launch (M3). Reports filed during the pre-bounty window are honored retroactively for any bug that would have qualified.
+Full scope, severity matrix, payout ranges, safe-harbor terms, and submission process are in [`BOUNTY.md`](./BOUNTY.md). Pre-launch the program is self-hosted via the channels above; payouts are funding-gated until the on-chain bounty pool (an explicit split of `fee_collector` revenue) is ratified, but safe-harbor is active today and reports filed during the pre-bounty window are honored retroactively for any bug that would have qualified.
 
 ## Public disclosures
 
