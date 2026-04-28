@@ -5,6 +5,7 @@
 
 use anchor_lang::prelude::*;
 
+pub mod confidential;
 pub mod errors;
 pub mod events;
 pub mod guard;
@@ -15,6 +16,7 @@ pub mod state;
 #[cfg(test)]
 mod fuzz;
 
+pub use confidential::{has_confidential_transfer_configured, transfer_maybe_confidential};
 pub use errors::FeeCollectorError;
 pub use hook::{
     assert_hook_allowed, assert_hook_allowed_at_site, assert_mint_allowed,
@@ -190,5 +192,19 @@ pub mod fee_collector {
         enabled: bool,
     ) -> Result<()> {
         instructions::set_params::set_confidential_transfers_handler(ctx, enabled)
+    }
+
+    // ── fee collection (harvest) ──────────────────────────────
+
+    pub fn harvest_transfer_fees<'a>(
+        ctx: Context<'a, CollectFees<'a>>,
+    ) -> Result<()> {
+        instructions::collect_fees::harvest_transfer_fees(ctx)
+    }
+
+    pub fn harvest_confidential_fees<'a>(
+        ctx: Context<'a, CollectFees<'a>>,
+    ) -> Result<()> {
+        instructions::collect_fees::harvest_confidential_fees(ctx)
     }
 }
