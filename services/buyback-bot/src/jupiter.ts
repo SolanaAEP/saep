@@ -54,3 +54,43 @@ export function isWithinSlippageCap(quote: QuoteResponse, capBps: number): boole
   const impactBps = priceImpactPctToBps(quote.priceImpactPct);
   return impactBps <= capBps;
 }
+
+export interface SwapRequest {
+  apiUrl: string;
+  quoteResponse: QuoteResponse;
+  userPublicKey: string;
+  wrapAndUnwrapSol?: boolean;
+  fetchImpl?: typeof fetch;
+}
+
+export interface SwapResponse {
+  swapTransaction: string;
+  lastValidBlockHeight: number;
+}
+
+const SwapResponseSchema = z.object({
+  swapTransaction: z.string(),
+  lastValidBlockHeight: z.number().int(),
+});
+
+export async function getJupiterSwap(input: SwapRequest): Promise<SwapResponse> {
+  const fetchFn = input.fetchImpl ?? globalThis.fetch;
+  const url = `${input.apiUrl.replace(/\/$/, '')}/swap`;
+
+  const res = await fetchFn(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      quoteResponse: input.quoteResponse,
+      userPublicKey: input.userPublicKey,
+      wrapAndUnwrapSol: input.wrapAndUnwrapSol ?? true,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`jupiter swap ${res.status}: ${body || res.statusText}`);
+  }
+  const json = await res.json();
+  return SwapResponseSchema.parse(json);
+}
