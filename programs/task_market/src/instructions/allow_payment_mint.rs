@@ -2,15 +2,13 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 
 use fee_collector::{
-    inspect_mint_extensions, HookAllowlist, MINT_FLAG_HOOK_OK, MINT_FLAG_NO_FROZEN_DEFAULT,
-    MINT_FLAG_NO_PERMANENT_DELEGATE, MINT_FLAG_NO_TRANSFER_FEE,
+    inspect_mint_extensions, HookAllowlist, MINT_FLAG_CONFIDENTIAL_TRANSFER_OK,
+    MINT_FLAG_NO_FROZEN_DEFAULT, MINT_FLAG_NO_TRANSFER_FEE,
 };
 
 use crate::errors::TaskMarketError;
 use crate::events::{GlobalParamsUpdated, MintAccepted};
-use crate::state::{
-    resolve_hook_allowlist, MarketGlobal, MintAcceptRecord, ALLOWED_MINTS_LEN, SEED_MINT_ACCEPT,
-};
+use crate::state::{MarketGlobal, MintAcceptRecord, ALLOWED_MINTS_LEN, SEED_MINT_ACCEPT};
 
 #[derive(Accounts)]
 #[instruction(slot: u8)]
@@ -68,25 +66,7 @@ pub fn handler(ctx: Context<AllowPaymentMint>, slot: u8) -> Result<()> {
     );
     flags |= MINT_FLAG_NO_FROZEN_DEFAULT;
 
-    require!(
-        report.permanent_delegate.is_none(),
-        TaskMarketError::MintExtensionRejected
-    );
-    flags |= MINT_FLAG_NO_PERMANENT_DELEGATE;
-
-    // Hook check: if mint has a hook, it must be on the allowlist.
-    if let Some(pid) = report.hook_program {
-        let g_acct = resolve_hook_allowlist(
-            &ctx.accounts.global,
-            ctx.accounts.hook_allowlist.as_ref(),
-        )?
-        .ok_or(TaskMarketError::HookAllowlistMismatch)?;
-        require!(
-            g_acct.programs.iter().any(|p| p == &pid),
-            TaskMarketError::MintExtensionRejected
-        );
-    }
-    flags |= MINT_FLAG_HOOK_OK;
+    flags |= MINT_FLAG_CONFIDENTIAL_TRANSFER_OK;
 
     let clock = Clock::get()?;
     let mint_key = ctx.accounts.mint.key();
@@ -94,7 +74,7 @@ pub fn handler(ctx: Context<AllowPaymentMint>, slot: u8) -> Result<()> {
     let record = &mut ctx.accounts.mint_accept;
     record.mint = mint_key;
     record.mint_accept_flags = flags;
-    record.hook_program = report.hook_program;
+    record.has_confidential_transfer = report.has_confidential_transfer_ext;
     record.accepted_at_slot = clock.slot;
     record.accepted_at_ts = clock.unix_timestamp;
     record.bump = ctx.bumps.mint_accept;
@@ -105,7 +85,7 @@ pub fn handler(ctx: Context<AllowPaymentMint>, slot: u8) -> Result<()> {
     emit!(MintAccepted {
         mint: mint_key,
         accept_flags: flags,
-        hook_program: report.hook_program,
+        has_confidential_transfer: report.has_confidential_transfer_ext,
         slot: clock.slot,
         timestamp: clock.unix_timestamp,
     });

@@ -35,7 +35,7 @@ pub const SEED_MINT_ACCEPT: &[u8] = b"mint_accept";
 pub struct MintAcceptRecord {
     pub mint: Pubkey,
     pub mint_accept_flags: u32,
-    pub hook_program: Option<Pubkey>,
+    pub has_confidential_transfer: bool,
     pub accepted_at_slot: u64,
     pub accepted_at_ts: i64,
     pub bump: u8,
@@ -675,28 +675,21 @@ mod proptests {
     #[test]
     fn mint_accept_flags_all_set_when_clean() {
         use fee_collector::{
-            MINT_FLAG_ALL, MINT_FLAG_HOOK_OK, MINT_FLAG_NO_FROZEN_DEFAULT,
-            MINT_FLAG_NO_PERMANENT_DELEGATE, MINT_FLAG_NO_TRANSFER_FEE,
+            MINT_FLAG_ALL, MINT_FLAG_CONFIDENTIAL_TRANSFER_OK, MINT_FLAG_NO_FROZEN_DEFAULT,
+            MINT_FLAG_NO_TRANSFER_FEE,
         };
-        let expected = MINT_FLAG_NO_TRANSFER_FEE
-            | MINT_FLAG_NO_FROZEN_DEFAULT
-            | MINT_FLAG_NO_PERMANENT_DELEGATE
-            | MINT_FLAG_HOOK_OK;
+        let expected =
+            MINT_FLAG_NO_TRANSFER_FEE | MINT_FLAG_NO_FROZEN_DEFAULT | MINT_FLAG_CONFIDENTIAL_TRANSFER_OK;
         assert_eq!(expected, MINT_FLAG_ALL);
     }
 
-    // Mirrors allow_payment_mint's flag-building decision tree. Kept here so
-    // the bitfield contract is exercised without spinning up a full Anchor harness.
     fn build_flags(
         has_transfer_fee_ext: bool,
         fee_authority_is_governance: bool,
         default_frozen: bool,
-        permanent_delegate: bool,
-        hook_program: Option<Pubkey>,
-        hook_on_allowlist: bool,
     ) -> Option<u32> {
         use fee_collector::{
-            MINT_FLAG_HOOK_OK, MINT_FLAG_NO_FROZEN_DEFAULT, MINT_FLAG_NO_PERMANENT_DELEGATE,
+            MINT_FLAG_CONFIDENTIAL_TRANSFER_OK, MINT_FLAG_NO_FROZEN_DEFAULT,
             MINT_FLAG_NO_TRANSFER_FEE,
         };
         let mut f = 0u32;
@@ -710,75 +703,44 @@ mod proptests {
         }
         f |= MINT_FLAG_NO_FROZEN_DEFAULT;
 
-        if permanent_delegate {
-            return None;
-        }
-        f |= MINT_FLAG_NO_PERMANENT_DELEGATE;
-
-        if let Some(_pid) = hook_program {
-            if !hook_on_allowlist {
-                return None;
-            }
-        }
-        f |= MINT_FLAG_HOOK_OK;
+        f |= MINT_FLAG_CONFIDENTIAL_TRANSFER_OK;
         Some(f)
     }
 
     #[test]
     fn mint_accept_clean_mint_accepted() {
-        let f = build_flags(false, false, false, false, None, false);
+        let f = build_flags(false, false, false);
         assert_eq!(f, Some(fee_collector::MINT_FLAG_ALL));
     }
 
     #[test]
     fn mint_accept_rejects_non_governance_transfer_fee() {
-        assert!(build_flags(true, false, false, false, None, false).is_none());
+        assert!(build_flags(true, false, false).is_none());
     }
 
     #[test]
     fn mint_accept_accepts_governance_transfer_fee() {
         assert_eq!(
-            build_flags(true, true, false, false, None, false),
+            build_flags(true, true, false),
             Some(fee_collector::MINT_FLAG_ALL)
         );
     }
 
     #[test]
     fn mint_accept_rejects_default_frozen() {
-        assert!(build_flags(false, false, true, false, None, false).is_none());
-    }
-
-    #[test]
-    fn mint_accept_rejects_permanent_delegate() {
-        assert!(build_flags(false, false, false, true, None, false).is_none());
-    }
-
-    #[test]
-    fn mint_accept_rejects_unlisted_hook() {
-        let pid = Pubkey::new_from_array([9u8; 32]);
-        assert!(build_flags(false, false, false, false, Some(pid), false).is_none());
-    }
-
-    #[test]
-    fn mint_accept_accepts_listed_hook() {
-        let pid = Pubkey::new_from_array([9u8; 32]);
-        assert_eq!(
-            build_flags(false, false, false, false, Some(pid), true),
-            Some(fee_collector::MINT_FLAG_ALL)
-        );
+        assert!(build_flags(false, false, true).is_none());
     }
 
     #[test]
     fn mint_accept_flags_individually_distinct() {
         use fee_collector::{
-            MINT_FLAG_HOOK_OK, MINT_FLAG_NO_FROZEN_DEFAULT, MINT_FLAG_NO_PERMANENT_DELEGATE,
+            MINT_FLAG_CONFIDENTIAL_TRANSFER_OK, MINT_FLAG_NO_FROZEN_DEFAULT,
             MINT_FLAG_NO_TRANSFER_FEE,
         };
         let bits = [
             MINT_FLAG_NO_TRANSFER_FEE,
             MINT_FLAG_NO_FROZEN_DEFAULT,
-            MINT_FLAG_NO_PERMANENT_DELEGATE,
-            MINT_FLAG_HOOK_OK,
+            MINT_FLAG_CONFIDENTIAL_TRANSFER_OK,
         ];
         for i in 0..bits.len() {
             for j in (i + 1)..bits.len() {

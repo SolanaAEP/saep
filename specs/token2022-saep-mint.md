@@ -2,7 +2,7 @@
 
 **Owner:** anchor-engineer
 **Depends on:** FeeCollector deployed, NXSStaking deployed, GovernanceProgram deployed, public authority inventory published
-**Blocks:** M3 SAEP payment path, FeeCollector TransferHook activation, NXSStaking InterestBearing activation
+**Blocks:** M3 SAEP payment path, FeeCollector confidential fee harvest activation, NXSStaking InterestBearing activation
 **References:** backend PDF §1.3, backend PDF §2.6, backend PDF §4.3, backend PDF §5.1, pre-audit-05
 
 > This document describes the public configuration and verification contract for the canonical SAEP mint. Maintainer-only release choreography, signer logistics, and custody procedures are intentionally excluded from the public repo.
@@ -27,11 +27,18 @@ Metadata updates are governance-controlled after handover. The initial metadata 
 
 The canonical mint includes these Token-2022 extensions:
 
-### TransferHook
+### ConfidentialTransfer
 
-- Program: `FeeCollector`
-- Purpose: protocol fee enforcement and hook-aware policy surface
+- Tier: opt-in (`auto_approve_new_accounts = true`)
+- Auditor ElGamal key: governance multisig (rotatable via governance proposal)
+- Purpose: encrypted balances and transfer amounts for agent privacy
 - Post-handover authority: governance-controlled authority surface
+
+### ConfidentialTransferFee
+
+- Authority: FeeCollector PDA
+- Purpose: fee withholding on confidential transfers via ZK proofs
+- Post-handover authority: FeeCollector PDA (same as TransferFee withdraw authority)
 
 ### TransferFee
 
@@ -39,12 +46,6 @@ The canonical mint includes these Token-2022 extensions:
 - Maximum fee: `1_000_000 * 10^9`
 - Post-handover config authority: governance-controlled authority surface
 - Withdraw authority: FeeCollector PDA
-
-### PermanentDelegate
-
-- Delegate: FeeCollector PDA
-- Purpose: constrained fee and dust recovery path
-- Post-handover authority: governance-controlled authority surface
 
 ### InterestBearing
 
@@ -64,9 +65,13 @@ The canonical mint includes these Token-2022 extensions:
 
 ## Excluded extensions
 
-### ConfidentialTransfer
+### TransferHook
 
-Excluded because it cannot coexist with TransferHook on the canonical SAEP mint.
+Excluded because it cannot coexist with ConfidentialTransfer. Advisory-only hook logic (mint identity validation, pause checks, amount guards) migrated to instruction-level guards at each program call site.
+
+### PermanentDelegate
+
+Excluded because it cannot operate on encrypted balances. Burn path uses vault-PDA-owner authority (unchanged from prior design — `execute_burn` already signs via `burn_vault` PDA, not PermanentDelegate).
 
 ### CpiGuard
 
@@ -90,6 +95,7 @@ The mint activation is valid only if all of the following are true:
 4. `FreezeAccount` authority is set to `None` after handover.
 5. Every remaining mutable authority points to the intended governance, emergency, or program-derived authority.
 6. No unconstrained EOA remains as a long-term authority after handover.
+7. ConfidentialTransfer auditor key is set to the governance-held ElGamal public key.
 
 ## Post-handover authority targets
 
@@ -99,12 +105,20 @@ The mint activation is valid only if all of the following are true:
 | FreezeAccount | `None` |
 | TransferFeeConfig | Governance authority |
 | WithheldWithdraw | FeeCollector PDA |
-| TransferHookProgramId | Governance-controlled authority |
-| PermanentDelegate authority | Governance authority |
+| ConfidentialTransferMint | Governance authority |
+| ConfidentialTransferFeeAuthority | FeeCollector PDA |
 | InterestBearingRateAuthority | NXSStaking PDA |
 | MetadataPointerAuthority | Governance authority |
 | MetadataUpdateAuthority | Governance authority |
 | PausableAuthority | Emergency authority |
+
+## Confidential transfer operational model
+
+- **Tier:** Opt-in. Token accounts must call `configure_account` to enable confidential transfers.
+- **Dual-mode:** Transfers between plaintext accounts use standard `transfer_checked`. Transfers to configured accounts use `confidential_transfer_checked`.
+- **Feature gate:** FeeCollectorConfig.`confidential_transfers_enabled` (governance-toggled). When false, all transfers route through plaintext `transfer_checked` regardless of account configuration. Flipped to true when ZK ElGamal Proof program re-enables on mainnet.
+- **Auditor keys:** Governance-held ElGamal key enables selective disclosure for compliance. Rotatable via governance proposal without affecting existing encrypted balances.
+- **Internal vaults:** Program-owned accounts (escrow, burn_vault, intake_vault, staker_vault) remain in plaintext mode — no privacy requirement for protocol-owned state.
 
 ## Public verification outputs
 
@@ -116,6 +130,7 @@ Any activation record for the canonical mint must expose:
 - The metadata initialization transaction signature, if separate.
 - The handover transaction signature.
 - A post-handover authority dump proving the targets above.
+- The auditor ElGamal public key.
 
 The public record may live in release notes, docs, or another public artifact set, but it must be reproducible from public data.
 
@@ -131,17 +146,18 @@ Mainnet activation must be verifiable from public outputs, but the public repo d
 
 ## CPI contract
 
-- FeeCollector consumes TransferHook callbacks and TransferFee withdrawal authority.
-- FeeCollector uses the PermanentDelegate path subject to its own program checks.
+- FeeCollector harvests TransferFee withheld tokens and ConfidentialTransferFee withheld tokens.
+- FeeCollector controls the confidential transfer fee authority for encrypted fee withdrawal.
 - NXSStaking updates the InterestBearing rate through its PDA.
 - Governance updates mutable non-emergency authorities.
+- Governance rotates the ConfidentialTransfer auditor ElGamal key.
 - Emergency authority controls pause and unpause.
 
 ## Security checks
 
-- TransferHook points at the expected FeeCollector program.
+- ConfidentialTransfer auditor key is set and governance-controlled.
+- ConfidentialTransferFee authority matches FeeCollector PDA.
 - TransferFee maximum fee stays bounded.
-- PermanentDelegate scope is constrained by FeeCollector program logic.
 - InterestBearing rate changes are routed through NXSStaking.
 - MetadataPointer remains self-referential unless governance intentionally changes it.
 - Mint inflation is impossible after handover because mint authority is `None`.
@@ -174,3 +190,5 @@ This repository must not contain:
 - [ ] Public verification confirms `MintTokens == None`
 - [ ] Public verification confirms `FreezeAccount == None`
 - [ ] Public verification confirms every remaining authority matches the intended target
+- [ ] ConfidentialTransfer auditor ElGamal public key published
+- [ ] ConfidentialTransferFee authority matches FeeCollector PDA

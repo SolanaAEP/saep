@@ -1,19 +1,20 @@
 use anchor_lang::prelude::*;
 
-// ── hook allowlist ─────────────────────────────────────────────
+// ── mint allowlist ─────────────────────────────────────────────
 
-pub const MAX_HOOK_PROGRAMS: usize = 16;
-pub const MAX_AGENT_HOOK_PROGRAMS: usize = 4;
+pub const MAX_MINT_ALLOWLIST_PROGRAMS: usize = 16;
+pub const MAX_AGENT_MINT_PROGRAMS: usize = 4;
 
-pub const SEED_HOOK_ALLOWLIST: &[u8] = b"hook_allowlist";
-pub const SEED_AGENT_HOOKS: &[u8] = b"agent_hooks";
+// PDA seeds unchanged from hook era — preserves existing devnet state.
+pub const SEED_MINT_ALLOWLIST: &[u8] = b"hook_allowlist";
+pub const SEED_AGENT_MINTS: &[u8] = b"agent_hooks";
 
 #[account]
 #[derive(InitSpace)]
-pub struct HookAllowlist {
+pub struct MintAllowlist {
     pub authority: Pubkey,
     pub pending_authority: Option<Pubkey>,
-    #[max_len(MAX_HOOK_PROGRAMS)]
+    #[max_len(MAX_MINT_ALLOWLIST_PROGRAMS)]
     pub programs: Vec<Pubkey>,
     pub default_deny: bool,
     pub bump: u8,
@@ -21,12 +22,20 @@ pub struct HookAllowlist {
 
 #[account]
 #[derive(InitSpace)]
-pub struct AgentHookAllowlist {
+pub struct AgentMintAllowlist {
     pub agent_did: [u8; 32],
-    #[max_len(MAX_AGENT_HOOK_PROGRAMS)]
+    #[max_len(MAX_AGENT_MINT_PROGRAMS)]
     pub extra_programs: Vec<Pubkey>,
     pub bump: u8,
 }
+
+// Backward-compat aliases — downstream programs migrate incrementally.
+pub type HookAllowlist = MintAllowlist;
+pub type AgentHookAllowlist = AgentMintAllowlist;
+pub const MAX_HOOK_PROGRAMS: usize = MAX_MINT_ALLOWLIST_PROGRAMS;
+pub const MAX_AGENT_HOOK_PROGRAMS: usize = MAX_AGENT_MINT_PROGRAMS;
+pub const SEED_HOOK_ALLOWLIST: &[u8] = SEED_MINT_ALLOWLIST;
+pub const SEED_AGENT_HOOKS: &[u8] = SEED_AGENT_MINTS;
 
 // ── call-site ids ──────────────────────────────────────────────
 
@@ -45,12 +54,13 @@ pub const SITE_INIT_STREAM: u8 = 12;
 
 pub const MINT_FLAG_NO_TRANSFER_FEE: u32 = 1 << 0;
 pub const MINT_FLAG_NO_FROZEN_DEFAULT: u32 = 1 << 1;
-pub const MINT_FLAG_NO_PERMANENT_DELEGATE: u32 = 1 << 2;
-pub const MINT_FLAG_HOOK_OK: u32 = 1 << 3;
-pub const MINT_FLAG_ALL: u32 = MINT_FLAG_NO_TRANSFER_FEE
-    | MINT_FLAG_NO_FROZEN_DEFAULT
-    | MINT_FLAG_NO_PERMANENT_DELEGATE
-    | MINT_FLAG_HOOK_OK;
+pub const MINT_FLAG_CONFIDENTIAL_TRANSFER_OK: u32 = 1 << 2;
+pub const MINT_FLAG_ALL: u32 =
+    MINT_FLAG_NO_TRANSFER_FEE | MINT_FLAG_NO_FROZEN_DEFAULT | MINT_FLAG_CONFIDENTIAL_TRANSFER_OK;
+
+// Backward compat — old flags still compile but resolve to updated values.
+pub const MINT_FLAG_NO_PERMANENT_DELEGATE: u32 = MINT_FLAG_CONFIDENTIAL_TRANSFER_OK;
+pub const MINT_FLAG_HOOK_OK: u32 = MINT_FLAG_CONFIDENTIAL_TRANSFER_OK;
 
 // ── fee distribution ───────────────────────────────────────────
 
@@ -111,6 +121,7 @@ pub struct FeeCollectorConfig {
     pub claim_window_secs: i64,
     pub min_epoch_total_for_burn: u64,
     pub paused: bool,
+    pub confidential_transfers_enabled: bool,
     pub bump: u8,
 }
 

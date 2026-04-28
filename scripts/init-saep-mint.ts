@@ -29,11 +29,13 @@ import {
   createInitializeMetadataPointerInstruction,
   createInitializeMintInstruction,
   createInitializePausableConfigInstruction,
-  createInitializePermanentDelegateInstruction,
   createInitializeTransferFeeConfigInstruction,
-  createInitializeTransferHookInstruction,
   createSetAuthorityInstruction,
   getMintLen,
+} from '@solana/spl-token';
+import {
+  createInitializeConfidentialTransferMintInstruction,
+  createInitializeConfidentialTransferFeeConfigInstruction,
 } from '@solana/spl-token';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -43,8 +45,8 @@ type Network = 'dry-run' | 'devnet' | 'mainnet';
 
 const EXTENSIONS: ExtensionType[] = [
   ExtensionType.TransferFeeConfig,
-  ExtensionType.TransferHook,
-  ExtensionType.PermanentDelegate,
+  ExtensionType.ConfidentialTransferMint,
+  ExtensionType.ConfidentialTransferFeeConfig,
   ExtensionType.InterestBearingConfig,
   ExtensionType.MetadataPointer,
   ExtensionType.PausableConfig,
@@ -58,6 +60,7 @@ const CONFIG = {
   transferFeeBasisPoints: 10,
   maximumFee: 1_000_000n * 10n ** 9n,
   initialRateBps: 0,
+  confidentialTransferAutoApprove: true,
   feeCollectorProgram: new PublicKey('4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu'),
   nxsStakingProgram: new PublicKey('GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z'),
   governanceProgram: new PublicKey('9uczLDZaN9EWqW76be75ji4vCsz3cydefbChqvBS6qw1'),
@@ -73,6 +76,7 @@ function configHash(): string {
     transferFeeBasisPoints: CONFIG.transferFeeBasisPoints,
     maximumFee: CONFIG.maximumFee.toString(),
     initialRateBps: CONFIG.initialRateBps,
+    confidentialTransferAutoApprove: CONFIG.confidentialTransferAutoApprove,
     feeCollector: CONFIG.feeCollectorProgram.toBase58(),
     nxsStaking: CONFIG.nxsStakingProgram.toBase58(),
     governance: CONFIG.governanceProgram.toBase58(),
@@ -95,7 +99,15 @@ function governanceAuthorityPda(seed: string): PublicKey {
   return PublicKey.findProgramAddressSync([Buffer.from(seed)], CONFIG.governanceProgram)[0];
 }
 
-function buildInitInstructions(mint: PublicKey, bootstrap: PublicKey, mintLen: number, rentLamports: number): TransactionInstruction[] {
+function buildInitInstructions(
+  mint: PublicKey,
+  bootstrap: PublicKey,
+  mintLen: number,
+  rentLamports: number,
+  auditorElGamalKey: Uint8Array,
+): TransactionInstruction[] {
+  const withheldWithdrawElGamalKey = auditorElGamalKey;
+
   return [
     SystemProgram.createAccount({
       fromPubkey: bootstrap,
@@ -113,8 +125,20 @@ function buildInitInstructions(mint: PublicKey, bootstrap: PublicKey, mintLen: n
       CONFIG.maximumFee,
       TOKEN_2022_PROGRAM_ID,
     ),
-    createInitializeTransferHookInstruction(mint, bootstrap, CONFIG.feeCollectorProgram, TOKEN_2022_PROGRAM_ID),
-    createInitializePermanentDelegateInstruction(mint, bootstrap, TOKEN_2022_PROGRAM_ID),
+    createInitializeConfidentialTransferMintInstruction(
+      mint,
+      bootstrap,
+      CONFIG.confidentialTransferAutoApprove,
+      auditorElGamalKey,
+      TOKEN_2022_PROGRAM_ID,
+    ),
+    createInitializeConfidentialTransferFeeConfigInstruction(
+      mint,
+      bootstrap,
+      withheldWithdrawElGamalKey,
+      true,
+      TOKEN_2022_PROGRAM_ID,
+    ),
     createInitializeInterestBearingMintInstruction(mint, bootstrap, CONFIG.initialRateBps, TOKEN_2022_PROGRAM_ID),
     createInitializePausableConfigInstruction(mint, bootstrap, TOKEN_2022_PROGRAM_ID),
     createInitializeMintInstruction(mint, CONFIG.decimals, bootstrap, bootstrap, TOKEN_2022_PROGRAM_ID),
@@ -140,8 +164,8 @@ function buildHandoverInstructions(mint: PublicKey, bootstrap: PublicKey, target
     createSetAuthorityInstruction(mint, bootstrap, AuthorityType.FreezeAccount, null, [], TOKEN_2022_PROGRAM_ID),
     createSetAuthorityInstruction(mint, bootstrap, AuthorityType.TransferFeeConfig, targets.programCouncil, [], TOKEN_2022_PROGRAM_ID),
     createSetAuthorityInstruction(mint, bootstrap, AuthorityType.WithheldWithdraw, targets.withheldWithdraw, [], TOKEN_2022_PROGRAM_ID),
-    createSetAuthorityInstruction(mint, bootstrap, AuthorityType.TransferHookProgramId, targets.transferHook, [], TOKEN_2022_PROGRAM_ID),
-    createSetAuthorityInstruction(mint, bootstrap, AuthorityType.PermanentDelegate, targets.programCouncil, [], TOKEN_2022_PROGRAM_ID),
+    createSetAuthorityInstruction(mint, bootstrap, AuthorityType.ConfidentialTransferMint, targets.programCouncil, [], TOKEN_2022_PROGRAM_ID),
+    createSetAuthorityInstruction(mint, bootstrap, AuthorityType.ConfidentialTransferFeeConfig, targets.confFeeWithdraw, [], TOKEN_2022_PROGRAM_ID),
     createSetAuthorityInstruction(mint, bootstrap, AuthorityType.InterestRate, targets.interestRate, [], TOKEN_2022_PROGRAM_ID),
     createSetAuthorityInstruction(mint, bootstrap, AuthorityType.MetadataPointer, targets.programCouncil, [], TOKEN_2022_PROGRAM_ID),
     createSetAuthorityInstruction(mint, bootstrap, AuthorityType.PausableConfig, targets.emergencyCouncil, [], TOKEN_2022_PROGRAM_ID),
@@ -152,7 +176,7 @@ type HandoverTargets = {
   programCouncil: PublicKey;
   emergencyCouncil: PublicKey;
   withheldWithdraw: PublicKey;
-  transferHook: PublicKey;
+  confFeeWithdraw: PublicKey;
   interestRate: PublicKey;
 };
 
@@ -161,7 +185,7 @@ function devnetHandoverTargets(bootstrap: PublicKey): HandoverTargets {
     programCouncil: bootstrap,
     emergencyCouncil: bootstrap,
     withheldWithdraw: feeCollectorAuthorityPda('transfer_fee_withdraw_authority'),
-    transferHook: governanceAuthorityPda('transfer_hook_authority'),
+    confFeeWithdraw: feeCollectorAuthorityPda('conf_fee_auth'),
     interestRate: nxsStakingAuthorityPda(),
   };
 }
@@ -199,8 +223,33 @@ function loadKeypairFromPath(path: string): Keypair {
   return Keypair.fromSecretKey(Uint8Array.from(raw));
 }
 
-function parseArgs(argv: string[]): { mode: Network; confirmMainnet: boolean; forceReinit: boolean; keypairPath?: string; rpcUrl?: string } {
-  const args = { mode: 'dry-run' as Network, confirmMainnet: false, forceReinit: false, keypairPath: undefined as string | undefined, rpcUrl: undefined as string | undefined };
+function stubAuditorKey(): Uint8Array {
+  return new Uint8Array(32);
+}
+
+function loadAuditorKey(path?: string): Uint8Array {
+  if (!path) return stubAuditorKey();
+  const raw = readFileSync(path);
+  if (raw.length !== 32) throw new Error(`auditor ElGamal key must be 32 bytes, got ${raw.length}`);
+  return new Uint8Array(raw);
+}
+
+function parseArgs(argv: string[]): {
+  mode: Network;
+  confirmMainnet: boolean;
+  forceReinit: boolean;
+  keypairPath?: string;
+  rpcUrl?: string;
+  auditorKeyPath?: string;
+} {
+  const args = {
+    mode: 'dry-run' as Network,
+    confirmMainnet: false,
+    forceReinit: false,
+    keypairPath: undefined as string | undefined,
+    rpcUrl: undefined as string | undefined,
+    auditorKeyPath: undefined as string | undefined,
+  };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run') args.mode = 'dry-run';
@@ -210,6 +259,7 @@ function parseArgs(argv: string[]): { mode: Network; confirmMainnet: boolean; fo
     else if (a === '--force-reinit-rehearsal') args.forceReinit = true;
     else if (a === '--keypair') args.keypairPath = argv[++i];
     else if (a === '--rpc-url') args.rpcUrl = argv[++i];
+    else if (a === '--auditor-key') args.auditorKeyPath = argv[++i];
     else throw new Error(`Unknown arg: ${a}`);
   }
   return args;
@@ -219,13 +269,14 @@ function ixDescriptors(ixs: TransactionInstruction[]): { pid: string; dataLen: n
   return ixs.map((ix) => ({ pid: ix.programId.toBase58(), dataLen: ix.data.length, accounts: ix.keys.length }));
 }
 
-async function runDryRun(): Promise<void> {
+async function runDryRun(auditorKeyPath?: string): Promise<void> {
   const mint = Keypair.generate().publicKey;
   const bootstrap = Keypair.generate().publicKey;
+  const auditorKey = loadAuditorKey(auditorKeyPath);
   const mintLen = getMintLen(EXTENSIONS);
   const rentLamports = Math.ceil(mintLen * 6960);
 
-  const initIxs = buildInitInstructions(mint, bootstrap, mintLen, rentLamports);
+  const initIxs = buildInitInstructions(mint, bootstrap, mintLen, rentLamports, auditorKey);
   const metadataIx = buildMetadataInstruction(mint, bootstrap);
   const handoverIxs = buildHandoverInstructions(mint, bootstrap, devnetHandoverTargets(bootstrap));
 
@@ -274,7 +325,7 @@ async function runDryRun(): Promise<void> {
   console.log('\n[ok] dry-run: ix sequence + sizes validated. no network contact.');
 }
 
-async function runDevnet(opts: { keypairPath?: string; rpcUrl?: string; forceReinit: boolean }): Promise<void> {
+async function runDevnet(opts: { keypairPath?: string; rpcUrl?: string; forceReinit: boolean; auditorKeyPath?: string }): Promise<void> {
   if (!opts.keypairPath) throw new Error('--keypair <path> required for --devnet');
   const existing = readStateFile('devnet');
   if (existing && !opts.forceReinit) {
@@ -285,6 +336,7 @@ async function runDevnet(opts: { keypairPath?: string; rpcUrl?: string; forceRei
   const bootstrap = loadKeypairFromPath(opts.keypairPath);
   const mintKp = Keypair.generate();
   const mint = mintKp.publicKey;
+  const auditorKey = loadAuditorKey(opts.auditorKeyPath);
 
   const bal = await connection.getBalance(bootstrap.publicKey);
   if (bal < 2 * LAMPORTS_PER_SOL) {
@@ -294,7 +346,7 @@ async function runDevnet(opts: { keypairPath?: string; rpcUrl?: string; forceRei
   const mintLen = getMintLen(EXTENSIONS);
   const rentLamports = await connection.getMinimumBalanceForRentExemption(mintLen);
 
-  const initTx = new Transaction().add(...buildInitInstructions(mint, bootstrap.publicKey, mintLen, rentLamports));
+  const initTx = new Transaction().add(...buildInitInstructions(mint, bootstrap.publicKey, mintLen, rentLamports, auditorKey));
   const initSig = await sendAndConfirmTransaction(connection, initTx, [bootstrap, mintKp], { commitment: 'confirmed' });
 
   const metadataTx = new Transaction().add(buildMetadataInstruction(mint, bootstrap.publicKey));
@@ -346,10 +398,10 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv);
   if (args.mode === 'mainnet') refuseMainnet({ confirmMainnet: args.confirmMainnet });
   if (args.mode === 'devnet') {
-    await runDevnet({ keypairPath: args.keypairPath, rpcUrl: args.rpcUrl, forceReinit: args.forceReinit });
+    await runDevnet({ keypairPath: args.keypairPath, rpcUrl: args.rpcUrl, forceReinit: args.forceReinit, auditorKeyPath: args.auditorKeyPath });
     return;
   }
-  await runDryRun();
+  await runDryRun(args.auditorKeyPath);
 }
 
 main().catch((e) => {
