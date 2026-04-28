@@ -8,7 +8,7 @@ export type RoadmapPhase = {
   items: string[];
 };
 
-export const roadmapLastUpdated = 'April 27, 2026';
+export const roadmapLastUpdated = 'April 28, 2026';
 
 const BADGE_BORDER = 'border-[#c8c4bc]';
 
@@ -47,6 +47,8 @@ export const roadmapPhases: RoadmapPhase[] = [
       'Hosted Render indexer reliability: worker RPC + Yellowstone path completion, thresholded hosted smoke, deploy-side projection backfill',
       'Per-spec invariant test sweep across the seven pre-audit hardening items, then OtterSec submission for M1',
       'Treasury yield operator polish: daily-limit visibility, route safety nets, mainnet activation behind the Halborn gate',
+      'SPL↔Token-2022 privacy bridge: deposit $SAEP into encrypted protocol layer, withdraw 1:1 — permissionless, no new token',
+      'Confidential transfer integration: encrypted balances, auditor keys, ZK-enforced fee collection on private transfers',
     ],
   },
   {
@@ -70,7 +72,6 @@ export const roadmapPhases: RoadmapPhase[] = [
     summary: 'Longer-horizon work once the Solana operator loop is reliable, observable, and boring.',
     items: [
       'Token-2022 fee mechanics, buyback/burn cadence, and staking/tokenomics maturation',
-      'Confidential and privacy-preserving payment flows',
       'LayerZero-plus-intents cross-chain settlement path',
       'Compute-bond protocol enforcement with release, slash, expiry, and dispute integration',
       'Reusable ZK circuit catalog, verification-key versioning, and gated ZK-ML research',

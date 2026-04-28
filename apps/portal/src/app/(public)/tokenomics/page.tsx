@@ -19,9 +19,9 @@ const feeFlow = [
 ];
 
 const extensions = [
-  { name: 'TransferHook', role: 'Routes 0.1% protocol fee on every transfer to FeeCollector' },
-  { name: 'TransferFee', role: '0.1% built-in fee — combined with hook = 0.2% net per transfer' },
-  { name: 'PermanentDelegate', role: 'Enables protocol burns — the only legal burn path (mint authority is None)' },
+  { name: 'ConfidentialTransfer', role: 'Encrypted balances and transfer amounts — agent treasuries stay private, competitors can\'t front-run' },
+  { name: 'ConfidentialTransferFee', role: 'Fee enforcement on encrypted transfers via ZK proofs — privacy without dodging protocol fees' },
+  { name: 'TransferFee', role: '0.1% built-in protocol fee on every internal transfer, collected per epoch' },
   { name: 'InterestBearing', role: 'Accrues yield on staked tokens — no inflation, no reward minting' },
   { name: 'Pausable', role: 'Emergency circuit breaker — 4-of-7 multisig controlled' },
   { name: 'MetadataPointer', role: 'On-chain metadata stored inline — no external dependency' },
@@ -39,7 +39,7 @@ export default function TokenomicsPage() {
     <PageShell
       eyebrow="Tokenomics"
       title="Token economics"
-      lede="$SAEP is a Token-2022 asset with protocol-level fee mechanics, staking, and permanent burn — enforced by on-chain programs, not promises."
+      lede="$SAEP holders deposit into a Token-2022 protocol layer with encrypted balances, fee mechanics, staking, and permanent burn — enforced by on-chain programs, not promises."
     >
       <div className="mt-16 space-y-20">
         {/* Distribution */}
@@ -65,7 +65,8 @@ export default function TokenomicsPage() {
         <section>
           <h2 className="font-display text-2xl mb-6">Fee distribution</h2>
           <p className="font-mono text-[12px] text-ink/80 leading-relaxed mb-6">
-            Every $SAEP transfer incurs a 0.2% protocol fee (0.1% TransferFee + 0.1% TransferHook).
+            Every internal $SAEP transfer incurs a 0.1% protocol fee via the TransferFee extension.
+            Confidential transfers enforce the same fee via ConfidentialTransferFee with ZK proofs.
             Collected fees are split per epoch across four sinks:
           </p>
           <div className="flex gap-1 h-8 rounded overflow-hidden mb-4">
@@ -90,7 +91,7 @@ export default function TokenomicsPage() {
             ))}
           </div>
           <p className="mt-4 font-mono text-[11px] text-mute leading-relaxed">
-            Ratios are governance-adjustable. Burns use PermanentDelegate — the only burn path since mint authority is permanently None.
+            Ratios are governance-adjustable. Burns are executed by the protocol burn vault PDA — no PermanentDelegate needed.
           </p>
         </section>
 
@@ -135,6 +136,40 @@ export default function TokenomicsPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* Privacy bridge */}
+        <section>
+          <h2 className="font-display text-2xl mb-6">Privacy bridge</h2>
+          <p className="font-mono text-[12px] text-ink/80 leading-relaxed mb-6">
+            $SAEP is a standard SPL token. When deposited into the protocol, it bridges 1:1 into an
+            internal Token-2022 mint with encrypted balances and transfer amounts. All protocol
+            operations — fees, escrow, staking, streaming — happen on the private side. Withdraw
+            and you get your $SAEP back 1:1.
+          </p>
+          <div className="space-y-3">
+            <div className="flex items-start gap-4 border-b border-ink/5 pb-3">
+              <span className="font-mono text-[12px] text-lime shrink-0 w-40">Deposit</span>
+              <span className="font-mono text-[11px] text-ink/70 leading-relaxed">
+                Transfer SPL $SAEP to protocol vault, receive 1:1 internal T22 tokens with privacy extensions
+              </span>
+            </div>
+            <div className="flex items-start gap-4 border-b border-ink/5 pb-3">
+              <span className="font-mono text-[12px] text-lime shrink-0 w-40">Withdraw</span>
+              <span className="font-mono text-[11px] text-ink/70 leading-relaxed">
+                Burn internal T22 tokens, receive 1:1 SPL $SAEP back from vault — permissionless, no fees beyond gas
+              </span>
+            </div>
+            <div className="flex items-start gap-4 border-b border-ink/5 pb-3">
+              <span className="font-mono text-[12px] text-lime shrink-0 w-40">Auditor keys</span>
+              <span className="font-mono text-[11px] text-ink/70 leading-relaxed">
+                Baked into the mint for compliance — selective decryption, not blanket transparency
+              </span>
+            </div>
+          </div>
+          <p className="mt-4 font-mono text-[11px] text-mute leading-relaxed">
+            No new token, no migration. $SAEP stays $SAEP. The bridge is permissionless and protocol-controlled.
+          </p>
         </section>
 
         {/* Security */}
