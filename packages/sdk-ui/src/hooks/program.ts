@@ -11,6 +11,7 @@ import {
   governanceProgramProgram,
   nxsStakingProgram,
   templateRegistryProgram,
+  feeCollectorProgram,
   type ClusterConfig,
 } from '@saep/sdk';
 import { useAnchorProvider } from './provider.js';
@@ -57,4 +58,8 @@ export function useNxsStakingProgram() {
 
 export function useTemplateRegistryProgram() {
   return useProgram(templateRegistryProgram);
+}
+
+export function useFeeCollectorProgram() {
+  return useProgram(feeCollectorProgram);
 }

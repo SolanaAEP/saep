@@ -1,7 +1,11 @@
 'use client';
 
 import type { AgentSummary } from '@saep/sdk';
+import { getConfidentialAccountStatus, type ConfidentialAccountStatus } from '@saep/sdk';
 import { useAllowedMints, useVaultBalances, useTreasury } from '@saep/sdk-ui';
+import { useConnection } from '@solana/wallet-adapter-react';
+import { useQuery } from '@tanstack/react-query';
+import { PublicKey } from '@solana/web3.js';
 
 type Meta = { symbol: string; decimals: number; badge?: string };
 
@@ -26,10 +30,30 @@ function fmtAmount(raw: bigint, decimals: number): string {
   return (Number(whole) + frac).toLocaleString(undefined, { maximumFractionDigits: 4 });
 }
 
+function useVaultCtStatus(vaults: PublicKey[]) {
+  const { connection } = useConnection();
+  const keys = vaults.map((v) => v.toBase58()).sort().join(',');
+  return useQuery<Record<string, ConfidentialAccountStatus>>({
+    queryKey: ['vault-ct-status', keys],
+    enabled: vaults.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const results: Record<string, ConfidentialAccountStatus> = {};
+      await Promise.all(
+        vaults.map(async (v) => {
+          results[v.toBase58()] = await getConfidentialAccountStatus(connection, v);
+        }),
+      );
+      return results;
+    },
+  });
+}
+
 export function MultiAssetBalanceTable({ agent }: { agent: AgentSummary }) {
   const { data: mints, isLoading: mintsLoading } = useAllowedMints();
   const { data: balances, isLoading: balLoading } = useVaultBalances(agent.did, mints ?? []);
   const { data: treasury } = useTreasury(agent.did);
+  const { data: ctStatus } = useVaultCtStatus(balances?.map((b) => b.vault) ?? []);
 
   const loading = mintsLoading || balLoading;
 
@@ -65,6 +89,7 @@ export function MultiAssetBalanceTable({ agent }: { agent: AgentSummary }) {
           <tbody>
             {balances.map((b) => {
               const m = meta(b.mint.toBase58());
+              const ct = ctStatus?.[b.vault.toBase58()];
               return (
                 <tr key={b.vault.toBase58()} className="border-b border-ink/5 last:border-0">
                   <td className="py-2.5">
@@ -75,6 +100,14 @@ export function MultiAssetBalanceTable({ agent }: { agent: AgentSummary }) {
                         title={m.badge}
                       >
                         {m.badge}
+                      </span>
+                    )}
+                    {ct?.isConfigured && (
+                      <span
+                        className="ml-2 text-[10px] px-1.5 py-0.5 border align-middle border-lime/30 text-lime"
+                        title={ct.isApproved ? 'Confidential transfers active' : 'Confidential transfers pending approval'}
+                      >
+                        {ct.isApproved ? 'Encrypted' : 'CT pending'}
                       </span>
                     )}
                   </td>
