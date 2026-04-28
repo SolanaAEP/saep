@@ -451,6 +451,110 @@ For completeness (not stubs, but out-of-scope for this section): `scripts/seed_c
 
 Zero `F-2026-NN` findings touched capability_registry. The §5.1 ledger has no row attributing to this program.
 
+### A.2 agent_registry
+
+One-sentence summary: agent_registry holds every agent's identity, stake, status, and per-capability reputation. It is the trust anchor every other M1 program reads or calls into — task_market reads `AgentAccount` inline; proof_verifier CPIs `update_reputation`. Largest program in the audit-of-record set (28 public instructions, 8 PDA types, 43 error variants), the only one holding value directly (per-agent stake vault + global slashing-treasury target), and the one with the largest `F-2026-NN` footprint (4 findings touched per §5.1: F-2026-01 / 04 / 11 / 12).
+
+#### A.2.1 Program identity
+
+- **Program ID:** `EQJ4Lp2gxJDD5hs185aDcermYWdAi4cQeSKfnuqLAQYu` (`programs/agent_registry/src/lib.rs` `declare_id!`).
+- **Spec:** [`specs/03-program-agent-registry.md`](./specs/03-program-agent-registry.md).
+- **Upgrade authority on mainnet:** single deployer key today; rotation to a Squads 4-of-7 vault with a 7-day timelock per [`specs/ops-squads-multisig.md`](./specs/ops-squads-multisig.md) is the canonical next step (operational, not yet performed — see §7.3).
+- **In-program `authority` (`RegistryGlobal`):** begins as the deployer-supplied pubkey at `init_global`, rotates via two-step `transfer_authority` / `accept_authority`; migrates to the GovernanceProgram PDA once the M2 governance flow is initialised.
+
+#### A.2.2 PDAs
+
+Eight PDA types — the most of any M1 program. All fixed-width `#[derive(InitSpace)]`; no `String` on-chain; every variable-length surface is `[u8; N]` with null-padding for rent determinism.
+
+- **`RegistryGlobal`** — governance singleton. Seeds `[b"global"]`. Carries: `authority` + `pending_authority` (two-step transfer); cross-program ID pins (`capability_registry`, `task_market`, `dispute_arbitration`, `slashing_treasury`, `stake_mint`, `proof_verifier`); risk knobs (`min_stake`, `max_slash_bps` hard-capped at `MAX_SLASH_BPS_CAP = 1000`, `slash_timelock_secs` default 30 days); personhood config (`allowed_civic_networks` + `allowed_sas_issuers` allowlists, `personhood_basic_min_tier`, `require_personhood_for_register`, `civic_gateway_program` with the F-2026-01 fail-close default); `paused` kill-switch; `bump`.
+- **`AgentAccount`** — per-`(operator, agent_id)`. Seeds `[b"agent", operator, agent_id]` where `agent_id: [u8; 32]`. Carries `operator`, `agent_id`, `did = keccak256(operator || agent_id || manifest_uri[..first_null])` (deterministic, **not** attacker-chosen), `manifest_uri: [u8; 128]`, `capability_mask: u128` (subset of capability_registry's `approved_mask` at registration time per A.1.6 invariant 5), pricing fields, counters (`jobs_completed >= jobs_disputed` invariant), `stake_amount` mirroring `StakeVault.amount`, `status` (4-state machine), monotonic `version`, optional `delegate` (secondary signer for `set_status` only), embedded `pending_slash` + `pending_withdrawal`, `bump` + `vault_bump`.
+- **`StakeVault`** — per-agent Token-2022 ATA. Seeds `[b"stake", agent_did]`. Mint = `RegistryGlobal.stake_mint`; authority is the PDA itself (self-signing via `vault_bump`). Written by `register_agent`, `stake_increase`, `stake_withdraw_execute`, `execute_slash`.
+- **`PersonhoodAttestation`** — per-operator Civic / SAS binding. Seeds `[b"personhood", operator]`. Carries `operator`, `provider` (Civic | SAS), `tier` (None | Basic | Verified), `gatekeeper_network`, `attestation_ref = keccak256(token_pubkey || slot)` (replay binding against token reuse), `attested_at`, `expires_at`, `revoked`, `bump`. One attestation per operator (PDA seeds); `is_valid_at(now)` checks `!revoked && now <= expires_at`.
+- **`CategoryReputation`** — per-agent-per-capability EWMA. Seeds `[b"rep", agent_did, &capability_bit.to_le_bytes()]` (bit as u16 → 2-byte LE). Carries `agent_did`, `capability_bit`, `score` (6-dim EWMA each `0..=10_000` bps + `alpha` + `sample_count` + `last_update`), `jobs_completed`, `jobs_disputed`, `last_proof_key: [u8; 32]`, `last_task_id: [u8; 32]` (replay-protection field — see F-2026-11 disposition note in §5.1), `version = CATEGORY_REP_VERSION = 1`, `bump`. Rail live since `7c2143c` (F-2026-02 closure); the mainnet-ceremony gate (`mode.is_mainnet ⇒ vk.is_production`) is a separate spec-06 ceremony-discipline check, not an F-2026-02 rider.
+- **`ReentrancyGuard`** — singleton CPI guard. Seeds `[b"guard"]`. Self-defense pattern matching the §3 DAG. `admin_reset` requires `propose_guard_reset` + `ADMIN_RESET_TIMELOCK_SECS = 86_400` (24h) timelock, so a stuck-active guard cannot be cleared faster than the proposal window.
+- **`AllowedCallers`** — singleton caller allowlist. Seeds `[b"allowed_callers"]`. `programs: Vec<Pubkey>` capped at `MAX_ALLOWED_CALLERS = 8`. Consumed by `update_reputation` callee-preconditions only — callers must appear here, **and** hold an active guard of their own, **and** land at CPI stack height ≤ 2.
+- Embedded sub-structs (no distinct PDA): `PendingSlash { amount, reason_code, proposed_at, executable_at, proposer, appeal_pending }` (`executable_at = proposed_at + slash_timelock_secs`; `appeal_pending` reserved for M2 dispute_arbitration); `PendingWithdrawal { amount, requested_at, executable_at }` (same 30-day timelock).
+
+#### A.2.3 Instructions
+
+28 public instructions plus one deprecated stub (`record_job_outcome` retained for IDL stability — see A.2.8). Grouped by concern.
+
+- **Registry init** (1 ix): `init_global(...)` validates `max_slash_bps <= 1000` + `slash_timelock_secs > 0`.
+- **Agent lifecycle** (5 ix): `register_agent` (computes `did`, runs the inline capability check via Anchor `seeds::program = global.capability_registry` + asserts `mask & !approved_mask == 0` — see A.1.5 for the inline-vs-CPI rationale; optional personhood gate); `update_manifest`; `delegate_control`; `set_status` (operator-or-delegate; Active↔Paused only — Deregistered transition is operator-only); `record_job_outcome` (deprecated stub per F-2026-03; export retained, body removed, all callers severed).
+- **Stake management** (3 ix): `stake_increase`; `stake_withdraw_request`; `stake_withdraw_execute`. The 30-day withdrawal timelock matches the slash timelock and blocks while `pending_slash.is_some()`. Post-withdraw, if `stake_amount < min_stake`, status flips to `Deregistered`.
+- **Slashing** (3 ix): `propose_slash` (authority-gated; per-incident cap enforced as `amount * 10_000 <= max_slash_bps * stake` against live stake); `cancel_slash` (authority-gated; the **only** mutating ix allowed under `global.paused` — explicit carve-out so a pause cannot lock in an erroneous slash); `execute_slash` (permissionless crank; re-checks the cap against live stake; transfers via `Token2022::transfer_checked` PDA-signed to `slashing_treasury` ATA; flips status to `Suspended` if post-slash stake < `min_stake`).
+- **Governance setters** (8 ix, all `has_one = authority`): `transfer_authority` / `accept_authority` (two-step); `set_min_stake`; `set_max_slash_bps` (`<=1000` enforced against the const cap); `set_slash_timelock_secs` (`>0` enforced); `set_paused`; `set_civic_gateway_program` (the F-2026-01 gate — must be set before personhood works); `set_proof_verifier`.
+- **Reputation rail** (1 ix): `update_reputation(...)`. The bound callee of `proof_verifier::verify_and_update_reputation`. Preconditions: CPI depth ≤ 2 (hard `require!`), caller program in `AllowedCallers`, caller-side `ReentrancyGuard.active == true`, self-guard inactive. Live since `7c2143c`. The upstream caller verifies the 9-public-input Groth16 proof, reconstructs `agent_did` / `capability_bit` / `sample_hash` / `task_id` from `public_inputs[5..9]`, recomputes the on-chain Poseidon sample via `light-poseidon`, then CPIs in with the verified values; caller-supplied `_agent_did` / `_capability_bit` / `_task_id` instruction args are ignored (name-prefixed `_` for IDL stability post-F-2026-02).
+- **Personhood** (4 ix): `attest_personhood` (asserts `civic_gateway_token.owner == global.civic_gateway_program` per F-2026-01 fail-close before reading any token field; first-slot civic network ⇒ `Verified`, other allowed networks + SAS issuers ⇒ `Basic`; replay-binding `attestation_ref = keccak256(token_pubkey || slot)`); `revoke_personhood` (authority); `refresh_personhood` (operator); `set_gatekeeper_allowlist` (authority — wholesale replacement matching governance cadence).
+- **Reentrancy guard management** (4 ix): `init_guard`; `set_allowed_callers`; `propose_guard_reset`; `admin_reset_guard` (24h timelock; exists because a failed CPI could leave the guard stuck `active = true`).
+
+#### A.2.4 Events
+
+23 events in `events.rs` (`#[event]`), all decoded by `services/indexer` against the committed IDL: registry + lifecycle (`GlobalInitialized`, `AgentRegistered`, `ManifestUpdated`, `DelegateSet`, `StatusChanged`, `JobOutcomeRecorded`); stake (`StakeIncreased`, `WithdrawalRequested`, `WithdrawalExecuted`); slash (`SlashProposed`, `SlashCancelled`, `SlashExecuted`); governance + personhood (`GlobalParamsUpdated`, `PersonhoodAttested`, `PersonhoodRevoked`, `PersonhoodRefreshed`, `GatekeeperAllowlistUpdated`); guard (`GuardEntered`, `ReentrancyRejected`, `GuardInitialized`, `GuardAdminReset`, `AllowedCallersUpdated`); reputation (`CategoryReputationUpdated`). All 23 covered by the indexer's borsh round-trip harness.
+
+`JobOutcomeRecorded` remains on the dead `record_job_outcome` stub for IDL stability — never emitted at runtime since F-2026-03 severed all callers.
+
+#### A.2.5 Cross-program consumption
+
+**CPI out** — only to Token-2022, via `anchor_spl::token_2022::transfer_checked`. Four call sites: `register_agent` (operator ATA → `StakeVault`, operator-signed); `stake_increase` (operator ATA → `StakeVault`, operator-signed); `stake_withdraw_execute` (`StakeVault` → operator ATA, PDA-signed via `vault_bump`); `execute_slash` (`StakeVault` → `slashing_treasury` ATA, PDA-signed). No CPI to capability_registry, proof_verifier, task_market, dispute_arbitration, treasury_standard, or any SAEP program — capability-bit enforcement is the inline cross-program-account read described in A.1.5.
+
+**CPI in** — one entry point: `proof_verifier::verify_and_update_reputation` → `agent_registry::update_reputation`. Gated by the F-2026-04 caller-guard-load pattern: `caller_guard: UncheckedAccount` validated via `load_caller_guard` (manual owner + PDA + discriminator + `active` checks), caller program in `AllowedCallers`, caller CPI stack height ≤ 2. The historical edge `task_market::release` → `agent_registry::record_job_outcome` was severed in `41d18ff` per F-2026-03 — caller side fully removed, callee retained as a dead stub for IDL stability.
+
+**Read targets** (inline reads, no CPI in either direction): `task_market` reads `AgentAccount` directly via Anchor `seeds::program = global.agent_registry` on `create_task` / `submit_result` / `release` / `expire` / `close_bidding` / `claim_bond`, verifying against `agent_did` / `operator` / `status` / `min_stake`; `task_market` also reads `PersonhoodAttestation` inline on `accept_task`. The inline-read pattern saves ~2k CU per call against an equivalent read-only CPI.
+
+#### A.2.6 Invariants
+
+1. **`AgentAccount.stake_amount == StakeVault.amount` at every instruction boundary.** Maintained by symmetry of writes: every state mutation (`stake_amount +=` / `-=`) happens *before* the `transfer_checked` CPI, with the CPI amount matching the delta. A failed CPI aborts the whole instruction (Anchor error propagation), so a partial update is structurally impossible. **Known coverage gap:** no Anchor integration test currently asserts symmetry on a happy path against localnet — see A.2.9.
+2. **`jobs_completed >= jobs_disputed` always.** Both `checked_add`'d in the reputation rail.
+3. **`status == Deregistered` is terminal in M1.** No `close_agent` handler exists; `stake_withdraw_execute` can flip status to `Deregistered` when post-withdraw stake < `min_stake`, with no path out until the M2 `close_agent` lands.
+4. **`pending_slash.amount <= stake_amount` at proposal and execution.** Both checks use a `u128` intermediate (`amount * 10_000 <= max_slash_bps * stake`) — no overflow on realistic inputs since max `u64 * 10_000 < u128::MAX`.
+5. **`pending_slash.executable_at - proposed_at == slash_timelock_secs` at proposal.** Computed via `now + global.slash_timelock_secs` with `checked_add` on `i64`. `executable_at` is stored, not recomputed, so clock drift cannot retroactively shift the timelock.
+6. **Reputation dimensions ∈ `[0, 10_000]`.** Enforced per-update in the reputation handler. Rail live since `7c2143c` (F-2026-02 closure); the M1 dev-tier ceremony means no production samples land yet, but the bounds-check code path is the same one the production rail will use post-real-ceremony.
+7. **`AgentAccount.version` strictly monotonic.** `update_manifest` does `version = version.checked_add(1)?`; `register_agent` sets `version = 1`.
+8. **Only `operator` can shrink stake; only `authority` (or program-PDA) can slash.** `stake_withdraw_*` is operator-gated; `propose_slash` / `cancel_slash` are authority-gated; `execute_slash` is the permissionless crank but state-gated (cannot execute without a prior authority-signed `propose_slash`).
+9. **`did` is deterministic; two agents cannot share a DID.** PDA seeds `[b"agent", operator, agent_id]` guarantee account uniqueness; `did = keccak256(operator || agent_id || manifest_uri[..first_null])` is a function of the seeds + manifest. Collision reduces to a keccak preimage attack — out of scope.
+10. **Not in spec:** single-outstanding rule on `pending_slash` *and* `pending_withdrawal`. Spec §2.1 mentions the single-pending-slash invariant; the parallel rule on withdrawal is enforced in code only (`stake_withdraw_request` returns `WithdrawalPending` if one already exists). Without it, a second withdrawal could race the first's timelock window.
+
+#### A.2.7 Security checks (§1.2 mapping)
+
+- **Account validation.** Every handler declares `seeds = [b"agent", operator, agent_account.agent_id]` + `bump = agent_account.bump` on `AgentAccount`; `seeds = [b"global"]` + `bump = global.bump` on `RegistryGlobal`. `StakeVault` is a token account — owner enforced by Anchor's `TokenAccount` type (Token-2022 program). Cross-program PDAs use explicit `seeds::program = ...`. The `load_caller_guard` runtime-check pattern replaces Anchor's compile-time owner check for guards owned by *other* SAEP programs — the single place where the Anchor default is structurally insufficient.
+- **Authorization.** Operator-only: `update_manifest`, `delegate_control`, `stake_*`, `attest_personhood`, `refresh_personhood`. Operator-or-delegate: `set_status` (Active↔Paused only). Authority-only: all governance setters + `propose_slash` / `cancel_slash` + `revoke_personhood` + `set_gatekeeper_allowlist` + guard management. Permissionless crank: `execute_slash` (state-gated). Program-only via CPI guard: `update_reputation`.
+- **Re-entrancy.** The most intricate surface in M1. Self-defense: `register_agent`, `stake_increase`, `stake_withdraw_execute` each `try_enter` at the top and `exit` before return. Callee-defense (`update_reputation`): `check_callee_preconditions` enforces stack height ≤ 2 (hard `require!` in `reputation.rs`; the `MAX_CPI_STACK_HEIGHT = 3` constant in `guard.rs` is a stricter outer bound for other callees but reputation uses the tighter `2` — see §3.2 + §6.2). State mutations happen *before* the `transfer_checked` CPI on all four stake paths — a reentrant call would see updated state. F-2026-04 closed the Anchor-owner-check footgun; F-2026-12 closed the sysvar-derivation footgun.
+- **Integer safety.** `checked_*` arithmetic on `stake_amount`, `jobs_*`, `version`, EWMA dims. Slash-bound check uses a `u128` intermediate. `ArithmeticOverflow` is the uniform error on fall-through.
+- **Upgrade.** Deployer → Squads 4-of-7 with 7-day timelock per ops spec before mainnet. In-program `authority` migrates to GovernanceProgram PDA in M2.
+- **Pause.** `global.paused` checked on every state-changing ix *except* `cancel_slash` (Invariant 10 carve-out — pause must not trap a mistaken slash) and the authority-handoff pair (`transfer_authority` / `accept_authority` — pause must not trap governance handoff). `execute_slash` *is* pause-gated. `update_reputation` is pause-gated indirectly via the proof_verifier caller refusing to initiate during pause.
+- **Slashing safety.** 30-day default timelock (governance-adjustable, `>0`), 10% per-incident cap (hard-coded `MAX_SLASH_BPS_CAP = 1000`), single-outstanding rule (Invariant 10), `cancel_slash` allowed during pause. `appeal_pending` reserved for M2 dispute_arbitration — never set in M1.
+- **Token-2022.** Stake mint is expected to be a plain Token-2022 mint at M1; `transfer_checked` uniformly enforces mint + decimals (blocks the "wrong mint" swap class). Hook-allowlist enforcement on agent_registry's four CPI sites is M2 work, coupled with the M2 hook-allowed stake mint.
+- **Oracle.** None. agent_registry has no Pyth / Switchboard reads.
+- **PDA spoofing.** Every PDA-carrying ix uses Anchor's `seeds = [...]` + `bump = <stored>.bump` pattern; bumps stored at init, consumed on every subsequent ix. `StakeVault` PDA signature uses the stored `vault_bump` (not `find_program_address` at runtime).
+- **Discriminator enforcement.** 22 fuzz cases (per §4 matrix) cover the four primary account types (`RegistryGlobal`, `AgentAccount`, `PersonhoodAttestation`, `CategoryReputation`): arbitrary-disc rejection, truncated-buffer rejection, correct-disc + random-tail no-panic, pairwise disc-distinctness, round-trips on the full randomised field space.
+
+#### A.2.8 Known stubs
+
+- **`record_job_outcome`.** Deprecated per F-2026-03. Handler body removed; export retained for IDL stability through the audit window. No call sites — the historical caller (`task_market::release`) was severed in `41d18ff`. Reference code retained at `lifecycle.rs` as a dead branch for audit-trail readability. Listed under §6.6 as the "callee-retained, all on-chain callers severed" entry.
+- **`update_reputation`.** Live handler since `7c2143c` (F-2026-02 closure). End-to-end coverage in M1 is dev-tier only — proofs against the production-tier ceremony VK arrive post-real-ceremony per §7.1.
+
+No other stubs. No feature-flagged branches. No `NotImplemented` paths.
+
+#### A.2.9 Test coverage
+
+**Rust unit + proptest (`cargo test -p agent_registry`).** `src/state.rs` carries ~20 inline unit tests (EWMA convex bound, slash-bound arithmetic, capability-check subset / superset, slug validation, status-machine transitions, personhood-tier ordering, attestation `is_valid_at`). `src/fuzz.rs` carries a 256-case proptest block covering round-trip on the four primary account types, arbitrary-discriminator rejection per type, truncated-buffer rejection, correct-discriminator + random-tail no-panic, pairwise discriminator-distinctness, and a `RegistryGlobal` trailing-bytes case documenting the Anchor "parse succeeds + slice non-empty" contract.
+
+**Anchor TS integration (`tests/agent_registry.ts`).** Two active cases (program-ID parity, agent-PDA derivation determinism); six fixture-gated `.skip`'d cases for `register_agent` capability rejection, stake-vault deposit, slash 10% cap, slash 30-day timelock (bankrun-required), 2-step withdrawal (bankrun-required), and reputation EWMA bounds (rail live but integration test still needs capability_registry + Token-2022 mint fixture + dev-tier proof artefact).
+
+**Coverage gaps (known, not hidden).** No bankrun adapter for the slash 30-day warp (the VK-rotate bankrun adapter at `tests/helpers/bankrun.ts` is the template; scaling to agent_registry needs the shared capability_registry + stake-mint fixture first). No localnet cross-program guard DAG test — unit-tested `load_caller_guard` + `check_callee_preconditions` pass; integration coverage of task_market → proof_verifier → agent_registry under Anchor localnet is the §3.4 / §6.1 gap. The six skipped Anchor cases above are each fixture-gated, not design gaps; the planned closure is one cycle to land the shared fixture, then unskip in one motion.
+
+#### A.2.10 Finding-ledger filter
+
+Four findings touched agent_registry. Citations are IDs only; full entries live in §5.1.
+
+- **F-2026-01** (Critical, CLOSED). Personhood: `civic_gateway_token.owner` check fail-close. The deployer must call `set_civic_gateway_program` before `attest_personhood` works; the handler returns `CivicGatewayProgramNotSet` otherwise.
+- **F-2026-04** (High, CLOSED, spawned F-2026-12). Cross-program `ReentrancyGuard` owner-check footgun: `update_reputation` accepts the caller-side guard as `UncheckedAccount` and validates via `load_caller_guard`. Closure landed the runtime-check pattern documented in §3 + §6.2.
+- **F-2026-11** (Info, ACCEPTED). `CategoryReputation` replay scheme rejects only the immediate-prior `task_id`. The rail was previously fail-closed per F-2026-02 (now CLOSED in `7c2143c`); the single-prior `last_task_id` replay-protection is a known gap with a documented expansion path (bloom-filter migration). Not exploitable in M1 (dev-tier ceremony, no production proofs land).
+- **F-2026-12** (Low / Info, CLOSED). `caller_program` derivation hardened to `current_ix.program_id` + hard `stack_height <= 2` rejection. Also touched `proof_verifier::verify_proof` per §3.3.
+
+The conditional-PASS rider relevant to agent_registry — that the cross-program guard DAG lacks a localnet integration test — is the §3.4 / §6.1 caveat above.
+
 ---
 
 ## 9. References
