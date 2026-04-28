@@ -361,6 +361,7 @@ export function Footer() {
             { label: 'TreasuryStandard', href: '/specs/treasury-standard' },
             { label: 'TaskMarket', href: '/specs/task-market' },
             { label: 'ProofVerifier', href: '/specs/proof-verifier' },
+            { label: 'FeeCollector', href: '/specs/fee-collector' },
             { label: 'CapabilityRegistry', href: '/specs/capability-registry' },
           ]}
         />
@@ -371,6 +372,7 @@ export function Footer() {
             { label: 'All specs', href: '/specs' },
             { label: 'Tokenomics', href: '/tokenomics' },
             { label: 'Roadmap', href: '/roadmap' },
+            { label: 'Privacy bridge', href: '/tokenomics#privacy-bridge' },
             { label: 'Brand kit', href: '/brand' },
             { label: 'GitHub', href: 'https://github.com/SolanaAEP/saep' },
           ]}

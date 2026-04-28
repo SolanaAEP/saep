@@ -93,6 +93,15 @@ export default function TokenomicsPage() {
           <p className="mt-4 font-mono text-[11px] text-mute leading-relaxed">
             Ratios are governance-adjustable. Burns are executed by the protocol burn vault PDA — no PermanentDelegate needed.
           </p>
+          <div className="mt-6 border-t border-ink/10 pt-4">
+            <h3 className="font-mono text-[12px] text-ink/90 mb-2">Buyback-then-burn</h3>
+            <p className="font-mono text-[11px] text-mute leading-relaxed">
+              Most protocol fees accrue in USDC. The buyback worker reads the fee accumulator balance,
+              routes it through Jupiter v6 (USDC → $SAEP, slippage-capped at 200 bps), and burns the
+              received $SAEP in the same tick. The worker keypair can only swap and burn — no general
+              transfer authority, no custody beyond the in-flight swap.
+            </p>
+          </div>
         </section>
 
         {/* Staking */}

@@ -11,7 +11,7 @@ Ten Anchor programs, a zero-knowledge proof layer for task completion and unique
 - **Website:** [buildonsaep.com](https://buildonsaep.com)
 - **Roadmap:** [buildonsaep.com/roadmap](https://buildonsaep.com/roadmap)
 - **Repo:** [github.com/SolanaAEP/saep](https://github.com/SolanaAEP/saep)
-- **Status:** Five of ten programs are initialised on Solana mainnet — `task_market`, `agent_registry`, `proof_verifier`, `capability_registry`, `treasury_standard`. Public Agent Hire and public-agent settlement run end to end through the production verifier key. Current shipping lane: public security review, conservative on-chain caps, bounty pool funding, and the milestone activation that initialises `fee_collector`, `nxs_staking`, `governance_program`, `dispute_arbitration`, and `template_registry` on mainnet.
+- **Status:** Five of ten programs are initialised on Solana mainnet — `task_market`, `agent_registry`, `proof_verifier`, `capability_registry`, `treasury_standard`. Public Agent Hire and public-agent settlement run end to end through the production verifier key. Current shipping lane: SPL↔Token-2022 privacy bridge with confidential transfers, fee-crank service for epoch lifecycle automation, buyback-bot active mode (Jupiter swap + burn), security review, and the milestone activation that initialises `fee_collector`, `nxs_staking`, `governance_program`, `dispute_arbitration`, and `template_registry` on mainnet.
 - **Token:** `$SAEP` mint on Solana: `HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump`
 
 ---
@@ -88,7 +88,8 @@ apps/              Next.js 15 — portal, docs, analytics, video
 packages/          TypeScript SDK (auto-generated from IDLs), sdk-ui hooks,
                    sak-plugin, shared UI, configs
 services/          indexer (Rust), discovery, proof-gen, iacp, x402-gateway,
-                   mcp-bridge, compute-broker, telegram-bot, xrpl-bridge
+                   mcp-bridge, compute-broker, telegram-bot, xrpl-bridge,
+                   buyback-bot, fee-crank
 python/            Python SDK + CrewAI/AutoGen/LangGraph/Hermes adapters
 infra/             Render blueprint
 specs/             Feature specs (source of truth per feature)
@@ -159,9 +160,9 @@ Full contributor guide: [CONTRIBUTING.md](./CONTRIBUTING.md).
 | On-chain registries | Live now | `agent_registry`, `capability_registry`, and `treasury_standard` initialised on mainnet — agent registration, capability tag set, PDA-owned treasuries |
 | Builder surface | Live now | TypeScript and Python SDKs, MCP bridge, x402 gateway, Solana Agent Kit plugin, Hermes Agent plugin, webhook subscription stack (delivery activates when the saep-discovery service is deployed) |
 | Public application | Live now | Landing, docs, specs, tokenomics, staking, brand, security, governance, roadmap; in-app marketplace, agent leaderboard, treasury operator UI, retro eligibility check, template catalog and economics simulator |
-| Production trust and milestone activation | Shipping now | Public `SECURITY-REVIEW.md`, `BOUNTY.md` with funded pool via fee_collector revenue split, conservative on-chain caps via governance, `fee_collector` mainnet initialisation, discovery webhook producer activation, hosted Render indexer reliability, Solana Foundation security/audit grant submission |
-| Tokenomics and governance maturity | Next | `nxs_staking` pool initialisation and reward distribution loop, buyback worker (USDC → SAEP via Jupiter v6 → execute_burn), governance_program multisig initialisation, dispute_arbitration activation, on-chain `template_registry` initialisation, A2A marketplace flow, IACP bus hardening |
-| Expansion rails | Later | Privacy-preserving payments, LayerZero-plus-intents, compute-bond on-chain enforcement, reusable ZK / ZK-ML circuit catalogue |
+| Production trust and milestone activation | Shipping now | Public `SECURITY-REVIEW.md`, `BOUNTY.md` with funded pool via fee_collector revenue split, conservative on-chain caps via governance, `fee_collector` mainnet initialisation, fee-crank epoch lifecycle service, buyback-bot active mode (Jupiter v6 swap + SPL burn), SPL↔Token-2022 privacy bridge with confidential transfers, discovery webhook producer activation, hosted Render indexer reliability, Solana Foundation security/audit grant submission |
+| Tokenomics and governance maturity | Next | `nxs_staking` pool initialisation and reward distribution loop, governance_program multisig initialisation, dispute_arbitration activation, on-chain `template_registry` initialisation, A2A marketplace flow, IACP bus hardening |
+| Expansion rails | Later | LayerZero-plus-intents cross-chain settlement, compute-bond on-chain enforcement, reusable ZK / ZK-ML circuit catalogue |
 
 Vulnerability disclosure: [SECURITY.md](./SECURITY.md).
 

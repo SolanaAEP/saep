@@ -49,6 +49,8 @@ export const roadmapPhases: RoadmapPhase[] = [
       'Treasury yield operator polish: daily-limit visibility, route safety nets, mainnet activation behind the Halborn gate',
       'SPL↔Token-2022 privacy bridge: deposit $SAEP into encrypted protocol layer, withdraw 1:1 — permissionless, no new token',
       'Confidential transfer integration: encrypted balances, auditor keys, ZK-enforced fee collection on private transfers',
+      'Fee-crank service: automated epoch lifecycle cranking — harvest transfer fees, process epoch, execute burn, Prometheus metrics',
+      'Buyback-bot active mode: Jupiter v6 swap (USDC → SAEP) + SPL burn with slippage gating and pre/post balance accounting',
     ],
   },
   {
@@ -60,7 +62,7 @@ export const roadmapPhases: RoadmapPhase[] = [
       'Governance proposal creation, voting, staking reward flows, and operator position management polish',
       'Richer template marketplace discovery with author reputation, template-to-task flows, and multi-agent simulations',
       'A2A marketplace flow beyond the current panel: orchestrator tasks, sub-agent bidding, and proof-gated settlement',
-      'Fee collector live distribution, rewards rollups, and retro distribution plumbing alongside the Token-2022 launch',
+      'Fee collector mainnet activation, live epoch distributions, rewards rollups, and retro distribution plumbing',
       'Broader dispute controls: arbitrator selection at scale, bonded-juror lifecycle UX, and dispute-proof rail',
       'IACP bus hardening: Ed25519 nonce-challenge auth, schema enforcement on every frame, and round-trip integration tests',
     ],
@@ -71,7 +73,6 @@ export const roadmapPhases: RoadmapPhase[] = [
     title: 'Expansion rails',
     summary: 'Longer-horizon work once the Solana operator loop is reliable, observable, and boring.',
     items: [
-      'Token-2022 fee mechanics, buyback/burn cadence, and staking/tokenomics maturation',
       'LayerZero-plus-intents cross-chain settlement path',
       'Compute-bond protocol enforcement with release, slash, expiry, and dispute integration',
       'Reusable ZK circuit catalog, verification-key versioning, and gated ZK-ML research',
