@@ -147,6 +147,50 @@ services:
       - key: CORS_ORIGINS
         value: "https://app.buildonsaep.com,https://saep-app.onrender.com"
 
+  - type: worker
+    name: saep-fee-crank
+    env: node
+    plan: starter
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/fee-crank build
+    startCommand: pnpm --filter @saep/fee-crank start
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: SOLANA_RPC_URL
+        sync: false
+      - key: SAEP_CLUSTER
+        value: mainnet-beta
+      - key: OPERATOR_KEYPAIR_PATH
+        sync: false
+      - key: FEE_COLLECTOR_PROGRAM_ID
+        value: 4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu
+      - key: FEE_CRANK_POLL_INTERVAL_MS
+        value: "600000"
+
+  - type: worker
+    name: saep-buyback-bot
+    env: node
+    plan: starter
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/buyback-bot build
+    startCommand: pnpm --filter @saep/buyback-bot start
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: BUYBACK_MODE
+        value: observe
+      - key: SOLANA_RPC_URL
+        sync: false
+      - key: SAEP_CLUSTER
+        value: mainnet-beta
+      - key: JUPITER_API_URL
+        value: "https://quote-api.jup.ag/v6"
+      - key: FEE_COLLECTOR_PROGRAM_ID
+        value: 4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu
+      - key: TASK_MARKET_PROGRAM_ID
+        value: HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w
+      - key: OPERATOR_KEYPAIR_PATH
+        sync: false
+
   - type: web
     name: saep-portal
     env: node
