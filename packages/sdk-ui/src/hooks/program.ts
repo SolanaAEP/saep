@@ -9,6 +9,7 @@ import {
   proofVerifierProgram,
   treasuryStandardProgram,
   governanceProgramProgram,
+  disputeArbitrationProgram,
   nxsStakingProgram,
   templateRegistryProgram,
   feeCollectorProgram,
@@ -58,6 +59,10 @@ export function useNxsStakingProgram() {
 
 export function useTemplateRegistryProgram() {
   return useProgram(templateRegistryProgram);
+}
+
+export function useDisputeArbitrationProgram() {
+  return useProgram(disputeArbitrationProgram);
 }
 
 export function useFeeCollectorProgram() {

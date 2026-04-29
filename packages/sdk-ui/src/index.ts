@@ -8,6 +8,7 @@ export {
   useProofVerifierProgram,
   useTreasuryProgram,
   useGovernanceProgram,
+  useDisputeArbitrationProgram,
   useNxsStakingProgram,
   useTemplateRegistryProgram,
   useFeeCollectorProgram,
@@ -197,4 +198,39 @@ export {
 export { useTokenBalance, type TokenBalance } from './hooks/token-balance.js';
 export { useConfidentialBalance, type ConfidentialBalance } from './hooks/confidential-balance.js';
 export { useTokenPrice, type TokenPrice } from './hooks/token-price.js';
+export {
+  useDisputeConfig,
+  useDisputeCase,
+  useAllDisputeCases,
+  useArbitratorAccount,
+  useDisputeVoteRecord,
+  useAppealRecord,
+  useCommitDisputeVote,
+  useRevealDisputeVote,
+  useTallyRound,
+  useEscalateAppeal,
+  useResolveDispute,
+  useRegisterArbitrator,
+  type DisputeCaseRow,
+  type ArbitratorRow,
+  type DisputeVoteRow,
+  type DisputeConfigData,
+  type AppealRow,
+  type CommitDisputeVoteInput,
+  type RevealDisputeVoteInput,
+  type TallyRoundInput,
+  type EscalateAppealInput,
+  type ResolveDisputeInput,
+  type RegisterArbitratorInput,
+} from './hooks/disputes.js';
+export {
+  generateSalt,
+  computeCommitHash,
+  saveSalt,
+  loadSalt,
+  deleteSalt,
+  listPendingSalts,
+  saltFromHex,
+  type StoredSalt,
+} from './hooks/dispute-salt-store.js';
 export { useSession, useSiwsSignIn, useSignOut, type Session } from './auth/session.js';

@@ -1,22 +1,48 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { GlitchButton } from '@saep/ui';
-import { useRaiseDispute } from '@saep/sdk-ui';
+import { useRaiseDispute, useAllDisputeCases } from '@saep/sdk-ui';
 import type { TaskDetail } from '@saep/sdk';
 
 const DISPUTABLE = new Set(['proofSubmitted', 'verified']);
+
+function statusKey(status: Record<string, object>): string {
+  return Object.keys(status)[0] ?? 'unknown';
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  requestedVrf: 'VRF Requested',
+  selectionReady: 'Selection Ready',
+  committing: 'Committing',
+  revealing: 'Revealing',
+  tallied: 'Tallied',
+  appealed: 'Appealed',
+  resolved: 'Resolved',
+  cancelled: 'Cancelled',
+};
 
 export function DisputePanel({ task }: { task: TaskDetail }) {
   const { publicKey } = useWallet();
   const raise = useRaiseDispute();
   const [confirming, setConfirming] = useState(false);
+  const { data: allCases } = useAllDisputeCases();
 
   const isClient = publicKey?.equals(task.client) ?? false;
   const canDispute = isClient && DISPUTABLE.has(task.status);
   const alreadyDisputed = task.status === 'disputed';
   const windowOpen = task.disputeWindowEnd === 0 || Date.now() / 1000 < task.disputeWindowEnd;
+
+  const linkedCase = useMemo(() => {
+    if (!alreadyDisputed || !allCases) return null;
+    const taskIdHex = Array.from(task.taskId).map((b) => b.toString(16).padStart(2, '0')).join('');
+    return allCases.find((c) => {
+      const caseTaskHex = c.taskId.toString();
+      return caseTaskHex === taskIdHex || c.client.equals(task.client);
+    }) ?? null;
+  }, [alreadyDisputed, allCases, task]);
 
   async function onRaise() {
     setConfirming(false);
@@ -28,17 +54,33 @@ export function DisputePanel({ task }: { task: TaskDetail }) {
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium">Dispute</h2>
         <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 bg-ink/5 text-ink/50">
-          M2 arbitration
+          arbitration
         </span>
       </header>
 
-      <p className="text-xs text-ink/60">
-        M1 supports raising a dispute; full VRF-based arbitrator selection launches with M2 DisputeArbitration.
-      </p>
-
       {alreadyDisputed ? (
-        <div className="text-xs font-mono text-danger bg-danger/5 px-3 py-2">
-          This task is in dispute. Resolution will be handled on-chain once arbitration is live.
+        <div className="flex flex-col gap-3">
+          <div className="text-xs font-mono text-danger bg-danger/5 px-3 py-2">
+            This task is in dispute.
+          </div>
+          {linkedCase && (
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+                <span className="text-ink/50">Case</span>
+                <span className="font-mono">#{linkedCase.caseId.toString()}</span>
+                <span className="text-ink/50">Status</span>
+                <span className="font-mono">{STATUS_LABELS[statusKey(linkedCase.status)] ?? statusKey(linkedCase.status)}</span>
+                <span className="text-ink/50">Arbitrators</span>
+                <span>{linkedCase.arbitratorCount}</span>
+              </div>
+              <Link
+                href={`/disputes/${linkedCase.caseId.toString()}`}
+                className="self-start text-xs px-3 py-1.5 border border-ink/20 text-ink/70 hover:border-ink/40 hover:text-ink transition-colors"
+              >
+                View full case
+              </Link>
+            </div>
+          )}
         </div>
       ) : canDispute && windowOpen ? (
         <div className="flex flex-col gap-2">
