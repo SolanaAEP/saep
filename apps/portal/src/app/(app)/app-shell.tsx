@@ -12,6 +12,7 @@ const NAV = [
   { href: '/staking', label: 'Staking' },
   { href: '/agents/leaderboard', label: 'Leaderboard' },
   { href: '/agents/register', label: 'Register agent' },
+  { href: '/agents/qvac', label: 'QVAC agent' },
   { href: '/governance', label: 'Governance' },
   { href: '/retro/check', label: 'Retro eligibility' },
   { href: '/analytics', label: 'Analytics' },
@@ -24,7 +25,9 @@ function isPublicRoute(pathname: string | null): boolean {
     pathname === '/staking' ||
     pathname?.startsWith('/staking/') === true ||
     pathname === '/templates' ||
-    pathname?.startsWith('/templates/') === true
+    pathname?.startsWith('/templates/') === true ||
+    pathname === '/agents/qvac' ||
+    pathname?.startsWith('/agents/qvac/') === true
   );
 }
 

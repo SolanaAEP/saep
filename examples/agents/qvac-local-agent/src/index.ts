@@ -7,15 +7,32 @@ import {
   agentRegistryProgram,
   buildSubmitResultIx,
   fetchAgentByDid,
+  fetchRecentTasks,
   fetchTasksByAgent,
   resolveCluster,
   taskMarketProgram,
   type SaepCluster,
   type TaskSummary,
 } from '@saep/sdk';
+import {
+  maybeCommitBid,
+  maybeRevealBid,
+  MintInfoCache,
+  readStore,
+  type BidConfig,
+  type BidContext,
+} from './bid.js';
 import { buildExecutionCommitment } from './commitment.js';
 import { buildCapabilityVector, scoreTaskAgainstCapabilities } from './capability.js';
 import { runGroundedCompletion } from './grounded-completion.js';
+import {
+  artifactsAvailable,
+  buildTaskCompletionProof,
+  defaultCircuitArtifacts,
+  paddedCircuitLabel,
+  resultHashBytes,
+  verifyProofLocally,
+} from './proof.js';
 import { ingestBriefs, searchBriefs } from './rag.js';
 import { startRuntime, type Runtime } from './qvac-runtime.js';
 
@@ -25,10 +42,13 @@ type Config = {
   keypairPath: string;
   agentDid: string;
   enableSubmit: boolean;
+  enableBids: boolean;
   pollMs: number;
   promptTemplate: string;
   briefsDir: string;
   capabilityThreshold: number;
+  bidThreshold: number;
+  bid: BidConfig;
 };
 
 function loadConfig(): Config {
@@ -41,6 +61,7 @@ function loadConfig(): Config {
     keypairPath: process.env.SAEP_KEYPAIR ?? `${process.env.HOME}/.config/solana/id.json`,
     agentDid,
     enableSubmit: process.env.SAEP_ENABLE_SUBMIT === 'true',
+    enableBids: process.env.SAEP_ENABLE_BIDS === 'true',
     pollMs: Number(process.env.SAEP_POLL_MS ?? '30000'),
     promptTemplate:
       process.env.SAEP_PROMPT_TEMPLATE ??
@@ -48,6 +69,13 @@ function loadConfig(): Config {
         'If multiple capabilities match, pick the one with the highest relevance score.',
     briefsDir: process.env.SAEP_BRIEFS_DIR ?? join(here, '..', 'briefs'),
     capabilityThreshold: Number(process.env.SAEP_CAPABILITY_THRESHOLD ?? '0.35'),
+    bidThreshold: Number(process.env.SAEP_BID_THRESHOLD ?? '0.40'),
+    bid: {
+      enableBids: process.env.SAEP_ENABLE_BIDS === 'true',
+      maxSpendUi: process.env.SAEP_MAX_SPEND_UI ?? '0.5',
+      bidPctBps: Number(process.env.SAEP_BID_PCT_BPS ?? '8500'),
+      nonceStorePath: process.env.SAEP_NONCE_STORE ?? './.saep-qvac-bids.json',
+    },
   };
 }
 
@@ -106,18 +134,44 @@ async function processTask(
     groundingChunks,
   });
 
-  const commitment = buildExecutionCommitment({
-    taskHash: task.taskHash,
-    output,
-    llmSrc: rt.llmSrc,
-    embedSrc: rt.embedSrc,
-  });
-  console.log(
-    `[qvac-agent] ${taskHashHex}.. produced ${output.length} chars, resultHash=${commitment.preimage.resultHashHex.slice(0, 12)}.. proofKey=${Buffer.from(commitment.proofKey).toString('hex').slice(0, 12)}..`,
-  );
+  let resultHash: Uint8Array;
+  let proofKey: Uint8Array;
+  let proofMode: 'groth16' | 'commitment';
+
+  const artifacts = defaultCircuitArtifacts();
+  if (artifactsAvailable(artifacts)) {
+    const tStart = Date.now();
+    const proven = await buildTaskCompletionProof({
+      brief: prompt,
+      output,
+      deadline: task.deadline > 0 ? BigInt(task.deadline) : BigInt(Math.floor(Date.now() / 1000) + 3600),
+      artifacts,
+    });
+    const proveMs = Date.now() - tStart;
+    const valid = await verifyProofLocally(proven.proof, proven.publicSignals, artifacts);
+    resultHash = resultHashBytes(proven.publicInputs.resultHash);
+    proofKey = paddedCircuitLabel();
+    proofMode = 'groth16';
+    console.log(
+      `[qvac-agent] ${taskHashHex}.. groth16 proof ${proveMs}ms verifiedLocally=${valid} resultHash=${Buffer.from(resultHash).toString('hex').slice(0, 12)}..`,
+    );
+  } else {
+    const commitment = buildExecutionCommitment({
+      taskHash: task.taskHash,
+      output,
+      llmSrc: rt.llmSrc,
+      embedSrc: rt.embedSrc,
+    });
+    resultHash = commitment.resultHash;
+    proofKey = commitment.proofKey;
+    proofMode = 'commitment';
+    console.log(
+      `[qvac-agent] ${taskHashHex}.. commitment-only resultHash=${commitment.preimage.resultHashHex.slice(0, 12)}.. (artifacts missing)`,
+    );
+  }
 
   if (!cfg.enableSubmit) {
-    console.log(`[qvac-agent] ${taskHashHex}.. dry-run, skipping submitResult`);
+    console.log(`[qvac-agent] ${taskHashHex}.. dry-run (mode=${proofMode}), skipping submitResult`);
     return;
   }
 
@@ -125,12 +179,12 @@ async function processTask(
     operator: ctx.operator,
     task: task.address,
     agentAccount: ctx.agentAccount,
-    resultHash: commitment.resultHash,
-    proofKey: commitment.proofKey,
+    resultHash,
+    proofKey,
   });
   const tx = new Transaction().add(ix);
   const sig = await ctx.provider.sendAndConfirm(tx, [], { commitment: 'confirmed' });
-  console.log(`[qvac-agent] ${taskHashHex}.. submitResult ${sig}`);
+  console.log(`[qvac-agent] ${taskHashHex}.. submitResult (mode=${proofMode}) ${sig}`);
 }
 
 async function main() {
@@ -177,6 +231,20 @@ async function main() {
   };
   const seen = new Set<string>();
 
+  const mintCache = new MintInfoCache(connection);
+  const bidStore = readStore(cfg.bid.nonceStorePath);
+  const bidCtx: BidContext = {
+    provider,
+    connection,
+    cluster,
+    market,
+    keypair,
+    agent,
+    mintCache,
+    store: bidStore,
+    config: cfg.bid,
+  };
+
   console.log(
     `[qvac-agent] agent=${agentDidHex.slice(0, 12)}.. operator=${keypair.publicKey.toBase58()} enableSubmit=${cfg.enableSubmit}`,
   );
@@ -188,6 +256,46 @@ async function main() {
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+
+  const scanBids = async () => {
+    const tasks = await fetchRecentTasks(market, {
+      limit: 25,
+      statuses: ['created', 'funded', 'inExecution'],
+    });
+    if (tasks.length === 0) return;
+    console.log(`[qvac-agent] bid-scan: ${tasks.length} candidate tasks`);
+    for (const task of tasks) {
+      const promptForScoring = buildPrompt(cfg.promptTemplate, task);
+      const score = await scoreTaskAgainstCapabilities({
+        embedId: rt.embedId,
+        taskPrompt: promptForScoring,
+        capability,
+      });
+      if (score < cfg.bidThreshold) continue;
+      try {
+        const reveal = await maybeRevealBid(bidCtx, task);
+        if (reveal.revealed) {
+          console.log(`[qvac-agent] bid-reveal ${Buffer.from(task.taskId).toString('hex').slice(0, 12)}.. ${reveal.signature}`);
+          continue;
+        }
+        const commit = await maybeCommitBid(bidCtx, task);
+        if (commit.committed) {
+          console.log(
+            `[qvac-agent] bid-commit ${Buffer.from(task.taskId).toString('hex').slice(0, 12)}.. amount=${commit.bidAmount} ${commit.signature}`,
+          );
+        } else if (commit.bidAmount && commit.reason === 'dry_run') {
+          console.log(
+            `[qvac-agent] bid-dryrun ${Buffer.from(task.taskId).toString('hex').slice(0, 12)}.. would-bid=${commit.bidAmount} score=${score.toFixed(3)}`,
+          );
+        }
+      } catch (err) {
+        console.error(
+          `[qvac-agent] bid scan failed for ${Buffer.from(task.taskId).toString('hex').slice(0, 12)}..:`,
+          err,
+        );
+      }
+    }
+  };
 
   const scanOnce = async () => {
     const tasks = await fetchTasksByAgent(market, agentDidHex);
@@ -207,6 +315,7 @@ async function main() {
   };
 
   for (;;) {
+    await scanBids().catch((err) => console.error('[qvac-agent] bid-scan failed:', err));
     await scanOnce().catch((err) => console.error('[qvac-agent] scan failed:', err));
     await new Promise((resolve) => setTimeout(resolve, cfg.pollMs));
   }
