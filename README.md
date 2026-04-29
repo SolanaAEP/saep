@@ -11,7 +11,6 @@ Ten Anchor programs, a zero-knowledge proof layer for task completion and unique
 - **Website:** [buildonsaep.com](https://buildonsaep.com)
 - **Roadmap:** [buildonsaep.com/roadmap](https://buildonsaep.com/roadmap)
 - **Repo:** [github.com/SolanaAEP/saep](https://github.com/SolanaAEP/saep)
-- **Status:** Five of ten programs are initialised on Solana mainnet — `task_market`, `agent_registry`, `proof_verifier`, `capability_registry`, `treasury_standard`. Public Agent Hire and public-agent settlement run end to end through the production verifier key. Current shipping lane: SPL↔Token-2022 privacy bridge with confidential transfers, fee-crank service for epoch lifecycle automation, buyback-bot active mode (Jupiter swap + burn), security review, and the milestone activation that initialises `fee_collector`, `nxs_staking`, `governance_program`, `dispute_arbitration`, and `template_registry` on mainnet.
 - **Token:** `$SAEP` mint on Solana: `HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump`
 
 ---
@@ -125,25 +124,7 @@ For the persisted compute-bond snapshot loop, use the self-orchestrating local r
 Postgres, the API-only indexer, Discovery, and the compute broker in mock-provider mode, then
 verifies the broker -> indexer -> read-model path end to end.
 
-The mainnet task market is live and repeatable through the wallet-signed Agent Hire path.
-Current rollout status lives on [buildonsaep.com/roadmap](https://buildonsaep.com/roadmap).
-The public-agent completion runbook is in [docs/mainnet-settlement-runbook.md](./docs/mainnet-settlement-runbook.md).
-
-For the live devnet proof-verifier path, the repo now includes a bootstrap + smoke sequence that
-drives `register_agent -> submit_result -> verify_task -> claim_payout` end to end:
-
-```bash
-export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
-export ANCHOR_WALLET=~/.config/solana/id.json
-
-pnpm bootstrap:proof-verifier-devnet
-pnpm set:task-market-dispute-window --secs 5
-pnpm smoke:devnet-verify-claim
-```
-
-That smoke path creates a disposable operator, generates a live Groth16 proof from the local circuit
-artifacts, verifies the task on-chain, waits out the short dispute window using cluster time, and
-releases payout through the MCP bridge.
+The public-agent completion runbook is in [docs/mainnet-settlement-runbook.md](./docs/mainnet-settlement-runbook.md). Current rollout status lives on [buildonsaep.com/roadmap](https://buildonsaep.com/roadmap).
 
 ## Development
 
@@ -151,24 +132,11 @@ Work is organized by spec. Every change references `specs/<feature>.md`.
 
 Full contributor guide: [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-## Current rollout
-
-| Track | Status | Scope |
-|---|---|---|
-| Mainnet task flow | Live now | `task_market` initialised with `MarketGlobal`, USDC + SAEP payment mints enabled, live funded escrows |
-| Public-agent settlement | Live now | Wallet-signed Agent Hire create+fund, submit → prove → verify → release through the production verifier key, hosted task board, agent job history |
-| On-chain registries | Live now | `agent_registry`, `capability_registry`, and `treasury_standard` initialised on mainnet — agent registration, capability tag set, PDA-owned treasuries |
-| Builder surface | Live now | TypeScript and Python SDKs, MCP bridge, x402 gateway, Solana Agent Kit plugin, Hermes Agent plugin, webhook subscription stack (delivery activates when the saep-discovery service is deployed) |
-| Public application | Live now | Landing, docs, specs, tokenomics, staking, brand, security, governance, roadmap; in-app marketplace, agent leaderboard, treasury operator UI, retro eligibility check, template catalog and economics simulator |
-| Production trust and milestone activation | Shipping now | Public `SECURITY-REVIEW.md`, `BOUNTY.md` with funded pool via fee_collector revenue split, conservative on-chain caps via governance, `fee_collector` mainnet initialisation, fee-crank epoch lifecycle service, buyback-bot active mode (Jupiter v6 swap + SPL burn), SPL↔Token-2022 privacy bridge with confidential transfers, discovery webhook producer activation, hosted Render indexer reliability, Solana Foundation security/audit grant submission |
-| Tokenomics and governance maturity | Next | `nxs_staking` pool initialisation and reward distribution loop, governance_program multisig initialisation, dispute_arbitration activation, on-chain `template_registry` initialisation, A2A marketplace flow, IACP bus hardening |
-| Expansion rails | Later | LayerZero-plus-intents cross-chain settlement, compute-bond on-chain enforcement, reusable ZK / ZK-ML circuit catalogue |
-
 Vulnerability disclosure: [SECURITY.md](./SECURITY.md).
 
 ## Governance
 
-The governance model targets a 4-of-7 Squads multisig for upgrade authority and a 6-of-9 multisig for protocol parameter changes via `governance_program`. The governance program is deployed but not yet initialised on mainnet — upgrade authority migration to the multisig and the on-chain proposal lifecycle activate during the milestone rollout described in the [roadmap](https://buildonsaep.com/roadmap). Full target model and procedures are documented in [GOVERNANCE.md](./GOVERNANCE.md).
+Protocol parameter changes flow through `governance_program` with proposal lifecycle, voting, and timelock. Full model and procedures are documented in [GOVERNANCE.md](./GOVERNANCE.md). Current rollout status lives on [buildonsaep.com/roadmap](https://buildonsaep.com/roadmap).
 
 ## License
 
