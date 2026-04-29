@@ -200,7 +200,7 @@ export async function buildSlashArbitratorIx(
       disputeCase: input.disputeCase,
       arbitrator,
       pendingSlash,
-      proposer: input.proposer,
+      authority: input.proposer,
       systemProgram: SystemProgram.programId,
     } as never)
     .instruction();
