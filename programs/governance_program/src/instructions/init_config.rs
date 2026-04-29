@@ -67,6 +67,7 @@ pub fn handler(ctx: Context<InitConfig>, params: InitConfigParams) -> Result<()>
     c.dev_mode_timelock_override_secs = params.dev_mode_timelock_override_secs;
     c.next_proposal_id = 0;
     c.next_emergency_id = 0;
+    c.auditor_elgamal_key = [0u8; 32];
     c.paused = false;
     c.bump = ctx.bumps.config;
 

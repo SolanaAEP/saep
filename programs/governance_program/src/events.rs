@@ -72,3 +72,11 @@ pub struct PausedSet {
     pub authority: Pubkey,
     pub timestamp: i64,
 }
+
+#[event]
+pub struct AuditorKeyRotated {
+    pub old_key: [u8; 32],
+    pub new_key: [u8; 32],
+    pub rotated_by: Pubkey,
+    pub slot: u64,
+}

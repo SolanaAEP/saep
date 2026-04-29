@@ -87,6 +87,7 @@ pub struct GovernanceConfig {
     pub dev_mode_timelock_override_secs: i64,
     pub next_proposal_id: u64,
     pub next_emergency_id: u64,
+    pub auditor_elgamal_key: [u8; 32],
     pub paused: bool,
     pub bump: u8,
 }
@@ -233,6 +234,7 @@ mod tests {
             dev_mode_timelock_override_secs: 0,
             next_proposal_id: 0,
             next_emergency_id: 0,
+            auditor_elgamal_key: [0u8; 32],
             paused: false,
             bump: 0,
         };
@@ -264,6 +266,7 @@ mod tests {
             dev_mode_timelock_override_secs: 0,
             next_proposal_id: 0,
             next_emergency_id: 0,
+            auditor_elgamal_key: [0u8; 32],
             paused: false,
             bump: 0,
         };

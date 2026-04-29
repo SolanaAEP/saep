@@ -90,4 +90,11 @@ pub mod governance_program {
     pub fn set_paused(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
         instructions::cancel_expire::set_paused_handler(ctx, paused)
     }
+
+    pub fn rotate_auditor_key(
+        ctx: Context<RotateAuditorKey>,
+        new_elgamal_key: [u8; 32],
+    ) -> Result<()> {
+        instructions::rotate_auditor::handler(ctx, new_elgamal_key)
+    }
 }
