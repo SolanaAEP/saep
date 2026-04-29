@@ -15,10 +15,13 @@ import {
   TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
 import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
-import type {
-  AgentDetail,
-  ClusterConfig,
-  TaskMarket,
+import {
+  buildCommitBidIx,
+  buildRevealBidIx,
+  fetchBidBook,
+  type AgentDetail,
+  type ClusterConfig,
+  type TaskMarket,
 } from '@saep/sdk';
 import type { Program } from '@coral-xyz/anchor';
 
@@ -95,9 +98,8 @@ export async function maybeCommitBid(
   ctx: BidContext,
   task: { address: PublicKey; taskId: Uint8Array; paymentMint: PublicKey; paymentAmount: bigint },
 ): Promise<{ committed: boolean; signature?: string; bidAmount?: bigint; reason?: string }> {
-  const sdk = await import('@saep/sdk');
   const taskIdHex = Buffer.from(task.taskId).toString('hex');
-  const bidBook = await sdk.fetchBidBook(ctx.market, task.taskId);
+  const bidBook = await fetchBidBook(ctx.market, task.taskId);
   if (!bidBook) return { committed: false, reason: 'no_bid_book' };
   if (bidBook.phase !== 'commit') return { committed: false, reason: `phase_${bidBook.phase}` };
   if (ctx.store[taskIdHex]) return { committed: false, reason: 'already_committed' };
@@ -121,7 +123,7 @@ export async function maybeCommitBid(
   );
   const nonce = randomBytes(32);
   const commitHash = computeCommitHash(bidAmount, nonce);
-  const ix = await sdk.buildCommitBidIx(ctx.market, ctx.cluster, {
+  const ix = await buildCommitBidIx(ctx.market, ctx.cluster, {
     bidder: ctx.keypair.publicKey,
     task: task.address,
     taskId: task.taskId,
@@ -148,17 +150,16 @@ export async function maybeRevealBid(
   ctx: BidContext,
   task: { address: PublicKey; taskId: Uint8Array },
 ): Promise<{ revealed: boolean; signature?: string; reason?: string }> {
-  const sdk = await import('@saep/sdk');
   const taskIdHex = Buffer.from(task.taskId).toString('hex');
   const stored = ctx.store[taskIdHex];
   if (!stored) return { revealed: false, reason: 'no_stored_bid' };
-  const bidBook = await sdk.fetchBidBook(ctx.market, task.taskId);
+  const bidBook = await fetchBidBook(ctx.market, task.taskId);
   if (!bidBook) return { revealed: false, reason: 'no_bid_book' };
   if (bidBook.phase !== 'reveal') return { revealed: false, reason: `phase_${bidBook.phase}` };
 
   if (!ctx.config.enableBids) return { revealed: false, reason: 'dry_run' };
 
-  const ix = await sdk.buildRevealBidIx(ctx.market, {
+  const ix = await buildRevealBidIx(ctx.market, {
     bidder: ctx.keypair.publicKey,
     task: task.address,
     taskId: task.taskId,

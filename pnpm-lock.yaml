@@ -492,6 +492,9 @@ importers:
       '@solana/web3.js':
         specifier: 1.98.0
         version: 1.98.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      bn.js:
+        specifier: ^5.2.1
+        version: 5.2.3
       bs58:
         specifier: ^5.0.0
         version: 5.0.0
@@ -502,6 +505,9 @@ importers:
         specifier: 3.23.8
         version: 3.23.8
     devDependencies:
+      '@types/bn.js':
+        specifier: ^5.1.6
+        version: 5.2.0
       '@vitest/coverage-v8':
         specifier: ^4.1.4
         version: 4.1.5(vitest@4.1.4)
@@ -2826,6 +2832,9 @@ packages:
 
   '@types/aria-query@5.0.4':
     resolution: {integrity: sha512-rfT93uj5s0PRL7EzccGMs3brplhcrghnDoV26NqKhCAS1hVo+WdNsPvE/yb6ilfr5hi2MEk6d5EWJTKdxg8jVw==}
+
+  '@types/bn.js@5.2.0':
+    resolution: {integrity: sha512-DLbJ1BPqxvQhIGbeu8VbUC1DiAiahHtAYvA0ZEAa4P31F7IaArc8z3C3BRQdWX4mtLQuABG4yzp76ZrS02Ui1Q==}
 
   '@types/chai@4.3.20':
     resolution: {integrity: sha512-/pC9HAB5I/xMlc5FP77qjCnI16ChlJfW0tGa0IUcFn38VJrTV6DeZ60NU5KZBtaOZqjdpwTWohz5HU1RrhiYxQ==}
@@ -8701,7 +8710,7 @@ snapshots:
       debug: 4.4.3(supports-color@8.1.1)
       invariant: 2.2.4
       metro: 0.84.3(bufferutil@4.1.0)
-      metro-config: 0.84.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      metro-config: 0.84.3(bufferutil@4.1.0)
       metro-core: 0.84.3
       semver: 7.7.4
     transitivePeerDependencies:
@@ -9707,6 +9716,10 @@ snapshots:
     optional: true
 
   '@types/aria-query@5.0.4': {}
+
+  '@types/bn.js@5.2.0':
+    dependencies:
+      '@types/node': 24.0.0
 
   '@types/chai@4.3.20': {}
 
@@ -13017,6 +13030,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  metro-config@0.84.3(bufferutil@4.1.0):
+    dependencies:
+      connect: 3.7.0
+      flow-enums-runtime: 0.0.6
+      jest-validate: 29.7.0
+      metro: 0.84.3(bufferutil@4.1.0)
+      metro-cache: 0.84.3
+      metro-core: 0.84.3
+      metro-runtime: 0.84.3
+      yaml: 2.8.3
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
   metro-config@0.84.3(bufferutil@4.1.0)(utf-8-validate@6.0.6):
     dependencies:
       connect: 3.7.0
@@ -13168,7 +13196,7 @@ snapshots:
       metro-babel-transformer: 0.84.3
       metro-cache: 0.84.3
       metro-cache-key: 0.84.3
-      metro-config: 0.84.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      metro-config: 0.84.3(bufferutil@4.1.0)
       metro-core: 0.84.3
       metro-file-map: 0.84.3
       metro-resolver: 0.84.3

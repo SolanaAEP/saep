@@ -8,7 +8,16 @@
 // LLM literally reads on-chain state inside its grounded answer.
 
 import { z } from 'zod';
-import type { SaepCluster } from '@saep/sdk';
+import {
+  agentRegistryProgram,
+  fetchAgentByDid,
+  fetchTaskById,
+  fetchTreasury,
+  taskMarketProgram,
+  treasuryStandardProgram,
+  type ClusterConfig,
+  type SaepCluster,
+} from '@saep/sdk';
 import type { AnchorProvider } from '@coral-xyz/anchor';
 
 export const fetchAgentSchema = z.object({
@@ -120,19 +129,13 @@ function toDidHex(input: string): string {
   return input;
 }
 
-// Lazy-import @saep/sdk so the stub-only path (offline demo) never evaluates
-// it. The SDK's compiled anchor.js fails under strict Node ESM resolution due
-// to a bn.js default-export edge case in the workspace build, so deferring the
-// import keeps the tools-demo runnable without requiring an SDK rebuild.
-export async function liveHandlers(opts: {
+export function liveHandlers(opts: {
   provider: AnchorProvider;
-  cluster: ReturnType<typeof import('@saep/sdk').resolveCluster>;
-}): Promise<Record<SaepToolName, ToolHandler>> {
-  const sdk = await import('@saep/sdk');
-  const market = sdk.taskMarketProgram(opts.provider, opts.cluster);
-  const registry = sdk.agentRegistryProgram(opts.provider, opts.cluster);
-  const treasury = sdk.treasuryStandardProgram(opts.provider, opts.cluster);
-  const { fetchAgentByDid, fetchTaskById, fetchTreasury } = sdk;
+  cluster: ClusterConfig;
+}): Record<SaepToolName, ToolHandler> {
+  const market = taskMarketProgram(opts.provider, opts.cluster);
+  const registry = agentRegistryProgram(opts.provider, opts.cluster);
+  const treasury = treasuryStandardProgram(opts.provider, opts.cluster);
 
   return {
     fetch_agent: async (raw) => {

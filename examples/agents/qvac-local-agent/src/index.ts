@@ -30,9 +30,15 @@ import {
   buildTaskCompletionProof,
   defaultCircuitArtifacts,
   paddedCircuitLabel,
+  proofToTaskMarketBytes,
   resultHashBytes,
   verifyProofLocally,
 } from './proof.js';
+import {
+  fetchActiveVerifierKey,
+  submitVerifyTask,
+  type ActiveVk,
+} from './onchain-verify.js';
 import { ingestBriefs, searchBriefs } from './rag.js';
 import { startRuntime, type Runtime } from './qvac-runtime.js';
 
@@ -43,6 +49,7 @@ type Config = {
   agentDid: string;
   enableSubmit: boolean;
   enableBids: boolean;
+  enableAutoVerify: boolean;
   pollMs: number;
   promptTemplate: string;
   briefsDir: string;
@@ -62,6 +69,7 @@ function loadConfig(): Config {
     agentDid,
     enableSubmit: process.env.SAEP_ENABLE_SUBMIT === 'true',
     enableBids: process.env.SAEP_ENABLE_BIDS === 'true',
+    enableAutoVerify: process.env.SAEP_ENABLE_AUTO_VERIFY !== 'false',
     pollMs: Number(process.env.SAEP_POLL_MS ?? '30000'),
     promptTemplate:
       process.env.SAEP_PROMPT_TEMPLATE ??
@@ -100,6 +108,7 @@ type ChainCtx = {
   cluster: ReturnType<typeof resolveCluster>;
   operator: PublicKey;
   agentAccount: PublicKey;
+  activeVk: ActiveVk | null;
 };
 
 async function processTask(
@@ -137,6 +146,7 @@ async function processTask(
   let resultHash: Uint8Array;
   let proofKey: Uint8Array;
   let proofMode: 'groth16' | 'commitment';
+  let proofBytes: { proofA: Uint8Array; proofB: Uint8Array; proofC: Uint8Array } | null = null;
 
   const artifacts = defaultCircuitArtifacts();
   if (artifactsAvailable(artifacts)) {
@@ -150,10 +160,15 @@ async function processTask(
     const proveMs = Date.now() - tStart;
     const valid = await verifyProofLocally(proven.proof, proven.publicSignals, artifacts);
     resultHash = resultHashBytes(proven.publicInputs.resultHash);
-    proofKey = paddedCircuitLabel();
+    // Use the on-chain active vkId so submit_result.proof_key matches the
+    // verifier_key the cranker (or this agent) will pass to verify_task.
+    // Falls back to the circuit label if no active VK was resolved (offline
+    // / unregistered devnet).
+    proofKey = ctx.activeVk?.vkId ?? paddedCircuitLabel();
+    proofBytes = proofToTaskMarketBytes(proven.proof);
     proofMode = 'groth16';
     console.log(
-      `[qvac-agent] ${taskHashHex}.. groth16 proof ${proveMs}ms verifiedLocally=${valid} resultHash=${Buffer.from(resultHash).toString('hex').slice(0, 12)}..`,
+      `[qvac-agent] ${taskHashHex}.. groth16 proof ${proveMs}ms verifiedLocally=${valid} resultHash=${Buffer.from(resultHash).toString('hex').slice(0, 12)}.. proofKey=${Buffer.from(proofKey).toString('hex').slice(0, 12)}..`,
     );
   } else {
     const commitment = buildExecutionCommitment({
@@ -185,6 +200,25 @@ async function processTask(
   const tx = new Transaction().add(ix);
   const sig = await ctx.provider.sendAndConfirm(tx, [], { commitment: 'confirmed' });
   console.log(`[qvac-agent] ${taskHashHex}.. submitResult (mode=${proofMode}) ${sig}`);
+
+  if (cfg.enableAutoVerify && proofMode === 'groth16' && proofBytes && ctx.activeVk) {
+    try {
+      const verifySig = await submitVerifyTask({
+        provider: ctx.provider,
+        cluster: ctx.cluster,
+        market: ctx.market,
+        taskAddress: task.address,
+        cranker: ctx.operator,
+        activeVk: ctx.activeVk,
+        proofBytes,
+      });
+      console.log(`[qvac-agent] ${taskHashHex}.. verifyTask ${verifySig}`);
+    } catch (err) {
+      console.error(`[qvac-agent] ${taskHashHex}.. verifyTask failed:`, err);
+    }
+  } else if (proofMode === 'groth16' && !ctx.activeVk) {
+    console.log(`[qvac-agent] ${taskHashHex}.. verifyTask skipped (no active VK resolved)`);
+  }
 }
 
 async function main() {
@@ -203,6 +237,19 @@ async function main() {
     throw new Error(
       `Loaded keypair (${keypair.publicKey.toBase58()}) is not the agent operator (${agent.operator.toBase58()})`,
     );
+  }
+
+  const activeVk = await fetchActiveVerifierKey({ provider, cluster }).catch((err) => {
+    console.warn(`[qvac-agent] active VK fetch failed: ${(err as Error).message ?? err}`);
+    return null;
+  });
+  if (activeVk) {
+    const label = Buffer.from(activeVk.circuitLabel).toString('utf8').replace(/\0+$/, '');
+    console.log(
+      `[qvac-agent] active VK: vkId=${Buffer.from(activeVk.vkId).toString('hex').slice(0, 12)}.. label=${label} production=${activeVk.isProduction}`,
+    );
+  } else {
+    console.log('[qvac-agent] no active VK on chain — falling back to circuit-label proofKey');
   }
 
   const rt = await startRuntime();
@@ -228,6 +275,7 @@ async function main() {
     cluster,
     operator: keypair.publicKey,
     agentAccount: agent.address,
+    activeVk,
   };
   const seen = new Set<string>();
 

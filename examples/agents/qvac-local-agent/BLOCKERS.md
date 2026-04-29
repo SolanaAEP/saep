@@ -2,28 +2,21 @@
 
 Items that need user input or external state before the agent can run truly end-to-end on devnet/mainnet. Captured here instead of stalling the build.
 
-## 1. Production trusted setup
+## 1. Local zkey doesn't match the registered devnet VK
 
-The Groth16 proof currently uses the **dev-only** SRS produced by `circuits/task_completion/scripts/setup.sh` — a single-contributor powers-of-tau ceremony. The proof verifies locally but the on-chain `proof_verifier` rejects any verifier key flagged `is_production = false`.
+`circuits/task_completion/scripts/setup.sh` runs a fresh single-contributor ceremony each time, producing a new zkey + VK with a new `vkId`. The devnet `proof_verifier` already has an active VerifierKey at PDA `3a7TRvfnUzvD3r4UhWwZPHbYVcQUrJoaq8WQuNQHw4ze` (vkId `b43ee0cd5bac7d014d513f518e4578731ac7e837e33b1d621c906aac5fda09ad`, label `task_completion_v1`, `isProduction=false`) — registered by an earlier ceremony whose zkey is **not in this repo** (gitignored, never committed).
 
-**To unblock for real settlement:**
-- Use the production verifier key registered on the active `proof_verifier` deployment (the one `task_market.global.proof_verifier` points to).
-- For mainnet specifically: only proofs against the mainnet ceremony zkey will verify on chain. See `circuits/ceremony/phase2/README.md`.
-- For devnet: the deployed `proof_verifier` already accepts a non-production VK — the agent just needs the `vkId` registered in `verifier_key` PDAs.
+So locally-generated proofs will pass `verifyProofLocally` but fail on-chain `verify_task` against the registered VK.
 
-## 2. Active `vkId` discovery
+**To unblock — pick one:**
+- **Recover the original zkey.** Check whoever registered the VK (`registered_by` is the same operator pubkey on devnet) for the matching `task_completion.zkey`.
+- **Register a new VK matching the local zkey.** The proof_verifier authority is the same operator (`8xbXHAhiVe2BrYDq4qpTA5SSYJG9XNjNN6jcrudhTKCM`), so they have the right. But: `vk_activation` honors a 7-day timelock (`VK_ROTATION_TIMELOCK_SECS`) for any rotation after the first activation — the bootstrap path requires `active_vk == Pubkey::default()`, which devnet is past. So a new VK can be *registered* immediately via `init_vk` but won't *activate* for 7 days.
+- **Deploy a fresh `proof_verifier` instance** for the hackathon and register our local VK as the first activation (bootstrap path). Heavyweight.
+- **Demo lifecycle up to `submit_result` only,** acknowledging that `verify_task` will fail on chain because of the zkey mismatch. Honest but doesn't demonstrate the full settlement flip.
 
-The agent currently uses `paddedCircuitLabel('task_completion_v1')` as the 32-byte `proofKey` it writes into `submit_result`. The actual on-chain `verify_task` call needs the matching `vkId`, which is the seed used to derive the `verifier_key` PDA.
+## 2. Active `vkId` discovery — RESOLVED
 
-**Action:** add a fetch step at agent startup that resolves the active `vkId` via:
-
-```ts
-import { fetchVerifierConfig, fetchVerifierKey } from '@saep/sdk';
-const config = await fetchVerifierConfig(verifierProgram);
-// config.activeVk is the verifier_key PDA address
-const activeKey = await fetchVerifierKey(verifierProgram, config.activeVk);
-// Use activeKey.vkId (32 bytes) as the proofKey for submit_result.
-```
+✅ Wired in `src/onchain-verify.ts::fetchActiveVerifierKey` — fetches `verifier_config.activeVk`, then the `VerifierKey` account at that address, returns vkId/circuitLabel/isProduction. The agent uses this vkId as `submit_result.proof_key` (falling back to `paddedCircuitLabel('task_completion_v1')` only when no active VK is resolvable).
 
 ## 3. Devnet agent registration
 
@@ -31,11 +24,22 @@ const activeKey = await fetchVerifierKey(verifierProgram, config.activeVk);
 
 **To unblock:** run the existing register-agent flow (CLI or portal `/agents/register`) on devnet with a funded keypair, capture the DID hex.
 
-## 4. `verify_task` instruction not yet wired into agent
+## 4. `verify_task` instruction wiring — RESOLVED
 
-The agent calls `submit_result` (which records the result + proof_key on chain) but does **not** call `verify_task` (which CPIs into `proof_verifier` to actually verify the Groth16 proof and flip `task.verified`).
+✅ Wired in `src/onchain-verify.ts::submitVerifyTask`. The agent self-cranks `verify_task` after `submit_result` succeeds (controlled by `SAEP_ENABLE_AUTO_VERIFY`, on by default). The proof_a/b/c bytes come from `proofToTaskMarketBytes`, the vkId from the active VK fetched at startup.
 
-**Action:** after `submit_result` succeeds, build a `verify_task` instruction with proof_a/b/c bytes (already computed via `proofToTaskMarketBytes`) plus the active `vkId` from blocker #2. Either the agent itself or any cranker can submit it. See `packages/sdk/src/programs/task_market.ts::buildVerifyTaskIx`.
+**Note:** this completes the wiring but won't produce `task.verified=true` on chain until blocker #1 (zkey/VK match) is resolved.
+
+## NEW: 5b. on-chain `task_hash` is keccak, circuit expects Poseidon2
+
+The on-chain `task.task_hash` is `keccak256(task_id || payload_hash)` (see `programs/task_market/src/state.rs::derive_task_hash`). The Circom circuit's `task_hash` constraint is `Poseidon2(salt, task_preimage) == task_hash`. These are two different hash functions — the prover would need to find a Poseidon2 preimage of a keccak output, which is computationally infeasible.
+
+**This means our locally-generated proofs cannot ever satisfy `verify_task`, regardless of zkey match,** unless:
+- the circuit is revised to accept keccak inputs (out of scope), or
+- the on-chain `derive_task_hash` is changed to Poseidon2 (out of scope), or
+- we use the existing `compute` task kind (`{ circuitId, publicInputsHash }`) where `publicInputsHash` is set by the client to a Poseidon2 hash that the circuit can verify against — needs investigation.
+
+**Action:** check whether spec 05's `task_hash` was ever intended to match `derive_task_hash`, or whether the canonical settlement path uses the `compute` task kind with a separate Poseidon2 commitment. The settlement-panel + portal proof-gen flow may already do something correct that we missed.
 
 ## 5. Brief catalog resolution
 
@@ -43,13 +47,13 @@ In production, `task.taskHash` should resolve to an off-chain brief (IPFS / Arwe
 
 **Action:** decide a catalog scheme (e.g. CID embedded in task_payload's argsHash) and add a fetcher in `src/index.ts` that pulls the brief by hash before scoring.
 
-## 6. @saep/sdk runtime quirk
+## 6. @saep/sdk Node ESM quirk — RESOLVED at source
 
-`@saep/sdk`'s compiled `anchor.js` does `import { BN } from '@coral-xyz/anchor/dist/browser/index.js'`. Under strict Node ESM resolution (tsx + Node 24), the `BN` named export from the browser bundle isn't visible synchronously, so a top-level static import of @saep/sdk will throw at module-load.
+✅ Fixed in `packages/sdk/src/anchor.ts`. The browser bundle's `export { default as BN } from 'bn.js'` poisoned all named exports under strict Node ESM (the broken default-from-CJS re-export propagates to every `import { X }` from that file). Replaced with a direct `import BNDefault from 'bn.js'` for `BN` and the main `@coral-xyz/anchor` entry for `Program`. Static imports of `@saep/sdk` now work cleanly under Node 24 + tsx.
 
-**Workaround in this agent:** all @saep/sdk imports inside `src/saep-tools.ts` and `src/bid.ts` are *dynamic* (`await import('@saep/sdk')`) so the failing static-import path never fires for purely-offline code paths (demo, tools-demo, proof-smoke). The `src/index.ts` on-chain loop still uses a top-level import, which works in CI but may surface on some Node + tsx combos.
+The dynamic-import workarounds in `src/saep-tools.ts` and `src/bid.ts` were reverted to clean static imports.
 
-**Real fix:** rebuild the SDK's `anchor.ts` to either re-export BN explicitly (`import BN from 'bn.js'; export { BN };`) or stop going through the browser bundle for Node consumers.
+**Caveat:** `packages/sdk/dist/` is gitignored. A full `pnpm --filter @saep/sdk build` is needed in any fresh checkout to compile the new `anchor.ts` into `dist/anchor.js`. That build currently fails on a pre-existing unrelated typecheck error in `programs/treasury_standard.ts::setYieldStrategyStatus` — not introduced by these changes — which needs to be fixed before the SDK rebuild succeeds. A local manual recompile of just `src/anchor.ts → dist/anchor.js` works around it for development.
 
 ## 7. Tool-calling model context size
 

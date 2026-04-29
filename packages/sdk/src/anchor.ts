@@ -1,11 +1,19 @@
-import { BN, Program as BrowserProgram } from '@coral-xyz/anchor/dist/browser/index.js';
+import BNDefault from 'bn.js';
+import {
+  Program as AnchorProgramValue,
+} from '@coral-xyz/anchor';
 import type { Idl, Program as AnchorProgram } from '@coral-xyz/anchor';
 
-// Use Anchor's browser bundle so client builds avoid Node-only dependencies
-// like fs, while Node 22 ESM can still load the module consistently.
-export { BN };
+// `BN` is imported directly from `bn.js` because the browser bundle's
+// `export { default as BN } from 'bn.js'` line poisons the entire module
+// under strict Node ESM resolution — when the `default-as-named` re-export
+// can't resolve, ALL named imports from that file fail. `Program` and the
+// other anchor exports come from the main entry, which Node ESM handles
+// cleanly.
 
-export const Program = BrowserProgram as typeof import('@coral-xyz/anchor').Program;
+export const BN = BNDefault;
+
+export const Program = AnchorProgramValue;
 export type Program<T extends Idl = Idl> = AnchorProgram<T>;
 
-export type BN = InstanceType<typeof BN>;
+export type BN = InstanceType<typeof BNDefault>;
