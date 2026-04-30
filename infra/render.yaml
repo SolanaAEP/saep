@@ -147,10 +147,11 @@ services:
       - key: CORS_ORIGINS
         value: "https://app.buildonsaep.com,https://saep-app.onrender.com"
 
-  - type: worker
+  - type: web
     name: saep-fee-crank
     env: node
     plan: starter
+    healthCheckPath: /healthz
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter @saep/fee-crank build
     startCommand: pnpm --filter @saep/fee-crank start
     envVars:
@@ -164,8 +165,16 @@ services:
         sync: false
       - key: FEE_COLLECTOR_PROGRAM_ID
         value: 4xLpFgjpZwJbf61UyvyMhmEBmeJzPaCyKvZeYuK2YFFu
+      - key: NXS_STAKING_PROGRAM_ID
+        value: GjXfJ6MHb6SJ4XBK3qcpGw4n256qYPrDcXrNj6kf2i2Z
       - key: FEE_CRANK_POLL_INTERVAL_MS
         value: "600000"
+      - key: FEE_CRANK_PORT
+        value: "10000"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: saep-postgres
+          property: connectionString
 
   - type: worker
     name: saep-buyback-bot
@@ -177,7 +186,7 @@ services:
       - key: NODE_VERSION
         value: 24
       - key: BUYBACK_MODE
-        value: observe
+        value: active
       - key: SOLANA_RPC_URL
         sync: false
       - key: SAEP_CLUSTER
@@ -190,6 +199,10 @@ services:
         value: HiyqZ4q1GPPgx1EaxSuyBFKTzoPAYDPmnSfTX1vjbB8w
       - key: OPERATOR_KEYPAIR_PATH
         sync: false
+      - key: BUYBACK_SWAP_THRESHOLD_USDC_BASE
+        value: "10000000"
+      - key: BUYBACK_SLIPPAGE_BPS
+        value: "200"
 
   - type: web
     name: saep-portal
@@ -237,5 +250,7 @@ services:
         value: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
       - key: NEXT_PUBLIC_STAKE_MINT
         value: HEKVx7cxn4afiDKW56sWJGxzJe7wVBmhZhFzdqjApump
+      - key: NEXT_PUBLIC_FEE_CRANK_URL
+        sync: false
       - key: SESSION_SECRET
         generateValue: true

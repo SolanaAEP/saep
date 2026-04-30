@@ -9,8 +9,9 @@ import {
 import {
   createBurnInstruction,
   getAssociatedTokenAddressSync,
-  TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
+
+const TOKEN_2022 = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
 import type { Logger } from 'pino';
 import {
   feeAccumulatorBalance,
@@ -177,7 +178,7 @@ export async function runTick(deps: WorkerDeps): Promise<TickResult> {
       const vTx = VersionedTransaction.deserialize(txBuf);
       vTx.sign([cranker]);
 
-      const ata = getAssociatedTokenAddressSync(saepMint, cranker.publicKey, false, TOKEN_PROGRAM_ID);
+      const ata = getAssociatedTokenAddressSync(saepMint, cranker.publicKey, false, TOKEN_2022);
       const preBal = await connection.getTokenAccountBalance(ata, 'confirmed')
         .then((r) => BigInt(r.value.amount))
         .catch(() => 0n);
@@ -219,8 +220,8 @@ export async function runTick(deps: WorkerDeps): Promise<TickResult> {
     }
 
     try {
-      const ata = getAssociatedTokenAddressSync(saepMint, cranker.publicKey, false, TOKEN_PROGRAM_ID);
-      const burnIx = createBurnInstruction(ata, saepMint, cranker.publicKey, saepReceived, [], TOKEN_PROGRAM_ID);
+      const ata = getAssociatedTokenAddressSync(saepMint, cranker.publicKey, false, TOKEN_2022);
+      const burnIx = createBurnInstruction(ata, saepMint, cranker.publicKey, saepReceived, [], TOKEN_2022);
       const tx = new Transaction().add(burnIx);
       tx.recentBlockhash = (await connection.getLatestBlockhash('confirmed')).blockhash;
       tx.feePayer = cranker.publicKey;
