@@ -21,8 +21,10 @@ import {
   stakeVaultPda,
   stakingPoolPda,
 } from '@saep/sdk';
-import { useCluster, useSendTransaction } from '@saep/sdk-ui';
+import { useCluster, useSendTransaction, useTokenPrice } from '@saep/sdk-ui';
 import { FeeRewards } from './fee-rewards';
+import { StakingCalculator } from './staking-calculator';
+import { EpochProgress } from './epoch-progress';
 
 const READONLY_WALLET = {
   publicKey: new PublicKey('11111111111111111111111111111111'),
@@ -98,6 +100,7 @@ export function StakingShell() {
   const [lockDays, setLockDays] = useState<number>(30);
   const [lastAction, setLastAction] = useState<string | null>(null);
   const now = useNow();
+  const { data: tokenPrice } = useTokenPrice(MAINNET_SAEP_MINT);
 
   const program = useMemo(() => {
     return nxsStakingProgram(
@@ -407,20 +410,26 @@ export function StakingShell() {
               : 'No active stake'
           }
           detail={
-            position
-              ? statusHeadline(position.status, now, position.lockupEnd, cooldownEnd)
-              : 'Open a first position from the connected wallet'
+            position && mintQuery.data && tokenPrice
+              ? `${fmtUsd(position.amount, mintQuery.data.decimals, tokenPrice.price)} · ${position.lockupMultiplier}x multiplier`
+              : position
+                ? statusHeadline(position.status, now, position.lockupEnd, cooldownEnd)
+                : 'Open a first position from the connected wallet'
           }
           testId="staking-position-card"
         />
         <MetricCard
-          eyebrow="Total staked"
+          eyebrow="Total staked (TVL)"
           value={
             poolQuery.data && mintQuery.data
               ? `${formatTokenAmount(poolQuery.data.totalStaked, mintQuery.data.decimals, 4)} ${assetLabel}`
               : '—'
           }
-          detail={poolQuery.data ? `${poolQuery.data.totalStakers} live stakers` : 'Pool awaiting initialization'}
+          detail={
+            poolQuery.data && mintQuery.data && tokenPrice
+              ? `${fmtUsd(poolQuery.data.totalStaked, mintQuery.data.decimals, tokenPrice.price)} · ${poolQuery.data.totalStakers} stakers`
+              : poolQuery.data ? `${poolQuery.data.totalStakers} live stakers` : 'Pool awaiting initialization'
+          }
           testId="staking-total-staked-card"
         />
         <MetricCard
@@ -597,7 +606,7 @@ export function StakingShell() {
                     label="Stake amount"
                     value={
                       stakePreviewAmount != null && mintQuery.data
-                        ? `${formatTokenAmount(stakePreviewAmount, mintQuery.data.decimals, 4)} ${assetLabel}`
+                        ? `${formatTokenAmount(stakePreviewAmount, mintQuery.data.decimals, 4)} ${assetLabel}${tokenPrice ? ` (${fmtUsd(stakePreviewAmount, mintQuery.data.decimals, tokenPrice.price)})` : ''}`
                         : 'Enter an amount'
                     }
                   />
@@ -608,6 +617,10 @@ export function StakingShell() {
                         ? `${formatTokenAmount(previewVotingPower, mintQuery.data.decimals, 4)} ${assetLabel}`
                         : '—'
                     }
+                  />
+                  <PreviewRow
+                    label="Multiplier"
+                    value={`${previewMultiplier}x weight`}
                   />
                   <PreviewRow label="Lock ends" value={formatTimestamp(now + lockupSecs)} />
                   <PreviewRow label="Cooldown unlock" value={formatTimestamp(now + lockupSecs + COOLDOWN_SECS)} />
@@ -721,12 +734,27 @@ export function StakingShell() {
             <StatusRow label="Stake mint" value={mintQuery.data ? truncate(mintQuery.data.address.toBase58()) : 'Awaiting pool init'} mono />
           </Panel>
 
+          {poolQuery.data && (
+            <EpochProgress
+              currentEpoch={poolQuery.data.currentEpoch}
+              epochStartTime={poolQuery.data.epochStartTime}
+              epochDurationSecs={poolQuery.data.epochDurationSecs}
+              now={now}
+            />
+          )}
+
+          <StakingCalculator
+            price={tokenPrice?.price ?? null}
+            decimals={mintQuery.data?.decimals ?? 6}
+            totalStaked={poolQuery.data?.totalStaked ?? null}
+          />
+
           <Panel title="How staking works" subtitle="Current rules enforced by the live program.">
             <ul className="space-y-3 text-sm text-ink/70">
               <li>Locking longer increases voting weight up to 4x.</li>
               <li>Each wallet currently uses a single stake position PDA.</li>
               <li>Cooldown starts only after the full lock period expires.</li>
-              <li>Rewards are still off until protocol fee routing goes live.</li>
+              <li>Protocol fees are distributed to stakers proportional to voting power each epoch.</li>
             </ul>
           </Panel>
 
@@ -1184,4 +1212,10 @@ function explorerClusterSuffix(cluster: string) {
 
 function explorerHref(kind: 'address' | 'tx', value: string, suffix: string) {
   return `https://explorer.solana.com/${kind}/${value}${suffix}`;
+}
+
+function fmtUsd(tokenAmount: bigint, decimals: number, price: number): string {
+  const value = (Number(tokenAmount) / 10 ** decimals) * price;
+  if (value < 0.01) return '< $0.01';
+  return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
