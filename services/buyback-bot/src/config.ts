@@ -17,6 +17,7 @@ const ConfigSchema = z.object({
   slippageBps: z.coerce.number().int().min(1).max(1000).default(200),
   jupiterApiUrl: z.string().url().default('https://quote-api.jup.ag/v6'),
   operatorKeypairPath: z.string().optional(),
+  operatorKeypairJson: z.string().optional(),
   logLevel: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 });
 
@@ -41,6 +42,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     slippageBps: env.BUYBACK_SLIPPAGE_BPS,
     jupiterApiUrl: env.JUPITER_API_URL,
     operatorKeypairPath: env.OPERATOR_KEYPAIR_PATH,
+    operatorKeypairJson: env.OPERATOR_KEYPAIR_JSON,
     logLevel: env.LOG_LEVEL,
   });
 }

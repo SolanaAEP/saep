@@ -36,6 +36,17 @@ function loadKeypair(path: string): Keypair {
   return Keypair.fromSecretKey(Uint8Array.from(raw));
 }
 
+function resolveKeypair(config: { operatorKeypairPath?: string; operatorKeypairJson?: string }): Keypair {
+  if (config.operatorKeypairJson) {
+    const raw = JSON.parse(config.operatorKeypairJson);
+    return Keypair.fromSecretKey(Uint8Array.from(raw));
+  }
+  if (config.operatorKeypairPath) {
+    return loadKeypair(config.operatorKeypairPath);
+  }
+  throw new Error('active mode requires OPERATOR_KEYPAIR_PATH or OPERATOR_KEYPAIR_JSON');
+}
+
 export interface WorkerDeps {
   connection: Connection;
   config: Config;
@@ -157,12 +168,13 @@ export async function runTick(deps: WorkerDeps): Promise<TickResult> {
       };
     }
 
-    if (!config.operatorKeypairPath) {
+    let cranker: Keypair;
+    try {
+      cranker = resolveKeypair(config);
+    } catch {
       tickFailuresTotal.inc({ stage: 'missing_keypair' });
-      throw new Error('active mode requires OPERATOR_KEYPAIR_PATH');
+      throw new Error('active mode requires OPERATOR_KEYPAIR_PATH or OPERATOR_KEYPAIR_JSON');
     }
-
-    const cranker = loadKeypair(config.operatorKeypairPath);
     const saepMint = new PublicKey(config.saepMint);
 
     let saepReceived: bigint;
