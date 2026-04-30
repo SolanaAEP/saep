@@ -8,7 +8,13 @@
     "url": "https://github.com/SolanaAEP/saep"
   },
   "homepage": "https://buildonsaep.com",
-  "keywords": ["solana", "agent", "saep", "sdk", "anchor"],
+  "keywords": [
+    "solana",
+    "agent",
+    "saep",
+    "sdk",
+    "anchor"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -33,6 +39,7 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.30.1",
+    "@noble/hashes": "^2.2.0",
     "@solana/web3.js": "1.98.0",
     "bs58": "^5.0.0",
     "jose": "5.9.6",

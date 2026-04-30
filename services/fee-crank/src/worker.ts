@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { AnchorProvider, Wallet } from '@coral-xyz/anchor';
 import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
 import type { Logger } from 'pino';
+import type pg from 'pg';
 import {
   resolveCluster,
   feeCollectorProgram,
@@ -12,6 +13,7 @@ import {
   buildProcessEpochIx,
   buildExecuteBurnIx,
 } from '@saep/sdk';
+import { processEpochSnapshot } from './snapshot.js';
 
 type FeeCollectorProgram = ReturnType<typeof feeCollectorProgram>;
 import type { Config } from './config.js';
@@ -35,7 +37,9 @@ interface EpochState {
   epochId: bigint;
   status: number;
   totalCollected: bigint;
+  stakerAmount: bigint;
   burnExecuted: boolean;
+  distributionCommitted: boolean;
   startedAtTs: bigint;
   closedAtTs: bigint | null;
 }
@@ -43,6 +47,7 @@ interface EpochState {
 export interface WorkerDeps {
   config: Config;
   log: Logger;
+  db: pg.Pool | null;
 }
 
 export interface Worker {
@@ -94,7 +99,9 @@ async function fetchEpoch(
       epochId: BigInt(raw.epochId.toString()),
       status: statusMap[statusKey] ?? -1,
       totalCollected: BigInt(raw.totalCollected.toString()),
+      stakerAmount: BigInt(raw.stakerAmount.toString()),
       burnExecuted: raw.burnExecuted,
+      distributionCommitted: raw.stakerDistributionCommitted,
       startedAtTs: BigInt(raw.startedAtTs.toString()),
       closedAtTs: raw.closedAtTs ? BigInt(raw.closedAtTs.toString()) : null,
     };
@@ -276,6 +283,25 @@ export async function runTick(deps: WorkerDeps, program: FeeCollectorProgram, co
       }
     } else if (epoch.status === EPOCH_STATUS_SPLITTING && !epoch.burnExecuted) {
       await tryExecuteBurn(program, cranker, saepMint, currentId, log);
+    } else if (epoch.status === EPOCH_STATUS_SPLITTING && epoch.burnExecuted && !epoch.distributionCommitted && deps.db) {
+      log.info({ epochId: currentId.toString() }, 'burn done, running epoch snapshot');
+      try {
+        await processEpochSnapshot(
+          {
+            rpcUrl: config.rpcUrl,
+            cluster: config.cluster,
+            stakingProgramId: config.stakingProgramId,
+            cranker,
+            db: deps.db,
+            log,
+          },
+          program as never,
+          currentId,
+          epoch.stakerAmount,
+        );
+      } catch (err) {
+        log.error({ err: err instanceof Error ? err.message : String(err) }, 'snapshot failed');
+      }
     } else {
       tickSkippedTotal.inc({ reason: 'epoch_not_actionable' });
       log.debug({ status: epoch.status, burnExecuted: epoch.burnExecuted }, 'nothing to do');

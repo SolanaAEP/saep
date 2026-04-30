@@ -257,6 +257,36 @@ export async function buildHarvestConfidentialFeesIx(
   return builder.instruction();
 }
 
+export interface CommitDistributionRootInput {
+  committer: PublicKey;
+  epochId: bigint;
+  root: Uint8Array;
+  leafCount: number;
+  totalWeight: bigint;
+}
+
+export async function buildCommitDistributionRootIx(
+  program: Program<FeeCollector>,
+  input: CommitDistributionRootInput,
+): Promise<TransactionInstruction> {
+  const [config] = feeConfigPda(program.programId);
+  const [epoch] = epochPda(program.programId, input.epochId);
+
+  return program.methods
+    .commitDistributionRoot(
+      new BN(input.epochId.toString()),
+      Array.from(input.root) as never,
+      input.leafCount,
+      new BN(input.totalWeight.toString()),
+    )
+    .accounts({
+      config,
+      epoch,
+      committer: input.committer,
+    } as never)
+    .instruction();
+}
+
 export interface SetConfidentialTransfersInput {
   authority: PublicKey;
   enabled: boolean;

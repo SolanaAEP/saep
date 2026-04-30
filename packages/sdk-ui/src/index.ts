@@ -233,4 +233,14 @@ export {
   saltFromHex,
   type StoredSalt,
 } from './hooks/dispute-salt-store.js';
+export {
+  useLatestSnapshot,
+  useVoterProof,
+  useStakerClaimProof,
+  useClaimStakerReward,
+  type SnapshotData,
+  type VoterProof,
+  type ClaimProof,
+  type ClaimStakerRewardInput,
+} from './hooks/governance.js';
 export { useSession, useSiwsSignIn, useSignOut, type Session } from './auth/session.js';

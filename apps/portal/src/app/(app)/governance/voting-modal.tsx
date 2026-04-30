@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
-import { useGovernanceProgram, useSendTransaction } from '@saep/sdk-ui';
+import { useGovernanceProgram, useSendTransaction, useVoterProof } from '@saep/sdk-ui';
 import { GlitchButton } from '@saep/ui';
 import type { ProposalRow, GovernanceConfigData } from './types';
 import {
@@ -60,8 +60,12 @@ export function VotingModal({ proposal, config, onClose }: Props) {
   const [choice, setChoice] = useState<VoteChoice | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const stakingWeight = 0n; // wired once staking snapshot + merkle proof integration lands
-  const merkleProof: number[][] = [];
+  const { data: voterProof } = useVoterProof(
+    proposal.snapshot.snapshotSlot.toString(),
+    publicKey ?? null,
+  );
+  const stakingWeight = voterProof ? BigInt(voterProof.weight) : 0n;
+  const merkleProof = voterProof?.proof ?? [];
 
   const proposalPda = proposal.address;
   const metadataStr = decodeMetadataUri(proposal.metadataUri);
@@ -155,9 +159,14 @@ export function VotingModal({ proposal, config, onClose }: Props) {
 
         <div className="flex flex-col gap-2">
           <span className="text-xs text-ink/50">
-            Voting weight (SAEP staked):{' '}
-            <span className="font-mono text-ink">{stakingWeight.toString()}</span>
+            Voting weight:{' '}
+            <span className="font-mono text-ink">{stakingWeight > 0n ? (Number(stakingWeight) / 1e9).toFixed(2) : '0'}</span>
           </span>
+          {publicKey && stakingWeight === 0n && (
+            <span className="font-mono text-[10px] text-warning">
+              No voting power at this snapshot. Stake SAEP before the next epoch to vote.
+            </span>
+          )}
         </div>
 
         <div className="flex gap-2">

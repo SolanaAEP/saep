@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
-import { useGovernanceProgram, useSendTransaction } from '@saep/sdk-ui';
+import { useGovernanceProgram, useSendTransaction, useLatestSnapshot } from '@saep/sdk-ui';
 import { GlitchButton } from '@saep/ui';
 import type { GovernanceConfigData, ProposalCategory } from './types';
 import { PROPOSAL_CATEGORIES, CATEGORY_LABELS } from './types';
@@ -25,6 +25,7 @@ const PARAMETER_HINTS: Record<ProposalCategory, string> = {
 export function CreateProposalForm({ config, walletConnected }: Props) {
   const { publicKey } = useWallet();
   const program = useGovernanceProgram();
+  const { data: latestSnapshot } = useLatestSnapshot();
 
   const [category, setCategory] = useState<ProposalCategory>('ParameterChange');
   const [targetProgram, setTargetProgram] = useState('');
@@ -106,12 +107,17 @@ export function CreateProposalForm({ config, walletConnected }: Props) {
 
       const metadataBytes = Buffer.from(metadataUri, 'utf-8');
 
-      // [STUB] zeroed until staking snapshot oracle is wired
-      const snapshot = {
-        totalEligibleWeight: 0n as unknown as number,
-        snapshotSlot: 0n as unknown as number,
-        snapshotRoot: new Array(32).fill(0),
-      };
+      const snapshot = latestSnapshot
+        ? {
+            totalEligibleWeight: BigInt(latestSnapshot.totalVotingPower) as unknown as number,
+            snapshotSlot: BigInt(latestSnapshot.snapshotSlot) as unknown as number,
+            snapshotRoot: latestSnapshot.governanceRoot,
+          }
+        : {
+            totalEligibleWeight: 0n as unknown as number,
+            snapshotSlot: 0n as unknown as number,
+            snapshotRoot: new Array(32).fill(0),
+          };
 
       return await program.methods
         .propose(

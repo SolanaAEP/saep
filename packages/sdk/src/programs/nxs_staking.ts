@@ -1,7 +1,13 @@
 import { BN, Program } from '../anchor.js';
 import { PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import type { NxsStaking } from '../generated/nxs_staking.js';
-import { stakingPoolPda, stakeAccountPda, stakeVaultPda } from '../pda/index.js';
+import {
+  stakingPoolPda,
+  stakeAccountPda,
+  stakeVaultPda,
+  stakingConfigPda,
+  votingPowerSnapshotPda,
+} from '../pda/index.js';
 
 export interface StakeInput {
   owner: PublicKey;
@@ -84,6 +90,36 @@ export async function buildStakeWithdrawIx(
       ownerTokenAccount: input.ownerTokenAccount,
       owner: input.owner,
       tokenProgram: input.tokenProgram,
+    } as never)
+    .instruction();
+}
+
+export interface SnapshotEpochInput {
+  authority: PublicKey;
+  totalVotingPower: bigint;
+  stakerCount: number;
+  currentEpoch: bigint;
+}
+
+export async function buildSnapshotEpochIx(
+  program: Program<NxsStaking>,
+  input: SnapshotEpochInput,
+): Promise<TransactionInstruction> {
+  const [config] = stakingConfigPda(program.programId);
+  const [pool] = stakingPoolPda(program.programId);
+  const [snapshot] = votingPowerSnapshotPda(program.programId, input.currentEpoch);
+
+  return program.methods
+    .snapshotEpoch(
+      new BN(input.totalVotingPower.toString()),
+      input.stakerCount,
+    )
+    .accounts({
+      config,
+      pool,
+      snapshot,
+      authority: input.authority,
+      systemProgram: SystemProgram.programId,
     } as never)
     .instruction();
 }

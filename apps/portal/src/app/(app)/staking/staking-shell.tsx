@@ -22,6 +22,7 @@ import {
   stakingPoolPda,
 } from '@saep/sdk';
 import { useCluster, useSendTransaction } from '@saep/sdk-ui';
+import { FeeRewards } from './fee-rewards';
 
 const READONLY_WALLET = {
   publicKey: new PublicKey('11111111111111111111111111111111'),
@@ -672,6 +673,8 @@ export function StakingShell() {
               </p>
             )}
           </Panel>
+
+          <FeeRewards />
         </div>
 
         <div className="flex flex-col gap-6">

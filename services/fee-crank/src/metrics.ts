@@ -62,3 +62,10 @@ export const tickSkippedTotal = new Counter({
   labelNames: ['reason'] as const,
   registers: [registry],
 });
+
+export const snapshotTotal = new Counter({
+  name: 'saep_crank_snapshot_total',
+  help: 'Epoch snapshot attempts',
+  labelNames: ['outcome'] as const,
+  registers: [registry],
+});

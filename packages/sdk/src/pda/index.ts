@@ -374,6 +374,16 @@ export function apyAuthorityPda(programId: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([enc('apy_authority')], programId);
 }
 
+export function stakingConfigPda(programId: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([enc('staking_config')], programId);
+}
+
+export function votingPowerSnapshotPda(programId: PublicKey, epoch: bigint): [PublicKey, number] {
+  const buf = Buffer.alloc(8);
+  buf.writeBigUInt64LE(epoch);
+  return PublicKey.findProgramAddressSync([enc('epoch_snapshot'), buf], programId);
+}
+
 // template_registry PDAs
 
 export function templateGlobalPda(programId: PublicKey): [PublicKey, number] {
